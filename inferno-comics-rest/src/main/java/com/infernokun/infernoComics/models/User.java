@@ -1,7 +1,6 @@
-package com.infernokun.infernoComics.models.entities;
+package com.infernokun.infernoComics.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.infernokun.infernoComics.models.auth.SimpleGrantedAuthority;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -31,14 +30,14 @@ public class User extends StoredObject implements UserDetails {
         this.password = password;
     }
 
-    /*@JsonIgnore
+    @JsonIgnore
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (this.role == null) {
+        if (this.username == null) {
             return Collections.emptyList();
         }
-        return List.of(new SimpleGrantedAuthority(this.role.getValue()));
-    }*/
+        return List.of(new SimpleGrantedAuthority(this.username));
+    }
 
     @Override
     public boolean isAccountNonExpired() {

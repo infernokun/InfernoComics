@@ -1,12 +1,11 @@
-package com.infernokun.amaterasu.controllers.alt;
+package com.infernokun.infernoComics.controllers;
 
-import com.infernokun.amaterasu.controllers.BaseController;
-import com.infernokun.amaterasu.models.ApiResponse;
-import com.infernokun.amaterasu.models.entities.alt.LoginResponse;
-import com.infernokun.amaterasu.models.entities.alt.RefreshTokenRequest;
-import com.infernokun.amaterasu.models.entities.alt.RegistrationRequest;
-import com.infernokun.amaterasu.services.alt.AuthenticationService;
-import com.infernokun.amaterasu.services.entity.RefreshTokenService;
+import com.infernokun.infernoComics.models.ApiResponse;
+import com.infernokun.infernoComics.models.LoginResponse;
+import com.infernokun.infernoComics.models.RefreshTokenRequest;
+import com.infernokun.infernoComics.models.RegistrationRequest;
+import com.infernokun.infernoComics.services.AuthenticationService;
+import com.infernokun.infernoComics.services.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

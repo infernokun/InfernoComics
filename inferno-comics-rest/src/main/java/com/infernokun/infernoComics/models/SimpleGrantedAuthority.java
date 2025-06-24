@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.models.auth;
+package com.infernokun.infernoComics.models;
 
 import lombok.EqualsAndHashCode;
 import org.springframework.security.core.GrantedAuthority;

@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.exceptions;
+package com.infernokun.infernoComics.exceptions;
 
 import lombok.NoArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;

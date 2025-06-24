@@ -7,6 +7,6 @@ server:
 
 spring:
   application:
-    name: amaterasu-rest
+    name: inferno-comics-rest
   profiles:
     active: local

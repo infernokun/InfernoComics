@@ -1,19 +1,16 @@
-package com.infernokun.amaterasu.services.alt;
+package com.infernokun.infernoComics.services;
 
-import com.infernokun.amaterasu.exceptions.AuthFailedException;
-import com.infernokun.amaterasu.exceptions.TokenException;
-import com.infernokun.amaterasu.exceptions.WrongPasswordException;
-import com.infernokun.amaterasu.models.entities.alt.LoginResponse;
-import com.infernokun.amaterasu.models.entities.alt.RegistrationRequest;
-import com.infernokun.amaterasu.models.entities.RefreshToken;
-import com.infernokun.amaterasu.models.entities.User;
-import com.infernokun.amaterasu.models.enums.Role;
-import com.infernokun.amaterasu.repositories.UserRepository;
-import com.infernokun.amaterasu.services.BaseService;
-import com.infernokun.amaterasu.services.entity.RefreshTokenService;
-import com.infernokun.amaterasu.services.entity.UserService;
+import com.infernokun.infernoComics.exceptions.AuthFailedException;
+import com.infernokun.infernoComics.exceptions.TokenException;
+import com.infernokun.infernoComics.exceptions.WrongPasswordException;
+import com.infernokun.infernoComics.models.LoginResponse;
+import com.infernokun.infernoComics.models.RegistrationRequest;
+import com.infernokun.infernoComics.models.RefreshToken;
+import com.infernokun.infernoComics.models.User;
+import com.infernokun.infernoComics.repositories.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,7 +24,8 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class AuthenticationService extends BaseService {
+@Slf4j
+public class AuthenticationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -47,11 +45,10 @@ public class AuthenticationService extends BaseService {
         user.setPassword(encodedPassword);
 
         User newUser = new User(user.getUsername(), user.getPassword());
-        newUser.setRole(Role.MEMBER);
 
         userRepository.save(newUser);
 
-        LOGGER.info("User registered: {}", newUser.getUsername());
+        log.info("User registered: {}", newUser.getUsername());
         return true;
     }
 
@@ -78,13 +75,13 @@ public class AuthenticationService extends BaseService {
             return new LoginResponse(accessToken, authenticatedUser, refreshToken.getToken());
 
         } catch (BadCredentialsException e) {
-            LOGGER.error("LOGIN FAILED: Bad credentials for username: {}", username);
+            log.error("LOGIN FAILED: Bad credentials for username: {}", username);
             throw new WrongPasswordException("Invalid username or password");
         } catch (AuthenticationException e) {
-            LOGGER.error("LOGIN FAILED: Authentication exception for username: {}", username, e);
+            log.error("LOGIN FAILED: Authentication exception for username: {}", username, e);
             throw new AuthFailedException("Authentication failed");
         } catch (Exception e) {
-            LOGGER.error("LOGIN FAILED: Unexpected error for username: {}", username, e);
+            log.error("LOGIN FAILED: Unexpected error for username: {}", username, e);
             throw e;
         }
     }
@@ -93,7 +90,7 @@ public class AuthenticationService extends BaseService {
      * Refresh access token using refresh token
      */
     public LoginResponse refreshToken(String refreshTokenString, HttpServletRequest request) {
-        LOGGER.info("Refreshing token");
+        log.info("Refreshing token");
 
         // Validate refresh token and get new access token
         String newAccessToken = refreshTokenService.refreshAccessToken(refreshTokenString, request);
@@ -104,7 +101,7 @@ public class AuthenticationService extends BaseService {
         // Check if refresh token needs rotation
         RefreshToken finalRefreshToken = refreshTokenService.rotateRefreshTokenIfNeeded(refreshToken, request);
 
-        LOGGER.info("Token refreshed for user: {}", refreshToken.getUser().getId());
+        log.info("Token refreshed for user: {}", refreshToken.getUser().getId());
 
         return new LoginResponse(newAccessToken, refreshToken.getUser(), finalRefreshToken.getToken());
     }
@@ -114,7 +111,7 @@ public class AuthenticationService extends BaseService {
      */
     public void logout(String refreshTokenString) {
         refreshTokenService.revokeSession(refreshTokenString, "User logout");
-        LOGGER.info("User logged out");
+        log.info("User logged out");
     }
 
     /**

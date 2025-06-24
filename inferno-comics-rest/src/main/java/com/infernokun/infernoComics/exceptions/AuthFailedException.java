@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.exceptions;
+package com.infernokun.infernoComics.exceptions;
 
 import org.springframework.security.core.AuthenticationException;
 

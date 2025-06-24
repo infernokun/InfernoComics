@@ -1,6 +1,5 @@
-package com.infernokun.amaterasu.models.entities.alt;
+package com.infernokun.infernoComics.models;
 
-import com.infernokun.amaterasu.models.entities.User;
 import lombok.*;
 
 @Data
@@ -17,8 +16,6 @@ public class LoginResponse {
         this.refreshToken = refreshToken;
         this.user = UserResponse.builder()
                 .id(user.getId())
-                .role(user.getRole())
-                .team(user.getTeam())
                 .username(user.getUsername())
                 .build();
     }

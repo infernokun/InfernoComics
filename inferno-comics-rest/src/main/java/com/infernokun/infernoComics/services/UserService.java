@@ -1,7 +1,7 @@
-package com.infernokun.infernoComics.services.entity;
+package com.infernokun.infernoComics.services;
 
 import com.infernokun.infernoComics.exceptions.ResourceNotFoundException;
-import com.infernokun.infernoComics.models.entities.User;
+import com.infernokun.infernoComics.models.User;
 import com.infernokun.infernoComics.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;

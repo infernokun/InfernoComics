@@ -20,9 +20,9 @@ management:
 
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_IP:localhost}:${DB_PORT:5432}/${DB_NAME:amaterasu}
-    username: ${DB_USER:amaterasu}
-    password: ${DB_PASS:amaterasu}
+    url: jdbc:postgresql://${DB_IP:localhost}:${DB_PORT:5432}/${DB_NAME:inferno-comics}
+    username: ${DB_USER:inferno-comics}
+    password: ${DB_PASS:inferno-comics}
   jpa:
     hibernate:
       ddl-auto: update 
@@ -30,16 +30,19 @@ spring:
   redis:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:amaterasu}
+    password: ${REDIS_PASS:inferno-comics}
     timeout: 6000
     cache:
       ttl: 3600
 
+
+  jackson:
+    default-property-inclusion: NON_NULL
 server:
   forward-headers-strategy: native
   port: 8080
   servlet:
-    contextPath: /amaterasu-rest
+    contextPath: /inferno-comics-rest
   shutdown: graceful
   tomcat:
     internal-proxies:
@@ -47,19 +50,21 @@ server:
       remote-ip-header: "X-FORWARDED-FOR"
   use-forward-headers: true
 
-amaterasu:
-  applicationName: "Amaterasu"
-  defaultAdminUsername: amaterasu_admin
+inferno-comics:
+  applicationName: "InfernoComics"
+  defaultAdminUsername: inferno-comics_admin
   defaultAdminPassword: password
-  uploadDir: "${DOCKER_COMPOSE_PATH:/var/tmp/amaterasu}"
   encryptionKey: "${ENCRYPTION_KEY}"
-  sshPort: "${SSH_PORT:22}"
-  chatSocket: ""
+  comicVineAPIKey: "${COMIC_VINE_API_KEY}"
 
 logging:
   level:
     org.hibernate: WARN
     org.hibernate.orm.connections.pooling: ERROR
+    com.infernokun: DEBUG
+    org.springframework.web: DEBUG
+
+
 
 rsa:
   private-key: ${RSA_PRIVATE_KEY_PATH:certs/private.pem}

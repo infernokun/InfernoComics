@@ -1,6 +1,6 @@
-package com.infernokun.amaterasu.controllers;
+package com.infernokun.infernoComics.controllers;
 
-import com.infernokun.amaterasu.models.ApiResponse;
+import com.infernokun.infernoComics.models.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
-import com.infernokun.infernoComics.models.entities.StoredObject;
+import com.infernokun.infernoComics.models.StoredObject;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;

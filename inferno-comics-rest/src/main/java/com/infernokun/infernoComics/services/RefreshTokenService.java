@@ -1,17 +1,15 @@
-package com.infernokun.amaterasu.services.entity;
+package com.infernokun.infernoComics.services;
 
-import com.infernokun.amaterasu.exceptions.TokenException;
-import com.infernokun.amaterasu.models.entities.RefreshToken;
-import com.infernokun.amaterasu.models.entities.User;
-import com.infernokun.amaterasu.repositories.RefreshTokenRepository;
-import com.infernokun.amaterasu.repositories.UserRepository;
-import com.infernokun.amaterasu.services.BaseService;
-import jakarta.annotation.PostConstruct;
+import com.infernokun.infernoComics.exceptions.TokenException;
+import com.infernokun.infernoComics.models.RefreshToken;
+import com.infernokun.infernoComics.models.User;
+import com.infernokun.infernoComics.repositories.RefreshTokenRepository;
+import com.infernokun.infernoComics.repositories.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -21,13 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class RefreshTokenService extends BaseService {
+@Slf4j
+public class RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final UserRepository userRepository;
     private final UserService userService;
@@ -119,12 +117,12 @@ public class RefreshTokenService extends BaseService {
 
         // Log suspicious activity (optional - you can make this stricter)
         if (!token.getIpAddress().equals(currentIP)) {
-            LOGGER.warn("IP address changed for refresh token. User: {}, Old: {}, New: {}",
+            log.warn("IP address changed for refresh token. User: {}, Old: {}, New: {}",
                     token.getUser().getId(), token.getIpAddress(), currentIP);
         }
 
         if (!token.getUserAgent().equals(currentUserAgent)) {
-            LOGGER.warn("User agent changed for refresh token. User: {}", token.getUser().getId());
+            log.warn("User agent changed for refresh token. User: {}", token.getUser().getId());
         }
     }
 

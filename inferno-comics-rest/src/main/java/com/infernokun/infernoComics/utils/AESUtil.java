@@ -1,10 +1,10 @@
 package com.infernokun.infernoComics.utils;
 
+import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.exceptions.CryptoException;
-import com.infernokun.infernoComics.config.AmaterasuConfig;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -18,7 +18,9 @@ import java.security.SecureRandom;
 import java.security.spec.KeySpec;
 import java.util.Base64;
 
+@Slf4j
 @Component
+@RequiredArgsConstructor
 public class AESUtil {
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
@@ -28,13 +30,7 @@ public class AESUtil {
     private static final String SECRET_KEY_ALGORITHM = "PBKDF2WithHmacSHA256";
     private static final int PBKDF2_ITERATIONS = 65536;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AESUtil.class);
-
-    private final AmaterasuConfig amaterasuConfig;
-
-    public AESUtil(AmaterasuConfig amaterasuConfig) {
-        this.amaterasuConfig = amaterasuConfig;
-    }
+    private final InfernoComicsConfig amaterasuConfig;
 
     /** Derives a 16-byte AES key from the encryption key stored in the config using PBKDF2. */
     private byte[] deriveKey(byte[] salt) {
@@ -49,11 +45,11 @@ public class AESUtil {
             SecretKey tmp = factory.generateSecret(spec);
             SecretKey secretKey = new SecretKeySpec(tmp.getEncoded(), ALGORITHM);
 
-            LOGGER.debug("Derived key (bytes): {}", bytesToHex(secretKey.getEncoded())); // Log derived key
+            log.debug("Derived key (bytes): {}", bytesToHex(secretKey.getEncoded())); // Log derived key
 
             return secretKey.getEncoded();
         } catch (Exception e) {
-            LOGGER.error("Key derivation failed!", e);
+            log.error("Key derivation failed!", e);
             throw new CryptoException("Key derivation failed!", e);
         }
     }
@@ -63,7 +59,7 @@ public class AESUtil {
         try {
 
             if (encryptedValue == null) {
-                LOGGER.warn("Attempted to decrypt null value");
+                log.warn("Attempted to decrypt null value");
                 return null; // or throw a specific exception
             }
 
@@ -89,7 +85,7 @@ public class AESUtil {
 
             return Base64.getEncoder().encodeToString(combined);
         } catch (Exception e) {
-            LOGGER.error("Encryption failed: " + e.getMessage(), e);
+            log.error("Encryption failed: " + e.getMessage(), e);
             throw new CryptoException("Encryption failed: " + e.getMessage(), e);
         }
     }
@@ -112,9 +108,9 @@ public class AESUtil {
             System.arraycopy(decoded, SALT_LENGTH, iv, 0, IV_LENGTH);
             System.arraycopy(decoded, SALT_LENGTH + IV_LENGTH, encryptedData, 0, encryptedData.length);
 
-            LOGGER.debug("Salt (bytes): {}", bytesToHex(salt));
-            LOGGER.debug("IV (bytes): {}", bytesToHex(iv));
-            LOGGER.debug("Encrypted data (bytes): {}", bytesToHex(encryptedData));
+            log.debug("Salt (bytes): {}", bytesToHex(salt));
+            log.debug("IV (bytes): {}", bytesToHex(iv));
+            log.debug("Encrypted data (bytes): {}", bytesToHex(encryptedData));
 
             byte[] key = deriveKey(salt);
             SecretKeySpec secretKey = new SecretKeySpec(key, ALGORITHM);
@@ -124,7 +120,7 @@ public class AESUtil {
             byte[] decrypted = cipher.doFinal(encryptedData);
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            LOGGER.error("Decryption failed: {}", e.getMessage());
+            log.error("Decryption failed: {}", e.getMessage());
             throw new CryptoException("Decryption failed: " + e.getMessage());
         }
     }

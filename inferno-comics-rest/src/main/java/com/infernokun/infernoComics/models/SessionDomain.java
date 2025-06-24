@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.models.sessions;
+package com.infernokun.infernoComics.models;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -1,9 +1,8 @@
-package com.infernokun.amaterasu.controllers.entity;
+package com.infernokun.infernoComics.controllers;
 
-import com.infernokun.amaterasu.controllers.BaseController;
-import com.infernokun.amaterasu.models.ApiResponse;
-import com.infernokun.amaterasu.models.entities.User;
-import com.infernokun.amaterasu.services.entity.UserService;
+import com.infernokun.infernoComics.models.ApiResponse;
+import com.infernokun.infernoComics.models.User;
+import com.infernokun.infernoComics.services.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -106,14 +105,5 @@ public class UserController extends BaseController {
                 .data(updatedUser)
                 .build());
 
-    }
-
-    @PutMapping("/team")
-    public ResponseEntity<ApiResponse<User>> updateUserTeam(@RequestParam String userId, @RequestParam String teamId) {
-        return ResponseEntity.ok(ApiResponse.<User>builder()
-                .code(HttpStatus.OK.value())
-                .message("User updated successfully.")
-                .data(userService.updateUserTeam(userId, teamId))
-                .build());
     }
 }

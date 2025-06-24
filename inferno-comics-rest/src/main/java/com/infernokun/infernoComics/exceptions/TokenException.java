@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.exceptions;
+package com.infernokun.infernoComics.exceptions;
 
 public class TokenException extends RuntimeException {
     public TokenException(String message) {

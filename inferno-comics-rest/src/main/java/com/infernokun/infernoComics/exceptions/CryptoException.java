@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.exceptions;
+package com.infernokun.infernoComics.exceptions;
 
 public class CryptoException extends RuntimeException {
   public CryptoException(String msg, Throwable cause) {

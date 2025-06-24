@@ -1,4 +1,4 @@
-package com.infernokun.infernoComics.models.entities;
+package com.infernokun.infernoComics.models;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;

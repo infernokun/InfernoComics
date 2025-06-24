@@ -1,6 +1,5 @@
-package com.infernokun.amaterasu.controllers.alt;
+package com.infernokun.infernoComics.controllers;
 
-import com.infernokun.amaterasu.controllers.BaseController;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.PostConstruct;
 import org.springframework.http.HttpStatus;
@@ -15,7 +14,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping()
-public class AmaterasuRestController extends BaseController {
+public class InfernoComicsRestController extends BaseController {
     private Instant startTime;
 
     @PostConstruct

@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.models.entities.alt;
+package com.infernokun.infernoComics.models;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

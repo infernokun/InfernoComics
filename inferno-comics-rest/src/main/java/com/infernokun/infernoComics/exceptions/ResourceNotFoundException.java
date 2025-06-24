@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.exceptions;
+package com.infernokun.infernoComics.exceptions;
 
 public class ResourceNotFoundException extends RuntimeException {
     public ResourceNotFoundException() {

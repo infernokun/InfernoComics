@@ -1,4 +1,4 @@
-package com.infernokun.amaterasu.models.entities;
+package com.infernokun.infernoComics.models;
 
 import jakarta.persistence.*;
 import lombok.*;
