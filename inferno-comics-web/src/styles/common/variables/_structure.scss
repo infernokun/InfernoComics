@@ -1,0 +1,14 @@
+@use "sass:math";
+
+$grid-columns: 12 !default;
+
+$grid-breakpoints: (
+  xs: 0,
+  sm: 600px,
+  md: 900px,
+  lg: 1300px
+) !default;
+
+$gutter:        .8em          !default;
+$gutter-min:    #{math.div($gutter, 3)}  !default;
+$gutter-half:   #{math.div($gutter, 2)}  !default;

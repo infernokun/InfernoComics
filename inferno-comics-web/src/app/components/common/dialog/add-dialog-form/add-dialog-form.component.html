@@ -1,0 +1,25 @@
+<div class="container">
+  <h2 mat-dialog-title class="dialog-title" *skeleton="!data || !data.questions || !(data.questions.length > 0)">
+    {{ formatCamelCase(data.typeName) }}
+  </h2>
+  <br />
+  <div class="questions-container" *skeleton="!data || !data.questions || !(data.questions.length > 0); height: '100px'">
+    <div *ngFor="let q of data.questions; let i = index" class="question-row">
+      <amaterasu-dialog-question [question]="q" class="width-100"
+        (radioSelectionChanged)="radioSelectionChanged($event)" (dropdownSelectionChanged)="dropdownSelectionChanged($event)"
+         (buttonClicked)="q.action!(this.buttonQuestionFunction.bind(this)(q.key))"></amaterasu-dialog-question>
+    </div>
+  </div>
+</div>
+
+<!-- Button Container -->
+<div class="button-row">
+  <div class="button-group">
+    <button [mat-dialog-close]="undefined" class="cancel-button mat-button">
+      Cancel
+    </button>
+    <button color="primary" class="submit-button mat-raised-button mat-accent" (click)="onSubmit()">
+      Submit
+    </button>
+  </div>
+</div>

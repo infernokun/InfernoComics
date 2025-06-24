@@ -1,0 +1,110 @@
+// Simple CTF Main Styles
+.width-100-percent {
+  width: 100%;
+  min-height: 100vh;
+  
+  &.display-flex {
+    display: flex;
+    
+    &.flex-wrap {
+      flex-wrap: wrap;
+    }
+  }
+  
+  // CTF Card (when user has joined)
+  amaterasu-ctf-card {
+    width: 100%;
+    
+    ::ng-deep .ctf-card {
+      border: 3px solid #DC143C !important;
+      box-sizing: border-box !important;
+    }
+  }
+  
+  // Access Denied
+  .access-denied-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 60vh;
+    
+    .access-denied-message {
+      text-align: center;
+      padding: 2rem;
+      
+      .denied-icon {
+        font-size: 4rem;
+        height: 4rem;
+        width: 4rem;
+        color: #DC143C;
+        margin-bottom: 1rem;
+      }
+      
+      h3 {
+        color: #DC143C;
+        margin-bottom: 1rem;
+        font-size: 1.8rem;
+      }
+      
+      p {
+        color: #666;
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+      }
+      
+      button {
+        margin: 0.5rem;
+        min-width: 140px;
+      }
+    }
+  }
+  
+  // Loading State
+  .loading-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    gap: 1rem;
+    
+    p {
+      color: #666;
+      font-size: 1.1rem;
+    }
+  }
+  
+  // Error State
+  .error-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 50vh;
+    text-align: center;
+    padding: 2rem;
+    
+    .error-icon {
+      font-size: 4rem;
+      height: 4rem;
+      width: 4rem;
+      color: #ff6b6b;
+      margin-bottom: 1rem;
+    }
+    
+    h3 {
+      color: #ff6b6b;
+      margin-bottom: 1rem;
+      font-size: 1.8rem;
+    }
+    
+    p {
+      color: #666;
+      margin-bottom: 2rem;
+      font-size: 1.1rem;
+    }
+  }
+}

@@ -1,0 +1,169 @@
+.mat-sidenav {
+  &.mat-drawer {
+    @include themify($themes) {
+      background-color: themed('popoverBgColor');
+    }
+
+    .mat-icon-button {
+      &:focus {
+        border: none !important;
+      }
+    }
+  }
+}
+
+.mat-drawer-container {
+  background: transparent !important;
+  @include themify($themes) {
+    color: themed('textColor');
+  }
+
+  .mat-drawer {
+    @include themify($themes) {
+      background-color: themed('popoverBgColor');
+      color: themed('textColor');
+    }
+  }
+
+  .mat-drawer-backdrop {
+    &.mat-drawer-shown {
+      @include themify($themes) {
+        background-color: themed('bgColorDim');
+      }
+      opacity: .6;
+    }
+  }
+}
+
+.mat-toolbar {
+  @include themify($themes) {
+    background-color: themed('sidebarColor');
+    color: themed('textColor');
+    font-size: themed('fontSize');
+  }
+  font-family: $font-family;
+}
+
+$side-toolbar-width: 50px;
+
+.layout-side-toolbar {
+  display: flex;
+  height: 100%;
+  position: static;
+
+  .mat-toolbar {
+    flex: 1 1 $side-toolbar-width;
+    height: 100%;
+    max-width: $side-toolbar-width;
+    min-width: $side-toolbar-width;
+    z-index: 30;
+
+    .mat-toolbar-row {
+      height: auto;
+      padding: 0;
+
+      .mat-icon-button {
+        @include themify($themes) {
+          color: themed('textColor') !important;
+        }
+        display: block;
+        margin: 1.6em 0;
+        width: 100% !important;
+
+        .material-icons {
+          font-size: 1.6em !important;
+        }
+
+        img {
+          height: 100%;
+        }
+      }
+
+      &.logo {
+        .mat-icon-button {
+          @include themify($themes) {
+            background-color: lighten(themed('sidebarColor'), 5%) !important;
+            border-color: darken(themed('borderColor'), 3%);
+          }
+          border: 1px solid;
+          border-radius: 0 $border-radius $border-radius 0;
+          height: auto !important;
+          margin: 0;
+          padding: $gutter $gutter-half $gutter-half $gutter !important;
+          width: 110% !important;
+          z-index: 10;
+
+          .badge {
+            align-items: center;
+            border-radius: 50%;
+            display: flex;
+            font-size: 0.9em;
+            font-weight: 500;
+            height: 1.2em;
+            justify-content: center;
+            position: absolute;
+            right: $gutter-half;
+            top: $gutter-half;
+            width: 1.2em;
+          }
+
+          .beta-flag {
+            @include themify($themes) {
+              @include shadow(themed('shadowColor'), 0, 1px, 3px, 0);
+              background-color: themed('colorWarn');
+            }
+            @include border-radius(2px);
+            -webkit-animation: 2s ease beta-pulse 20;
+            -o-animation: 2s ease beta-pulse 20;
+            animation: 2s ease beta-pulse 20;
+            bottom: -$gutter-half;
+            color: #FFF;
+            font-size: 0.7em;
+            left: $gutter;
+            padding: 0 $gutter-min;
+            position: absolute;
+          }
+
+          .logo-rotate {
+            transform: rotate(-20deg);
+          }
+
+          .menu-icon {
+            @include themify($themes) {
+              color: themed('textColorLight');
+            }
+            font-size: $font-sm !important;
+            left: $gutter-half;
+            position: absolute;
+            top: $gutter-half;
+          }
+        }
+      }
+
+      &.version {
+        font-size: 0.7em;
+        justify-content: center;
+      }
+    }
+  }
+
+  .mat-drawer-container,
+  .main-container {
+    flex-basis: 0;
+    flex-grow: 1;
+    height: 100%;
+    max-width: 100%;
+  }
+}
+
+@keyframes beta-pulse {
+  0% {
+    background-color: themeProperty('dark', 'colorWarn');
+  }
+  50% {
+    background-color: darken(themeProperty('dark', 'colorWarn'), 12%);
+  }
+  100% {
+    background-color: themeProperty('dark', 'colorWarn');
+  }
+}

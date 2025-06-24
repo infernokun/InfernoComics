@@ -1,0 +1,70 @@
+@use "sass:color";
+@use "sass:list";
+@use "sass:map";
+@use "sass:math";
+@use "../themes/theme-colors";
+@use "convert-string";
+
+@function color($key, $theme) {
+    @return map.get($theme, $key);
+}
+
+@function returnThemeVariable($value) {
+    @if $value == "light" {
+        @return $light;
+    }
+    @else {
+        @return $dark;
+    }
+}
+
+@function color-level($color-name, $level, $theme) {
+    $color: map.get($theme, $color-name);
+    $color-base: if($level < 0, black, white);
+
+    @return color.mix($color-base, $color, math.abs($level) * theme-colors.$color-interval);
+}
+    
+@function make-color-variables($theme) {
+    $color-values: ();
+    
+    @each $color-value in $theme {
+        $color-name: list.nth($color-value, 1);
+        $imin: theme-colors.$color-shades;
+        $imax: theme-colors.$color-tints;
+    
+        @if $color-name == 'neutral' {
+            $imin: theme-colors.$neutral-shades;
+            $imax: theme-colors.$neutral-tints;
+        }
+    
+        @for $i from $imin through $imax {
+            $color-level: if($i < 0, shade, tint);
+            $color-value-name: '';
+            $color-value-level: '';
+            $interval-count: 0;
+            $interval-count: #{math.abs($i)*convert-string.convertString(theme-colors.$color-interval)};
+
+            @if $interval-count == '100' {
+                $color-value-name: #{$color-name}-#{$color-level}-95;
+                $color-value-level: color-level($color-name, 9.5, $theme);
+            } @else {
+                $color-value-name: #{$color-name}-#{$color-level}-#{$interval-count};
+                $color-value-level: color-level($color-name, $i, $theme);
+            }
+    
+            @if $i == 0 {
+                $color-value-name: #{$color-name};
+            }
+    
+    
+            $color-value-name-hex: ($color-value-name: $color-value-level);
+            $color-values: map.merge($color-values, $color-value-name-hex);
+        }
+    }
+
+    @return $color-values;
+}
+    
+$light: make-color-variables(theme-colors.$light-palette);
+$dark: make-color-variables(theme-colors.$dark-palette);

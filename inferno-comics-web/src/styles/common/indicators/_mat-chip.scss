@@ -1,0 +1,139 @@
+.mat-chip-list-wrapper {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+
+    .mat-standard-chip, input.mat-input-element {
+        // overrides
+        margin: 0;
+    }
+
+    .mat-chip {
+        @include themify($themes) {
+            background-color: themed('bgColorDark2');
+            color: themed('textColor');
+            font-size: themed('fontSize') !important;
+        }
+        margin: 0 $gutter-half;
+
+        // overrides
+        @include border-radius($border-radius !important);
+        line-height: $line-height !important;
+        min-height: 1.8em !important;
+        padding: $gutter-min $gutter-half !important;
+
+        .mat-icon-button {
+            @include themify($themes) {
+                color: themed('textColor') !important;
+            }
+            margin: -0.6em -0.4em -0.4em -0.4em;
+        }
+
+        .chip-icon {
+            font-size: $font-sm !important;
+            margin: 0.3em -0.2em 0.4em -0.2em;
+        }
+
+        &:first-child {
+            margin-left: 0;
+        }
+        &:last-child {
+            margin-right: 0;
+        }
+
+        &.mat-basic-chip {
+            background: transparent;
+        }
+
+        &.mat-chip-disabled {
+            @include themify($themes) {
+                background-color: themed('colorDisabled') !important;
+                color: themed('textColorDisabled') !important;
+            }
+        }
+
+        &.mat-chip-selected {
+            color: #FFF !important;
+
+            &.mat-accent {
+                // overrides
+                @include themify($themes) {
+                    background-color: themed('colorAccent') !important;
+                }
+            }
+            &.mat-primary {
+                // overrides
+                @include themify($themes) {
+                    background-color: themed('colorActive') !important;
+                }
+            }
+            &.mat-success {
+                // overrides
+                @include themify($themes) {
+                    background-color: themed('colorSuccess') !important;
+                }
+            }
+            &.mat-warn {
+                // overrides
+                @include themify($themes) {
+                    background-color: themed('colorWarn') !important;
+                }
+            }
+            .mat-chip-remove {
+                // overrides
+                color: #FFF;
+            }
+        }
+
+        &.mat-chip-with-trailing-icon {
+            .mat-chip-trailing-icon {
+                // overrides
+                margin-left: $gutter;
+            }
+        }
+        &.mat-chip-with-avatar {
+            // overrides
+            padding: 0 $gutter 0 0;
+
+            .mat-chip-avatar {
+                // added
+                font-size: $font-2x;
+
+                // overrides
+                @include border-radius();
+                height: #{$gutter * 1.7} !important;
+                margin-right: $gutter-half;
+                width: #{$gutter * 1.7} !important;
+            }
+        }
+        &.square-chip {
+            align-items: center;
+            display: flex;
+            flex-direction: column;
+            height: 6em;
+            justify-content: center;
+            width: 6em;
+        }
+
+        .mat-chip-remove {
+            // overrides
+            @include themify($themes) {
+                color: themed('textColor');
+            }
+            font-size: $font-2x;
+        }
+    }
+}
+
+.mat-chip-list {
+  &.dense {
+    margin: 0;
+
+    .mat-chip {
+      font-size: $font-sm !important;
+      line-height: $font-sm !important;
+      min-height: 1.2em !important;
+      padding: $gutter-half $gutter-min $gutter-min $gutter-min !important;
+      text-transform: uppercase;
+    }
+  }
+}

@@ -1,0 +1,95 @@
+// reset
+
+.text-base {
+    @include themify($themes) {
+        color: themed('textColor') !important;
+        font-size: themed('fontSize') !important;
+    }
+}
+
+// alignment
+
+.text-center        { text-align:   center                      !important }
+.text-left          { text-align:   left                        !important }
+.text-right         { text-align:   right                       !important }
+
+// color
+
+@include themifyColor(text-green, color, 'green');
+
+@include themifyColor(text-classification-high, color, $classified-high);
+@include themifyColor(text-classification-medium, color, $classified-medium);
+@include themifyColor(text-classification-low, color, $classified-low);
+
+.text-accent  {
+    @include themify($themes) {
+        color: themed('colorAccent') !important;
+    }
+}
+.text-alert  {
+    @include themify($themes) {
+        color: themed('colorAlert') !important;
+    }
+}
+.text-disabled {
+    @include themify($themes) {
+        color: themed('textColorDisabled') !important;
+    }
+}
+.text-highlight {
+    @include themify($themes) {
+        color: themed('colorHighlight') !important;
+    }
+}
+.text-hyperlink {
+    @include themify($themes) {
+        color: themed('textColorHyperlink') !important;
+    }
+}
+.text-light {
+    @include themify($themes) {
+        color: themed('textColorLight') !important;
+    }
+}
+.text-success {
+    @include themify($themes) {
+        color: themed('colorSuccess') !important;
+    }
+}
+.text-warn {
+    @include themify($themes) {
+        color: themed('colorWarn') !important;
+    }
+}
+.text-white     { color:        #FFF                 !important }
+
+
+// decoration
+
+.text-line-through  { text-decoration: line-through     !important }
+
+
+// size
+
+.text-sm        { font-size:    $font-sm               !important }
+.text-lg        { font-size:    $font-lg               !important }
+.text-2x        { font-size:    $font-2x               !important }
+.text-3x        { font-size:    $font-3x               !important }
+.text-4x        { font-size:    $font-4x               !important }
+.text-5x        { font-size:    $font-5x               !important }
+
+// transform
+
+.text-uppercase { text-transform:   uppercase          !important }
+
+
+// weight
+
+.text-heavy             { font-family:      $font-family-heavy      !important }
+.text-weight-light      { font-family:      $font-family-light      !important }
+
+// line height
+
+.line-height-initial {
+    line-height: initial;
+}

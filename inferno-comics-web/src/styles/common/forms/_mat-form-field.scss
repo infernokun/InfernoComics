@@ -1,0 +1,326 @@
+$label-and-subscript-left-padding: 0.4em;
+
+.mat-form-field,
+.mat-form-field.mat-form-field-appearance-legacy {
+    // overrides
+    @include themify($themes) {
+        font-size: themed('fontSize');
+        line-height: themed('fontSize');
+    }
+    padding-top: 1.4em;
+    width: 100%;
+
+    .mat-form-field-wrapper {
+        // added
+        @include themify($themes) {
+            font-size: themed('fontSize');
+        }
+
+        .mat-form-field-required-marker {
+            @include themify($themes) {
+                color: themed('colorWarn');
+            }
+        }
+
+        .mat-form-field-flex {
+            @include themify($themes) {
+                background-color: themed('inputBgColor');
+                border-color: themed('inputBorderColor');
+                font-size: themed('fontSize');
+            }
+            @include border-radius();
+            border: 1px solid;
+
+            // overrides
+            align-items: center;
+
+            .mat-form-field-prefix,
+            .mat-form-field-suffix {
+                padding-top: .16em;
+            }
+
+            .mat-form-field-prefix {
+                padding-left: $gutter-half;
+            }
+            .mat-form-field-suffix {
+                @include themify($themes) {
+                    color: themed('textColorLight');
+                }
+                font-size: $font-sm;
+                padding-right: $gutter-half;
+
+                .mat-icon-button {
+                    margin: -$gutter-half !important;
+                }
+
+                .mat-datepicker-toggle-default-icon {
+                    margin-top: -$gutter-min;
+                    width: 1.4em !important;
+                }
+            }
+
+            .mat-form-field-infix {
+                // overrides
+                border-top: none;
+                padding: 0;
+                width: 100%;
+            }
+
+            .mat-icon {
+                @include themify($themes) {
+                    color: themed('textColorLight') !important;
+                }
+                font-size: $font-lg !important;
+            }
+        }
+
+        input, textarea {
+            &.mat-input-element {
+                // added
+                padding: $gutter-half;
+
+                &:disabled {
+                    // overrides
+                    @include themify($themes) {
+                        color: themed('textColorDisabled');
+                    }
+                }
+            }
+        }
+
+        .mat-form-field-label-wrapper {
+            // overrides
+            top: -2em;
+            padding-top: 2em;
+            margin: -2px 0 0 -1px;
+
+            .mat-form-field-label {
+                // overrides
+                @include themify($themes) {
+                    color: themed('textColorLight');
+                }
+                top: 2.6em;
+                padding-left: $label-and-subscript-left-padding;
+                line-height: 1.1em;
+                margin-bottom: -0.1em;
+            }
+        }
+
+        .mat-form-field-underline {
+            // overrides
+            @include themify($themes) {
+                background-color: themed('inputBorderColorAlt');
+            }
+            margin-left: 5px;
+            width: calc(100% - 10px);
+
+            .mat-form-field-ripple {
+                // overrides
+                height: 1px;
+            }
+        }
+
+        .mat-form-field-hint-wrapper {
+            // added
+            padding-left: #{$gutter * .8};
+
+            .mat-hint {
+                @include themify($themes) {
+                    color: themed('textColorLight');
+                }
+                font-size: 1em;
+            }
+        }
+
+        .mat-form-field-subscript-wrapper {
+            // overrides
+            margin-top: $gutter-half;
+            padding-left: $label-and-subscript-left-padding;
+        }
+    }
+
+    &.mat-form-field-can-float {
+        &.mat-form-field-should-float {
+            .mat-form-field-label {
+                // overrides
+                transform: translateY(-1.8em) scale(0.8) perspective(100px) translateX(0) translateZ(0.001px) !important;
+            }
+        }
+
+        .mat-form-field-autofill-control:-webkit-autofill {
+            border-radius: $border-radius;
+        }
+    }
+
+    &.mat-focused {
+        .mat-form-field-flex {
+            @include themify($themes) {
+                border: 1px dotted themed('colorFocus') !important;
+            }
+        }
+        .mat-form-field-label {
+            // overrides
+            @include themify($themes) {
+                color: themed('colorActive') !important;
+            }
+        }
+        .mat-form-field-ripple {
+            // overrides
+            @include themify($themes) {
+                background-color: themed('colorActive') !important;
+            }
+        }
+        .mat-select-trigger {
+            .mat-select-value {
+                .mat-select-arrow-wrapper {
+                    .mat-select-arrow {
+                        // overrides
+                        @include themify($themes) {
+                            color: themed('colorActive');
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    &.mat-form-field-invalid {
+        .mat-form-field-label {
+            // overrides
+            @include themify($themes) {
+                color: themed('colorWarn');
+            }
+        }
+        .mat-error {
+            @include themify($themes) {
+                color: themed('colorWarn');
+            }
+        }
+    }
+
+    &.mat-form-field-disabled,
+    &.read-only {
+        .mat-form-field-wrapper {
+            .mat-form-field-flex {
+                // added
+                @include themify($themes) {
+                    background-color: lighten(themed('colorDisabled'), 4%);
+                    border-color: themed('borderColor');
+                    color: themed('textColorDisabled');
+                }
+
+                .mat-form-field-label,
+                .mat-icon-button {
+                    @include themify($themes) {
+                        color: themed('textColorDisabled');
+                    }
+                }
+
+                .mat-select-value {
+                    @include themify($themes) {
+                        color: themed('textColorDisabled');
+                    }
+                }
+
+                .mat-select-arrow-wrapper {
+                    .mat-select-arrow {
+                        // overrides
+                        @include themify($themes) {
+                            color: themed('textColorDisabled');
+                        }
+                    }
+                }
+            }
+            .mat-form-field-underline {
+                @include themify($themes) {
+                    background: themed('borderColor');
+                }
+            }
+        }
+    }
+
+    &.mat-form-field-appearance-outline {
+        .mat-form-field-wrapper {
+            // overrides
+            margin: 0;
+
+            .mat-form-field-flex {
+                // overrides
+                padding: 0;
+                margin: 0;
+
+                .mat-form-field-prefix, .mat-form-field-suffix {
+                    top: 0;
+                }
+            }
+
+            .mat-form-field-label {
+                top: 2.9em;
+            }
+
+            .mat-form-field-outline {
+                // added
+                display: none;
+            }
+
+            .mat-form-field-subscript-wrapper {
+                // overrides
+                padding: 0;
+                padding-left: $label-and-subscript-left-padding;
+            }
+        }
+    }
+
+    &.mat-form-field-appearance-fill {
+        .mat-form-field-flex {
+            // overrides
+            padding: 0;
+
+            .mat-form-field-label {
+                // overrides
+                margin-top: 0;
+            }
+        }
+        .mat-form-field-subscript-wrapper {
+            // overrides
+            padding: 0;
+            padding-left: $label-and-subscript-left-padding;
+        }
+    }
+
+    &.mat-form-field-appearance-standard {
+        .mat-form-field-flex {
+            // overrides
+            padding-top: 0;
+        }
+    }
+
+    &.dense {
+        .mat-form-field-wrapper {
+            .mat-input-element {
+                padding: $gutter-min;
+            }
+            .mat-form-field-label-wrapper {
+                .mat-form-field-label {
+                    top: 2.5em;
+                }
+            }
+        }
+
+        &.field-only {
+            .mat-form-field-wrapper {
+                padding-bottom: 0;
+
+                .mat-form-field-underline {
+                    bottom: 0;
+                }
+            }
+        }
+    }
+
+    &.no-extra-spacing,
+    &.field-only {
+        height: 2em;
+        padding: 0;
+    }
+}

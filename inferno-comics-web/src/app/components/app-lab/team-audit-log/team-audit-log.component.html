@@ -1,0 +1,31 @@
+<div *ngFor="let team of teams" class="team-card">
+  <h2>{{ team.name }}</h2>
+
+  <div class="lab-section">
+    <h3>Active Labs</h3>
+    <ng-container *ngIf="team.teamActiveLabs?.length; else noActiveLabs">
+      <ul>
+        <li *ngFor="let activeLabId of team.teamActiveLabs">
+          {{ activeLabId }}
+        </li>
+      </ul>
+    </ng-container>
+    <ng-template #noActiveLabs>
+      <p class="no-labs">No active labs</p>
+    </ng-template>
+  </div>
+
+  <div class="lab-section">
+    <h3>Deleted Labs</h3>
+    <ng-container *ngIf="team.teamDeletedLabs?.length; else noDeletedLabs">
+      <ul>
+        <li *ngFor="let deletedLabId of team.teamDeletedLabs">
+          {{ deletedLabId }}
+        </li>
+      </ul>
+    </ng-container>
+    <ng-template #noDeletedLabs>
+      <p class="no-labs">No deleted labs</p>
+    </ng-template>
+  </div>
+</div>

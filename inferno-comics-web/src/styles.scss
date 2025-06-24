@@ -1,0 +1,41 @@
+@use "sass:meta";
+// Import the prebuilt Angular Material theme
+@import '@angular/material/prebuilt-themes/deeppurple-amber.css'; // You can choose any pre-built theme here
+@include meta.load-css('../node_modules/material-icons/iconfont/material-icons.scss');
+@include meta.load-css('styles/material-styles.scss');
+@include meta.load-css('styles/app-styles.scss');
+@import 'styles/common/dist/css/common-styles.min.css';
+
+// Define dark mode variables
+:root {
+  --background-color: #121212; // Dark background color
+  --text-color: #fff; // Light text color
+  --font-family-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  font-family: var(--font-family-sans-serif);
+}
+
+// Font weight variables for easy reference
+$font-weight-light: 300;
+$font-weight-regular: 400;
+$font-weight-medium: 500;
+$font-weight-semibold: 600;
+$font-weight-bold: 700;
+
+body {
+
+}
+
+// Apply dark mode styles
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+// Toggle dark mode class
+.dark-mode {
+  --background-color: #121212; // Dark background color
+  --text-color: #fff; // Light text color
+}

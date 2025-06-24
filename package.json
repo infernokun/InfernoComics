@@ -1,0 +1,8 @@
+{
+  "name": "inferno-comics",
+  "version": "0.0.0",
+  "scripts": {
+    "start:web": "cd inferno-comics-web && npm run start",
+    "push:git": "git push gitlab main && git push github main"
+  }
+}

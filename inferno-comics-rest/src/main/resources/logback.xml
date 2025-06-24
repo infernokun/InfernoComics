@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Define color patterns -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan([%logger{36}]) %msg%n" />
+
+    <!-- Alternative pattern with more structure -->
+    <property name="STRUCTURED_LOG_PATTERN"
+              value="%d{HH:mm:ss.SSS} │ %highlight(%-5level) │ %cyan([%logger{36}]) │ %msg%n" />
+
+    <!-- Minimal pattern for cleaner output but still shows logger -->
+    <property name="MINIMAL_LOG_PATTERN"
+              value="%d{HH:mm:ss} %highlight(%-5level) %cyan([%logger{36}]) %msg%n" />
+
+    <!-- Console Appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${MINIMAL_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- File Appender for detailed logs -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/amaterasu.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/amaterasu.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>300MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{36}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Separate appender for HTTP requests with custom formatting -->
+    <appender name="HTTP_LOGS" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss} %highlight(%-5level) %msg%n</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
+            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
+                <marker>HTTP</marker>
+            </evaluator>
+            <onMismatch>DENY</onMismatch>
+            <onMatch>ACCEPT</onMatch>
+        </filter>
+    </appender>
+
+    <!-- Logger specifically for AmaterasuLogger with cleaner format -->
+    <logger name="com.infernokun.amaterasu.logger.AmaterasuLogger" level="INFO" additivity="false">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <!-- Reduce noise from common Spring Boot loggers -->
+    <logger name="org.springframework.security" level="WARN" />
+    <logger name="org.springframework.web" level="WARN" />
+    <logger name="org.springframework.boot.autoconfigure" level="WARN" />
+    <logger name="org.springframework.boot.web.embedded" level="WARN" />
+    <logger name="org.hibernate.SQL" level="WARN" />
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="WARN" />
+    <logger name="com.zaxxer.hikari" level="WARN" />
+    <logger name="org.apache.catalina" level="WARN" />
+    <logger name="org.apache.tomcat" level="WARN" />
+
+    <!-- Root logger -->
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- Profile-specific configurations -->
+
+    <!-- Development profile - more verbose console output -->
+    <springProfile name="dev,development">
+        <logger name="com.infernokun.amaterasu" level="DEBUG" />
+        <logger name="org.springframework.security" level="DEBUG" />
+        <root level="DEBUG">
+            <appender-ref ref="STDOUT" />
+            <appender-ref ref="FILE" />
+        </root>
+    </springProfile>
+
+    <!-- Production profile - less console noise, more file logging -->
+    <springProfile name="prod,production">
+        <logger name="com.infernokun.amaterasu.logger.AmaterasuLogger" level="INFO" additivity="false">
+            <appender-ref ref="FILE" />
+        </logger>
+        <root level="WARN">
+            <appender-ref ref="FILE" />
+        </root>
+    </springProfile>
+
+</configuration>

@@ -1,0 +1,106 @@
+.vm-lab-builder {
+  padding: 20px;
+  font-family: sans-serif;
+
+  h2 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  .vm-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: flex-start; /* Or space-around, space-between */
+  }
+
+  .vm-card {
+    width: 300px; /* Adjust as needed */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease-in-out;
+    cursor: pointer;
+
+    &:hover {
+      transform: translateY(-4px);
+    }
+
+    &.selected {
+      border-color: #007bff;
+      background-color: rgba(0, 123, 255, 0.1);
+    }
+
+    .vm-header {
+      background-color: #f5f5f5;
+      padding: 10px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      h3 {
+        margin: 0;
+        font-size: 1.2em;
+        color: #333;
+      }
+
+      .vm-status {
+        font-size: 0.8em;
+        padding: 5px 10px;
+        border-radius: 5px;
+        color: white;
+
+        &.status-active {
+          background-color: #28a745;
+        }
+
+        &.status-stopped {
+          background-color: #dc3545;
+        }
+
+        &.status-template {
+          background-color: #f8b31f;
+        }
+      }
+    }
+
+    .vm-details {
+      padding: 15px;
+
+      p {
+        margin: 5px 0;
+        color: #555;
+        font-size: 0.9em;
+      }
+    }
+  }
+}
+
+.create-lab-template {
+  padding: 10px 15px;
+  text-align: right;
+
+  .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease-in-out;
+
+    &.btn-primary {
+      background-color: #007bff; /* Blue */
+      color: white;
+
+      &:hover {
+        background-color: #0056b3;
+      }
+
+      &:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+    }
+  }
+}

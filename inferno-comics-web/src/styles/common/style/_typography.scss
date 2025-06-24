@@ -1,0 +1,75 @@
+@include themify($themes, 'parent') {
+    color:          themed('textColor');
+    font-size:      themed('fontSize');
+    font-weight:    themed('fontWeight');
+}
+
+body {
+    font-family: $font-family;
+}
+
+a {
+    @include themify($themes) {
+        color: themed('textColorHyperlink');
+    }
+    text-decoration: none;
+
+    img {
+        border: none;
+    }
+
+    &:hover {
+        @include themify($themes) {
+            color: darken(themed('textColorHyperlink'), 5%);
+        }
+        cursor: pointer;
+    }
+}
+
+h1, h2, h3, h4, h5 {
+    @include themify($themes) {
+        color: themed('textColor');
+        color: themed('headerColor');
+    }
+    font-family: $font-family-light;
+    line-height: $line-height;
+    margin: 0;
+    -webkit-margin-before: 0;
+    -webkit-margin-after: 0;
+}
+
+h1 {
+    @include themify($themes) {
+        font-size: themed('fontSizeH1');
+    }
+}
+h2 {
+    @include themify($themes) {
+        font-size: themed('fontSizeH2');
+    }
+}
+h3 {
+    @include themify($themes) {
+        color: themed('colorHighlight') !important;
+    }
+    font-size: 1.3em;
+}
+h4 {
+    font-size: 1.15em;
+}
+h5 {
+    @include themify($themes) {
+        font-size: themed('fontSize');
+    }
+    font-family: $font-family-heavy;
+}
+
+p {
+    margin: 0 0 $gutter 0;
+}
+
+p, li {
+    line-height: $line-height;
+}
+
+

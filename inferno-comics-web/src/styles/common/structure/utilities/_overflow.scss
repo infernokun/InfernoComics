@@ -1,0 +1,19 @@
+.overflow-auto      { overflow:     auto      !important }
+.overflow-hidden    { overflow:     hidden    !important }
+
+.scroll-vertical  {
+    overflow-y: auto !important;
+    overflow-x: hidden;
+}
+
+.text-truncate {
+    overflow:       hidden      !important;
+    text-overflow:  ellipsis    !important;
+    white-space:    nowrap      !important;
+}
+
+.word-break-word    { word-break:  break-word   !important }
+.wrap-break-word    { word-wrap:   break-word   !important }
+
+.white-space-normal     { white-space: normal       !important }
+.white-space-pre-wrap   { white-space: pre-wrap     !important }

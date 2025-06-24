@@ -1,0 +1,9 @@
+.mat-tooltip, 
+.mat-tooltip-handset {
+    // overrides
+    @include border-radius();
+    background: color('neutral', $light);
+    font-size: $font-sm;
+    margin: $gutter;
+    padding: $gutter-half;
+  }

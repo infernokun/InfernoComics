@@ -1,0 +1,16 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: my_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=amaterasu
+    command: redis-server --appendonly yes
+
+volumes:
+  redis_data:
+    driver: local

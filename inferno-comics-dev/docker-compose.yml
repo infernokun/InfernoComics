@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:17.4
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-amaterasu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-amaterasu}
+      POSTGRES_DB: ${POSTGRES_DB:-amaterasu}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - amaterasu-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin_container
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${POSTGRES_USER:-amaterasu}@${POSTGRES_USER:-amaterasu}.com
+      PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD:-amaterasu}
+    ports:
+      - "5050:80"
+    networks:
+      - amaterasu-network
+
+  amaterasu:
+    build: test-container/.
+    container_name: amaterasu-docker
+    privileged: true
+    restart: always
+    ports:
+      - "2222:2222"
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    networks:
+      - amaterasu-network
+
+volumes:
+  postgres-data:
+
+networks:
+  amaterasu-network:
+    driver: bridge

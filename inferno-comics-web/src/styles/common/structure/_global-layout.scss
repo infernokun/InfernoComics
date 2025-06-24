@@ -1,0 +1,19 @@
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+@include themify($themes, 'parent') {
+    background-color: themed('bgColor');
+}
+    
+* {
+    box-sizing: border-box;
+}
+    
+ul, ol {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+

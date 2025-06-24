@@ -1,0 +1,17 @@
+@use "sass:map";
+@use "common/mixins/color-config";
+@use "common/themes/theme-settings";
+
+@function themeColor($key) {
+    @return map.get(color-config.returnThemeVariable(app-styles.$theme), $key);
+  }
+  
+  @mixin themifyAppColor($prop, $class, $color) {
+    @each $theme, $map in theme-settings.$themes {
+      $className: ".theme-" + #{app-styles.$theme} + " ." + #{$prop};
+      #{$className} {
+        #{$class}: color-config.color($color, color-config.returnThemeVariable(app-styles.$theme)) !important;
+      }
+    }
+  }
+  

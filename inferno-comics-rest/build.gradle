@@ -1,0 +1,152 @@
+import groovy.json.JsonSlurper
+
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.2'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.infernokun'
+
+// ─── Dynamically set version from package.json ─────────────────────────────────
+def packageJson = new File(rootDir, "package.json")
+if (packageJson.exists()) {
+	def parsedJson = new JsonSlurper().parseText(packageJson.text)
+	version = parsedJson.version
+} else {
+	version = '0.0.1-SNAPSHOT'  // fallback
+}
+
+bootRun {
+	systemProperty 'app.version', project.version
+}
+
+test {
+	systemProperty 'app.version', project.version
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+bootJar {
+    archiveFileName = 'inferno-comics-rest.jar'
+	mainClass.set('com.infernokun.infernoComcics.InfernoComicsRestApplication')
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	// Spring Boot Starters
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-cache'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+	implementation 'com.github.docker-java:docker-java:3.5.1'
+	implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.4.1'
+	implementation 'org.apache.httpcomponents.client5:httpclient5:5.4.2'
+	implementation 'io.fabric8:kubernetes-client:7.1.0'
+	implementation 'com.github.mwiede:jsch:0.2.23'
+	implementation 'org.bitbucket.b_c:jose4j:0.9.6'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+	implementation 'org.modelmapper:modelmapper:3.1.1'
+
+	compileOnly 'org.projectlombok:lombok'
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	runtimeOnly 'org.postgresql:postgresql'
+
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.boot:spring-boot-starter-webflux' // For WebTestClient
+	testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation 'com.h2database:h2'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// ─── Inject version into application.yml ──────────────────────────────────────
+tasks.register('injectVersionIntoProperties') {
+	doLast {
+		def propsFile = file("src/main/resources/application.yml")
+
+		if (!propsFile.exists()) {
+			propsFile.createNewFile()
+			propsFile.text = "app:\n  version: ${project.version}\n"
+			println "✅ application.yml created with version ${project.version}"
+			return
+		}
+
+		def lines = propsFile.readLines()
+		def newLines = []
+		boolean inAppSection = false
+		boolean versionInjected = false
+
+		for (int i = 0; i < lines.size(); i++) {
+			def line = lines[i]
+
+			if (line.trim() == 'app:') {
+				inAppSection = true
+				newLines << line
+
+				// Check next line to see if version is already there
+				if (i + 1 < lines.size() && lines[i + 1].trim().startsWith('version:')) {
+					newLines << "  version: ${project.version}"
+					i++ // skip the old version line
+					versionInjected = true
+					inAppSection = false
+					continue
+				}
+			} else if (inAppSection && line.trim().startsWith('version:')) {
+				newLines << "  version: ${project.version}"
+				versionInjected = true
+				inAppSection = false
+				continue
+			}
+
+			newLines << line
+		}
+
+		// If version was not injected, insert it under app:
+		if (!versionInjected) {
+			def appIndex = lines.findIndexOf { it.trim() == 'app:' }
+			if (appIndex != -1) {
+				newLines = []
+				newLines.addAll(lines[0..appIndex])
+				newLines << "  version: ${project.version}"
+				newLines.addAll(lines[(appIndex + 1)..<lines.size()])
+			} else {
+				// app: section doesn't exist, add it at the end
+				newLines << "app:"
+				newLines << "  version: ${project.version}"
+			}
+		}
+
+		propsFile.text = newLines.join('\n')
+		println "✅ Injected version ${project.version} into application.yml"
+	}
+}
+
+// ─── Hook into the build lifecycle ────────────────────────────────────────────
+processResources.dependsOn injectVersionIntoProperties
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

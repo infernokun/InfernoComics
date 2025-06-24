@@ -1,0 +1,38 @@
+<div *ngIf="!(isInitialized$ | async)"></div>
+<div class="app-init-container">
+  <div class="form-container" [formGroup]="formGroup">
+    <div class="row width-100-percent form-field-container">
+      <mat-form-field floatLabel="always">
+        <mat-label>Name</mat-label>
+        <input formControlName="name" type="text" matInput>
+      </mat-form-field>
+    </div>
+
+    <div class="row width-100-percent form-field-container">
+      <mat-form-field floatLabel="always">
+        <mat-label>Description</mat-label>
+        <input formControlName="description" type="text" matInput>
+      </mat-form-field>
+    </div>
+
+    <div formGroupName="settings">
+      <div>
+        <mat-label for="enableDarkMode">Enable Dark Mode</mat-label>
+        <mat-checkbox id="enableDarkMode" formControlName="enableDarkMode"></mat-checkbox>
+      </div>
+
+      <div>
+        <mat-label for="language">Language</mat-label>
+        <select id="language" formControlName="language">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="button-container">
+      <button mat-raised-button color="primary" (click)="handleAction()">Submit</button>
+    </div>
+  </div>
+</div>

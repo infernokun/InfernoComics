@@ -1,0 +1,278 @@
+/* Improved CSS with clean, modern styling */
+.lab-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    justify-content: center;
+    padding: 2rem;
+  }
+  
+  .lab-card {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    width: 525px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      background: linear-gradient(to right, #f8f9fa, #e9ecef);
+      border-bottom: 1px solid #e9ecef;
+      
+      h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #343a40;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 65%;
+      }
+
+      h5 {
+        font-size: 0.5rem;
+        font-weight: 600;
+        color: #343a40;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+    
+    .status-badge {
+      padding: 0.35rem 0.75rem;
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #fff;
+      
+      &.active {
+        background-color: #2ecc71;
+      }
+      
+      &.stopped {
+        background-color: #95a5a6;
+      }
+      
+      &.failed {
+        background-color: #e74c3c;
+      }
+      
+      &.offline {
+        background-color: #e74c3c;
+      }
+
+      &.degraded {
+        background-color: #f39c12;
+      }
+      
+      &.none {
+        background-color: #7f8c8d;
+      }
+    }
+    
+    .card-content {
+      padding: 1.25rem;
+    }
+    
+    .info-grid {
+      display: grid;
+      gap: 0.75rem;
+    }
+    
+    .info-item {
+      display: flex;
+      align-items: baseline;
+      
+      .label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #6c757d;
+        width: 110px;
+        flex-shrink: 0;
+      }
+      
+      .value {
+        font-size: 0.9rem;
+        color: #343a40;
+        word-break: break-word;
+      }
+
+      .running {
+        color: green;
+      }
+
+      .exited {
+        color: red;
+      }
+
+
+      .restart-service:hover {
+        background-color: #f44336;
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+        transform: rotate(180deg);
+      }
+    
+      .restart-service {
+        color: #d32f2f;
+        transition: color 0.2s ease;
+        border: none;
+        border-radius: 50%;
+        background-color: rgba(244, 67, 54, 0.1);
+        border: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+    }
+    
+    .settings-link {
+      margin-top: 1rem;
+      text-align: right;
+      
+      a {
+        display: inline-flex;
+        align-items: center;
+        color: #3498db;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: color 0.2s ease;
+        
+        &:hover {
+          color: #2980b9;
+          text-decoration: underline;
+        }
+        
+        mat-icon {
+          font-size: 1rem;
+          height: 1rem;
+          width: 1rem;
+          margin-right: 0.25rem;
+        }
+      }
+    }
+    
+    .card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 1rem 1.25rem;
+      background-color: #f8f9fa;
+      border-top: 1px solid #e9ecef;
+      
+      .loading-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 0.5rem 0;
+        
+        span {
+          margin-left: 0.75rem;
+          font-size: 0.9rem;
+          color: #6c757d;
+        }
+      }
+    }
+    
+    .action-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      min-width: 0;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      transition: all 0.2s ease;
+      
+      mat-icon {
+        font-size: 1rem;
+        height: 1rem;
+        width: 1rem;
+        margin-right: 0.25rem;
+      }
+      
+      &.start {
+        background-color: #2ecc71;
+        color: white;
+        
+        &:hover:not([disabled]) {
+          background-color: #27ae60;
+        }
+      }
+      
+      &.stop {
+        background-color: #e74c3c;
+        color: white;
+        
+        &:hover:not([disabled]) {
+          background-color: #c0392b;
+        }
+      }
+      
+      &.settings {
+        background-color: #3498db;
+        color: white;
+        
+        &:hover:not([disabled]) {
+          background-color: #2980b9;
+        }
+      }
+      
+      &.logs {
+        background-color: #9b59b6;
+        color: white;
+        
+        &:hover:not([disabled]) {
+          background-color: #8e44ad;
+        }
+      }
+      
+      &.querying {
+        background-color: #f39c12;
+        color: white;
+      }
+      
+      &.offline, &.failed {
+        background-color: #e74c3c;
+        color: white;
+        opacity: 0.8;
+      }
+      
+      &.stopped {
+        background-color: #95a5a6;
+        color: white;
+      }
+      
+      &.delete {
+        background-color: #7f8c8d;
+        color: white;
+        
+        &:hover:not([disabled]) {
+          background-color: #e74c3c;
+        }
+      }
+      
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+    }
+  }

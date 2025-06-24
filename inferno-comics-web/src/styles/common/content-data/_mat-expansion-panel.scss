@@ -1,0 +1,131 @@
+.mat-expansion-panel {
+    // overrides
+    @include themify($themes) {
+        background-color: themed('popoverBgColor');
+        color: themed('textColor');
+    }
+
+    .mat-expansion-panel-header {
+        @include themify($themes) {
+            border-bottom-color: darken(themed('borderColor'), 3%);
+            color: themed('textColor');
+            font-size: themed('fontSize');
+            font-weight: themed('fontWeight');
+        }
+        align-items: flex-start;
+        border-bottom: 1px solid;
+
+        // overrides
+        flex-direction: row-reverse;
+        font-family: $font-family;
+        height: auto !important;
+        padding: #{$gutter};
+
+        &.overflow-visible {
+            .mat-content {
+                overflow: visible !important;
+            }
+        }
+
+        .mat-content {
+            // overrides
+            flex-direction: column;
+
+            .mat-expansion-panel-header-title,
+            .mat-expansion-panel-header-description {
+                // overrides
+                @include themify($themes) {
+                    color: themed('textColor');
+                }
+                flex-grow: 1;
+                margin: 0;
+            }
+
+            .mat-expansion-panel-header-title {
+                // added
+                @include themify($themes) {
+                    color: themed('colorHighlight');
+                }
+                font: {
+                    family: $font-family-light;
+                    size: $font-lg;
+                }
+            }
+
+            .mat-expansion-panel-header-description {
+                // added
+                padding-top: $gutter;
+            }
+        }
+
+        .mat-expansion-indicator {
+            // added
+            margin-right: $gutter;
+
+            &::after {
+                // overrides
+                @include themify($themes) {
+                    color: themed('textColorLight');
+                }
+            }
+        }
+    }
+
+    .mat-expansion-panel-content {
+        // overrides
+        @include themify($themes) {
+            font-size: themed('fontSize');
+            font-weight: themed('fontWeight');
+        }
+        font-family: $font-family;
+
+        .mat-expansion-panel-body {
+            // overrides
+            padding: $gutter;
+        }
+    }
+
+    &:not([class*=mat-elevation-z]) {
+        @include themify($themes) {
+            @include shadow(themed('shadowColor'));
+        }
+    }
+
+    &.light-weight {
+        @include themify($themes) {
+            background-color: themed('bgColor');
+            border-bottom-color: themed('borderColor');
+        }
+        border-bottom: 1px solid;
+        box-shadow: none !important;
+
+        .mat-expansion-panel-header {
+            border: none;
+            padding: $gutter-half;
+
+            .mat-content {
+                .mat-expansion-panel-header-title {
+                    @include themify($themes) {
+                        color: themed('textColor');
+                        font-size: themed('fontSize');
+                        font-weight: themed('fontWeight');
+                    }
+                }
+
+                .mat-expansion-panel-header-description {
+                    padding-top: $gutter-half;
+                }
+            }
+            .mat-expansion-indicator {
+                font-size: $font-sm;
+            }
+
+        }
+
+        .mat-expansion-panel-content {
+            .mat-expansion-panel-body {
+                padding: $gutter-half;
+            }
+        }
+    }
+}

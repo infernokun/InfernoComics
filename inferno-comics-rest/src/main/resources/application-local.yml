@@ -1,0 +1,66 @@
+management:
+  endpoints:
+    web:
+      cors:
+        allowed-methods: GET,POST,PUT,OPTIONS,DELETE
+        allowed-origins: '"*"'
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      livenessState:
+        enabled: true
+      readinessState:
+        enabled: true
+  info:
+    env:
+      enabled: true
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_IP:localhost}:${DB_PORT:5432}/${DB_NAME:amaterasu}
+    username: ${DB_USER:amaterasu}
+    password: ${DB_PASS:amaterasu}
+  jpa:
+    hibernate:
+      ddl-auto: update 
+    open-in-view: false
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:amaterasu}
+    timeout: 6000
+    cache:
+      ttl: 3600
+
+server:
+  forward-headers-strategy: native
+  port: 8080
+  servlet:
+    contextPath: /amaterasu-rest
+  shutdown: graceful
+  tomcat:
+    internal-proxies:
+      protocol-header: "X-Forwarded-Proto"
+      remote-ip-header: "X-FORWARDED-FOR"
+  use-forward-headers: true
+
+amaterasu:
+  applicationName: "Amaterasu"
+  defaultAdminUsername: amaterasu_admin
+  defaultAdminPassword: password
+  uploadDir: "${DOCKER_COMPOSE_PATH:/var/tmp/amaterasu}"
+  encryptionKey: "${ENCRYPTION_KEY}"
+  sshPort: "${SSH_PORT:22}"
+  chatSocket: ""
+
+logging:
+  level:
+    org.hibernate: WARN
+    org.hibernate.orm.connections.pooling: ERROR
+
+rsa:
+  private-key: ${RSA_PRIVATE_KEY_PATH:certs/private.pem}
+  public-key: ${RSA_PUBLIC_KEY_PATH:certs/public.pem}

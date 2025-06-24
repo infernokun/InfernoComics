@@ -1,0 +1,37 @@
+.mat-slider {
+  &.mat-accent {
+    .mat-slider-track-fill,
+    .mat-slider-thumb,
+    .mat-slider-thumb-label {
+      @include themify($themes) {
+        background-color: lighten(themed('colorActive'), 5%);
+      }
+    }
+  }
+
+  .mat-slider-wrapper {
+    .mat-slider-track-wrapper {
+      .mat-slider-track-background {
+        @include themify($themes) {
+          background-color: themed('progressBgColor');
+        }
+      }
+    }
+    .mat-slider-thumb-container {
+      .mat-slider-thumb {
+        .mat-slider-thumb-label {
+          .mat-slider-thumb-label-text {
+            @include themify($themes) {
+              color: themed('textColor');
+              font: {
+                size: themed('fontSize');
+                weight: themed('fontWeight');
+              }
+            }
+            font-family: $font-family;
+          }
+        }
+      }
+    }
+  }
+}

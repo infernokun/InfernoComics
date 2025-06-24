@@ -1,0 +1,59 @@
+services:
+  inferno-comics-web:
+    image: infernokun/inferno-comics-web:latest
+    #build: ./inferno-comics-web
+    restart: always
+    environment:
+      - BASE_URL=http://inferno-comics-web
+      - REST_URL=/api
+    ports:
+      - "8764:80"
+    volumes:
+      - inferno-comics-web:/var/log/nginx
+    depends_on:
+      inferno-comics-db:
+        condition: service_healthy
+
+  inferno-comics-db:
+    image: postgres:17.4
+    restart: always
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-inferno-comics}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-inferno-comics}"
+      POSTGRES_DB: "${POSTGRES_DB:-inferno-comics}"
+    volumes:
+      - inferno-comics-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inferno-comics}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  inferno-comics-rest:
+    image: infernokun/inferno-comics-rest:latest
+    #build: ./inferno-comics-rest
+    restart: always
+    ports:
+      - "8765:8080"
+    environment:
+      DOCKER_COMPOSE_PATH: "${DOCKER_COMPOSE_PATH:-/var/tmp/inferno-comics}"
+      DB_IP: "${POSTGRES_IP:-inferno-comics-db}"
+      DB_NAME: "${POSTGRES_DB:-inferno-comics}"
+      DB_USER: "${POSTGRES_USER:-inferno-comics}"
+      DB_PASS: "${POSTGRES_PASSWORD:-inferno-comics}"
+      DB_PORT: "${DB_PORT:-5432}"
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:-secret_key}"
+      RSA_PRIVATE_KEY_PATH: "${RSA_PRIVATE_KEY_PATH:-/var/tmp/inferno-comics/private.pem}"
+      RSA_PUBLIC_KEY_PATH: "${RSA_PUBLIC_KEY_PATH:-/var/tmp/inferno-comics/public.pem}"
+    depends_on:
+      - inferno-comics-db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  inferno-comics-db:
+    driver: local
+  inferno-comics-web:

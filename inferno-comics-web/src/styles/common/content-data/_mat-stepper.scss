@@ -1,0 +1,136 @@
+.mat-stepper-vertical {
+  &.stepper-vertical-alt {
+    background: none;
+    position: relative;
+    width: 100%;
+
+    &:before {
+      @include themify($themes) {
+        background-color: themed('bgColorLight') !important;
+      }
+      content: '';
+      height: 100%;
+      width: 20%;
+      position: absolute;
+    }
+
+    .mat-step {
+      display: flex;
+
+      .mat-vertical-stepper-header {
+        @include themify($themes) {
+          background-color: themed('bgColorLight') !important;
+        }
+        align-items: flex-start;
+        height: auto;
+        margin-bottom: 0;
+        padding: $gutter 0;
+        width: 20%;
+
+        .mat-step-icon {
+          @include themify($themes) {
+            background-color: darken(themed('buttonColor'), 2%);
+            color: themed('textColor');
+          }
+          height: 1.6em;
+          margin: 0 $gutter;
+          width: 1.6em;
+
+          &.mat-step-icon-selected {
+            @include themify($themes) {
+              background-color: themed('colorActive');
+            }
+            color: #FFF;
+          }
+
+          &.mat-step-icon-state-edit {
+            @include themify($themes) {
+              background-color: themed('colorSuccess');
+            }
+            color: #FFF;
+
+            .mat-icon {
+              font-size: $font-sm !important;
+            }
+          }
+        }
+
+        .mat-step-label {
+          @include themify($themes) {
+            color: themed('textColor') !important;
+            font-weight: themed('fontWeight');
+            font-size: themed('fontSize');
+          }
+          flex: 1 1 auto;
+          font-family: $font-family;
+          padding: $gutter-min $gutter 0 0;
+
+          &.mat-step-label-selected {
+            @include themify($themes) {
+              font-weight: themed('fontWeight');
+              font-size: themed('fontSize');
+            }
+          }
+
+          .mat-step-entered-content {
+            @include themify($themes) {
+              color: themed('textColorLight');
+            }
+            margin-top: $gutter-half;
+          }
+        }
+
+      }
+
+      .mat-vertical-content-container {
+        @include themify($themes) {
+          background: themed('bgColor');
+        }
+        left: 20%;
+        margin-left: 0;
+        position: absolute;
+        top: 0;
+        width: 80%;
+
+        &.mat-stepper-vertical-line {
+          &::before {
+            display: none;
+          }
+        }
+
+        .mat-vertical-stepper-content {
+          .mat-vertical-content {
+            @include themify($themes) {
+              border-left-color: themed('bgColor');
+            }
+            border-left: 1px solid;
+            padding: $gutter;
+
+            .stepper-content {
+              overflow-y: auto;
+            }
+
+            .stepper-buttons {
+              @include themify($themes) {
+                background: darken(themed('bgColorLight'), 2%);
+              }
+              display: flex;
+              margin: -$gutter;
+              margin-top: $gutter;
+              padding: $gutter;
+
+              .mat-button,
+              .mat-button.mat-primary {
+                .material-icons {
+                  @include themify($themes) {
+                    color: themed('textColorLight') !important;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+.mat-dialog-container {
+    // overrides
+    @include themify($themes) {
+        background-color: themed('popoverBgColor');
+        color: themed('textColor');
+    }
+    @include border-radius($border-radius !important);
+    padding: #{$gutter * 2} !important;
+    filter: drop-shadow(0 0 20px black);
+
+    .mat-dialog-title {
+        @include themify($themes) {
+            font-weight: themed('fontWeight');
+        }
+        font: {
+            family: $font-family;
+            size: $font-2x;
+        }
+        margin: 0;
+    }
+
+    .mat-dialog-content {
+        margin: 0;
+        padding: $gutter 0;
+
+        &.dialog-50v-responsive {
+            height: 55vh;
+            width: 50vw;
+
+            @include media-breakpoint-down(md) {
+                width: 65vw;
+            }
+
+            @include media-breakpoint-down(sm) {
+                width: 80vw;
+            }
+        }
+    }
+
+    .mat-dialog-actions {
+        justify-content: flex-end;
+        margin: 0;
+        padding: $gutter 0;
+
+        button {
+            margin-right: $gutter;
+
+            &:last-child {
+                margin-right: 0;
+            }
+        }
+    }
+}

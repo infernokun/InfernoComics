@@ -1,0 +1,58 @@
+<!-- Docker Compose Viewer with Upload Capability -->
+<div *ngIf="ymlData" class="compose-editor">
+    <h3>Docker Compose Configuration</h3>
+
+    <div class="actions-bar">
+        <button type="button" class="btn btn-primary" (click)="isEditMode = !isEditMode">
+            {{ isEditMode ? 'Cancel Editing' : 'Edit Volumes' }}
+        </button>
+        <button *ngIf="isEditMode" type="button" class="btn btn-success" (click)="saveVolumeChanges()"
+            [disabled]="!hasChanges">
+            Save Changes
+        </button>
+    </div>
+
+    <div class="compose-content">
+        <pre class="compose-view" [class.edit-mode]="isEditMode">services:
+  <ng-container *ngFor="let entry of getServiceEntries()">  {{ entry.name }}:
+      image: {{ entry.image }}
+      <ng-container *ngIf="entry.volumes && entry.volumes.length > 0">volumes:
+        <ng-container *ngFor="let vol of entry.volumes; let i = index">- {{ vol }}
+          <ng-container *ngIf="isEditMode">
+            <div class="volume-actions">
+              <button type="button" class="btn btn-sm btn-outline-primary" 
+                      (click)="browseForVolume(entry.name, i)">
+                Browse
+              </button>
+              <span *ngIf="isVolumeModified(entry.name, i)" class="modified-indicator">Modified</span>
+            </div>
+          </ng-container>
+        </ng-container>
+      </ng-container>
+  </ng-container>
+      </pre>
+    </div>
+
+    <!-- Hidden file input for handling uploads -->
+    <input #fileInput type="file" style="display: none" (change)="handleFileSelection($event)"
+        [attr.webkitdirectory]="currentUploadIsDirectory ? '' : null"
+        [attr.directory]="currentUploadIsDirectory ? '' : null">
+
+    <!-- Summary of changes -->
+    <div *ngIf="isEditMode && volumeChanges.size > 0" class="changes-summary">
+        <h4>Pending Changes</h4>
+        <ul class="change-list">
+            <li *ngFor="let change of getVolumeChanges()">
+                <div class="change-item">
+                    <span>{{ change.serviceName }}: {{ change.targetPath }}</span>
+                    <span class="arrow">→</span>
+                    <span class="new-value">{{ change.file ? change.file.name : 'No file selected' }}</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger"
+                        (click)="removeVolumeChange(change.serviceName, change.index)">
+                        Remove
+                    </button>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>

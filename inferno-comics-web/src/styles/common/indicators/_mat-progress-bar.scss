@@ -1,0 +1,70 @@
+.mat-progress-bar {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  position: relative;
+  transition: opacity 250ms linear;
+  width: 100%;
+
+  .mat-progress-bar-element {
+    @include themify($themes) {
+      fill: themed('progressBarBgColor');
+    }
+    height: 100%;
+    position: absolute;
+    width: 100%;
+
+    &.mat-progress-bar-background {
+      width: calc(100% + 10px);
+    }
+
+    rect {
+      @include themify($themes) {
+        fill: themed('progressBgColor') !important;
+      }
+      height: 100%;
+      width: 100%;
+    }
+  }
+
+  .mat-progress-bar-buffer {
+    @include themify($themes) {
+      background: themed('progressBgColor');
+    }
+    transform-origin: top left;
+    transition: transform 250ms ease;
+  }
+
+  .mat-progress-bar-fill {
+    animation: none;
+    transform-origin: top left;
+    transition: transform 250ms ease;
+
+    &:after {
+      @include themify($themes) {
+        background-color: themed('progressBarBgColor');
+      }
+      animation: none;
+      content: '';
+      display: inline-block;
+      height: 100%;
+      left: 0;
+      position: absolute;
+      width: 0;
+    }
+  }
+
+  &[mode=indeterminate],
+  &[mode=query]  {
+    .mat-progress-bar-primary {
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      animation: mat-progress-bar-primary-indeterminate-translate 2s infinite linear;
+      left: -145.166611%;
+    }
+
+    .mat-progress-bar-fill {
+      transition: none
+    }
+  }
+}

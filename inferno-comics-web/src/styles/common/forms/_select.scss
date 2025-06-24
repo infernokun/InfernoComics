@@ -1,0 +1,62 @@
+.select-container {
+    label {
+        @include themify($themes) {
+            color: themed('textColorLight');
+        }
+        display: block;
+        font-size: $font-sm;
+        margin: 0 0 .6em .3em;
+    }
+
+    .select {
+        @include themify($themes) {
+            background-color: themed('inputBgColor');
+            border-color: themed('inputBorderColor');
+            border-bottom-color: themed('inputBorderColorAlt');
+            font-size: themed('fontSize');
+            font-weight: themed('fontWeight');
+        }
+        @include border-radius();
+        border: 1px solid;
+        font-family: $font-family;
+        padding: .11em .2em .11em 0em;
+        width: 100%;
+        
+        select {
+            @include themify($themes) {
+                color: themed('textColor');
+                font-size: themed('fontSize');
+            }
+            background: transparent;
+            border: 1px solid transparent;
+            width: 100%;
+        
+            option {
+                @include themify($themes) {
+                    background-color: themed('popoverBgColor');
+                    color: themed('textColor');
+                }
+            }
+        
+            &:focus {
+                @include themify($themes) {
+                    border: 1px dotted themed('colorFocus') !important;
+                }
+                outline: none;
+            }
+        }
+        }
+        
+        &:hover {
+            label {
+                @include themify($themes) {
+                    color: themed('colorActive');
+                }
+            }
+            .select {
+                @include themify($themes) {
+                border-bottom-color: themed('colorActive');
+            }
+        }
+    }
+}

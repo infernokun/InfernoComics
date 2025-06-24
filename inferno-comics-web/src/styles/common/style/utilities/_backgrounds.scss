@@ -1,0 +1,83 @@
+.theme-light {
+    @include make-background-colors($light);
+}
+.theme-dark {
+    @include make-background-colors($dark);
+}
+
+@include themifyColor(classification-high, background, $classified-high);
+@include themifyColor(classification-medium, background, $classified-medium);
+@include themifyColor(classification-low, background, $classified-low);
+@include themifyColor(beta, background, 'red-tint-35');
+
+.bg-accent  {
+    @include themify($themes) {
+        background-color: themed('colorAccent') !important;
+    }
+}
+.bg-active  {
+    @include themify($themes) {
+        background-color: themed('colorActive') !important;
+    }
+}
+.bg-alert  {
+    @include themify($themes) {
+        background-color: themed('colorAlert') !important;
+    }
+}
+.bg-base {
+    @include themify($themes) {
+        background-color: themed('bgColor') !important;
+    }
+}
+.bg-dark {
+    @include themify($themes) {
+        background-color: themed('bgColorDark') !important;
+    }
+}
+.bg-dark-step-2 {
+    @include themify($themes) {
+        background-color: themed('bgColorDark2') !important;
+    }
+}
+.bg-highlight {
+    @include themify($themes) {
+        background-color: themed('colorHighlight') !important;
+    }
+}
+.bg-light {
+    @include themify($themes) {
+        background-color: themed('bgColorLight') !important;
+    }
+}
+.bg-light-step-2 {
+    @include themify($themes) {
+        background-color: themed('bgColorLight2') !important;
+    }
+}
+.bg-light-step-3 {
+    @include themify($themes) {
+        background-color: themed('bgColorLight3') !important;
+    }
+}
+.bg-none {
+    background: none !important;
+}
+.bg-selected {
+    @include themify($themes) {
+        background-color: themed('colorSelected') !important;
+    }
+}
+.bg-success {
+    @include themify($themes) {
+        background-color: themed('colorSuccess') !important;
+    }
+}
+.bg-warn {
+    @include themify($themes) {
+        background-color: themed('colorWarn') !important;
+    }
+}
+.bg-white {
+    background: #FFF !important;
+}

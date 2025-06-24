@@ -1,0 +1,78 @@
+.mat-button-toggle-group,
+.mat-button-toggle-standalone {
+    @include themify($themes) {
+        border-color: themed('inputBorderColor');
+    }
+    @include  border-radius();
+    border: 1px solid;
+    box-shadow: none !important;
+
+    &.mat-button-toggle-vertical {
+        // added
+        @include themify($themes) {
+            border-color: themed('inputBorderColor');
+        }
+        @include border-radius();
+        border: 1px solid;
+
+        .mat-button-toggle {
+            // added
+            @include themify($themes) {
+                border-bottom-color: themed('inputBorderColor');
+            }
+            @include border-radius(0);
+            border: none;
+            border-bottom: 1px solid;
+
+            &:last-child {
+                border-bottom: none;
+            }
+        }
+    }
+
+    &.dense {
+        .mat-button-toggle-label-content {
+            padding: $gutter-min $gutter-half !important;
+        }
+    }
+}
+
+.mat-button-toggle {
+    // added
+    @include themify($themes) {
+        background: themed('buttonColor');
+        color: themed('textColor');
+    }
+
+    &.mat-button-toggle-checked {
+        @include themify($themes) {
+            background-color: themed('colorActive');
+        }
+        color: #FFF;
+    }
+
+    &.mat-button-toggle-disabled {
+        @include themify($themes) {
+            background-color: themed('colorDisabled');
+            color: themed('textColorDisabled');
+        }
+    }
+
+    .mat-button-toggle-label-content {
+        // added
+        text-align: center;
+
+        // overrides
+        @include themify($themes) {
+            font-size: themed('fontSize');
+        }
+        line-height: $line-height !important;
+        padding: $gutter-half $gutter !important;
+    }
+}
+
+// Fix when a mat-button-toggle-group is in a flex column with a label,
+// and the label is longer than the toggle group
+.flex-column > label + .mat-button-toggle-group {
+    align-self: baseline;
+}

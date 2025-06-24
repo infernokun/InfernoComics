@@ -1,0 +1,6 @@
+@use "sass:math";
+
+@function convertString($in){
+    $stripped: math.div($in, $in * 0 + 1);
+    @return $stripped;
+}

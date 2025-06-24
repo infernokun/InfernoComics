@@ -1,0 +1,88 @@
+.remote-server-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fafafa;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  
+  h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #333;
+  }
+  
+  .dropdown-container {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 30px;
+    
+    label {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #555;
+    }
+    
+    .select-with-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      
+      select {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        outline: none;
+        transition: border-color 0.3s;
+        
+        &:focus {
+          border-color: #007bff;
+        }
+      }
+      
+      .delete-button {
+        background-color: transparent;
+        color: #f44336;
+        margin-left: 8px;
+        transition: all 0.2s;
+        
+        &:hover {
+          background-color: rgba(244, 67, 54, 0.1);
+        }
+      }
+    }
+  }
+  
+  .stats-container {
+    h3 {
+      margin-bottom: 15px;
+      color: #007bff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .stat {
+      display: flex;
+      margin-bottom: 10px;
+      
+      .label {
+        width: 180px;
+        font-weight: bold;
+        color: #555;
+      }
+      
+      .value {
+        color: #333;
+      }
+    }
+  }
+  
+  .no-stats {
+    text-align: center;
+    font-style: italic;
+    color: #aaa;
+  }
+}

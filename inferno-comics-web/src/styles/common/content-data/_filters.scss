@@ -1,0 +1,70 @@
+.filters-linear {
+  display: flex;
+
+  li {
+    align-items: center;
+    display: flex;
+    flex: 1 1 0;
+
+    label {
+      @include themify($themes) {
+        color: themed('textColorLight');
+      }
+      cursor: pointer;
+      font-size: $font-sm;
+      line-height: #{$font-sm * 1.2};
+      text-transform: uppercase;
+    }
+
+
+
+    .mat-chip-list-wrapper {
+      margin-right: $gutter-half !important;
+
+      .mat-chip {
+        cursor: pointer;
+        padding: 0 !important;
+
+        .filter-color {
+          align-self: stretch;
+          width: .3em;
+        }
+
+        .filter-count {
+          align-items: center;
+          display: flex;
+          height: 1.9em;
+          justify-content: center;
+          width: 1.9em;
+        }
+
+        .filter-toggle {
+          height: .8em !important;
+          margin-left: .4em;
+          width: .8em !important;
+
+          &.mat-pseudo-checkbox-checked {
+            background: transparent;
+
+            &:after {
+              left: -.16em;
+              top: -.1em;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.filter-stacked-chart {
+  @include border-radius();
+  display: flex;
+  height: 1em;
+  overflow: hidden;
+
+  li {
+    flex-grow: 1;
+    flex-shrink: 1;
+  }
+}

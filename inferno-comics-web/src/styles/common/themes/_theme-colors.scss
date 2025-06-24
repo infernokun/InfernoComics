@@ -1,0 +1,33 @@
+/*$light-values: ();
+$dark-values: ();*/
+
+$light-palette: (
+    'neutral':      #4e4b4b,
+    'primary':      #0a4e64,
+    'red':          #c02e1d,
+    'orange':       #f2652f,
+    'yellow':       #f9b143,
+    'green':        #4d9f70,
+    'dk-green':     #0a7351,
+    'blue':         #3c9fe6,
+    'purple':       #474795
+) !default;
+
+$dark-palette: (
+    'neutral':      #212121,
+    'primary':      #2F3739,
+    'red':          #cc3333,
+    'orange':       #ef822a,
+    'yellow':       #F9A01B,
+    'green':        #53a476,
+    'blue':         #118eab,
+    'purple':       #47405D
+) !default;
+
+$color-interval:      5%;
+
+$color-shades:        -10;
+$color-tints:         19;
+
+$neutral-shades:      -10;
+$neutral-tints:       19;

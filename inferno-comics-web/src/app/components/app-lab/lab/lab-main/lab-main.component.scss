@@ -1,0 +1,337 @@
+/* Main container */
+.lab-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 400px;
+  }
+
+  /* Grid layout for labs */
+  .labs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    justify-items: start;
+    grid-auto-flow: row;
+  }
+
+  /* Empty state styling */
+  .empty-state {
+    width: 100%;
+    max-width: 500px;
+    padding: 3rem 2rem;
+    background-color: #f8f9fa;
+    border-radius: 16px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+    text-align: center;
+    margin: 2rem auto;
+    transition: all 0.3s ease;
+  }
+
+  .empty-state:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    transform: translateY(-5px);
+  }
+
+  .empty-state-icon {
+    margin-bottom: 1.5rem;
+    background-color: #eef1f5;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+  }
+
+  .empty-state-icon mat-icon {
+    font-size: 42px;
+    height: 42px;
+    width: 42px;
+    color: #6c757d;
+  }
+
+  .empty-state h2 {
+    font-size: 1.75rem;
+    color: #333;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+
+  .empty-state p {
+    font-size: 1rem;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+  }
+
+  /* Lab card styling */
+  .lab-card {
+    background-color: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    height: 100%;
+    border: 2px solid transparent;
+    width: 100%; /* Make cards take full width of their grid cell */
+  }
+
+  .lab-card:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+  }
+
+  /* Delete button styling */
+  .delete-button {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: rgba(244, 67, 54, 0.1);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s ease;
+    opacity: 0;
+  }
+
+  .lab-card:hover .delete-button {
+    opacity: 1;
+  }
+
+  .delete-button:hover {
+    background-color: #f44336;
+    transform: scale(1.1);
+  }
+
+  .delete-button:hover mat-icon {
+    color: white;
+  }
+
+  .delete-button mat-icon {
+    font-size: 18px;
+    height: 18px;
+    width: 18px;
+    color: #d32f2f;
+    transition: color 0.2s ease;
+  }
+
+  .lab-ready {
+    border-color: #4caf50;
+  }
+
+  .lab-not-ready {
+    border-color: #f44336;
+  }
+
+  /* Lab header section */
+  .lab-header {
+    position: relative;
+    padding: 1.5rem;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #eaeaea;
+    display: flex;
+    justify-content: center;
+  }
+
+  .lab-icon {
+    padding: 0.5rem;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .lab-icon:hover {
+    transform: scale(1.05);
+  }
+
+  .lab-icon img {
+    height: 50px;
+    width: auto;
+  }
+
+  .lab-status-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .lab-status-badge.ready {
+    background-color: rgba(76, 175, 80, 0.15);
+    color: #2e7d32;
+  }
+
+  .lab-status-badge.not-ready {
+    background-color: rgba(244, 67, 54, 0.15);
+    color: #c62828;
+  }
+
+  /* Lab body section */
+  .lab-body {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lab-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+
+  .lab-id {
+    font-size: 0.8rem;
+    color: #777;
+    margin-bottom: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    display: inline-block;
+  }
+
+  .lab-description {
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    flex-grow: 1;
+  }
+
+  /* Lab metadata section */
+  .lab-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #eee;
+  }
+
+  .lab-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #555;
+  }
+
+  .lab-meta-item mat-icon {
+    font-size: 18px;
+    height: 18px;
+    width: 18px;
+    color: #666;
+  }
+
+  /* Upload box styling */
+  .upload-box {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    transition: all 0.2s ease;
+  }
+
+  .upload-box:hover {
+    border-color: #004d03;
+    background-color: #f0f7f0;
+  }
+
+  .upload-box label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+  }
+
+  .loading-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+  }
+
+  /* Action buttons */
+  .lab-actions {
+    margin-top: auto;
+    padding-top: 1rem;
+  }
+
+  .lab-actions button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.6rem 0;
+  }
+
+  .lab-actions button mat-icon {
+    font-size: 18px;
+    height: 18px;
+    width: 18px;
+  }
+
+  /* Animation for fading in labs */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Media queries for responsive design */
+  @media (max-width: 768px) {
+    .labs-grid {
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    }
+
+    .lab-container {
+      padding: 1rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .labs-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .lab-card {
+      max-width: 100%;
+    }
+  }

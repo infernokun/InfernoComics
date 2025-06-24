@@ -1,0 +1,57 @@
+.mat-badge {
+  position: relative;
+
+  .mat-badge-content {
+    @include themify($themes) {
+      font-weight: themed('fontWeight')
+    }
+    align-items: center;
+    border-radius: 50%;
+    color: #FFF;
+    display: inline-flex;
+    font: {
+      family: $font-family;
+      size: 9px !important;
+    }
+    height: 1.8em;
+    justify-content: center;
+    line-height: 1em;
+    overflow: hidden;
+    padding-top: .1em;
+    pointer-events: none;
+    position: absolute;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 1.8em;
+    -webkit-font-smoothing: subpixel-antialiased;
+  }
+
+  &.mat-badge-hidden {
+    .mat-badge-content {
+      display: none;
+    }
+  }
+
+  &.mat-badge-warn {
+    .mat-badge-content {
+      @include themify($themes) {
+        background: themed('colorWarn');
+      }
+    }
+  }
+
+  &.mat-badge-overlap {
+    &.mat-badge-after {
+      .mat-badge-content {
+        right: -1.2em;
+      }
+    }
+
+    &.mat-badge-above {
+      .mat-badge-content {
+        top: -1.2em;
+      }
+    }
+  }
+}

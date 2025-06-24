@@ -1,0 +1,199 @@
+<!-- HTML Components -->
+
+<!-- NUMBER INPUT -->
+<div *ngIf="question.type === 'number' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always">
+    <mat-label>{{ question.label }}</mat-label>
+    <input [formControl]="formControl" matInput numberInput [readonly]="isDisabled || isValidated">
+  </mat-form-field>
+</div>
+
+<!-- TEXT INPUT -->
+<div *ngIf="question.type === 'text' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always">
+    <mat-label>{{ question.label }}</mat-label>
+    <input [formControl]="formControl" matInput maxlength="{{ question.size }}" 
+      [readonly]="isDisabled || isValidated" [placeholder]="question.hint ? question.hint : ''">
+    <mat-hint *ngIf="question.hint">{{ question.hint }}</mat-hint>
+  </mat-form-field>
+  <div class="character-counter" 
+    [ngClass]="{'counter-limit': formControl.value.length === question.size}">
+    <span>{{ formControl.value.length }}/{{ question.size }}</span>
+  </div>
+</div>
+
+<!-- PASSWORD INPUT -->
+<div *ngIf="question.type === 'password' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always">
+    <mat-label>{{ question.label }}</mat-label>
+    <input [type]="hidePassword ? 'password' : 'text'" [formControl]="formControl" matInput maxlength="{{ question.size }}" 
+      [readonly]="isDisabled || isValidated">
+    <button mat-icon-button matSuffix (click)="togglePasswordVisibility()" type="button">
+      <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+    </button>
+  </mat-form-field>
+  <div class="character-counter" 
+    [ngClass]="{'counter-limit': formControl.value.length === question.size}">
+    <span>{{ formControl.value.length }}/{{ question.size }}</span>
+  </div>
+</div>
+
+<!-- TEXTAREA -->
+<div *ngIf="question.type === 'textarea' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always">
+    <mat-label>{{ question.label }}</mat-label>
+    <textarea rows="4" [formControl]="formControl" matInput maxlength="{{ question.size }}" 
+      [disabled]="isDisabled || isValidated"></textarea>
+  </mat-form-field>
+  <div class="character-counter" 
+    [ngClass]="{'counter-limit': formControl.value.length === question.size}">
+    <span>{{ formControl.value.length }}/{{ question.size }}</span>
+  </div>
+</div>
+
+<!-- DROPDOWN -->
+<div *ngIf="question.type === 'dropdown' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always">
+    <mat-label>{{ question.label }}</mat-label>
+    <mat-select [formControl]="formControl" #dropdownMenu [disabled]="isDisabled || isValidated" 
+      (selectionChange)="dropdownSelect($event)">
+      <mat-option *ngFor="let ent of question.options" class="option" [value]="ent.value">
+        {{ ent.key }}
+      </mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>
+
+<!-- POPUP -->
+<div *ngIf="question.type === 'popup' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always">
+    <mat-label>{{ question.label }}</mat-label>
+    <input matInput [formControl]="formControl" (click)="handleAction($event)" 
+      readonly [disabled]="isDisabled || isValidated" />
+    <mat-icon matSuffix>arrow_drop_down</mat-icon>
+  </mat-form-field>
+</div>
+
+<!-- RADIO BUTTONS -->
+<div *ngIf="question.type === 'radio' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always">
+    <mat-label>{{ question.label }}</mat-label>
+    
+    <input matInput readonly [formControl]="formControl" style="display: none;">
+    
+    <div class="radio-group-container">
+      <mat-radio-group [formControl]="formControl" [disabled]="isDisabled || isValidated">
+        <mat-radio-button 
+          *ngFor="let option of question.options" 
+          [value]="option.value"
+          [disabled]="option.disabled" 
+          (change)="handleMatRadioSelect($event, option.value)"
+          class="radio-button">
+          {{ option.key }}
+        </mat-radio-button>
+      </mat-radio-group>
+    </div>
+    
+    <mat-hint *ngIf="question.hint">{{ question.hint }}</mat-hint>
+    <mat-error *ngIf="formControl.invalid && formControl.touched">
+    </mat-error>
+  </mat-form-field>
+</div>
+
+<!-- CHECKBOXES -->
+<div *ngIf="question.type === 'checkbox' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always">
+    <mat-label>{{ question.label }}</mat-label>
+    
+    <input matInput readonly [formControl]="formControl" [disabled]="isDisabled || isValidated" style="display: none;">
+    
+    <div class="checkbox-group">
+      <mat-checkbox 
+        *ngFor="let option of question.options2" 
+        [value]="option.value"
+        [disabled]="isDisabled || isValidated"
+        (change)="checkboxChange($event, option.value)"
+        class="checkbox-button">
+        {{ option.key }}
+      </mat-checkbox>
+    </div>
+    
+    <mat-hint *ngIf="question.hint">{{ question.hint }}</mat-hint>
+    <mat-error *ngIf="formControl.invalid && formControl.touched">
+    </mat-error>
+  </mat-form-field>
+</div>
+
+<!-- FILE UPLOAD -->
+<div *ngIf="question.type === 'uploadbox' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always" class="upload-form-field">
+    <mat-label>{{ question.label }}</mat-label>
+    
+    <!-- Hidden input required for mat-form-field to work properly -->
+    <input matInput readonly [formControl]="formControl" style="display: none;">
+    
+    <!-- File upload container -->
+    <div class="upload-container" appDragDrop (fileDropped)="onFileDropped($event)">
+      <div class="upload-area" *ngIf="!file">
+        <input type="file" #fileInput id="file-input" (change)="onFileSelected($event)"
+          accept=".yml,.yaml" [disabled]="isDisabled || isValidated" />
+        <div class="upload-icon-wrapper">
+          <div class="upload-icon">
+            <mat-icon>cloud_upload</mat-icon>
+          </div>
+        </div>
+        <div class="upload-text">
+          <p class="upload-primary-text">Drag and drop YAML file here</p>
+          <p class="upload-secondary-text">or</p>
+          <button class="upload-button" for="file-input">Select File</button>
+        </div>
+      </div>
+      <div *ngIf="file" class="file-item">
+        <div class="file-details">
+          <mat-icon class="file-icon">description</mat-icon>
+          <span class="file-name">{{ file.name }}</span>
+        </div>
+        <button class="file-remove-button" (click)="removeFile()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Support for form field features -->
+    <mat-hint *ngIf="question.hint">{{ question.hint }}</mat-hint>
+    <mat-error *ngIf="formControl.invalid && formControl.touched">
+    </mat-error>
+  </mat-form-field>
+</div>
+
+<!-- BUTTON -->
+<div *ngIf="question.type === 'button' && !isHidden" class="form-element-container">
+  <mat-form-field appearance="outline" floatLabel="always" class="button-form-field">
+    <!-- Use a blank label to maintain consistent spacing -->
+    <mat-label></mat-label>
+    
+    <!-- Hidden input required for mat-form-field to work properly -->
+    <input matInput readonly [formControl]="formControl" style="display: none;">
+    
+    <!-- Button container -->
+    <div class="button-container">
+      <button mat-flat-button class="action-button"
+        (click)="clickedButtonQuestion(question)" [disabled]="isDisabled || isValidated">
+        {{ question.label }}
+      </button>
+      <p *ngIf="question.key =='validate'" class="validation-status">
+        Validated: {{ question.dataBoolean }}
+      </p>
+    </div>
+    
+    <!-- Support for form field features -->
+    <mat-hint *ngIf="question.hint">{{ question.hint }}</mat-hint>
+  </mat-form-field>
+</div>
+
+<!-- DEPENDENT QUESTIONS -->
+<div *ngFor="let kv of question.dependentQuestions | keyvalue">
+  <div *ngIf="formControl.value && kv.key!==undefined && formControl.value === kv.key">
+    <amaterasu-dialog-question [question]="kv.value"></amaterasu-dialog-question>
+  </div>
+</div>

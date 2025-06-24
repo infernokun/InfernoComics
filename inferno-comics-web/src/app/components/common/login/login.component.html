@@ -1,0 +1,79 @@
+<!-- login.component.html -->
+<div class="login-container">
+  <div class="login-header">
+    <h2>Sign In</h2>
+    <p *ngIf="!isLocked">Welcome back! Please enter your credentials</p>
+    <p *ngIf="isLocked" class="text-warning">
+      Account temporarily locked. Please try again in {{Math.ceil(lockoutTimeLeft / 1000)}} seconds.
+    </p>
+  </div>
+  
+  <form [formGroup]="loginForm" (ngSubmit)="loginClick()">
+    <div class="form-group">
+      <label for="username">Email/Username</label>
+      <div class="input-wrapper">
+        <i class="material-icons icon-prefix">person</i>
+        <input 
+          type="text" 
+          class="form-control" 
+          id="username" 
+          formControlName="username"
+          placeholder="Enter your email or username"
+          [class.is-invalid]="usernameControl.invalid && usernameControl.touched"
+          autocomplete="username">
+      </div>
+      <div *ngIf="usernameControl.invalid && usernameControl.touched" class="error-message">
+        <small *ngIf="usernameControl.errors?.['required']">Username is required</small>
+        <small *ngIf="usernameControl.errors?.['minlength']">Username must be at least 3 characters</small>
+      </div>
+    </div>
+    
+    <div class="form-group">
+      <label for="password">Password</label>
+      <div class="input-wrapper">
+        <i class="material-icons icon-prefix">lock</i>
+        <input 
+          [type]="hidePassword ? 'password' : 'text'" 
+          class="form-control" 
+          id="password" 
+          formControlName="password"
+          placeholder="Enter your password"
+          [class.is-invalid]="passwordControl.invalid && passwordControl.touched"
+          autocomplete="current-password">
+        <i 
+          class="material-icons icon-suffix clickable" 
+          (click)="hidePassword = !hidePassword">
+          {{hidePassword ? 'visibility_off' : 'visibility'}}
+        </i>
+      </div>
+      <div *ngIf="passwordControl.invalid && passwordControl.touched" class="error-message">
+        <small *ngIf="passwordControl.errors?.['required']">Password is required</small>
+        <small *ngIf="passwordControl.errors?.['minlength']">Password must be at least 6 characters</small>
+      </div>
+    </div>
+    
+    <div *ngIf="errorMessage" class="alert alert-danger" role="alert">
+      {{errorMessage}}
+    </div>
+    
+    <div class="form-options">
+      <div class="remember-me">
+        <input type="checkbox" id="remember-me" [(ngModel)]="rememberMe" [ngModelOptions]="{standalone: true}">
+        <label for="remember-me">Remember me</label>
+      </div>
+      <a class="forgot-password" (click)="forgotPassword()">Forgot password?</a>
+    </div>
+    
+    <button type="submit" class="btn btn-primary" [disabled]="busy || isLocked">
+      <span *ngIf="!busy">Sign In</span>
+      <div *ngIf="busy" class="spinner">
+        <mat-spinner diameter="20"></mat-spinner>
+      </div>
+    </button>
+    
+
+    <div class="register-prompt">
+      Don't have an account? <a (click)="register()">Create one</a>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,14 @@
+@include make-borders();
+
+.border-radius              { @include border-radius($border-radius         !important) }
+.border-radius-none         { @include border-radius(0                      !important) }
+
+.border-bottom-radius       { @include border-bottom-radius($border-radius  !important) }
+.border-left-radius         { @include border-left-radius($border-radius    !important) }
+.border-right-radius        { @include border-right-radius($border-radius   !important) }
+.border-top-radius          { @include border-top-radius($border-radius     !important) }
+
+.border-bottom-radius-none  { @include border-bottom-radius(0               !important) }
+.border-left-radius-none    { @include border-left-radius(0                 !important) }
+.border-right-radius-none   { @include border-right-radius(0                !important) }
+.border-top-radius-none     { @include border-top-radius(0                  !important) }

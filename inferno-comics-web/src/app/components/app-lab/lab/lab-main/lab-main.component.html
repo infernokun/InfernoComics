@@ -1,0 +1,77 @@
+<div class="lab-container">
+  <!-- Lab cards grid -->
+  <div class="labs-grid">
+    <ng-container *ngFor="let lab of labs$ | async">
+      <div class="lab-card" @fadeIn (mouseenter)="onMouseEnter()" (mouseleave)="onMouseLeave()"
+        [ngClass]="{'lab-ready': lab.ready, 'lab-not-ready': !lab.ready}">
+
+        <button class="delete-button" matTooltip="Delete Lab" (click)="deleteLab(lab); $event.stopPropagation()">
+          <mat-icon>close</mat-icon>
+        </button>
+
+        <div class="lab-header">
+          <div class="lab-icon" (click)="getSettings(lab)">
+            <img *ngIf="lab.labType === LabType.DOCKER_COMPOSE" src="assets/compose.png" alt="Docker Compose">
+            <img *ngIf="lab.labType === LabType.DOCKER_CONTAINER" src="assets/container.png" alt="Docker Container">
+            <img *ngIf="lab.labType === LabType.KUBERNETES" src="assets/kubernetes.png" alt="Kubernetes">
+            <img *ngIf="lab.labType === LabType.VIRTUAL_MACHINE" src="assets/vm.png" alt="Proxmox VM">
+          </div>
+          <div class="lab-status-badge" [ngClass]="lab.ready ? 'ready' : 'not-ready'">
+            {{ lab.ready ? 'Ready' : 'Validating' }}
+          </div>
+        </div>
+
+        <div class="lab-body">
+          <h2 class="lab-title">{{ lab.name }}</h2>
+          <p class="lab-id" *ngIf="isHovered">ID: {{ lab.id }}</p>
+          <p class="lab-description">{{ lab.description }}</p>
+
+          <div class="lab-meta">
+            <div class="lab-meta-item">
+              <mat-icon>person</mat-icon>
+              <span>{{ lab.createdBy }}</span>
+            </div>
+            <div class="lab-meta-item">
+              <mat-icon>category</mat-icon>
+              <span>{{ lab.labType }}</span>
+            </div>
+          </div>
+
+          <div class="lab-actions">
+            <!-- Add loading state indicator -->
+            <div *ngIf="isLoading" class="loading-wrapper">
+              <mat-spinner diameter="30"></mat-spinner>
+            </div>
+
+            <!-- Only show buttons when initial loading is complete -->
+            <ng-container *ngIf="!isLoading && (labTrackers$ | async)">
+              <button mat-raised-button color="primary"
+                *ngIf="!isInTrackedLabs(lab.id!) && !(labsLoading$ | async)?.has(lab.id!) && lab.ready && user?.team"
+                (click)="deployLabStart(lab)" [disabled]="!user">
+                <mat-icon>rocket_launch</mat-icon> Deploy
+              </button>
+
+              <button mat-raised-button disabled *ngIf="!user?.team">
+                <mat-icon>group_off</mat-icon> No Team Assigned
+              </button>
+
+              <button mat-raised-button color="accent" disabled
+                *ngIf="isInTrackedLabs(lab.id!) && !(labsLoading$ | async)?.has(lab.id!)">
+                <mat-icon>check_circle</mat-icon> Deployed
+              </button>
+
+              <button mat-raised-button disabled *ngIf="!lab.ready">
+                <mat-icon>hourglass_empty</mat-icon> Validating
+              </button>
+
+              <button mat-raised-button disabled
+                *ngIf="(labsLoading$ | async)?.has(lab.id!) && !isInTrackedLabs(lab.id!)">
+                <mat-icon>pending</mat-icon> Deploying...
+              </button>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>

@@ -1,0 +1,38 @@
+@each $breakpoint in map-keys($grid-breakpoints) {
+    @include media-breakpoint-up($breakpoint) {
+        $infix: breakpoint-infix($breakpoint, $grid-breakpoints);
+        
+        .display#{$infix}-inline        { display: inline       !important }
+        .display#{$infix}-inline-block  { display: inline-block !important }
+        .display#{$infix}-block         { display: block        !important }
+        .display#{$infix}-table         { display: table        !important }
+        .display#{$infix}-table-row     { display: table-row    !important }
+        .display#{$infix}-table-cell    { display: table-cell   !important }
+        .display#{$infix}-flex          { display: flex         !important }
+        .display#{$infix}-inline-flex   { display: inline-flex  !important }
+    }
+}
+    
+@each $breakpoint in map-keys($grid-breakpoints) {
+    .visible-#{$breakpoint} { display: none }
+}
+
+@each $breakpoint in map-keys($grid-breakpoints) {
+    @include media-breakpoint-only($breakpoint) {
+        .visible-#{$breakpoint}         { display: block        !important }
+        .display-#{$breakpoint}-none    { display: none         !important }
+    }
+}
+
+.display-none {
+    display: none !important;
+}
+.visibility-hidden {
+    visibility: hidden !important;
+}
+    
+.center-block {
+    display: block !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}

@@ -1,0 +1,47 @@
+.stoplight {
+  @include themify($themes) {
+    background-color: themed('bgColorDark2');
+  }
+
+  @include border-radius();
+  display: inline-flex;
+  padding: #{$gutter * .7} 0;
+
+  li {
+    @include themify($themes) {
+      background-color: themed('bgColorLight');
+      border: 1px solid themed('borderColor');
+    }
+
+    @include border-radius(50%);
+    height: .8em;
+    margin-right: $gutter * .7;
+    width: .8em;
+
+    &:first-child {
+      margin-left: $gutter * .7;
+    }
+  }
+
+  &.active-red {
+    li:first-child {
+      @include themify($themes) {
+        background-color: themed('colorWarn') !important;
+      }
+    }
+  }
+  &.active-yellow {
+    li:nth-child(2) {
+      @include themify($themes) {
+        background-color: themed('colorAlert') !important;
+      }
+    }
+  }
+  &.active-green {
+    li:last-child {
+      @include themify($themes) {
+        background-color: themed('colorSuccess') !important;
+      }
+    }
+  }
+}

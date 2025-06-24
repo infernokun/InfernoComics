@@ -1,0 +1,26 @@
+.mat-icon {
+    // overrides
+    height: 1em !important;
+    width: 1em !important;
+
+    &.mat-primary {
+        @include themify($themes) {
+            color: themed('primaryColor');
+        }
+    }
+    &.mat-accent {
+        @include themify($themes) {
+            color: themed('accentColor');
+        }
+    }
+    &.mat-success {
+        @include themify($themes) {
+            color: themed('successColor');
+        }
+    }
+    &.mat-warn {
+        @include themify($themes) {
+            color: themed('warnColor');
+        }
+    }
+}

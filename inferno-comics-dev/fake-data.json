@@ -1,0 +1,122 @@
+[
+    {
+        "name": "dco hunt",
+        "description": "A beginner-friendly lab to explore defense operations.",
+        "status": "ACTIVE",
+        "createdBy": "InfernoKun",
+        "version": "1.0.0",
+        "capacity": 10
+    },
+    {
+        "name": "oco hunt",
+        "description": "An offensive-focused lab for advanced users.",
+        "status": "ACTIVE",
+        "createdBy": "InfernoKun",
+        "version": "1.0.0",
+        "capacity": 10
+    },
+    {
+        "name": "stealth ops",
+        "description": "Learn about evasion and detection in cybersecurity.",
+        "status": "HIDDEN",
+        "createdBy": "CyberMaster",
+        "version": "1.2.0",
+        "capacity": 8
+    },
+    {
+        "name": "forensics lab",
+        "description": "Hands-on digital forensics training for incident response.",
+        "status": "ACTIVE",
+        "createdBy": "SecOpsPro",
+        "version": "1.3.5",
+        "capacity": 12
+    },
+    {
+        "name": "cloud security",
+        "description": "Focus on securing cloud-native applications.",
+        "status": "INACTIVE",
+        "createdBy": "InfernoKun",
+        "version": "2.0.0",
+        "capacity": 15
+    },
+    {
+        "name": "malware analysis",
+        "description": "Reverse engineering and dynamic malware analysis lab.",
+        "status": "ACTIVE",
+        "createdBy": "MalwareHunter",
+        "version": "3.1.4",
+        "capacity": 5
+    },
+    {
+        "name": "web security 101",
+        "description": "Explore common web vulnerabilities and mitigations.",
+        "status": "ACTIVE",
+        "createdBy": "WebDevGuru",
+        "version": "1.0.0",
+        "capacity": 20
+    },
+    {
+        "name": "api pentesting",
+        "description": "Learn to secure APIs against attacks like injection and DDoS.",
+        "status": "HIDDEN",
+        "createdBy": "InfernoKun",
+        "version": "2.2.1",
+        "capacity": 6
+    },
+    {
+        "name": "iot security",
+        "description": "Focus on securing Internet of Things devices.",
+        "status": "INACTIVE",
+        "createdBy": "IoTExpert",
+        "version": "1.5.0",
+        "capacity": 8
+    },
+    {
+        "name": "cryptography basics",
+        "description": "Understand encryption, hashing, and digital signatures.",
+        "status": "ACTIVE",
+        "createdBy": "CryptoNerd",
+        "version": "1.0.2",
+        "capacity": 12
+    },
+    {
+        "name": "mobile app security",
+        "description": "Learn to secure Android and iOS applications.",
+        "status": "ACTIVE",
+        "createdBy": "InfernoKun",
+        "version": "3.0.0",
+        "capacity": 7
+    },
+    {
+        "name": "phishing simulation",
+        "description": "Experience phishing techniques and how to counteract them.",
+        "status": "HIDDEN",
+        "createdBy": "CyberTrainer",
+        "version": "2.1.0",
+        "capacity": 10
+    },
+    {
+        "name": "ransomware analysis",
+        "description": "Analyze ransomware behavior and create defenses.",
+        "status": "INACTIVE",
+        "createdBy": "MalwareHunter",
+        "version": "1.1.3",
+        "capacity": 4
+    },
+    {
+        "name": "social engineering",
+        "description": "Learn how attackers exploit human psychology.",
+        "status": "ACTIVE",
+        "createdBy": "SocEngExpert",
+        "version": "2.0.0",
+        "capacity": 18
+    },
+    {
+        "name": "zero trust architecture",
+        "description": "Implement zero trust security principles in a network.",
+        "status": "ACTIVE",
+        "createdBy": "ZeroTrustGuru",
+        "version": "1.0.1",
+        "capacity": 10
+    }
+]

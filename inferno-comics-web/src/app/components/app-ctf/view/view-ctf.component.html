@@ -1,0 +1,118 @@
+<div class="view-dialog-container">
+  <div class="dialog-header">
+    <button class="close-btn" type="button" (click)="closeDialog()" aria-label="Close dialog">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <div class="challenge-content">
+    <div class="challenge-title">
+      <h2>{{ viewedChallenge.question }}</h2>
+      <div class="points-badge">
+        <span class="points-value">{{ viewedChallenge.points }}</span>
+        <span class="points-label">points</span>
+      </div>
+    </div>
+
+    <div class="challenge-author">
+      <span class="author-label">Author:&nbsp;</span>
+      <span class="author-name">{{ viewedChallenge.author || 'Unknown' }}</span>
+    </div>
+
+    <div class="tags-container" *ngIf="viewedChallenge.tags && viewedChallenge.tags.length > 0">
+      <span class="tag" *ngFor="let tag of viewedChallenge.tags">{{ tag }}</span>
+    </div>
+
+    <div class="challenge-category">
+      <span class="category-label">Category: </span>
+      <span class="category-name">{{ viewedChallenge.category }}</span>
+
+      <div class="challenge-description">
+        <p>{{ viewedChallenge.description }}</p>
+      </div>
+
+      <div class="challenge-meta">
+        <div class="attempts-info">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12,6 12,12 16,14"></polyline>
+          </svg>
+          <span>{{ viewedChallenge.maxAttempts }} attempts allowed</span>
+        </div>
+      </div>
+
+      <div class="challenge-hint" *ngIf="viewedChallenge.hints">
+        <ul class="hint-list">
+          <li *ngFor="let hint of viewedChallenge.hints">
+            {{!canUseHint(hint)}} {{roomUser?.points}} {{ !(isAnswered$ | async) }}
+            <button class="btn btn-secondary" (click)="useHint(hint)" [disabled]="!!(isAnswered$ | async) || !canUseHint(hint)">
+              Unlock hint for {{ hint.cost }} points
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <form class="answer-form" (ngSubmit)="checkAnswer(viewedChallenge)">
+        <div class="form-group">
+          <label for="answer-input" class="sr-only">Your Answer</label>
+          <div class="input-container">
+            <input id="answer-input" type="text" placeholder="Enter your flag or answer..." [(ngModel)]="answer"
+              name="answer" [disabled]="!!(isAnswered$ | async)" class="answer-input" autocomplete="off">
+            <div class="input-focus-ring"></div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button mat-button type="button" (click)="closeDialog()" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button mat-button type="submit" [disabled]="!!(isAnswered$ | async) || !answer.trim()"
+            class="btn btn-primary" [class.btn-success]="!!(isAnswered$ | async)">
+            <span *ngIf="!(isAnswered$ | async)">Submit Answer</span>
+            <span *ngIf="!!(isAnswered$ | async)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20,6 9,17 4,12"></polyline>
+              </svg>
+              Complete
+            </span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Status Messages -->
+      <div class="status-messages" *ngIf="statusMessage">
+        <div class="status-message" [ngClass]="statusType">
+          <div class="status-icon">
+            <svg *ngIf="statusType === 'success'" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <polyline points="20,6 9,17 4,12"></polyline>
+            </svg>
+            <svg *ngIf="statusType === 'error'" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <svg *ngIf="statusType === 'warning'" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17.02" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <span>{{ statusMessage }}</span>
+        </div>
+      </div>
+
+      <!-- Progress indicator for remaining attempts -->
+      <div class="attempts-progress" *ngIf="currentAttempts > 0 && !(isAnswered$ | async)">
+        <div class="progress-bar">
+          <div class="progress-fill" [style.width.%]="(currentAttempts! / viewedChallenge.maxAttempts!) * 100"></div>
+        </div>
+        <span class="attempts-text">{{ currentAttempts }}/{{ viewedChallenge.maxAttempts }} attempts used</span>
+      </div>
+    </div>
+  </div>

@@ -1,0 +1,155 @@
+$expand-value-bottom: .1em;
+
+.mat-select {
+  padding-bottom: .2em;
+
+  .mat-select-trigger {
+    padding: $gutter-half;
+    padding-bottom: calc($gutter-half - $expand-value-bottom - 0.1em);
+    height: unset;
+
+    .mat-select-value {
+      // overrides
+      @include themify($themes) {
+        color: themed('textColor');
+      }
+      line-height: 1em + $expand-value-bottom;
+
+      .mat-select-value-text {
+        // added
+        @include themify($themes) {
+            font-size: themed('fontSize');
+        }
+      }
+    }
+
+    .mat-select-arrow-wrapper {
+      padding-top: 0;
+      transform: unset;
+      height: unset;
+
+      .mat-select-arrow {
+        // overrides
+        @include themify($themes) {
+            color: themed('colorActive');
+        }
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+        border-top: 4px solid;
+      }
+    }
+  }
+
+  & + .mat-form-field-label-wrapper {
+    .mat-form-field-label {
+      // added
+      top: 2.1em;
+    }
+  }
+
+  &.mat-select-disabled {
+    .mat-select-trigger {
+      .mat-select-value {
+        .mat-select-value-text,
+        .mat-select-placeholder {
+          @include themify($themes) {
+            color: themed('textColorDisabled');
+          }
+        }
+      }
+    }
+  }
+
+  &.dense {
+    @include themify($themes) {
+      background-color: themed('inputBgColor');
+      border-color: themed('inputBorderColor');
+      border-bottom-color: themed('inputBorderColorAlt');
+    }
+    @include border-radius();
+    border: 1px solid;
+    padding: 0;
+
+    .mat-select-trigger {
+      padding: .2em;
+    }
+  }
+
+  &.transparent {
+    @include themify($themes) {
+      border-bottom-color: themed('inputBorderColor');
+    }
+    background-color: transparent !important;
+  }
+}
+
+.mat-select-panel {
+  @include themify($themes) {
+    background: themed('popoverBgColor');
+    border-color: themed('inputBorderColorAlt');
+    font-size: themed('fontSize') !important;
+  }
+  @include border-radius();
+  border: 1px solid;
+  margin-top: .5em;
+
+  .mat-select-content {
+    // overrides
+    @include themify($themes) {
+      font-size: themed('fontSize');
+    }
+  }
+
+  .mat-option {
+    // overrides
+    @include themify($themes) {
+      color: themed('textColor');
+    }
+    line-height: 2.4em !important;
+    height: 2.4em !important;
+    padding: 0 $gutter;
+
+    &:hover {
+      // added
+      @include themify($themes) {
+        background-color: themed('colorHover');
+      }
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+
+    &.mat-selected:not(.mat-option-disabled) {
+      @include themify($themes) {
+        background: themed('colorSelected') !important;
+        color: themed('textColor') !important;
+      }
+    }
+
+    &.mat-option-disabled {
+      &:hover {
+        background: transparent;
+      }
+    }
+  }
+
+  .mat-optgroup {
+    .mat-optgroup-label {
+      @include themify($themes) {
+        color: themed('textColorLight');
+        font-size: themed('fontSize');
+        font-weight: themed('fontWeight');
+        line-height: themed('fontSize');
+      }
+      height: auto;
+      padding: $gutter;
+    }
+    .mat-option {
+      &:not(.mat-option-multiple) {
+        padding-left: #{$gutter * 2};
+      }
+    }
+  }
+}

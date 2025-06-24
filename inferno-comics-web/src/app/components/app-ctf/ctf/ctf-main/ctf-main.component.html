@@ -1,0 +1,45 @@
+<div class="width-100-percent display-flex flex-wrap">
+  <button style="color: red;" mat-menu-item (click)="addPoints()" aria-label="User settings">
+    <mat-icon>settings</mat-icon>
+    <span>Add Points</span>
+  </button>
+  <p>Points: {{roomUserStatus()?.points}}</p>
+  <!-- Show CTF card if user has joined the room -->
+  <div *ngIf="isRoomJoined() && !loading()">
+    <amaterasu-ctf-card></amaterasu-ctf-card>
+  </div>
+
+  <!-- Show access denied if user hasn't joined -->
+  <div *ngIf="!isRoomJoined() && room() && !loading() && !error()" class="access-denied-container">
+    <div class="access-denied-message">
+      <mat-icon class="denied-icon">lock</mat-icon>
+      <h3>Access Denied</h3>
+      <p>You have not joined {{ room()?.name }} yet!</p>
+      <button mat-raised-button color="primary" (click)="joinRoom()">
+        <mat-icon>add</mat-icon>
+        Join Room
+      </button>
+      <button mat-button (click)="browseRooms()">
+        <mat-icon>arrow_back</mat-icon>
+        Browse Rooms
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading state -->
+  <div *ngIf="loading()" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Loading room...</p>
+  </div>
+
+  <!-- Error state -->
+  <div *ngIf="error() && !loading()" class="error-container">
+    <mat-icon class="error-icon">error</mat-icon>
+    <h3>Room Not Found</h3>
+    <p>{{ error() }}</p>
+    <button mat-raised-button color="primary" (click)="browseRooms()">
+      <mat-icon>arrow_back</mat-icon>
+      Back to Rooms
+    </button>
+  </div>
+</div>

@@ -1,0 +1,191 @@
+/* Base Dialog Container */
+::ng-deep .mat-dialog-container {
+  background-color: #1e1e2e;
+  color: #f8f9fa;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  max-width: 650px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  height: 90vh;
+  max-height: 800px;
+}
+
+/* Alert/Title Section */
+.bg-alert {
+  background-color: rgba(211, 47, 47, 0.1);
+  padding: 16px;
+  border-left: 4px solid #d32f2f;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+.dialog-title {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #ff6b6b;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+/* Content Section */
+.dialog-content {
+  padding: 8px 4px;
+  overflow-y: auto;
+  margin: 16px 0;
+  color: #c9d1d9;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #2d2d3d;
+  background-color: transparent !important;
+  flex: 1;
+  min-height: 0; /* Important for flex children to properly scroll */
+}
+
+.code-editor-wrapper {
+  width: 100%;
+  background-color: #282a36;
+  border-radius: 8px;
+  border: 1px solid #444;
+  overflow: hidden;
+}
+
+.dialog-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dialog-content::-webkit-scrollbar-track {
+  background: #2d2d3d;
+  border-radius: 4px;
+}
+
+.dialog-content::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
+}
+
+.text-lg {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+/* Code Block */
+app-code-block {
+  flex: 1;
+  overflow: auto;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  background-color: #282a36;
+  border-radius: 8px;
+  padding: 16px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  height: 100%;
+  border: 1px solid #444;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  display: block;
+  width: 100%;
+}
+
+/* Fix for code editor background issue */
+::ng-deep app-code-block .monaco-editor,
+::ng-deep app-code-block .monaco-editor-background,
+::ng-deep app-code-block .monaco-editor .margin {
+  background-color: #282a36 !important;
+}
+
+::ng-deep app-code-block .monaco-editor * {
+  color: inherit;
+}
+
+/* Ensure no white backgrounds in code block */
+::ng-deep #code-editor {
+  background-color: #282a36 !important;
+}
+
+::ng-deep #code-editor .view-lines,
+::ng-deep #code-editor .view-line {
+  background-color: transparent !important;
+}
+
+/* Button Actions */
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 0 0;
+  margin-top: 8px;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 20px;
+  padding-right: 1rem;
+}
+
+button.mat-raised-button {
+  min-width: 100px;
+  padding: 8px 16px;
+  font-weight: 500;
+  text-transform: uppercase;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+.button-text {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.transparent-button {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.transparent-button:hover {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.mat-accent {
+  background-color: #3f51b5 !important;
+  color: white !important;
+}
+
+.mat-accent:hover {
+  background-color: #303f9f !important;
+  box-shadow: 0 4px 12px rgba(63, 81, 181, 0.4);
+}
+
+.mat-cancel {
+  background-color:#444;
+  color: white !important;
+}
+
+.mat-cancel:hover {
+  background-color:#2d2d3d;
+  color: white !important;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 600px) {
+  ::ng-deep .mat-dialog-container {
+    padding: 16px;
+  }
+  
+  .dialog-title {
+    font-size: 1.4rem;
+  }
+  
+  .dialog-content {
+    max-height: 350px;
+    font-size: 1rem;
+  }
+  
+  button.mat-raised-button {
+    min-width: 80px;
+    padding: 6px 12px;
+  }
+}

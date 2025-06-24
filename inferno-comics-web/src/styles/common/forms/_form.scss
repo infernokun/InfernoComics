@@ -1,0 +1,25 @@
+.field-feedback {
+    align-items: center;
+    display: inline-flex;
+    float: right;
+    margin-bottom: -$gutter;
+
+    .material-icons {
+        margin-right: $gutter-half;
+    }
+}
+
+.form-read-only {
+    li {
+        display: flex;
+        padding: $gutter-half 0;
+
+        label {
+            flex: 0 0 auto;
+            width: 33%;
+        }
+        .value {
+            flex: 1 1 auto;
+        }
+    }
+}
