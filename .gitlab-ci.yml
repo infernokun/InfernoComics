@@ -1,0 +1,61 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DOCKER_HOST: "unix:///var/run/docker.sock"
+
+build-rest:
+  stage: build
+  image: docker:24.0.7
+  before_script:
+    - echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+    - apk add --no-cache nodejs npm bash jq
+  script:
+    - cd amaterasu-rest
+    - npm run docker:build
+  tags:
+    - docker
+
+build-web:
+  stage: build
+  image: docker:24.0.7
+  services:
+    - name: docker:dind
+      command: ["--host=tcp://0.0.0.0:2375", "--mtu=1500"]
+  before_script:
+    - echo $DOCKER_HUB_ACCESS_TOKEN  | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+    - apk add --no-cache nodejs npm bash jq
+  script:
+    - cd amaterasu-web
+    - npm run docker:build
+  tags:
+    - docker
+
+deploy:
+  stage: deploy
+  image: ubuntu:20.04
+  before_script:
+    - apt-get -yq update
+    - apt-get -yqq install openssh-client iproute2 || { echo "SSH client installation failed"; exit 1; }
+    - mkdir -p ~/.ssh
+    - install -m 600 -D /dev/null ~/.ssh/id_rsa
+    - echo "$STAGE_SERVER_PRIVATE_KEY" | base64 --decode > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H "$STAGE_SERVER_HOST" >> ~/.ssh/known_hosts
+    - export DEPLOY_PATH="/home/$STAGE_SERVER_USER/amaterasu"
+  script:
+    - echo "Testing SSH connectivity..."
+    - ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "echo Connected"
+    - ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "mkdir -p $DEPLOY_PATH"
+    - if [ ! -f docker-compose.yml ]; then echo "docker-compose.yml not found"; exit 1; fi
+    - scp -i ~/.ssh/id_rsa -r docker-compose.yml "$STAGE_SERVER_USER@$STAGE_SERVER_HOST:$DEPLOY_PATH/."
+    - ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "cd \"$DEPLOY_PATH\" && docker compose down --remove-orphans && (docker compose pull || echo 'Skipping pull (already up-to-date)') && docker compose up -d"
+  after_script:
+    - rm -rf ~/.ssh
+  tags:
+    - docker
+  dependencies:
+    - build-rest
+    - build-web
+#  when: manual
