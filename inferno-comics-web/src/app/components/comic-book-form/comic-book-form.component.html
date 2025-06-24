@@ -1,0 +1,106 @@
+<div class="comic-book-form-container">
+    <h2 mat-dialog-title>
+        {{ isEditMode ? 'Edit Comic Book' : 'Add Comic Book' }}
+    </h2>
+
+    <mat-dialog-content>
+        <form [formGroup]="comicBookForm" class="comic-form">
+            <div class="form-row">
+                <mat-form-field appearance="outline" class="half-width">
+                    <mat-label>Issue Number *</mat-label>
+                    <input matInput formControlName="issueNumber" required>
+                    <mat-error *ngIf="comicBookForm.get('issueNumber')?.hasError('required')">
+                        Issue number is required
+                    </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="half-width">
+                    <mat-label>Title</mat-label>
+                    <input matInput formControlName="title">
+                </mat-form-field>
+            </div>
+
+            <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Description</mat-label>
+                    <textarea matInput formControlName="description" rows="3"></textarea>
+                </mat-form-field>
+            </div>
+
+            <div class="form-row">
+                <mat-form-field appearance="outline" class="half-width">
+                    <mat-label>Cover Date</mat-label>
+                    <input matInput [matDatepicker]="coverDatePicker" formControlName="coverDate">
+                    <mat-datepicker-toggle matIconSuffix [for]="coverDatePicker"></mat-datepicker-toggle>
+                    <mat-datepicker #coverDatePicker></mat-datepicker>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="half-width">
+                    <mat-label>Condition</mat-label>
+                    <mat-select formControlName="condition">
+                        <mat-option *ngFor="let condition of conditions" [value]="condition">
+                            {{ getConditionDisplayName(condition) }}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+
+            <div class="form-row">
+                <mat-form-field appearance="outline" class="half-width">
+                    <mat-label>Purchase Price</mat-label>
+                    <input matInput type="number" step="0.01" formControlName="purchasePrice">
+                    <span matTextPrefix>$</span>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="half-width">
+                    <mat-label>Current Value</mat-label>
+                    <input matInput type="number" step="0.01" formControlName="currentValue">
+                    <span matTextPrefix>$</span>
+                </mat-form-field>
+            </div>
+
+            <div class="form-row">
+                <mat-form-field appearance="outline" class="half-width">
+                    <mat-label>Purchase Date</mat-label>
+                    <input matInput [matDatepicker]="purchaseDatePicker" formControlName="purchaseDate">
+                    <mat-datepicker-toggle matIconSuffix [for]="purchaseDatePicker"></mat-datepicker-toggle>
+                    <mat-datepicker #purchaseDatePicker></mat-datepicker>
+                </mat-form-field>
+
+                <div class="checkbox-row">
+                    <mat-checkbox formControlName="isKeyIssue">
+                        Key Issue
+                    </mat-checkbox>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Image URL</mat-label>
+                    <input matInput formControlName="imageUrl">
+                </mat-form-field>
+            </div>
+
+            <div class="image-preview" *ngIf="comicBookForm.get('imageUrl')?.value">
+                <img [src]="comicBookForm.get('imageUrl')?.value"
+                    [alt]="'Issue #' + comicBookForm.get('issueNumber')?.value" class="preview-image"
+                    onerror="this.style.display='none'">
+            </div>
+
+            <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Notes</mat-label>
+                    <textarea matInput formControlName="notes" rows="3"></textarea>
+                </mat-form-field>
+            </div>
+        </form>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end">
+        <button mat-button (click)="cancel()">Cancel</button>
+        <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!comicBookForm.valid || loading">
+            <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+            {{ isEditMode ? 'Update' : 'Add' }} Comic Book
+        </button>
+    </mat-dialog-actions>
+</div>

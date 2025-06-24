@@ -4,9 +4,9 @@ import { catchError, map, take, filter, timeout } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { User } from '../models/user.model';
 import { ApiResponse } from '../models/api-response.model';
-import { LoginResponse } from '../models/dto/login-response.model';
 import { LoginService } from './login.service';
 import { UserService } from './user.service';
+import { LoginResponse } from '../models/dto/login-response.model';
 
 export interface UserPayload {
   user: User;

@@ -1,8 +1,0 @@
-.shadow {
-  @include themify($themes) {
-    box-shadow: themed('shadowColor') 0 1px 3px 0 !important;
-  }
-}
-.shadow-none {
-  box-shadow: none !important;
-}

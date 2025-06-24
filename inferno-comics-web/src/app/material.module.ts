@@ -21,6 +21,9 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 @NgModule({
   imports: [
@@ -47,7 +50,10 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
     MatRadioModule,
     MatCardModule,
     MatCheckboxModule,
-    MatOptionModule
+    MatOptionModule,
+    MatTabsModule,
+    MatChipsModule,
+    MatAutocompleteModule
   ],
   exports: [
     DragDropModule,
@@ -72,7 +78,10 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
     MatRadioModule,
     MatCardModule,
     MatCheckboxModule,
-    MatOptionModule
+    MatOptionModule,
+    MatTabsModule,
+    MatChipsModule,
+    MatAutocompleteModule
   ],
   declarations: [],
   providers: [

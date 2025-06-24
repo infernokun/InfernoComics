@@ -2,7 +2,7 @@
   "production": false,
   "host": "http://localhost:4200",
   "baseUrl": "http://localhost:4200",
-  "restUrl": "http://localhost:8080/amaterasu-rest/api",
-  "baseEndPoint": "amaterasu",
-  "websocketUrl": "ws://localhost:8080/amaterasu-rest"
+  "restUrl": "http://localhost:8080/inferno-comics-rest/api",
+  "baseEndPoint": "inferno-comics",
+  "websocketUrl": "ws://localhost:8080/inferno-comics-rest"
 }

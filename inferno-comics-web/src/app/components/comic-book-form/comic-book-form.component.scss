@@ -1,0 +1,65 @@
+.comic-book-form-container {
+    max-width: 600px;
+
+    h2 {
+        margin: 0;
+        color: #333;
+    }
+}
+
+mat-dialog-content {
+    padding: 20px 24px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.comic-form {
+    .form-row {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 16px;
+
+        .full-width {
+            flex: 1;
+        }
+
+        .half-width {
+            flex: 0.5;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            flex: 0.5;
+            padding-top: 8px;
+        }
+    }
+
+    mat-form-field {
+        width: 100%;
+    }
+}
+
+.image-preview {
+    margin: 20px 0;
+    text-align: center;
+
+    .preview-image {
+        max-width: 150px;
+        max-height: 200px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+}
+
+mat-dialog-actions {
+    padding: 16px 24px;
+    border-top: 1px solid #eee;
+
+    button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 16px;
+    }
+}

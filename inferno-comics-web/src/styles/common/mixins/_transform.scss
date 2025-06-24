@@ -1,5 +1,0 @@
-@mixin flip($horiz, $vert) {
-  -webkit-transform: scale($horiz, $vert);
-  -ms-transform: scale($horiz, $vert);
-  transform: scale($horiz, $vert);
-}

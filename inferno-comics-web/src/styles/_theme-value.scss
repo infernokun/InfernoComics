@@ -1,6 +1,4 @@
 @use "sass:map";
-@use "common/mixins/color-config";
-@use "common/themes/theme-settings";
 
 @function themeColor($key) {
     @return map.get(color-config.returnThemeVariable(app-styles.$theme), $key);

@@ -1,7 +1,0 @@
-.mat-progress-spinner {
-  circle {
-    @include themify($themes) {
-      stroke: themed('progressBarBgColor') !important;
-    }
-  }
-}

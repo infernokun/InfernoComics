@@ -1,9 +1,0 @@
-@use "sass:list";
-@mixin make-background-colors($theme) {
-    @each $color in $theme {
-        $color-name: list.nth($color, 1);
-        $color-hex: list.nth($color, 2);
-
-        .bg-#{$color-name} { background-color: $color-hex !important };
-    }
-}

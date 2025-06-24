@@ -20,16 +20,16 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it(`should have as title 'amaterasu-web'`, () => {
+  it(`should have as title 'inferno-comics-web'`, () => {
     const fixture = TestBed.createComponent(AppComponent);
     const app = fixture.componentInstance;
-    expect(app.title).toEqual('amaterasu-web');
+    expect(app.title).toEqual('inferno-comics-web');
   });
 
   it('should render title', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, amaterasu-web');
+    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, inferno-comics-web');
   });
 });

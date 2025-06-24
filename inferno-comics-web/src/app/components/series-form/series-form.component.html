@@ -1,0 +1,100 @@
+<div class="series-form-container">
+    <mat-card>
+        <mat-card-header>
+            <mat-card-title>
+                {{ isEditMode ? 'Edit Series' : 'Add New Series' }}
+            </mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content>
+            <form [formGroup]="seriesForm" (ngSubmit)="onSubmit()">
+                <div class="form-row">
+                    <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Series Name *</mat-label>
+                        <input matInput formControlName="name" required>
+                        <mat-error *ngIf="seriesForm.get('name')?.hasError('required')">
+                            Series name is required
+                        </mat-error>
+                        <mat-error *ngIf="seriesForm.get('name')?.hasError('maxlength')">
+                            Series name must not exceed 255 characters
+                        </mat-error>
+                    </mat-form-field>
+                </div>
+
+                <div class="comic-vine-search" *ngIf="!isEditMode">
+                    <button type="button" mat-stroked-button color="primary" (click)="searchComicVine()"
+                        [disabled]="!seriesForm.get('name')?.value || searchingComicVine">
+                        <mat-icon>search</mat-icon>
+                        Search Comic Vine
+                    </button>
+                    <mat-spinner diameter="20" *ngIf="searchingComicVine"></mat-spinner>
+                </div>
+
+                <div class="comic-vine-results" *ngIf="comicVineResults.length > 0">
+                    <h4>Comic Vine Results:</h4>
+                    <div class="results-grid">
+                        <mat-card *ngFor="let result of comicVineResults" class="result-card"
+                            (click)="selectComicVineSeries(result)">
+                            <img *ngIf="result.imageUrl" [src]="result.imageUrl" [alt]="result.name"
+                                class="result-image">
+                            <div class="result-info">
+                                <h5>{{ result.name }}</h5>
+                                <p>{{ result.publisher }}</p>
+                                <span *ngIf="result.startYear">{{ result.startYear }}</span>
+                            </div>
+                        </mat-card>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <mat-form-field appearance="outline" class="half-width">
+                        <mat-label>Publisher</mat-label>
+                        <input matInput formControlName="publisher">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="quarter-width">
+                        <mat-label>Start Year</mat-label>
+                        <input matInput type="number" formControlName="startYear">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="quarter-width">
+                        <mat-label>End Year</mat-label>
+                        <input matInput type="number" formControlName="endYear">
+                    </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                    <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Description</mat-label>
+                        <textarea matInput formControlName="description" rows="4" maxlength="1000"></textarea>
+                        <mat-hint align="end">
+                            {{ seriesForm.get('description')?.value?.length || 0 }}/1000
+                        </mat-hint>
+                    </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                    <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Image URL</mat-label>
+                        <input matInput formControlName="imageUrl">
+                    </mat-form-field>
+                </div>
+
+                <div class="image-preview" *ngIf="seriesForm.get('imageUrl')?.value">
+                    <h4>Image Preview:</h4>
+                    <img [src]="seriesForm.get('imageUrl')?.value" [alt]="seriesForm.get('name')?.value"
+                        class="preview-image" onerror="this.style.display='none'">
+                </div>
+            </form>
+        </mat-card-content>
+
+        <mat-card-actions align="end">
+            <button mat-button type="button" (click)="cancel()">Cancel</button>
+            <button mat-raised-button color="primary" type="submit" (click)="onSubmit()"
+                [disabled]="!seriesForm.valid || loading">
+                <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+                {{ isEditMode ? 'Update' : 'Create' }} Series
+            </button>
+        </mat-card-actions>
+    </mat-card>
+</div>

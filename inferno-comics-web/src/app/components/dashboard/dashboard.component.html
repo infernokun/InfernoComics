@@ -1,0 +1,73 @@
+<div class="dashboard-container">
+    <h1>Collection Dashboard</h1>
+
+    <div class="stats-grid" *ngIf="!loading">
+        <mat-card class="stat-card">
+            <mat-card-header>
+                <mat-card-title>Total Series</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+                <div class="stat-number">{{ totalSeries }}</div>
+            </mat-card-content>
+        </mat-card>
+
+        <mat-card class="stat-card">
+            <mat-card-header>
+                <mat-card-title>Total Comic Books</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+                <div class="stat-number">{{ totalComicBooks }}</div>
+            </mat-card-content>
+        </mat-card>
+
+        <mat-card class="stat-card">
+            <mat-card-header>
+                <mat-card-title>Key Issues</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+                <div class="stat-number">{{ keyIssues.length }}</div>
+            </mat-card-content>
+        </mat-card>
+    </div>
+
+    <div class="content-sections" *ngIf="!loading">
+        <section class="recent-series">
+            <h2>Recent Series</h2>
+            <div class="series-grid">
+                <mat-card *ngFor="let series of recentSeries" class="series-card" [routerLink]="['/series', series.id]">
+                    <img mat-card-image [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name"
+                        onerror="this.src='assets/placeholder-comic.jpg'">
+                    <mat-card-header>
+                        <mat-card-title>{{ series.name }}</mat-card-title>
+                        <mat-card-subtitle>{{ series.publisher }}</mat-card-subtitle>
+                    </mat-card-header>
+                </mat-card>
+            </div>
+        </section>
+
+        <section class="key-issues">
+            <h2>Key Issues</h2>
+            <div class="issues-grid">
+                <mat-card *ngFor="let issue of keyIssues" class="issue-card">
+                    <img mat-card-image [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'"
+                        [alt]="'Issue #' + issue.issueNumber" onerror="this.src='assets/placeholder-comic.jpg'">
+                    <mat-card-header>
+                        <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
+                        <mat-card-subtitle>{{ issue.title }}</mat-card-subtitle>
+                    </mat-card-header>
+                    <mat-card-content>
+                        <mat-chip-listbox>
+                            <mat-chip-option selected>Key Issue</mat-chip-option>
+                            <mat-chip-option *ngIf="issue.condition">{{ issue.condition }}</mat-chip-option>
+                        </mat-chip-listbox>
+                    </mat-card-content>
+                </mat-card>
+            </div>
+        </section>
+    </div>
+
+    <div class="loading-container" *ngIf="loading">
+        <mat-spinner></mat-spinner>
+        <p>Loading dashboard...</p>
+    </div>
+</div>

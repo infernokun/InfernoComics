@@ -1,0 +1,128 @@
+.series-list-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+
+    h1 {
+        margin: 0;
+        color: #333;
+    }
+}
+
+.search-bar {
+    margin-bottom: 30px;
+
+    .search-field {
+        width: 100%;
+        max-width: 400px;
+    }
+}
+
+.series-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.series-card {
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .card-image {
+        height: 200px;
+        overflow: hidden;
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    }
+
+    mat-card-content {
+        flex-grow: 1;
+
+        .description {
+            color: #666;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .series-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+
+            span {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                color: #777;
+                font-size: 0.9rem;
+
+                mat-icon {
+                    font-size: 16px;
+                    width: 16px;
+                    height: 16px;
+                }
+            }
+        }
+    }
+
+    mat-card-actions {
+        padding: 16px;
+        border-top: 1px solid #eee;
+    }
+}
+
+.no-results,
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #666;
+
+    mat-icon {
+        font-size: 64px;
+        width: 64px;
+        height: 64px;
+        color: #ccc;
+        margin-bottom: 20px;
+    }
+
+    h3 {
+        margin: 20px 0 10px 0;
+        color: #555;
+    }
+
+    p {
+        margin-bottom: 30px;
+    }
+}
+
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+
+    p {
+        margin-top: 20px;
+        color: #666;
+    }
+}

@@ -1,0 +1,168 @@
+<div class="series-detail-container" *ngIf="!loading && series">
+    <div class="series-header">
+        <div class="series-image">
+            <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name"
+                onerror="this.src='assets/placeholder-comic.jpg'">
+        </div>
+
+        <div class="series-info">
+            <h1>{{ series.name }}</h1>
+            <h2 *ngIf="series.publisher">{{ series.publisher }}</h2>
+
+            <div class="series-meta">
+                <div class="meta-item" *ngIf="series.startYear">
+                    <mat-icon>calendar_today</mat-icon>
+                    <span>{{ series.startYear }}{{ series.endYear ? ' - ' + series.endYear : ' - Present' }}</span>
+                </div>
+                <div class="meta-item">
+                    <mat-icon>library_books</mat-icon>
+                    <span>{{ comicBooks.length }} issues owned</span>
+                </div>
+                <div class="meta-item" *ngIf="getKeyIssuesCount() > 0">
+                    <mat-icon>star</mat-icon>
+                    <span>{{ getKeyIssuesCount() }} key issues</span>
+                </div>
+            </div>
+
+            <p class="description" *ngIf="series.description">
+                {{ series.description }}
+            </p>
+
+            <div class="value-info">
+                <div class="value-card">
+                    <span class="value-label">Total Purchase Price</span>
+                    <span class="value-amount">${{ getTotalPurchasePrice().toFixed(2) }}</span>
+                </div>
+                <div class="value-card">
+                    <span class="value-label">Current Value</span>
+                    <span class="value-amount">${{ getTotalValue().toFixed(2) }}</span>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button mat-raised-button color="primary" (click)="addComicBook()">
+                    <mat-icon>add</mat-icon>
+                    Add Comic Book
+                </button>
+                <button mat-stroked-button (click)="editSeries()">
+                    <mat-icon>edit</mat-icon>
+                    Edit Series
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <mat-tab-group [(selectedIndex)]="selectedTabIndex" class="content-tabs">
+        <mat-tab label="My Collection">
+            <div class="tab-content">
+                <div class="collection-grid" *ngIf="comicBooks.length > 0">
+                    <mat-card *ngFor="let comic of comicBooks" class="comic-card">
+                        <div class="comic-image">
+                            <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'"
+                                [alt]="'Issue #' + comic.issueNumber" onerror="this.src='assets/placeholder-comic.jpg'">
+                            <div class="key-issue-badge" *ngIf="comic.isKeyIssue">
+                                <mat-icon>star</mat-icon>
+                            </div>
+                        </div>
+
+                        <mat-card-header>
+                            <mat-card-title>Issue #{{ comic.issueNumber }}</mat-card-title>
+                            <mat-card-subtitle>{{ comic.title }}</mat-card-subtitle>
+                        </mat-card-header>
+
+                        <mat-card-content>
+                            <div class="comic-details">
+                                <div class="detail-row" *ngIf="comic.condition">
+                                    <span class="label">Condition:</span>
+                                    <span class="value">{{ comic.condition | titlecase }}</span>
+                                </div>
+                                <div class="detail-row" *ngIf="comic.purchasePrice">
+                                    <span class="label">Purchase Price:</span>
+                                    <span class="value">${{ comic.purchasePrice }}</span>
+                                </div>
+                                <div class="detail-row" *ngIf="comic.currentValue">
+                                    <span class="label">Current Value:</span>
+                                    <span class="value">${{ comic.currentValue }}</span>
+                                </div>
+                                <div class="detail-row" *ngIf="comic.coverDate">
+                                    <span class="label">Cover Date:</span>
+                                    <span class="value">{{ comic.coverDate | date:'MMM yyyy' }}</span>
+                                </div>
+                            </div>
+                        </mat-card-content>
+
+                        <mat-card-actions>
+                            <button mat-button color="primary" (click)="editComicBook(comic)">
+                                <mat-icon>edit</mat-icon>
+                                Edit
+                            </button>
+                            <button mat-button color="warn" (click)="deleteComicBook(comic)">
+                                <mat-icon>delete</mat-icon>
+                                Delete
+                            </button>
+                        </mat-card-actions>
+                    </mat-card>
+                </div>
+
+                <div class="empty-collection" *ngIf="comicBooks.length === 0">
+                    <mat-icon>library_add</mat-icon>
+                    <h3>No comic books yet</h3>
+                    <p>Start adding issues to your collection</p>
+                    <button mat-raised-button color="primary" (click)="addComicBook()">
+                        Add First Issue
+                    </button>
+                </div>
+            </div>
+        </mat-tab>
+
+        <mat-tab label="Browse Issues" *ngIf="comicVineIssues.length > 0">
+            <div class="tab-content">
+                <div class="browse-grid">
+                    <mat-card *ngFor="let issue of comicVineIssues" class="browse-card"
+                        [class.owned]="isIssueOwned(issue.issueNumber)">
+                        <div class="browse-image">
+                            <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'"
+                                [alt]="'Issue #' + issue.issueNumber" onerror="this.src='assets/placeholder-comic.jpg'">
+                            <div class="owned-badge" *ngIf="isIssueOwned(issue.issueNumber)">
+                                <mat-icon>check_circle</mat-icon>
+                            </div>
+                        </div>
+
+                        <mat-card-header>
+                            <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
+                            <mat-card-subtitle>{{ issue.name }}</mat-card-subtitle>
+                        </mat-card-header>
+
+                        <mat-card-content>
+                            <p *ngIf="issue.description" class="issue-description">
+                                {{ issue.description | slice:0:100 }}{{ issue.description && issue.description.length >
+                                100 ? '...' : '' }}
+                            </p>
+                            <p *ngIf="issue.coverDate" class="cover-date">
+                                Cover Date: {{ issue.coverDate }}
+                            </p>
+                        </mat-card-content>
+
+                        <mat-card-actions>
+                            <button mat-raised-button color="primary" *ngIf="!isIssueOwned(issue.issueNumber)"
+                                (click)="addFromComicVine(issue)">
+                                <mat-icon>add</mat-icon>
+                                Add to Collection
+                            </button>
+                            <button mat-stroked-button *ngIf="isIssueOwned(issue.issueNumber)"
+                                (click)="editComicBook(getOwnedIssue(issue.issueNumber)!)">
+                                <mat-icon>edit</mat-icon>
+                                Edit
+                            </button>
+                        </mat-card-actions>
+                    </mat-card>
+                </div>
+            </div>
+        </mat-tab>
+    </mat-tab-group>
+</div>
+
+<div class="loading-container" *ngIf="loading">
+    <mat-spinner></mat-spinner>
+    <p>Loading series details...</p>
+</div>
