@@ -7,7 +7,7 @@ services:
       - BASE_URL=http://inferno-comics-web
       - REST_URL=/api
     ports:
-      - "8764:80"
+      - "8784:80"
     volumes:
       - inferno-comics-web:/var/log/nginx
     depends_on:
@@ -34,7 +34,7 @@ services:
     #build: ./inferno-comics-rest
     restart: always
     ports:
-      - "8765:8080"
+      - "8785:8080"
     environment:
       DOCKER_COMPOSE_PATH: "${DOCKER_COMPOSE_PATH:-/var/tmp/inferno-comics}"
       DB_IP: "${POSTGRES_IP:-inferno-comics-db}"
