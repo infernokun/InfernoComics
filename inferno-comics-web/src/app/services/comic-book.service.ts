@@ -7,44 +7,66 @@ import { ComicBookRequest } from '../models/comic-book-request.model';
 import { EnvironmentService } from './environment.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ComicBookService {
   private apiUrl: string = '';
 
-  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
+  constructor(
+    private http: HttpClient,
+    private environmentService: EnvironmentService
+  ) {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/comic-books`;
   }
 
-  getAllComicBooks(): Observable<ComicBook[]> {
-    return this.http.get<ComicBook[]>(this.apiUrl);
+  getAllComicBooks(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl);
   }
 
-  getComicBookById(id: number): Observable<ComicBook> {
-    return this.http.get<ComicBook>(`${this.apiUrl}/${id}`);
+  getComicBookById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
-  getComicBooksBySeriesId(seriesId: number): Observable<ComicBook[]> {
-    return this.http.get<ComicBook[]>(`${this.apiUrl}/series/${seriesId}`);
+  getComicBooksBySeries(seriesId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/series/${seriesId}`);
   }
 
-  searchComicVineIssues(seriesId: number): Observable<ComicVineIssue[]> {
-    return this.http.get<ComicVineIssue[]>(`${this.apiUrl}/series/${seriesId}/search-comic-vine`);
+  createComicBook(comicBook: any): Observable<any> {
+    return this.http.post<any>(this.apiUrl, comicBook);
   }
 
-  getKeyIssues(): Observable<ComicBook[]> {
-    return this.http.get<ComicBook[]>(`${this.apiUrl}/key-issues`);
+  updateComicBook(id: number, comicBook: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, comicBook);
   }
 
-  createComicBook(comicBook: ComicBookRequest): Observable<ComicBook> {
-    return this.http.post<ComicBook>(this.apiUrl, comicBook);
+  deleteComicBook(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 
-  updateComicBook(id: number, comicBook: ComicBookRequest): Observable<ComicBook> {
-    return this.http.put<ComicBook>(`${this.apiUrl}/${id}`, comicBook);
+  // Search methods
+  searchComicBooks(query: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/search?query=${encodeURIComponent(query)}`
+    );
   }
 
-  deleteComicBook(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  // Statistics methods
+  getComicBookStats(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/stats`);
+  }
+
+  // Recent additions
+  getRecentComicBooks(limit: number = 10): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/recent?limit=${limit}`);
+  }
+
+  // Key issues
+  getKeyIssues(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/key-issues`);
+  }
+
+  // Value calculations
+  getTotalValue(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/total-value`);
   }
 }

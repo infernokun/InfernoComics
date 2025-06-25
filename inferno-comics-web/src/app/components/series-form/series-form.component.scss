@@ -1,13 +1,40 @@
 .series-form-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 24px;
+}
+
+mat-card {
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--shadow-lg) !important;
+    background: var(--surface-color) !important;
+    transition: all 0.3s ease;
+
+    mat-card-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+        color: white !important;
+        padding: 24px;
+        margin: -1px -1px 0 -1px;
+        border-radius: 12px 12px 0 0;
+
+        .mat-mdc-card-title {
+            color: white !important;
+            font-weight: 600;
+            font-size: 1.5rem;
+        }
+    }
+
+    mat-card-content {
+        padding: 32px;
+        background: var(--surface-color) !important;
+        color: var(--text-primary) !important;
+    }
 }
 
 .form-row {
     display: flex;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 20px;
+    margin-bottom: 20px;
 
     .full-width {
         flex: 1;
@@ -22,96 +49,354 @@
     }
 }
 
+// Force Material form field styling with maximum specificity
+::ng-deep .series-form-container {
+    .mat-mdc-form-field {
+        width: 100%;
+
+        // Input wrapper
+        .mat-mdc-text-field-wrapper {
+            background-color: var(--surface-color) !important;
+            border: 2px solid var(--border-color) !important;
+            border-radius: 8px !important;
+        }
+
+        // Main input element - FORCE the text color
+        .mat-mdc-input-element,
+        input.mat-mdc-input-element,
+        textarea.mat-mdc-input-element {
+            color: var(--text-primary) !important;
+            background: transparent !important;
+            -webkit-text-fill-color: var(--text-primary) !important;
+        }
+
+        // Label styling
+        .mat-mdc-form-field-label,
+        .mat-mdc-floating-label {
+            color: var(--text-secondary) !important;
+        }
+
+        // Focused state
+        &.mat-focused {
+            .mat-mdc-text-field-wrapper {
+                border-color: var(--primary-color) !important;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+            }
+
+            .mat-mdc-form-field-label,
+            .mat-mdc-floating-label {
+                color: var(--primary-color) !important;
+            }
+        }
+
+        // Error states
+        .mat-mdc-form-field-error {
+            color: var(--error-color) !important;
+        }
+
+        // Hint text
+        .mat-mdc-form-field-hint {
+            color: var(--text-muted) !important;
+        }
+
+        // Remove Material's default backgrounds
+        .mdc-text-field,
+        .mdc-text-field--filled,
+        .mdc-text-field__input {
+            background: transparent !important;
+            background-color: transparent !important;
+        }
+
+        // Outline styling for outline appearance
+        .mdc-notched-outline {
+
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__notch,
+            .mdc-notched-outline__trailing {
+                border-color: var(--border-color) !important;
+            }
+        }
+
+        &.mat-focused .mdc-notched-outline {
+
+            .mdc-notched-outline__leading,
+            .mdc-notched-outline__notch,
+            .mdc-notched-outline__trailing {
+                border-color: var(--primary-color) !important;
+                border-width: 2px !important;
+            }
+        }
+
+        // Text area specific
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            color: var(--text-primary) !important;
+            -webkit-text-fill-color: var(--text-primary) !important;
+        }
+
+        // Number input
+        input[type="number"] {
+            color: var(--text-primary) !important;
+            -webkit-text-fill-color: var(--text-primary) !important;
+        }
+
+        // Placeholder text
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted) !important;
+            opacity: 0.7;
+        }
+    }
+}
+
 .comic-vine-search {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--background-color) !important;
+    border-radius: 8px;
+    border: 2px dashed var(--border-color);
 
     button {
         display: flex;
         align-items: center;
         gap: 8px;
+        background: linear-gradient(135deg, var(--secondary-color), var(--primary-color)) !important;
+        color: white !important;
+        font-weight: 600;
+        padding: 12px 20px;
+        transition: all 0.2s ease;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        &:disabled {
+            background: var(--text-muted) !important;
+            opacity: 0.6;
+        }
+    }
+
+    mat-spinner {
+        color: var(--primary-color);
     }
 }
 
 .comic-vine-results {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--background-color) !important;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
 
     h4 {
-        margin-bottom: 16px;
-        color: #333;
+        margin-bottom: 20px;
+        color: var(--text-primary) !important;
+        font-weight: 600;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        &::before {
+            content: '🔍';
+            font-size: 1.1rem;
+        }
     }
 
     .results-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 16px;
-        max-height: 400px;
+        max-height: 500px;
         overflow-y: auto;
+        padding-right: 8px;
+
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--text-muted);
+            border-radius: 3px;
+        }
     }
 
     .result-card {
         cursor: pointer;
-        transition: transform 0.2s ease-in-out;
-        padding: 12px;
+        transition: all 0.3s ease-in-out;
+        padding: 16px;
+        border: 2px solid var(--border-color);
+        background: var(--surface-color) !important;
 
         &:hover {
             transform: scale(1.02);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-color);
         }
 
         .result-image {
             width: 100%;
-            height: 120px;
+            height: 140px;
             object-fit: cover;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            border-radius: 6px;
         }
 
         .result-info {
             h5 {
-                margin: 0 0 4px 0;
-                font-size: 0.9rem;
-                font-weight: 500;
+                margin: 0 0 6px 0;
+                font-size: 0.95rem;
+                font-weight: 600;
+                color: var(--text-primary) !important;
+                line-height: 1.3;
             }
 
             p {
-                margin: 0 0 4px 0;
-                color: #666;
-                font-size: 0.8rem;
+                margin: 0 0 6px 0;
+                color: var(--text-secondary) !important;
+                font-size: 0.85rem;
+                font-weight: 500;
             }
 
             span {
-                color: #999;
+                color: var(--text-muted) !important;
                 font-size: 0.8rem;
+                font-weight: 500;
+                background: var(--background-color);
+                padding: 2px 6px;
+                border-radius: 4px;
             }
         }
     }
 }
 
 .image-preview {
-    margin-top: 20px;
+    margin: 24px 0;
+    text-align: center;
+    padding: 20px;
+    background: var(--background-color) !important;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
 
     h4 {
         margin-bottom: 16px;
-        color: #333;
+        color: var(--text-primary) !important;
+        font-weight: 600;
     }
 
     .preview-image {
         max-width: 200px;
         max-height: 300px;
         border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow-md);
+        border: 2px solid var(--border-color);
     }
 }
 
 mat-card-actions {
-    padding: 16px 24px;
+    padding: 20px 32px;
+    background: var(--background-color) !important;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
     gap: 16px;
 
     button {
         display: flex;
         align-items: center;
         gap: 8px;
+        padding: 12px 24px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+
+        &.mat-mdc-button {
+            color: var(--text-secondary) !important;
+            border: 2px solid var(--border-color);
+            background: var(--surface-color) !important;
+
+            &:hover {
+                background-color: var(--primary-color) !important;
+                color: white !important;
+                transform: translateY(-1px);
+            }
+        }
+
+        &.mat-mdc-raised-button {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+            color: white !important;
+
+            &:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-lg);
+            }
+
+            &:disabled {
+                background: var(--text-muted) !important;
+                opacity: 0.6;
+            }
+        }
+    }
+}
+
+// Additional force overrides for stubborn Material components
+::ng-deep mat-card.mat-mdc-card {
+    background: var(--surface-color) !important;
+    color: var(--text-primary) !important;
+
+    mat-card-content {
+        background: var(--surface-color) !important;
+        color: var(--text-primary) !important;
+    }
+
+    mat-card-actions {
+        background: var(--background-color) !important;
+    }
+}
+
+// Force input colors globally for this component
+::ng-deep .series-form-container input,
+::ng-deep .series-form-container textarea {
+    color: var(--text-primary) !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    background: transparent !important;
+}
+
+// Dark theme specific fixes
+html.dark-theme,
+:root.dark-theme {
+    .series-form-container {
+        ::ng-deep .mat-mdc-input-element {
+            color: #f1f5f9 !important;
+            -webkit-text-fill-color: #f1f5f9 !important;
+        }
+
+        ::ng-deep input,
+        ::ng-deep textarea {
+            color: #f1f5f9 !important;
+            -webkit-text-fill-color: #f1f5f9 !important;
+        }
+    }
+}
+
+// Light theme specific fixes
+html.light-theme,
+:root.light-theme {
+    .series-form-container {
+        ::ng-deep .mat-mdc-input-element {
+            color: #1f2937 !important;
+            -webkit-text-fill-color: #1f2937 !important;
+        }
+
+        ::ng-deep input,
+        ::ng-deep textarea {
+            color: #1f2937 !important;
+            -webkit-text-fill-color: #1f2937 !important;
+        }
     }
 }

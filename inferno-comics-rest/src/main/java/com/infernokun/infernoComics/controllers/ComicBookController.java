@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.controllers;
 
+import com.infernokun.infernoComics.logger.InfernoComicsLogger;
 import com.infernokun.infernoComics.models.ComicBook;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.repositories.ComicBookRepository;
@@ -8,13 +9,15 @@ import com.infernokun.infernoComics.services.ComicVineService;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.Optional;
+import java.math.BigDecimal;
+import java.util.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/comic-books")
 @CrossOrigin(origins = "http://localhost:4200")
@@ -46,18 +49,24 @@ public class ComicBookController {
         return comicBookRepository.findBySeriesIdOrderByIssueNumberAsc(seriesId);
     }
 
-    @GetMapping("/series/{seriesId}/search-comic-vine")
-    public List<ComicVineService.ComicVineIssueDto> searchComicVineIssues(@PathVariable Long seriesId) {
-        Optional<Series> series = seriesRepository.findById(seriesId);
-        if (series.isPresent() && series.get().getComicVineId() != null) {
-            return comicVineService.searchIssues(series.get().getComicVineId());
+    @GetMapping("/{seriesId}/search-comic-vine")
+    public ResponseEntity<List<ComicVineService.ComicVineIssueDto>> searchComicVineIssues(@PathVariable Long seriesId) {
+        try {
+            Optional<Series> series = seriesRepository.findById(seriesId);
+            if (series.isPresent() && series.get().getComicVineId() != null) {
+                List<ComicVineService.ComicVineIssueDto> results = comicVineService.searchIssues(series.get().getComicVineId());
+                return ResponseEntity.ok(results);
+            }
+            return ResponseEntity.ok(new ArrayList<>());
+        } catch (Exception e) {
+            log.error("Error in Comic Vine issues search: {}", e.getMessage());
+            return ResponseEntity.ok(new ArrayList<>());
         }
-        return List.of();
     }
 
     @GetMapping("/key-issues")
     public List<ComicBook> getKeyIssues() {
-        return comicBookRepository.findByIsKeyIssueTrue();
+        return comicBookRepository.findAll().stream().filter(ComicBook::getIsKeyIssue).toList();
     }
 
     @PostMapping
@@ -120,6 +129,7 @@ public class ComicBookController {
         return ResponseEntity.notFound().build();
     }
 
+    // Request DTO
     @Setter
     @Getter
     public static class ComicBookRequest {

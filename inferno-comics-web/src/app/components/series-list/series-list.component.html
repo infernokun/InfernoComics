@@ -19,7 +19,7 @@
         <mat-card *ngFor="let s of filteredSeries" class="series-card" (click)="viewSeries(s.id)">
             <div class="card-image">
                 <img [src]="s.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="s.name"
-                    onerror="this.src='assets/placeholder-comic.jpg'">
+                    onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
             </div>
             <mat-card-header>
                 <mat-card-title>{{ s.name }}</mat-card-title>

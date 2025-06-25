@@ -83,7 +83,8 @@
                 <div class="image-preview" *ngIf="seriesForm.get('imageUrl')?.value">
                     <h4>Image Preview:</h4>
                     <img [src]="seriesForm.get('imageUrl')?.value" [alt]="seriesForm.get('name')?.value"
-                        class="preview-image" onerror="this.style.display='none'">
+                        class="preview-image"
+                        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'; this.style.display='block'} else {this.style.display='none'}">
                 </div>
             </form>
         </mat-card-content>

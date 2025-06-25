@@ -84,7 +84,7 @@
             <div class="image-preview" *ngIf="comicBookForm.get('imageUrl')?.value">
                 <img [src]="comicBookForm.get('imageUrl')?.value"
                     [alt]="'Issue #' + comicBookForm.get('issueNumber')?.value" class="preview-image"
-                    onerror="this.style.display='none'">
+                    onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'; this.style.display='block'} else {this.style.display='none'}">
             </div>
 
             <div class="form-row">

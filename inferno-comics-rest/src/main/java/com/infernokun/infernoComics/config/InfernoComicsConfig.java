@@ -16,6 +16,7 @@ public class InfernoComicsConfig {
     private String defaultAdminUsername;
     private String defaultAdminPassword;
     private String encryptionKey;
-    private String apiKey;
     private String comicVineAPIKey;
+    private String groqAPIKey;
+    private String groqModel;
 }

@@ -1,0 +1,53 @@
+import { Injectable } from '@angular/core';
+import { EnvironmentService } from './environment.service';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class ComicVineService {
+  apiUrl: string = '';
+
+  constructor(
+    private http: HttpClient,
+    private environmentService: EnvironmentService
+  ) {
+    this.apiUrl = this.environmentService.settings?.restUrl!;
+  }
+
+  // Search for series from Comic Vine
+  searchSeries(query: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/series/search-comic-vine?query=${encodeURIComponent(
+        query
+      )}`
+    );
+  }
+
+  // Search for issues from Comic Vine for a specific series
+  searchIssues(seriesId: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/series/${seriesId}/search-comic-vine`
+    );
+  }
+}
+
+// Types for Comic Vine data (optional but helpful)
+export interface ComicVineSeriesDto {
+  id: string;
+  name: string;
+  description: string;
+  publisher: string;
+  startYear: number;
+  imageUrl: string;
+}
+
+export interface ComicVineIssueDto {
+  id: string;
+  issueNumber: string;
+  name: string;
+  description: string;
+  coverDate: string;
+  imageUrl: string;
+}

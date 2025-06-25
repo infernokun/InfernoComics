@@ -10,14 +10,14 @@ import { EnvironmentService } from './services/environment.service';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { CodeEditorModule, provideCodeEditor } from '@ngstack/code-editor';
-import { AppInitService } from './services/app-init.service';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AuthInterceptor } from './services/auth/auth-interceptor.service';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { SeriesDetailComponent } from './components/series-detail/series-detail.component';
+import { ComicBookViewDialog, RangeSelectionDialog, SeriesDetailComponent } from './components/series-detail/series-detail.component';
 import { SeriesFormComponent } from './components/series-form/series-form.component';
 import { SeriesListComponent } from './components/series-list/series-list.component';
 import { ComicBookFormComponent } from './components/comic-book-form/comic-book-form.component';
+import { ThemeService } from './services/theme.service';
 
 export function init_app(environmentService: EnvironmentService) {
   return () => {
@@ -44,7 +44,9 @@ export function init_app(environmentService: EnvironmentService) {
     SeriesDetailComponent,
     ComicBookFormComponent,
     SeriesFormComponent,
-    DashboardComponent
+    DashboardComponent,
+    RangeSelectionDialog,
+    ComicBookViewDialog
   ],
   imports: [
     BrowserModule,
@@ -59,7 +61,7 @@ export function init_app(environmentService: EnvironmentService) {
   ],
   providers: [
     EnvironmentService,
-    AppInitService,
+    ThemeService,
     provideAppInitializer(() => {
       const initializerFn = (init_app)(inject(EnvironmentService));
       return initializerFn();

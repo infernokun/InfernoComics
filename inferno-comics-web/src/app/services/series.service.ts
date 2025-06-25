@@ -6,40 +6,56 @@ import { ComicVineSeries } from '../models/comic-vine.model';
 import { EnvironmentService } from './environment.service';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SeriesService {
   private apiUrl: string = '';
 
-  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
+  constructor(
+    private http: HttpClient,
+    private environmentService: EnvironmentService
+  ) {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/series`;
   }
 
-  getAllSeries(): Observable<Series[]> {
-    return this.http.get<Series[]>(this.apiUrl);
+  getAllSeries(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl);
   }
 
-  getSeriesById(id: number): Observable<Series> {
-    return this.http.get<Series>(`${this.apiUrl}/${id}`);
+  getSeriesById(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
-  searchSeries(name: string): Observable<Series[]> {
-    return this.http.get<Series[]>(`${this.apiUrl}/search?name=${name}`);
+  createSeries(series: any): Observable<any> {
+    return this.http.post<any>(this.apiUrl, series);
   }
 
-  searchComicVineSeries(query: string): Observable<ComicVineSeries[]> {
-    return this.http.get<ComicVineSeries[]>(`${this.apiUrl}/search-comic-vine?query=${query}`);
+  updateSeries(id: number, series: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}`, series);
   }
 
-  createSeries(series: Series): Observable<Series> {
-    return this.http.post<Series>(this.apiUrl, series);
+  deleteSeries(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/${id}`);
   }
 
-  updateSeries(id: number, series: Series): Observable<Series> {
-    return this.http.put<Series>(`${this.apiUrl}/${id}`, series);
+  searchSeries(query: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/search?query=${encodeURIComponent(query)}`
+    );
   }
 
-  deleteSeries(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  // Comic Vine integration - for searching series when creating/editing
+  searchComicVineSeries(query: string): Observable<any[]> {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/search-comic-vine?query=${encodeURIComponent(query)}`
+    );
+  }
+
+  getSeriesStats(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/stats`);
+  }
+
+  getRecentSeries(limit: number = 10): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/recent?limit=${limit}`);
   }
 }

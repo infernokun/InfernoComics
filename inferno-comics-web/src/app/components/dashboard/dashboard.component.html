@@ -36,10 +36,10 @@
             <div class="series-grid">
                 <mat-card *ngFor="let series of recentSeries" class="series-card" [routerLink]="['/series', series.id]">
                     <img mat-card-image [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name"
-                        onerror="this.src='assets/placeholder-comic.jpg'">
-                    <mat-card-header>
-                        <mat-card-title>{{ series.name }}</mat-card-title>
-                        <mat-card-subtitle>{{ series.publisher }}</mat-card-subtitle>
+                        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}" />
+                        <mat-card-header>
+                    <mat-card-title>{{ series.name }}</mat-card-title>
+                    <mat-card-subtitle>{{ series.publisher }}</mat-card-subtitle>
                     </mat-card-header>
                 </mat-card>
             </div>
@@ -50,10 +50,11 @@
             <div class="issues-grid">
                 <mat-card *ngFor="let issue of keyIssues" class="issue-card">
                     <img mat-card-image [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'"
-                        [alt]="'Issue #' + issue.issueNumber" onerror="this.src='assets/placeholder-comic.jpg'">
-                    <mat-card-header>
-                        <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
-                        <mat-card-subtitle>{{ issue.title }}</mat-card-subtitle>
+                        [alt]="'Issue #' + issue.issueNumber"
+                        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}"/>
+                        <mat-card-header>
+                    <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
+                    <mat-card-subtitle>{{ issue.title }}</mat-card-subtitle>
                     </mat-card-header>
                     <mat-card-content>
                         <mat-chip-listbox>

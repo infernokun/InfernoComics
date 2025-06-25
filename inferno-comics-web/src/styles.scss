@@ -1,10 +1,70 @@
-/* src/styles.scss */
-@import '@angular/material/prebuilt-themes/purple-green.css';
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+// Default to dark theme (applied immediately)
+:root {
+  --primary-color: #3b82f6;
+  --primary-dark: #2563eb;
+  --secondary-color: #10b981;
+  --accent-color: #f59e0b;
+  --background-color: #0f172a;
+  --surface-color: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border-color: #334155;
+  --error-color: #ef4444;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+}
+
+// Light theme overrides
+:root.light-theme {
+  --primary-color: #2563eb;
+  --primary-dark: #1d4ed8;
+  --secondary-color: #10b981;
+  --accent-color: #f59e0b;
+  --background-color: #f8fafc;
+  --surface-color: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+  --border-color: #e5e7eb;
+  --error-color: #ef4444;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+// Dark theme explicit class (same as default)
+:root.dark-theme {
+  --primary-color: #3b82f6;
+  --primary-dark: #2563eb;
+  --secondary-color: #10b981;
+  --accent-color: #f59e0b;
+  --background-color: #0f172a;
+  --surface-color: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --border-color: #334155;
+  --error-color: #ef4444;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+}
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
 }
 
 html, body {
@@ -13,52 +73,167 @@ html, body {
 
 body {
   margin: 0;
-  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
-  background-color: #f5f5f5;
+  font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  line-height: 1.6;
 }
 
 // Custom scrollbar
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--background-color);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--border-color);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: var(--text-muted);
 }
 
-// Material overrides
+// Material component overrides
 .mat-mdc-card {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+  box-shadow: var(--shadow-md) !important;
   border-radius: 12px !important;
+  border: 1px solid var(--border-color) !important;
+  background-color: var(--surface-color) !important;
+  color: var(--text-primary) !important;
 }
 
 .mat-mdc-raised-button {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-radius: 8px !important;
+  font-weight: 500 !important;
 }
 
 .mat-mdc-button-base {
   border-radius: 8px !important;
+  font-weight: 500 !important;
 }
 
 .mat-mdc-form-field {
   .mat-mdc-text-field-wrapper {
     border-radius: 8px !important;
+    background-color: var(--surface-color) !important;
+  }
+  
+  .mat-mdc-form-field-error {
+    color: var(--error-color) !important;
+  }
+  
+  .mat-mdc-form-field-label {
+    color: var(--text-secondary) !important;
+  }
+  
+  .mat-mdc-input-element {
+    color: var(--text-primary) !important;
   }
 }
 
-// Utility classes
-.text-center {
-  text-align: center;
+.mat-mdc-card-header {
+  .mat-mdc-card-title {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+  }
+  
+  .mat-mdc-card-subtitle {
+    color: var(--text-secondary) !important;
+  }
 }
+
+.mat-mdc-card-content {
+  color: var(--text-primary) !important;
+}
+
+.mat-mdc-snack-bar-container {
+  --mdc-snackbar-container-color: var(--surface-color) !important;
+  --mdc-snackbar-supporting-text-color: var(--text-primary) !important;
+}
+
+.mat-mdc-dialog-surface {
+  background-color: var(--surface-color) !important;
+  color: var(--text-primary) !important;
+}
+
+.mat-mdc-select {
+  .mat-mdc-select-value {
+    color: var(--text-primary) !important;
+  }
+  
+  .mat-mdc-select-arrow {
+    color: var(--text-secondary) !important;
+  }
+}
+
+.mat-mdc-tab-header {
+  background-color: var(--background-color) !important;
+}
+
+.mat-mdc-tab {
+  color: var(--text-secondary) !important;
+  
+  &.mdc-tab--active {
+    color: var(--primary-color) !important;
+  }
+}
+
+// Theme toggle button styling
+.theme-toggle {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.25) !important;
+  }
+  
+  mat-icon {
+    transition: transform 0.3s ease;
+  }
+  
+  &:hover mat-icon {
+    transform: rotate(180deg);
+  }
+}
+
+// Custom button variants
+.btn-primary {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  
+  &:hover {
+    background-color: var(--primary-dark) !important;
+  }
+}
+
+.btn-secondary {
+  background-color: var(--secondary-color) !important;
+  color: white !important;
+}
+
+.btn-accent {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+}
+
+// Utility classes
+.text-center { text-align: center; }
+.text-primary { color: var(--text-primary) !important; }
+.text-secondary { color: var(--text-secondary) !important; }
+.text-muted { color: var(--text-muted) !important; }
+.text-success { color: var(--success-color) !important; }
+.text-error { color: var(--error-color) !important; }
+.text-warning { color: var(--warning-color) !important; }
+
+.bg-surface { background-color: var(--surface-color) !important; }
+.bg-primary { background-color: var(--primary-color) !important; }
 
 .mt-1 { margin-top: 8px; }
 .mt-2 { margin-top: 16px; }
@@ -74,6 +249,13 @@ body {
 .p-2 { padding: 16px; }
 .p-3 { padding: 24px; }
 .p-4 { padding: 32px; }
+
+.shadow-sm { box-shadow: var(--shadow-sm); }
+.shadow-md { box-shadow: var(--shadow-md); }
+.shadow-lg { box-shadow: var(--shadow-lg); }
+
+.rounded { border-radius: 8px; }
+.rounded-lg { border-radius: 12px; }
 
 // Animation classes
 .fade-in {
@@ -104,4 +286,12 @@ body {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+// Focus states
+.mat-mdc-button:focus,
+.mat-mdc-raised-button:focus,
+.mat-mdc-form-field:focus-within {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
 }

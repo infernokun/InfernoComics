@@ -70,7 +70,7 @@ public class ComicBook {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "series_id", nullable = false)
     @JsonBackReference
     private Series series;
