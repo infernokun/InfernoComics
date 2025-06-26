@@ -33,7 +33,7 @@ java {
 
 bootJar {
     archiveFileName = 'inferno-comics-rest.jar'
-	mainClass.set('com.infernokun.infernoComcics.InfernoComicsRestApplication')
+	mainClass.set('com.infernokun.infernoComics.InfernoComicsRestApplication')
 }
 
 configurations {
