@@ -32,9 +32,7 @@ spring:
     port: ${REDIS_PORT:6379}
     password: ${REDIS_PASS:inferno-comics}
     timeout: 6000
-    cache:
-      ttl: 3600
-
+    database: 0
 
   jackson:
     default-property-inclusion: NON_NULL
@@ -63,8 +61,6 @@ logging:
   level:
     org.hibernate: WARN
     org.hibernate.orm.connections.pooling: ERROR
-
-
 
 rsa:
   private-key: ${RSA_PRIVATE_KEY_PATH:certs/private.pem}
