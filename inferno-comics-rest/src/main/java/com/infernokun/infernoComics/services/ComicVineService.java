@@ -3,6 +3,10 @@ package com.infernokun.infernoComics.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +15,7 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
@@ -20,19 +25,94 @@ public class ComicVineService {
     private final ObjectMapper objectMapper;
     private final InfernoComicsConfig infernoComicsConfig;
     private final DescriptionGeneratorService descriptionGeneratorService;
+    private final StringRedisTemplate stringRedisTemplate;
 
     private static final String BASE_URL = "https://comicvine.gamespot.com/api";
+    private static final String SERIES_CACHE_PREFIX = "comic_vine_series:";
+    private static final String ISSUES_CACHE_PREFIX = "comic_vine_issues:";
+    private static final long CACHE_TTL_HOURS = 24; // Cache Comic Vine data for 24 hours
 
-    public ComicVineService(InfernoComicsConfig infernoComicsConfig, DescriptionGeneratorService descriptionGeneratorService) {
+    public ComicVineService(InfernoComicsConfig infernoComicsConfig,
+                            DescriptionGeneratorService descriptionGeneratorService,
+                            StringRedisTemplate stringRedisTemplate) {
         this.infernoComicsConfig = infernoComicsConfig;
         this.descriptionGeneratorService = descriptionGeneratorService;
+        this.stringRedisTemplate = stringRedisTemplate;
         this.webClient = WebClient.builder()
                 .baseUrl(BASE_URL)
                 .build();
         this.objectMapper = new ObjectMapper();
     }
 
+    // Cache series search results with annotation-based caching
+    @Cacheable(value = "comic-vine-series", key = "#query")
     public List<ComicVineSeriesDto> searchSeries(String query) {
+        log.info("Fetching series from Comic Vine API for query: {}", query);
+        return searchSeriesFromAPI(query);
+    }
+
+    // Force refresh series cache
+    @CachePut(value = "comic-vine-series", key = "#query")
+    public List<ComicVineSeriesDto> refreshSeriesSearch(String query) {
+        log.info("Force refreshing series cache for query: {}", query);
+        return searchSeriesFromAPI(query);
+    }
+
+    // Cache issues for a series
+    @Cacheable(value = "comic-vine-issues", key = "#seriesId")
+    public List<ComicVineIssueDto> searchIssues(String seriesId) {
+        log.info("Fetching issues from Comic Vine API for series ID: {}", seriesId);
+        return searchIssuesFromAPI(seriesId);
+    }
+
+    // Force refresh issues cache
+    @CachePut(value = "comic-vine-issues", key = "#seriesId")
+    public List<ComicVineIssueDto> refreshIssuesSearch(String seriesId) {
+        log.info("Force refreshing issues cache for series ID: {}", seriesId);
+        return searchIssuesFromAPI(seriesId);
+    }
+
+    // Clear all Comic Vine caches
+    @CacheEvict(value = {"comic-vine-series", "comic-vine-issues"}, allEntries = true)
+    public void clearAllComicVineCache() {
+        log.info("Cleared all Comic Vine caches");
+
+        // Also clear manual caches
+        try {
+            stringRedisTemplate.delete(stringRedisTemplate.keys(SERIES_CACHE_PREFIX + "*"));
+            stringRedisTemplate.delete(stringRedisTemplate.keys(ISSUES_CACHE_PREFIX + "*"));
+            log.info("Cleared manual Comic Vine caches");
+        } catch (Exception e) {
+            log.warn("Error clearing manual Comic Vine caches: {}", e.getMessage());
+        }
+    }
+
+    // Manual caching method for more control
+    public List<ComicVineSeriesDto> searchSeriesWithManualCache(String query) {
+        String cacheKey = SERIES_CACHE_PREFIX + sanitizeKey(query);
+
+        // Try to get from cache first
+        String cachedResult = getCachedResult(cacheKey);
+        if (cachedResult != null) {
+            try {
+                // Deserialize cached result
+                List<ComicVineSeriesDto> cachedSeries = deserializeSeriesList(cachedResult);
+                log.debug("Retrieved series from manual cache for query: {}", query);
+                return cachedSeries;
+            } catch (Exception e) {
+                log.warn("Error deserializing cached series result: {}", e.getMessage());
+                // Fall through to API call
+            }
+        }
+
+        // Fetch from API and cache
+        List<ComicVineSeriesDto> series = searchSeriesFromAPI(query);
+        cacheResult(cacheKey, serializeSeriesList(series));
+        return series;
+    }
+
+    // Internal method that does the actual API call
+    private List<ComicVineSeriesDto> searchSeriesFromAPI(String query) {
         String apiKey = infernoComicsConfig.getComicVineAPIKey();
 
         // Debug logging
@@ -78,7 +158,8 @@ public class ComicVineService {
         }
     }
 
-    public List<ComicVineIssueDto> searchIssues(String seriesId) {
+    // Internal method for issues API call
+    private List<ComicVineIssueDto> searchIssuesFromAPI(String seriesId) {
         String apiKey = infernoComicsConfig.getComicVineAPIKey();
         if (apiKey == null || apiKey.isEmpty()) {
             log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
@@ -111,6 +192,70 @@ public class ComicVineService {
         }
     }
 
+    // Cache utility methods
+    private String getCachedResult(String cacheKey) {
+        try {
+            return stringRedisTemplate.opsForValue().get(cacheKey);
+        } catch (Exception e) {
+            log.warn("Error retrieving from cache with key {}: {}", cacheKey, e.getMessage());
+            return null;
+        }
+    }
+
+    private void cacheResult(String cacheKey, String result) {
+        try {
+            stringRedisTemplate.opsForValue().set(cacheKey, result, CACHE_TTL_HOURS, TimeUnit.HOURS);
+            log.debug("Cached result with key: {}", cacheKey);
+        } catch (Exception e) {
+            log.warn("Error caching result with key {}: {}", cacheKey, e.getMessage());
+        }
+    }
+
+    private String sanitizeKey(String input) {
+        if (input == null) return "null";
+        return input.toLowerCase()
+                .replaceAll("[^a-z0-9_-]", "_")
+                .replaceAll("_{2,}", "_")
+                .replaceAll("^_|_$", "");
+    }
+
+    // Serialization methods for manual caching
+    private String serializeSeriesList(List<ComicVineSeriesDto> series) {
+        try {
+            return objectMapper.writeValueAsString(series);
+        } catch (Exception e) {
+            log.error("Error serializing series list: {}", e.getMessage());
+            return "[]";
+        }
+    }
+
+    private List<ComicVineSeriesDto> deserializeSeriesList(String json) {
+        try {
+            return objectMapper.readValue(json,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, ComicVineSeriesDto.class));
+        } catch (Exception e) {
+            log.error("Error deserializing series list: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    // Get cache statistics
+    public java.util.Map<String, Object> getCacheStats() {
+        try {
+            long seriesCacheKeys = stringRedisTemplate.keys(SERIES_CACHE_PREFIX + "*").size();
+            long issuesCacheKeys = stringRedisTemplate.keys(ISSUES_CACHE_PREFIX + "*").size();
+
+            return java.util.Map.of(
+                    "manual_series_cache_count", seriesCacheKeys,
+                    "manual_issues_cache_count", issuesCacheKeys,
+                    "cache_ttl_hours", CACHE_TTL_HOURS,
+                    "annotation_based_caches", java.util.List.of("comic-vine-series", "comic-vine-issues")
+            );
+        } catch (Exception e) {
+            log.warn("Error getting Comic Vine cache stats: {}", e.getMessage());
+            return java.util.Map.of("error", "Unable to retrieve cache statistics");
+        }
+    }
 
     private List<ComicVineSeriesDto> parseSeriesSearchResponse(String response) {
         List<ComicVineSeriesDto> series = new ArrayList<>();
@@ -151,10 +296,18 @@ public class ComicVineService {
 
                 log.debug("Added series: {}", dto.getName());
                 series.add(dto);
-                log.error("old desc: {}", dto.getDescription());
+                log.debug("Original description: {}", dto.getDescription());
+
+                // Generate description if missing, using cached generation
                 if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
-                    dto.setDescription(descriptionGeneratorService.callLLMAPI(buildSeriesPrompt(dto)));
-                    log.error("new desc: {}", dto.getDescription());
+                    String generatedDescription = descriptionGeneratorService.generateDescription(
+                            dto.getName(),
+                            "Series",
+                            dto.getPublisher(),
+                            dto.getStartYear() != null ? dto.getStartYear().toString() : null
+                    );
+                    dto.setDescription(generatedDescription);
+                    log.debug("Generated description: {}", dto.getDescription());
                 }
             }
 
@@ -163,26 +316,6 @@ public class ComicVineService {
             log.error("Error parsing series search response: {}", e.getMessage(), e);
         }
         return series;
-    }
-
-    private String buildSeriesPrompt(ComicVineService.ComicVineSeriesDto dto) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("Generate a concise, engaging description for this comic book series:\n\n");
-        prompt.append("Series: ").append(dto.getName()).append("\n");
-        if (dto.getPublisher() != null && !dto.getPublisher().isEmpty()) {
-            prompt.append("Title: ").append(dto.getPublisher()).append("\n");
-        }
-
-        if (dto.getStartYear() != null) {
-            prompt.append("Cover Date: ").append(dto.getStartYear()).append("\n");
-        }
-
-        prompt.append("\nWrite a 2-3 sentence description that captures what might happen in this issue. ");
-        prompt.append("Focus on action, characters, and plot elements typical for this series. ");
-        prompt.append("Keep it engaging but concise (under 150 words). ");
-        prompt.append("Do not include publication details or meta information.");
-
-        return prompt.toString();
     }
 
     private List<ComicVineSeriesDto> parseSeriesResponse(String response) {
@@ -229,6 +362,19 @@ public class ComicVineService {
                 JsonNode image = result.path("image");
                 if (!image.isMissingNode()) {
                     dto.setImageUrl(image.path("medium_url").asText());
+                }
+
+                // Generate description if missing, using cached generation
+                if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
+                    // Extract series name from the context or use a generic approach
+                    String seriesName = "Unknown Series"; // You might want to pass this as a parameter
+                    String generatedDescription = descriptionGeneratorService.generateDescription(
+                            seriesName,
+                            dto.getIssueNumber(),
+                            dto.getName(),
+                            dto.getCoverDate()
+                    );
+                    dto.setDescription(generatedDescription);
                 }
 
                 issues.add(dto);
