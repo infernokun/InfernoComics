@@ -24,7 +24,6 @@ public class SeriesService {
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
 
-
     public SeriesService(SeriesRepository seriesRepository,
                          ComicVineService comicVineService,
                          DescriptionGeneratorService descriptionGeneratorService) {
