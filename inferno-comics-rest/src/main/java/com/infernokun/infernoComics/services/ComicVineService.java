@@ -304,7 +304,8 @@ public class ComicVineService {
                             dto.getName(),
                             "Series",
                             dto.getPublisher(),
-                            dto.getStartYear() != null ? dto.getStartYear().toString() : null
+                            dto.getStartYear() != null ? dto.getStartYear().toString() : null,
+                            dto.getDescription()
                     );
                     dto.setDescription(generatedDescription);
                     log.debug("Generated description: {}", dto.getDescription());
@@ -372,7 +373,8 @@ public class ComicVineService {
                             seriesName,
                             dto.getIssueNumber(),
                             dto.getName(),
-                            dto.getCoverDate()
+                            dto.getCoverDate(),
+                            dto.getDescription()
                     );
                     dto.setDescription(generatedDescription);
                 }

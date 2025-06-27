@@ -19,6 +19,12 @@ public interface SeriesRepository extends JpaRepository<Series, Long> {
 
     List<Series> findByStartYear(Integer startYear);
 
+    @Query("SELECT DISTINCT s FROM Series s LEFT JOIN FETCH s.comicBooks")
+    List<Series> findAllWithComicBooks();
+
+    @Query("SELECT s FROM Series s LEFT JOIN FETCH s.comicBooks WHERE s.id = :id")
+    Optional<Series> findByIdWithComicBooks(@Param("id") Long id);
+
     // Find by Comic Vine ID
     Series findByComicVineId(String comicVineId);
 

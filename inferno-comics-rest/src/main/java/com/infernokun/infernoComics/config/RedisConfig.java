@@ -1,14 +1,12 @@
 package com.infernokun.infernoComics.config;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,10 +14,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
-import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -34,30 +31,47 @@ public class RedisConfig {
 
     @Bean
     @Primary
-    public ObjectMapper redisObjectMapper() {
-        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
-                .allowIfBaseType(Object.class)
-                .allowIfSubType("com.infernokun.infernoComics")
-                .build();
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
 
-        ObjectMapper objectMapper = new ObjectMapper();
+        // Basic configuration without Hibernate modules for now
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        objectMapper.activateDefaultTyping(ptv, ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
-        objectMapper.registerModule(new JavaTimeModule());
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        // Enable default typing to preserve class information
+        mapper.activateDefaultTyping(
+                mapper.getPolymorphicTypeValidator(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY
+        );
 
-        return objectMapper;
+        return mapper;
     }
 
     @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper redisObjectMapper) {
-        GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+    public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
+        ObjectMapper redisMapper = new ObjectMapper();
+        redisMapper.registerModule(new JavaTimeModule());
+        redisMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        redisMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        redisMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
+        // This ensures proper type information is preserved in Redis
+        redisMapper.activateDefaultTyping(
+                redisMapper.getPolymorphicTypeValidator(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY
+        );
+
+        GenericJackson2JsonRedisSerializer jsonRedisSerializer =
+                new GenericJackson2JsonRedisSerializer(redisMapper);
 
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(1)) // Default TTL of 1 hour
+                .entryTtl(Duration.ofHours(1))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonRedisSerializer))
                 .disableCachingNullValues();
 
         // Custom configurations for specific caches
@@ -91,22 +105,26 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper redisObjectMapper) {
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
 
-        StringRedisSerializer stringSerializer = new StringRedisSerializer();
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+        ObjectMapper om = new ObjectMapper();
+        om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        om.activateDefaultTyping(om.getPolymorphicTypeValidator(),
+                ObjectMapper.DefaultTyping.NON_FINAL);
+        om.registerModule(new JavaTimeModule());
+        om.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-        template.setKeySerializer(stringSerializer);
-        template.setValueSerializer(jsonSerializer);
-        template.setHashKeySerializer(stringSerializer);
-        template.setHashValueSerializer(jsonSerializer);
+        // Configure to ignore unknown properties and empty beans
+        om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        om.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
-        template.setDefaultSerializer(jsonSerializer);
-        template.afterPropertiesSet();
+        Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer =
+                new Jackson2JsonRedisSerializer<>(om, Object.class);
 
-        log.info("Custom Redis template configured successfully");
+        template.setDefaultSerializer(jackson2JsonRedisSerializer);
+        template.setKeySerializer(new StringRedisSerializer());
 
         return template;
     }

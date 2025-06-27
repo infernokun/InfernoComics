@@ -19,4 +19,5 @@ public class InfernoComicsConfig {
     private String comicVineAPIKey;
     private String groqAPIKey;
     private String groqModel;
+    private boolean descriptionGeneration;
 }

@@ -1,13 +1,11 @@
 package com.infernokun.infernoComics.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,6 +14,7 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
+@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 @Table(name = "series")
@@ -54,8 +53,9 @@ public class Series {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // Change to LAZY
     @JsonManagedReference
+    @JsonIgnore
     private List<ComicBook> comicBooks = new ArrayList<>();
 
     public Series(String name, String description, String publisher) {

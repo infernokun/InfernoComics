@@ -3,6 +3,7 @@ package com.infernokun.infernoComics.services;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -23,6 +24,7 @@ public class SeriesService {
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
 
+
     public SeriesService(SeriesRepository seriesRepository,
                          ComicVineService comicVineService,
                          DescriptionGeneratorService descriptionGeneratorService) {
@@ -31,31 +33,30 @@ public class SeriesService {
         this.descriptionGeneratorService = descriptionGeneratorService;
     }
 
-    // Cache all series
     @Cacheable(value = "all-series")
     public List<Series> getAllSeries() {
-        log.debug("Fetching all series from database");
+        log.info("Fetching all series from database");
         return seriesRepository.findAll();
     }
 
-    // Cache individual series
     @Cacheable(value = "series", key = "#id")
+    @Transactional(readOnly = true)
     public Optional<Series> getSeriesById(Long id) {
-        log.debug("Fetching series with ID: {}", id);
-        return seriesRepository.findById(id);
+        log.info("Fetching series with ID: {}", id);
+        return seriesRepository.findByIdWithComicBooks(id);
     }
 
     // Cache series search results
     @Cacheable(value = "series-search", key = "#query")
     public List<Series> searchSeries(String query) {
-        log.debug("Searching series with query: {}", query);
+        log.info("Searching series with query: {}", query);
         return seriesRepository.findByNameContainingIgnoreCaseOrPublisherContainingIgnoreCase(query, query);
     }
 
     // Cache Comic Vine series search
     @Cacheable(value = "comic-vine-series-search", key = "#query")
     public List<ComicVineService.ComicVineSeriesDto> searchComicVineSeries(String query) {
-        log.debug("Searching Comic Vine series with query: {}", query);
+        log.info("Searching Comic Vine series with query: {}", query);
         try {
             return comicVineService.searchSeries(query);
         } catch (Exception e) {
@@ -67,7 +68,7 @@ public class SeriesService {
     // Cache Comic Vine issues search
     @Cacheable(value = "comic-vine-issues-search", key = "#seriesId")
     public List<ComicVineService.ComicVineIssueDto> searchComicVineIssues(Long seriesId) {
-        log.debug("Searching Comic Vine issues for series ID: {}", seriesId);
+        log.info("Searching Comic Vine issues for series ID: {}", seriesId);
         try {
             Optional<Series> series = seriesRepository.findById(seriesId);
             if (series.isPresent() && series.get().getComicVineId() != null) {
@@ -95,7 +96,8 @@ public class SeriesService {
                     request.getName(),
                     "Series",
                     request.getPublisher(),
-                    request.getStartYear() != null ? request.getStartYear().toString() : null
+                    request.getStartYear() != null ? request.getStartYear().toString() : null,
+                    request.getDescription()
             );
             series.setDescription(generatedDescription);
         }
@@ -148,7 +150,7 @@ public class SeriesService {
     // Cache series statistics
     @Cacheable(value = "series-stats")
     public Map<String, Object> getSeriesStats() {
-        log.debug("Calculating series statistics");
+        log.info("Calculating series statistics");
 
         List<Series> allSeries = seriesRepository.findAll();
 
@@ -183,14 +185,14 @@ public class SeriesService {
     // Cache recent series
     @Cacheable(value = "recent-series", key = "#limit")
     public List<Series> getRecentSeries(int limit) {
-        log.debug("Fetching {} recent series", limit);
+        log.info("Fetching {} recent series", limit);
         return seriesRepository.findRecentSeries(limit);
     }
 
     // Advanced series search with caching
     @Cacheable(value = "series-advanced-search", key = "#publisher + ':' + #startYear + ':' + #endYear")
     public List<Series> searchSeriesByPublisherAndYear(String publisher, Integer startYear, Integer endYear) {
-        log.debug("Advanced search - Publisher: {}, Start Year: {}, End Year: {}", publisher, startYear, endYear);
+        log.info("Advanced search - Publisher: {}, Start Year: {}, End Year: {}", publisher, startYear, endYear);
 
         return seriesRepository.findAll().stream()
                 .filter(series -> {
@@ -234,7 +236,8 @@ public class SeriesService {
                     series.getName(),
                     "Series",
                     series.getPublisher(),
-                    series.getStartYear() != null ? series.getStartYear().toString() : null
+                    series.getStartYear() != null ? series.getStartYear().toString() : null,
+                    series.getDescription()
             );
             series.setDescription(generatedDescription);
         }
@@ -271,7 +274,7 @@ public class SeriesService {
     // Get popular series (most comic books)
     @Cacheable(value = "popular-series", key = "#limit")
     public List<Series> getPopularSeries(int limit) {
-        log.debug("Fetching {} popular series", limit);
+        log.info("Fetching {} popular series", limit);
 
         return seriesRepository.findAll().stream()
                 .sorted((s1, s2) -> Integer.compare(s2.getComicBooks().size(), s1.getComicBooks().size()))

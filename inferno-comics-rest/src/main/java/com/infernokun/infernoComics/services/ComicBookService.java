@@ -40,37 +40,35 @@ public class ComicBookService {
     // Cache all comic books with TTL
     @Cacheable(value = "all-comic-books")
     public List<ComicBook> getAllComicBooks() {
-        log.debug("Fetching all comic books from database");
+        log.info("Fetching all comic books from database");
         return comicBookRepository.findAll();
     }
 
     // Cache individual comic book
     @Cacheable(value = "comic-book", key = "#id")
     public Optional<ComicBook> getComicBookById(Long id) {
-        log.debug("Fetching comic book with ID: {}", id);
+        log.info("Fetching comic book with ID: {}", id);
         return comicBookRepository.findById(id);
     }
 
     // Cache comic books by series
     @Cacheable(value = "comic-books-by-series", key = "#seriesId")
     public List<ComicBook> getComicBooksBySeriesId(Long seriesId) {
-        log.debug("Fetching comic books for series ID: {}", seriesId);
+        log.info("Fetching comic books for series ID: {}", seriesId);
         return comicBookRepository.findBySeriesIdOrderByIssueNumberAsc(seriesId);
     }
 
     // Cache key issues
     @Cacheable(value = "key-issues")
     public List<ComicBook> getKeyIssues() {
-        log.debug("Fetching key issues");
-        return comicBookRepository.findAll().stream()
-                .filter(ComicBook::getIsKeyIssue)
-                .collect(Collectors.toList());
+        log.info("Fetching key issues");
+        return comicBookRepository.findKeyIssues();
     }
 
     // Cache Comic Vine issues search
     @Cacheable(value = "comic-vine-issues-by-series", key = "#seriesId")
     public List<ComicVineService.ComicVineIssueDto> searchComicVineIssues(Long seriesId) {
-        log.debug("Searching Comic Vine issues for series ID: {}", seriesId);
+        log.info("Searching Comic Vine issues for series ID: {}", seriesId);
         try {
             Optional<Series> series = seriesRepository.findById(seriesId);
             if (series.isPresent() && series.get().getComicVineId() != null) {
@@ -103,7 +101,8 @@ public class ComicBookService {
                     series.get().getName(),
                     request.getIssueNumber(),
                     request.getTitle(),
-                    request.getCoverDate() != null ? request.getCoverDate().toString() : null
+                    request.getCoverDate() != null ? request.getCoverDate().toString() : null,
+                    request.getDescription()
             );
             comicBook.setDescription(generatedDescription);
         }
@@ -159,7 +158,7 @@ public class ComicBookService {
     // Cache comic book statistics
     @Cacheable(value = "comic-book-stats")
     public Map<String, Object> getComicBookStats() {
-        log.debug("Calculating comic book statistics");
+        log.info("Calculating comic book statistics");
 
         List<ComicBook> allComics = comicBookRepository.findAll();
 
@@ -196,7 +195,7 @@ public class ComicBookService {
     // Cache recent comic books
     @Cacheable(value = "recent-comic-books", key = "#limit")
     public List<ComicBook> getRecentComicBooks(int limit) {
-        log.debug("Fetching {} recent comic books", limit);
+        log.info("Fetching {} recent comic books", limit);
         return comicBookRepository.findAll().stream()
                 .sorted((c1, c2) -> c2.getCreatedAt().compareTo(c1.getCreatedAt()))
                 .limit(limit)
@@ -206,7 +205,7 @@ public class ComicBookService {
     // Search comic books with caching
     @Cacheable(value = "comic-book-search", key = "#query + ':' + #limit")
     public List<ComicBook> searchComicBooks(String query, int limit) {
-        log.debug("Searching comic books with query: {} (limit: {})", query, limit);
+        log.info("Searching comic books with query: {} (limit: {})", query, limit);
 
         String lowerQuery = query.toLowerCase();
         return comicBookRepository.findAll().stream()

@@ -16,6 +16,9 @@ public interface ComicBookRepository extends JpaRepository<ComicBook, Long> {
     // Find comic books by series, ordered by issue number
     List<ComicBook> findBySeriesIdOrderByIssueNumberAsc(Long seriesId);
 
+    @Query("SELECT c FROM ComicBook c WHERE c.isKeyIssue = true")
+    List<ComicBook> findKeyIssues();
+
     Optional<ComicBook> findByComicVineId(String comicVineId);
 
     // Search methods

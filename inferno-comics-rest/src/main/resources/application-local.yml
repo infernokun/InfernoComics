@@ -56,6 +56,7 @@ inferno-comics:
   comicVineAPIKey: "${COMIC_VINE_API_KEY}"
   groqAPIKey: "${GROQ_API_KEY}"
   groqModel: "llama-3.1-8b-instant"
+  descriptionGeneration: ${DESCRIPTION_GENERATION:true}
 
 logging:
   level:

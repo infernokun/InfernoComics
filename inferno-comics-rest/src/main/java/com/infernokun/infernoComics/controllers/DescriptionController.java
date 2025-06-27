@@ -39,7 +39,8 @@ public class DescriptionController {
                     comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
                     comic.getIssueNumber(),
                     comic.getTitle(),
-                    comic.getCoverDate().toString()
+                    comic.getCoverDate().toString(),
+                    comic.getDescription()
             );
 
             // Update the comic with the new description
@@ -79,7 +80,8 @@ public class DescriptionController {
                             comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
                             comic.getIssueNumber(),
                             comic.getTitle(),
-                            comic.getCoverDate().toString()
+                            comic.getCoverDate().toString(),
+                            comic.getDescription()
                     );
 
                     comic.setDescription(description);
@@ -132,7 +134,8 @@ public class DescriptionController {
                             comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
                             comic.getIssueNumber(),
                             comic.getTitle(),
-                            comic.getCoverDate().toString()
+                            comic.getCoverDate().toString(),
+                            comic.getDescription()
                     );
 
                     comic.setDescription(description);

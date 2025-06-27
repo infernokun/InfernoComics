@@ -48,8 +48,16 @@ public class DescriptionGeneratorService {
 
     // Annotation-based caching approach (recommended for most use cases)
     @Cacheable(value = "comic-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
-    public String generateDescription(String seriesName, String issueNumber, String issueTitle, String coverDate) {
+    public String generateDescription(String seriesName, String issueNumber, String issueTitle, String coverDate, String description) {
         log.debug("Generating description for {}, Issue #{}: {}", seriesName, issueNumber, issueTitle);
+
+        if (description != null && !description.trim().isEmpty() && !description.equals("null")) {
+            return description;
+        }
+
+        if (!infernoComicsConfig.isDescriptionGeneration()) {
+            return generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate);
+        }
 
         final String apiKey = infernoComicsConfig.getGroqAPIKey();
         try {
@@ -57,7 +65,6 @@ public class DescriptionGeneratorService {
                 log.warn("No API key configured for description generator");
                 return generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate);
             }
-
             String prompt = buildPrompt(seriesName, issueNumber, issueTitle, coverDate);
             String response = callLLMAPI(prompt);
 
@@ -223,7 +230,8 @@ public class DescriptionGeneratorService {
                             comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
                             comic.getIssueNumber(),
                             comic.getTitle(),
-                            comic.getCoverDate() != null ? comic.getCoverDate().toString() : null
+                            comic.getCoverDate() != null ? comic.getCoverDate().toString() : null,
+                            comic.getDescription()
                     );
 
                     comic.setDescription(description);
