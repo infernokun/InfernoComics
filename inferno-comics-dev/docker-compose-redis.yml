@@ -8,7 +8,7 @@ services:
     volumes:
       - redis_data:/data
     environment:
-      - REDIS_PASSWORD=amaterasu
+      - REDIS_PASSWORD=inferno-comics
     command: redis-server --appendonly yes
 
 volumes:

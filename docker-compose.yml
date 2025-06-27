@@ -45,6 +45,9 @@ services:
       ENCRYPTION_KEY: "${ENCRYPTION_KEY:-secret_key}"
       RSA_PRIVATE_KEY_PATH: "${RSA_PRIVATE_KEY_PATH:-/var/tmp/inferno-comics/private.pem}"
       RSA_PUBLIC_KEY_PATH: "${RSA_PUBLIC_KEY_PATH:-/var/tmp/inferno-comics/public.pem}"
+      REDIS_HOST: "${REDIS_HOST:-inferno-comics-redis}"
+      REDIS_PORT: "${REDIS_PORT:-6379}"
+      REDIS_PASSWORD: "${REDIS_PASSWORD:-inferno-comics}"
     depends_on:
       - inferno-comics-db
     healthcheck:
@@ -52,6 +55,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  inferno-comics-redis:
+    container_name: my_redis
+    restart: unless-stopped
+    volumes:
+      - inferno-comics_redis_data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-inferno-comics}
+    command: redis-server --appendonly yes
 
 volumes:
   inferno-comics-db:
