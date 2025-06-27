@@ -11,10 +11,9 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -55,7 +54,68 @@ public class ComicBookService {
     @Cacheable(value = "comic-books-by-series", key = "#seriesId")
     public List<ComicBook> getComicBooksBySeriesId(Long seriesId) {
         log.info("Fetching comic books for series ID: {}", seriesId);
-        return comicBookRepository.findBySeriesIdOrderByIssueNumberAsc(seriesId);
+
+        try {
+            List<ComicBook> comicBooks = comicBookRepository.findBySeriesIdOrderByIssueNumberAsc(seriesId);
+
+            // Sort the list with custom comparator
+            comicBooks.sort((issue1, issue2) -> {
+                try {
+                    String num1 = issue1.getIssueNumber();
+                    String num2 = issue2.getIssueNumber();
+
+                    // Handle null or empty issue numbers
+                    if (num1 == null || num1.isEmpty()) return 1;
+                    if (num2 == null || num2.isEmpty()) return -1;
+
+                    // Extract numeric part for comparison
+                    Double numericPart1 = extractNumericPart(num1);
+                    Double numericPart2 = extractNumericPart(num2);
+
+                    int numericComparison = Double.compare(numericPart1, numericPart2);
+
+                    // If numeric parts are equal, compare the full strings
+                    if (numericComparison == 0) {
+                        return num1.compareToIgnoreCase(num2);
+                    }
+
+                    return numericComparison;
+                } catch (Exception e) {
+                    // Fallback to string comparison if parsing fails
+                    String safe1 = issue1.getIssueNumber() != null ? issue1.getIssueNumber() : "";
+                    String safe2 = issue2.getIssueNumber() != null ? issue2.getIssueNumber() : "";
+                    return safe1.compareToIgnoreCase(safe2);
+                }
+            });
+
+            return comicBooks;
+
+        } catch (Exception e) {
+            log.error("Error fetching comic books for series ID {}: {}", seriesId, e.getMessage(), e);
+            return new ArrayList<>(); // Return empty list instead of null
+        }
+    }
+
+    private Double extractNumericPart(String issueNumber) {
+        try {
+            // Remove leading/trailing whitespace
+            String cleaned = issueNumber.trim();
+
+            // Use regex to find the first decimal number in the string
+            Pattern pattern = Pattern.compile("(\\d+(?:\\.\\d+)?)");
+            Matcher matcher = pattern.matcher(cleaned);
+
+            if (matcher.find()) {
+                return Double.parseDouble(matcher.group(1));
+            }
+
+            // If no numeric part found, return a high value to sort to end
+            return Double.MAX_VALUE;
+
+        } catch (NumberFormatException e) {
+            // If parsing fails, return a high value to sort to end
+            return Double.MAX_VALUE;
+        }
     }
 
     // Cache key issues
