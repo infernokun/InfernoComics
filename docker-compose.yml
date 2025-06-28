@@ -60,12 +60,14 @@ services:
     image: redis:latest
     restart: unless-stopped
     volumes:
-      - inferno-comics_redis_data:/data
+      - inferno-comics-redis:/data
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD:-inferno-comics}
     command: redis-server --appendonly yes
 
 volumes:
   inferno-comics-db:
+    driver: local
+  inferno-comics-redis:
     driver: local
   inferno-comics-web:
