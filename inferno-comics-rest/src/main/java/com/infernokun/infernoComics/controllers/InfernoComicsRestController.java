@@ -29,7 +29,7 @@ public class InfernoComicsRestController extends BaseController {
     @GetMapping("/")
     public ResponseEntity<Void> redirectToSwagger() {
         return ResponseEntity.status(302)
-                .header("Location", "/amaterasu-rest/swagger-ui.html")
+                .header("Location", "/inferno-comics-rest/swagger-ui.html")
                 .build();
     }
 
