@@ -12,11 +12,6 @@ services:
       - inferno-comics-web:/var/log/nginx
     networks:
       - inferno-comics-network
-    depends_on:
-      inferno-comics-db:
-        condition: service_healthy
-      inferno-comics-rest:
-        condition: service_healthy
 
   inferno-comics-db:
     image: postgres:17.4
@@ -29,12 +24,6 @@ services:
       - inferno-comics-db:/var/lib/postgresql/data
     networks:
       - inferno-comics-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inferno-comics}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
   inferno-comics-rest:
     image: infernokun/inferno-comics-rest:latest
@@ -61,17 +50,6 @@ services:
       - /var/tmp/inferno-comics:/var/tmp/inferno-comics
     networks:
       - inferno-comics-network
-    depends_on:
-      inferno-comics-db:
-        condition: service_healthy
-      inferno-comics-redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/inferno-comics/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 90s
 
   inferno-comics-redis:
     image: redis:latest
@@ -83,12 +61,6 @@ services:
     environment:
       - REDIS_PASSWORD=inferno-comics
     command: redis-server --appendonly yes --requirepass inferno-comics
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a inferno-comics ping | grep PONG"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 
 networks:
   inferno-comics-network:
