@@ -54,16 +54,14 @@ services:
     - inferno-comics-redis
     - inferno-comics-db
 
-inferno-comics-redis:
-  image: redis:latest
-  restart: unless-stopped
-  volumes:
-    - inferno-comics-redis:/data
-  networks:
-    - inferno-comics-network
-  environment:
-    REDIS_PASSWORD: "${REDIS_PASSWORD:-inferno-comics}"
-  command: redis-server --appendonly yes
+  inferno-comics-redis:
+    image: redis:latest
+    restart: unless-stopped
+    volumes:
+      - inferno-comics-redis:/data
+    networks:
+      - inferno-comics-network
+    command: redis-server --appendonly yes
   
 networks:
   inferno-comics-network:

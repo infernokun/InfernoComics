@@ -30,7 +30,6 @@ spring:
   redis:
     host: ${REDIS_HOST:localhost}
     port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:inferno-comics}
     timeout: 6000
     database: 0
     connect-timeout: 10000
