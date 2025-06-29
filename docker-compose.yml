@@ -10,8 +10,12 @@ services:
       - "8784:80"
     volumes:
       - inferno-comics-web:/var/log/nginx
+    networks:
+      - inferno-comics-network
     depends_on:
       inferno-comics-db:
+        condition: service_healthy
+      inferno-comics-rest:
         condition: service_healthy
 
   inferno-comics-db:
@@ -23,6 +27,8 @@ services:
       POSTGRES_DB: "${POSTGRES_DB:-inferno-comics}"
     volumes:
       - inferno-comics-db:/var/lib/postgresql/data
+    networks:
+      - inferno-comics-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inferno-comics}"]
       interval: 10s
@@ -52,8 +58,11 @@ services:
       GROQ_API_KEY: "${GROQ_API_KEY}"
     volumes:
       - /var/tmp/inferno-comics:/var/tmp/inferno-comics
+    networks:
+      - inferno-comics-network
     depends_on:
       - inferno-comics-db
+      - inferno-comics-redis
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 10s
@@ -65,9 +74,16 @@ services:
     restart: unless-stopped
     volumes:
       - inferno-comics-redis:/data
+    networks:
+      - inferno-comics-network
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-inferno-comics}
-    command: redis-server --appendonly yes
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-inferno-comics}
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-inferno-comics}
+
+networks:
+  inferno-comics-network:
+    driver: bridge
+    name: inferno-comics-network
 
 volumes:
   inferno-comics-db:
@@ -75,3 +91,4 @@ volumes:
   inferno-comics-redis:
     driver: local
   inferno-comics-web:
+    driver: local
