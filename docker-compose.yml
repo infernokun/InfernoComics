@@ -24,6 +24,11 @@ services:
       - inferno-comics-db:/var/lib/postgresql/data
     networks:
       - inferno-comics-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inferno-comics}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   inferno-comics-rest:
     image: infernokun/inferno-comics-rest:latest
@@ -43,7 +48,6 @@ services:
       RSA_PUBLIC_KEY_PATH: "${RSA_PUBLIC_KEY_PATH:-/var/tmp/inferno-comics/public.pem}"
       REDIS_HOST: "${REDIS_HOST:-inferno-comics-redis}"
       REDIS_PORT: "${REDIS_PORT:-6379}"
-      REDIS_PASSWORD: "${REDIS_PASSWORD:-inferno-comics}"
       COMIC_VINE_API_KEY: "${COMIC_VINE_API_KEY}"
       GROQ_API_KEY: "${GROQ_API_KEY}"
     volumes:
@@ -51,8 +55,10 @@ services:
     networks:
       - inferno-comics-network
     depends_on:
-    - inferno-comics-redis
-    - inferno-comics-db
+      inferno-comics-redis:
+        condition: service_healthy
+      inferno-comics-db:
+        condition: service_healthy
 
   inferno-comics-redis:
     image: redis:latest
@@ -62,6 +68,11 @@ services:
     networks:
       - inferno-comics-network
     command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
   
 networks:
   inferno-comics-network:
