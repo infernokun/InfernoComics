@@ -33,6 +33,12 @@ spring:
     password: ${REDIS_PASSWORD:inferno-comics}
     timeout: 6000
     database: 0
+    connect-timeout: 10000
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
 
   jackson:
     default-property-inclusion: NON_NULL

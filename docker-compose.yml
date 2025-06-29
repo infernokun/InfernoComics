@@ -50,18 +50,21 @@ services:
       - /var/tmp/inferno-comics:/var/tmp/inferno-comics
     networks:
       - inferno-comics-network
+    depends_on:
+    - inferno-comics-redis
+    - inferno-comics-db
 
-  inferno-comics-redis:
-    image: redis:latest
-    restart: unless-stopped
-    volumes:
-      - inferno-comics-redis:/data
-    networks:
-      - inferno-comics-network
-    environment:
-      - REDIS_PASSWORD=inferno-comics
-    command: redis-server --appendonly yes --requirepass inferno-comics
-
+inferno-comics-redis:
+  image: redis:latest
+  restart: unless-stopped
+  volumes:
+    - inferno-comics-redis:/data
+  networks:
+    - inferno-comics-network
+  environment:
+    REDIS_PASSWORD: "${REDIS_PASSWORD:-inferno-comics}"
+  command: redis-server --appendonly yes
+  
 networks:
   inferno-comics-network:
     driver: bridge
