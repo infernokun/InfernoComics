@@ -8,7 +8,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +15,8 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
@@ -30,6 +31,29 @@ import java.util.Map;
 @Configuration
 @EnableCaching
 public class RedisConfig {
+
+    @Value("${spring.redis.host}")
+    private String redisHost;
+
+    @Value("${spring.redis.port}")
+    private int redisPort;
+
+    @Value("${spring.redis.database}")
+    private int redisDatabase;
+    @Bean
+    public LettuceConnectionFactory redisConnectionFactory() {
+        log.info("Creating Redis connection to host: {}, port: {}", redisHost, redisPort);
+        RedisStandaloneConfiguration redisConfig = new RedisStandaloneConfiguration();
+
+        redisConfig.setHostName(redisHost);
+        redisConfig.setPort(redisPort);
+        redisConfig.setDatabase(redisDatabase);
+
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig);
+        factory.setValidateConnection(true);
+
+        return factory;
+    }
 
     @Bean
     @Primary
