@@ -14,4 +14,5 @@ export interface ComicBookRequest {
   notes?: string;
   comicVineId?: string;
   isKeyIssue?: boolean;
+  generatedDescription: boolean;
 }

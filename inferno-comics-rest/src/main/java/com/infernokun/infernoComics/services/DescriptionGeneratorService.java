@@ -2,6 +2,7 @@ package com.infernokun.infernoComics.services;
 
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ComicBook;
+import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -48,35 +49,36 @@ public class DescriptionGeneratorService {
 
     // Annotation-based caching approach (recommended for most use cases)
     @Cacheable(value = "comic-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
-    public String generateDescription(String seriesName, String issueNumber, String issueTitle, String coverDate, String description) {
+    public DescriptionGenerated generateDescription(String seriesName, String issueNumber, String issueTitle, String coverDate, String description) {
         log.debug("Generating description for {}, Issue #{}: {}", seriesName, issueNumber, issueTitle);
 
         if (description != null && !description.trim().isEmpty() && !description.equals("null")) {
-            return description;
+            return new DescriptionGenerated(description, false);
         }
 
         if (!infernoComicsConfig.isDescriptionGeneration()) {
-            return generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate);
+            return new DescriptionGenerated(generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate), false);
         }
 
         final String apiKey = infernoComicsConfig.getGroqAPIKey();
         try {
             if (apiKey.isEmpty()) {
                 log.warn("No API key configured for description generator");
-                return generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate);
+                return new DescriptionGenerated(generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate), false);
+
             }
             String prompt = buildPrompt(seriesName, issueNumber, issueTitle, coverDate);
             String response = callLLMAPI(prompt);
 
             if (response != null && !response.isEmpty()) {
-                return response.trim();
+                return new DescriptionGenerated(response.trim(), true);
             } else {
-                return generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate);
+                return new DescriptionGenerated(generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate), false);
             }
 
         } catch (Exception e) {
             log.error("Error generating description: {}", e.getMessage());
-            return generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate);
+            return new DescriptionGenerated(generateFallbackDescription(seriesName, issueNumber, issueTitle, coverDate), false);
         }
     }
 
@@ -226,7 +228,7 @@ public class DescriptionGeneratorService {
             if (comic.getDescription() == null || comic.getDescription().isEmpty()) {
                 try {
                     // Use annotation-based caching for batch processing
-                    String description = generateDescription(
+                    DescriptionGenerated descriptionGenerated = generateDescription(
                             comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
                             comic.getIssueNumber(),
                             comic.getTitle(),
@@ -234,7 +236,7 @@ public class DescriptionGeneratorService {
                             comic.getDescription()
                     );
 
-                    comic.setDescription(description);
+                    comic.setDescription(descriptionGenerated.getDescription());
 
                     // Only add delay if we actually made an API call (not a cache hit)
                     // You can determine this by checking if the method was actually executed

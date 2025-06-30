@@ -1,6 +1,7 @@
 package com.infernokun.infernoComics.services;
 
 import com.infernokun.infernoComics.models.ComicBook;
+import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.repositories.ComicBookRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
@@ -157,14 +158,15 @@ public class ComicBookService {
 
         // Generate description if not provided
         if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
-            String generatedDescription = descriptionGeneratorService.generateDescription(
+            DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                     series.get().getName(),
                     request.getIssueNumber(),
                     request.getTitle(),
                     request.getCoverDate() != null ? request.getCoverDate().toString() : null,
                     request.getDescription()
             );
-            comicBook.setDescription(generatedDescription);
+            comicBook.setDescription(generatedDescription.getDescription());
+            comicBook.setGeneratedDescription(generatedDescription.isGenerated());
         }
 
         ComicBook savedComicBook = comicBookRepository.save(comicBook);

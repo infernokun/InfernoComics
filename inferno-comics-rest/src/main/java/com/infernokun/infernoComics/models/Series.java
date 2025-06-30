@@ -58,6 +58,8 @@ public class Series {
     @JsonIgnore
     private List<ComicBook> comicBooks = new ArrayList<>();
 
+    private boolean generatedDescription = false;
+
     public Series(String name, String description, String publisher) {
         this.name = name;
         this.description = description;

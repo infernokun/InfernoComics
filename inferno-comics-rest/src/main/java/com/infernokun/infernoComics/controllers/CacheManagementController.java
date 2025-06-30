@@ -14,7 +14,6 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/admin/cache")
-@CrossOrigin(origins = "http://localhost:4200")
 public class CacheManagementController {
 
     private final ComicBookService comicBookService;

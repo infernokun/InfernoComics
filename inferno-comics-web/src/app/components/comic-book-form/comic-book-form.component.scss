@@ -85,9 +85,17 @@ mat-dialog-content {
             box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
-        .mat-mdc-form-field-label {
-            color: var(--text-secondary) !important;
+        .mat-mdc-form-field-label,
+        .mat-mdc-floating-label,
+        .mdc-floating-label {
+            color: var(--text-primary) !important;
             font-weight: 500;
+        }
+
+        &.mat-focused .mat-mdc-form-field-label,
+        &.mat-focused .mat-mdc-floating-label,
+        &.mat-focused .mdc-floating-label {
+            color: var(--primary-color) !important;
         }
 
         .mat-mdc-form-field-error {
@@ -288,5 +296,41 @@ mat-dialog-actions {
                 color: white !important;
             }
         }
+    }
+}
+
+// Nuclear option - force override all Material label styles
+::ng-deep .comic-book-form-container {
+    .mat-mdc-form-field .mat-mdc-floating-label,
+    .mat-mdc-form-field .mdc-floating-label,
+    .mat-mdc-form-field .mat-mdc-form-field-label,
+    .mat-mdc-form-field label {
+        color: white !important;
+    }
+
+    .mat-mdc-form-field.mat-focused .mat-mdc-floating-label,
+    .mat-mdc-form-field.mat-focused .mdc-floating-label,
+    .mat-mdc-form-field.mat-focused .mat-mdc-form-field-label,
+    .mat-mdc-form-field.mat-focused label {
+        color: var(--primary-color) !important;
+    }
+
+    // Fix checkbox text color
+    .mat-mdc-checkbox .mdc-form-field label,
+    .mat-mdc-checkbox .mdc-form-field {
+        color: white !important;
+    }
+
+    // Fix date picker icons
+    .mat-datepicker-toggle,
+    .mat-datepicker-toggle-default-icon,
+    .mat-icon {
+        color: white !important;
+    }
+
+    .mat-mdc-form-field.mat-focused .mat-datepicker-toggle,
+    .mat-mdc-form-field.mat-focused .mat-datepicker-toggle-default-icon,
+    .mat-mdc-form-field.mat-focused .mat-icon {
+        color: var(--primary-color) !important;
     }
 }

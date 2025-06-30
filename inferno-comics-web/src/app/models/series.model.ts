@@ -12,4 +12,5 @@ export interface Series {
   createdAt?: Date;
   updatedAt?: Date;
   comicBooks?: ComicBook[];
+  generatedDescription: boolean;
 }

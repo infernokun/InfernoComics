@@ -19,7 +19,6 @@ import java.util.Optional;
 @Slf4j
 @RestController
 @RequestMapping("/api/comic-books")
-@CrossOrigin(origins = "http://localhost:4200")
 public class ComicBookController {
 
     private final ComicBookService comicBookService;

@@ -28,4 +28,5 @@ export interface ComicBook {
   createdAt?: Date;
   updatedAt?: Date;
   series?: Series;
+  generatedDescription: boolean;
 }

@@ -7,6 +7,7 @@ import { ComicBookService } from '../../services/comic-book.service';
 import { ComicBookCondition } from '../../models/comic-book.model';
 import { ComicBookFormComponent } from '../comic-book-form/comic-book-form.component';
 import { ComicVineService } from '../../services/comic-vine.service';
+import { Series } from '../../models/series.model';
 
 @Component({
   selector: 'app-series-detail',
@@ -15,7 +16,7 @@ import { ComicVineService } from '../../services/comic-vine.service';
   standalone: false
 })
 export class SeriesDetailComponent implements OnInit {
-  series: any = null;
+  series: Series | null = null;
   comicBooks: any[] = [];
   comicVineIssues: any[] = [];
   selectedIssues: Set<string> = new Set();
@@ -194,7 +195,7 @@ export class SeriesDetailComponent implements OnInit {
     // Create comic books for all selected issues
     const creationPromises = selectedIssues.map(issue => {
       const comicBookData = {
-        seriesId: this.series.id,
+        seriesId: this.series!.id,
         issueNumber: issue.issueNumber,
         title: issue.name,
         description: issue.description,
@@ -212,7 +213,7 @@ export class SeriesDetailComponent implements OnInit {
 
     Promise.all(creationPromises).then(() => {
       this.snackBar.open(`Added ${selectedIssues.length} issues to collection`, 'Close', { duration: 3000 });
-      this.loadComicBooks(this.series.id);
+      this.loadComicBooks(this.series?.id!);
       this.clearSelection();
     }).catch(error => {
       console.error('Error adding issues:', error);
@@ -248,12 +249,12 @@ export class SeriesDetailComponent implements OnInit {
   addComicBook(): void {
     const dialogRef = this.dialog.open(ComicBookFormComponent, {
       width: '600px',
-      data: { seriesId: this.series.id }
+      data: { seriesId: this.series!.id }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadComicBooks(this.series.id);
+        this.loadComicBooks(this.series?.id!);
       }
     });
   }
@@ -273,12 +274,12 @@ export class SeriesDetailComponent implements OnInit {
   editComicBook(comicBook: any): void {
     const dialogRef = this.dialog.open(ComicBookFormComponent, {
       width: '600px',
-      data: { comicBook, seriesId: this.series.id }
+      data: { comicBook, seriesId: this.series!.id }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadComicBooks(this.series.id);
+        this.loadComicBooks(this.series?.id!);
       }
     });
   }
@@ -288,7 +289,7 @@ export class SeriesDetailComponent implements OnInit {
       this.comicBookService.deleteComicBook(id).subscribe({
         next: () => {
           this.snackBar.open('Comic book deleted', 'Close', { duration: 3000 });
-          this.loadComicBooks(this.series.id);
+          this.loadComicBooks(this.series?.id!);
         },
         error: (error) => {
           console.error('Error deleting comic book:', error);
@@ -302,25 +303,25 @@ export class SeriesDetailComponent implements OnInit {
     const dialogRef = this.dialog.open(ComicBookFormComponent, {
       width: '600px',
       data: { 
-        seriesId: this.series.id,
+        seriesId: this.series?.id,
         comicVineIssue: issue
       }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadComicBooks(this.series.id);
+        this.loadComicBooks(this.series?.id!);
       }
     });
   }
 
   editSeries(): void {
-    this.router.navigate(['/series', this.series.id, 'edit']);
+    this.router.navigate(['/series', this.series?.id, 'edit']);
   }
 
   deleteSeries(): void {
     if (confirm('Are you sure you want to delete this series and all its comic books?')) {
-      this.seriesService.deleteSeries(this.series.id).subscribe({
+      this.seriesService.deleteSeries(this.series?.id!).subscribe({
         next: () => {
           this.snackBar.open('Series deleted', 'Close', { duration: 3000 });
           this.router.navigate(['/series']);
@@ -331,6 +332,19 @@ export class SeriesDetailComponent implements OnInit {
         }
       });
     }
+  }
+
+  generateNewDescription(seriesId: number): void {
+    /*this.seriesService.generateDescription(seriesId).subscribe({
+      next: (updatedSeries) => {
+        this.series = updatedSeries;
+        this.snackBar.open('New description generated', 'Close', { duration: 3000 });
+      },
+      error: (error) => {
+        console.error('Error generating description:', error);
+        this.snackBar.open('Error generating new description', 'Close', { duration: 3000 });
+      }
+    });*/
   }
 }
 

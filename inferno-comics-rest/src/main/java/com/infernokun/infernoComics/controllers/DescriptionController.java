@@ -1,6 +1,7 @@
 package com.infernokun.infernoComics.controllers;
 
 import com.infernokun.infernoComics.models.ComicBook;
+import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.repositories.ComicBookRepository;
 import com.infernokun.infernoComics.services.DescriptionGeneratorService;
 import lombok.RequiredArgsConstructor;
@@ -12,11 +13,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@RestController
-@RequestMapping("/api/descriptions")
-@CrossOrigin(origins = "http://localhost:4200")
 @Slf4j
+@RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/descriptions")
 public class DescriptionController {
 
     private final DescriptionGeneratorService descriptionGeneratorService;
@@ -27,15 +27,12 @@ public class DescriptionController {
         try {
             Optional<ComicBook> comicOptional = comicBookRepository.findById(comicBookId);
 
-            log.error("CHecking comic");
-
             if (comicOptional.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
 
-            log.error("found");
             ComicBook comic = comicOptional.get();
-            String description = descriptionGeneratorService.generateDescription(
+            DescriptionGenerated description = descriptionGeneratorService.generateDescription(
                     comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
                     comic.getIssueNumber(),
                     comic.getTitle(),
@@ -44,12 +41,13 @@ public class DescriptionController {
             );
 
             // Update the comic with the new description
-            comic.setDescription(description);
+            comic.setDescription(description.getDescription());
+            comic.setGeneratedDescription(description.isGenerated());
             comicBookRepository.save(comic);
 
             return ResponseEntity.ok(Map.of(
-                    "description", description,
-                    "message", "Description generated successfully"
+                    "description", description.getDescription(),
+                    "message", description.isGenerated() ? "Description generated successfully" : "Default description used"
             ));
 
         } catch (Exception e) {
@@ -76,7 +74,7 @@ public class DescriptionController {
             int processed = 0;
             for (ComicBook comic : comics) {
                 try {
-                    String description = descriptionGeneratorService.generateDescription(
+                    DescriptionGenerated description = descriptionGeneratorService.generateDescription(
                             comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
                             comic.getIssueNumber(),
                             comic.getTitle(),
@@ -84,7 +82,8 @@ public class DescriptionController {
                             comic.getDescription()
                     );
 
-                    comic.setDescription(description);
+                    comic.setDescription(description.getDescription());
+                    comic.setGeneratedDescription(description.isGenerated());
                     comicBookRepository.save(comic);
                     processed++;
 
@@ -130,7 +129,7 @@ public class DescriptionController {
             for (int i = 0; i < limit; i++) {
                 ComicBook comic = comics.get(i);
                 try {
-                    String description = descriptionGeneratorService.generateDescription(
+                    DescriptionGenerated description = descriptionGeneratorService.generateDescription(
                             comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
                             comic.getIssueNumber(),
                             comic.getTitle(),
@@ -138,7 +137,8 @@ public class DescriptionController {
                             comic.getDescription()
                     );
 
-                    comic.setDescription(description);
+                    comic.setDescription(description.getDescription());
+                    comic.setGeneratedDescription(description.isGenerated());
                     comicBookRepository.save(comic);
                     processed++;
 
@@ -146,7 +146,7 @@ public class DescriptionController {
                     Thread.sleep(2000);
 
                 } catch (Exception e) {
-                    log.error("Error processing comic {}: {}", comic.getId(), e.getMessage());
+                    log.error("Error processing comic, {}: {}", comic.getId(), e.getMessage());
                 }
             }
 

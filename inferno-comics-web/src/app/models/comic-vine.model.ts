@@ -5,6 +5,7 @@ export interface ComicVineSeries {
   publisher?: string;
   startYear?: number;
   imageUrl?: string;
+  generatedDescription: boolean;
 }
 
 export interface ComicVineIssue {
@@ -14,4 +15,5 @@ export interface ComicVineIssue {
   description?: string;
   coverDate?: string;
   imageUrl?: string;
+  generatedDescription: boolean;
 }

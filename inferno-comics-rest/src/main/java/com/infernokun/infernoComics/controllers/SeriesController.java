@@ -17,7 +17,6 @@ import java.util.Optional;
 @Slf4j
 @RestController
 @RequestMapping("/api/series")
-@CrossOrigin(origins = "http://localhost:4200")
 public class SeriesController {
 
     private final SeriesService seriesService;

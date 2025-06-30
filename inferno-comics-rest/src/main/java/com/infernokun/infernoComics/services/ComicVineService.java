@@ -3,6 +3,7 @@ package com.infernokun.infernoComics.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.models.DescriptionGenerated;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -300,14 +301,15 @@ public class ComicVineService {
 
                 // Generate description if missing, using cached generation
                 if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
-                    String generatedDescription = descriptionGeneratorService.generateDescription(
+                    DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                             dto.getName(),
                             "Series",
                             dto.getPublisher(),
                             dto.getStartYear() != null ? dto.getStartYear().toString() : null,
                             dto.getDescription()
                     );
-                    dto.setDescription(generatedDescription);
+                    dto.setDescription(generatedDescription.getDescription());
+                    dto.setGeneratedDescription(generatedDescription.isGenerated());
                     log.debug("Generated description: {}", dto.getDescription());
                 }
             }
@@ -369,14 +371,16 @@ public class ComicVineService {
                 if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
                     // Extract series name from the context or use a generic approach
                     String seriesName = "Unknown Series"; // You might want to pass this as a parameter
-                    String generatedDescription = descriptionGeneratorService.generateDescription(
+                    DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                             seriesName,
                             dto.getIssueNumber(),
                             dto.getName(),
                             dto.getCoverDate(),
                             dto.getDescription()
                     );
-                    dto.setDescription(generatedDescription);
+                    dto.setDescription(generatedDescription.getDescription());
+                    dto.setGeneratedDescription(generatedDescription.isGenerated());
+
                 }
 
                 issues.add(dto);
@@ -447,6 +451,7 @@ public class ComicVineService {
         private String publisher;
         private Integer startYear;
         private String imageUrl;
+        private boolean generatedDescription;
     }
 
     @Setter
@@ -458,5 +463,6 @@ public class ComicVineService {
         private String description;
         private String coverDate;
         private String imageUrl;
+        private boolean generatedDescription;
     }
 }

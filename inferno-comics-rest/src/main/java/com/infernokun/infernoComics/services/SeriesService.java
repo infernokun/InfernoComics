@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.services;
 
+import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -91,14 +92,15 @@ public class SeriesService {
 
         // Generate description if not provided
         if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
-            String generatedDescription = descriptionGeneratorService.generateDescription(
+            DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                     request.getName(),
                     "Series",
                     request.getPublisher(),
                     request.getStartYear() != null ? request.getStartYear().toString() : null,
                     request.getDescription()
             );
-            series.setDescription(generatedDescription);
+            series.setDescription(generatedDescription.getDescription());
+            series.setGeneratedDescription(generatedDescription.isGenerated());
         }
 
         Series savedSeries = seriesRepository.save(series);
@@ -231,14 +233,15 @@ public class SeriesService {
 
         // Generate description if Comic Vine description is empty
         if (series.getDescription() == null || series.getDescription().trim().isEmpty()) {
-            String generatedDescription = descriptionGeneratorService.generateDescription(
+            DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                     series.getName(),
                     "Series",
                     series.getPublisher(),
                     series.getStartYear() != null ? series.getStartYear().toString() : null,
                     series.getDescription()
             );
-            series.setDescription(generatedDescription);
+            series.setDescription(generatedDescription.getDescription());
+            series.setGeneratedDescription(generatedDescription.isGenerated());
         }
 
         Series savedSeries = seriesRepository.save(series);
