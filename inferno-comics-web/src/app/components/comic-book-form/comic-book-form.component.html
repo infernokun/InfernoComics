@@ -100,7 +100,7 @@
         <button mat-button (click)="cancel()">Cancel</button>
         <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!comicBookForm.valid || loading">
             <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
-            {{ isEditMode ? 'Update' : 'Add' }} Comic Book {{loading}} - {{comicBookForm.valid}}
+            {{ isEditMode ? 'Update' : 'Add' }} Comic Book
         </button>
     </mat-dialog-actions>
 </div>

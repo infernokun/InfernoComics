@@ -4,10 +4,10 @@ import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dial
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SeriesService } from '../../services/series.service';
 import { ComicBookService } from '../../services/comic-book.service';
-import { ComicBookCondition } from '../../models/comic-book.model';
 import { ComicBookFormComponent } from '../comic-book-form/comic-book-form.component';
 import { ComicVineService } from '../../services/comic-vine.service';
 import { Series } from '../../models/series.model';
+import { ComicVineIssue } from '../../models/comic-vine.model';
 
 @Component({
   selector: 'app-series-detail',
@@ -24,6 +24,7 @@ export class SeriesDetailComponent implements OnInit {
   loading = false;
   loadingComicVine = false;
   selectedTabIndex = 0;
+  isCompactView = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -193,7 +194,7 @@ export class SeriesDetailComponent implements OnInit {
     );
 
     // Create comic books for all selected issues
-    const creationPromises = selectedIssues.map(issue => {
+    const creationPromises = selectedIssues.map((issue: ComicVineIssue) => {
       const comicBookData = {
         seriesId: this.series!.id,
         issueNumber: issue.issueNumber,
@@ -205,7 +206,8 @@ export class SeriesDetailComponent implements OnInit {
         condition: 'VERY_FINE',  // Use enum value instead of "VF"
         purchasePrice: 0,
         currentValue: 0,
-        keyIssue: false
+        keyIssue: false,
+        generatedDescription: issue.generatedDescription || false
       };
 
       return this.comicBookService.createComicBook(comicBookData).toPromise();
@@ -345,6 +347,10 @@ export class SeriesDetailComponent implements OnInit {
         this.snackBar.open('Error generating new description', 'Close', { duration: 3000 });
       }
     });*/
+  }
+
+  toggleCompactView(): void {
+    this.isCompactView = !this.isCompactView;
   }
 }
 

@@ -9,6 +9,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.extern.slf4j.Slf4j;
 import lombok.Getter;
@@ -41,6 +42,11 @@ public class ComicVineService {
         this.stringRedisTemplate = stringRedisTemplate;
         this.webClient = WebClient.builder()
                 .baseUrl(BASE_URL)
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(configurer -> configurer
+                                .defaultCodecs()
+                                .maxInMemorySize(1024 * 1024))
+                        .build())
                 .build();
         this.objectMapper = new ObjectMapper();
     }
@@ -380,9 +386,7 @@ public class ComicVineService {
                     );
                     dto.setDescription(generatedDescription.getDescription());
                     dto.setGeneratedDescription(generatedDescription.isGenerated());
-
                 }
-
                 issues.add(dto);
             }
 

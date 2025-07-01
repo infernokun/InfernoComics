@@ -119,7 +119,7 @@ public class ComicBookController {
     }
 
     @PostMapping
-    public ResponseEntity<ComicBook> createComicBook(@Valid @RequestBody ComicBookCreateRequestDto request) {
+    public ResponseEntity<ComicBook> createComicBook(@RequestBody ComicBookCreateRequestDto request) {
         try {
             ComicBook comicBook = comicBookService.createComicBook(request);
             return ResponseEntity.ok(comicBook);

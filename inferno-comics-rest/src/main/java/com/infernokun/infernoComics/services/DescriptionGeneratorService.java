@@ -11,6 +11,7 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.http.MediaType;
@@ -41,6 +42,11 @@ public class DescriptionGeneratorService {
                                        RedisTemplate<String, Object> redisTemplate) {
         this.webClient = WebClient.builder()
                 .baseUrl(apiUrl)
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(configurer -> configurer
+                                .defaultCodecs()
+                                .maxInMemorySize(1024 * 1024))
+                        .build())
                 .build();
         this.objectMapper = objectMapper;
         this.infernoComicsConfig = infernoComicsConfig;

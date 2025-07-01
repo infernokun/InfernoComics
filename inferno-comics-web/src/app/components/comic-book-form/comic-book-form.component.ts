@@ -116,7 +116,7 @@ export class ComicBookFormComponent implements OnInit {
         notes: formData.notes,
         comicVineId: formData.comicVineId,
         isKeyIssue: formData.isKeyIssue,
-        generatedDescription: false
+        generatedDescription: this.data.comicVineIssue?.generatedDescription || false
       };
 
       const operation = this.isEditMode && this.data.comicBook?.id

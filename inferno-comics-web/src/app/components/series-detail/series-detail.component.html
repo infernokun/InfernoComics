@@ -1,9 +1,8 @@
 <div class="series-detail-container" *ngIf="!loading">
   <div class="series-header" *ngIf="series">
     <div class="series-image">
-      <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" 
-           [alt]="series.name"
-           onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+      <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name"
+        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
     </div>
     <div class="series-info">
       <h1>{{ series.name }}</h1>
@@ -20,7 +19,7 @@
       </div>
       <div class="description" *ngIf="series.description">
         @if (series.generatedDescription) {
-          <p class="generated-description">Generated Description</p>
+        <p class="generated-description">Generated Description</p>
         }
         {{ series.description }}
       </div>
@@ -61,12 +60,21 @@
     <mat-tab-group [(selectedIndex)]="selectedTabIndex">
       <mat-tab label="My Collection">
         <div class="tab-content">
-          <div class="collection-grid" *ngIf="comicBooks.length > 0">
+          <!-- View Toggle Button -->
+          <div class="view-controls" *ngIf="comicBooks.length > 0">
+            <button mat-icon-button [matTooltip]="isCompactView ? 'Switch to Grid View' : 'Switch to Compact View'"
+              (click)="toggleCompactView()">
+              <mat-icon>{{ isCompactView ? 'grid_view' : 'view_list' }}</mat-icon>
+            </button>
+            <span class="view-label">{{ isCompactView ? 'Compact View' : 'Grid View' }}</span>
+          </div>
+
+          <!-- Grid View (Default) -->
+          <div class="collection-grid" *ngIf="comicBooks.length > 0 && !isCompactView">
             <mat-card *ngFor="let comic of comicBooks" class="comic-card">
               <div class="comic-image">
-                <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'" 
-                     [alt]="'Issue #' + comic.issueNumber"
-                     onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+                <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + comic.issueNumber"
+                  onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
                 <div class="key-issue-badge" *ngIf="comic.keyIssue">
                   <mat-icon>star</mat-icon>
                 </div>
@@ -109,6 +117,71 @@
               </mat-card-actions>
             </mat-card>
           </div>
+
+          <!-- Compact View -->
+          <div class="collection-list" *ngIf="comicBooks.length > 0 && isCompactView">
+            <mat-card class="compact-card" *ngFor="let comic of comicBooks">
+              <div class="compact-content">
+                <!-- Thumbnail -->
+                <div class="compact-image">
+                  <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'" 
+                       [alt]="'Issue #' + comic.issueNumber"
+                       onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+                  <div class="key-issue-badge" *ngIf="comic.keyIssue">
+                    <mat-icon>star</mat-icon>
+                  </div>
+                </div>
+
+                <!-- Comic Information -->
+                <div class="compact-info">
+                  <div class="compact-header">
+                    <h3 class="issue-title">Issue #{{ comic.issueNumber }}</h3>
+                    <span class="issue-subtitle" *ngIf="comic.title">{{ comic.title }}</span>
+                  </div>
+
+                  <div class="compact-details">
+                    <span class="detail-item">
+                      <mat-icon class="detail-icon">grade</mat-icon>
+                      {{ comic.condition }}
+                    </span>
+                    <span class="detail-item">
+                      <mat-icon class="detail-icon">attach_money</mat-icon>
+                      ${{ comic.purchasePrice }}
+                    </span>
+                    <span class="detail-item">
+                      <mat-icon class="detail-icon">trending_up</mat-icon>
+                      ${{ comic.currentValue }}
+                    </span>
+                    <span class="detail-item" *ngIf="comic.coverDate">
+                      <mat-icon class="detail-icon">calendar_today</mat-icon>
+                      {{ comic.coverDate | date:'MMM yyyy' }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="compact-actions">
+                  <button mat-icon-button color="accent" 
+                          matTooltip="View Details" 
+                          (click)="viewComicBook(comic.id)">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button mat-icon-button color="primary" 
+                          matTooltip="Edit Comic" 
+                          (click)="editComicBook(comic)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" 
+                          matTooltip="Delete Comic" 
+                          (click)="deleteComicBook(comic.id)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </mat-card>
+          </div>
+
+          <!-- Empty Collection State -->
           <div class="empty-collection" *ngIf="comicBooks.length === 0">
             <mat-icon>library_books</mat-icon>
             <h3>No Issues in Collection</h3>
@@ -133,29 +206,25 @@
                 Click to select, Ctrl+Click for multiple, Shift+Click for range
               </span>
             </div>
-            
+
             <div class="selection-actions">
-              <button mat-button (click)="selectAll()" 
-                      [disabled]="selectedCount === comicVineIssues.length">
+              <button mat-button (click)="selectAll()" [disabled]="selectedCount === comicVineIssues.length">
                 <mat-icon>select_all</mat-icon>
                 Select All
               </button>
-              
-              <button mat-button (click)="selectRange()" 
-                      [disabled]="comicVineIssues.length === 0">
+
+              <button mat-button (click)="selectRange()" [disabled]="comicVineIssues.length === 0">
                 <mat-icon>unfold_more</mat-icon>
                 Select Range
               </button>
-              
-              <button mat-button (click)="selectNone()" 
-                      [disabled]="selectedCount === 0">
+
+              <button mat-button (click)="selectNone()" [disabled]="selectedCount === 0">
                 <mat-icon>clear</mat-icon>
                 Clear Selection
               </button>
-              
-              <button mat-raised-button color="primary" 
-                      (click)="addSelectedToCollection()"
-                      [disabled]="selectedCount === 0">
+
+              <button mat-raised-button color="primary" (click)="addSelectedToCollection()"
+                [disabled]="selectedCount === 0">
                 <mat-icon>add_shopping_cart</mat-icon>
                 Add Selected ({{ selectedCount }})
               </button>
@@ -164,15 +233,12 @@
 
           <!-- Issues Grid -->
           <div class="browse-grid" *ngIf="!loadingComicVine && comicVineIssues.length > 0">
-            <mat-card *ngFor="let issue of comicVineIssues; let i = index" 
-                      class="browse-card"
-                      [class.owned]="isIssueOwned(issue)"
-                      [class.selected]="isIssueSelected(issue.id)"
-                      (click)="onIssueClick($event, issue.id, i)">
+            <mat-card *ngFor="let issue of comicVineIssues; let i = index" class="browse-card"
+              [class.owned]="isIssueOwned(issue)" [class.selected]="isIssueSelected(issue.id)"
+              (click)="onIssueClick($event, issue.id, i)">
               <div class="browse-image">
-                <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" 
-                     [alt]="'Issue #' + issue.issueNumber"
-                     onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+                <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + issue.issueNumber"
+                  onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
                 <div class="owned-badge" *ngIf="isIssueOwned(issue)">
                   <mat-icon>check</mat-icon>
                 </div>
@@ -189,9 +255,8 @@
                 <p class="cover-date" *ngIf="issue.coverDate">{{ issue.coverDate }}</p>
               </mat-card-content>
               <mat-card-actions>
-                <button mat-button color="primary" 
-                        (click)="addFromComicVine(issue); $event.stopPropagation()"
-                        *ngIf="!isIssueOwned(issue)">
+                <button mat-button color="primary" (click)="addFromComicVine(issue); $event.stopPropagation()"
+                  *ngIf="!isIssueOwned(issue)">
                   <mat-icon>add</mat-icon>
                   Add to Collection
                 </button>
