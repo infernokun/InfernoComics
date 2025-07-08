@@ -467,6 +467,7 @@ public class ComicVineService {
         private String description;
         private String coverDate;
         private String imageUrl;
+        private List<String> variants;
         private boolean generatedDescription;
     }
 }

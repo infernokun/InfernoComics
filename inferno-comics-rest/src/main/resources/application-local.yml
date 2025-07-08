@@ -19,6 +19,10 @@ management:
       enabled: true
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   datasource:
     url: jdbc:postgresql://${DB_IP:localhost}:${DB_PORT:5432}/${DB_NAME:inferno-comics}
     username: ${DB_USER:inferno-comics}
@@ -62,6 +66,8 @@ inferno-comics:
   groqAPIKey: "${GROQ_API_KEY}"
   groqModel: "llama-3.1-8b-instant"
   descriptionGeneration: ${DESCRIPTION_GENERATION:true}
+  recognitionServerHost: "${RECOGNITION_SERVER_HOST:localhost}"
+  recognitionServerPort: "${RECOGNITION_SERVER_PORT:5000}"
 
 logging:
   level:

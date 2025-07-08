@@ -205,7 +205,6 @@ import_mysql_dump() {
     
     # Import the dump
     if [ "$VERBOSE" = true ]; then
-        docker exec $MYSQL_CONTAINER_NAME mysql -uroot -p$MYSQL_PASSWORD $MYSQL_DATABASE < /dev/null
         docker exec -i $MYSQL_CONTAINER_NAME mysql -uroot -p$MYSQL_PASSWORD $MYSQL_DATABASE < "$INPUT_FILE"
     else
         docker exec -i $MYSQL_CONTAINER_NAME mysql -uroot -p$MYSQL_PASSWORD $MYSQL_DATABASE < "$INPUT_FILE" &>/dev/null
@@ -221,7 +220,7 @@ import_mysql_dump() {
     print_success "MySQL dump imported successfully"
 }
 
-# Function to run pgloader migration using Docker
+# Function to run pgloader migration using Docker with memory management
 run_pgloader() {
     print_status "Running pgloader migration using Docker..."
     
@@ -236,7 +235,7 @@ run_pgloader() {
     print_status "MySQL URL: mysql://root:***@$MYSQL_IP/$MYSQL_DATABASE"
     print_status "PostgreSQL URL: postgresql://postgres:***@$POSTGRES_IP/$POSTGRES_DATABASE"
     
-    # Create pgloader configuration for better control
+    # Create optimized pgloader configuration
     PGLOADER_CONFIG="/tmp/pgloader_config_$(date +%s).load"
     cat > "$PGLOADER_CONFIG" << EOF
 LOAD DATABASE
@@ -244,25 +243,34 @@ LOAD DATABASE
     INTO $POSTGRES_URL
 
 WITH include drop, create tables, create indexes, reset sequences,
-     workers = 8, concurrency = 1,
-     max parallel create index = 4
+     workers = 2, concurrency = 1,
+     max parallel create index = 1,
+     batch rows = 25000,
+     batch size = 20MB
 
-SET work_mem to '256MB', maintenance_work_mem to '512 MB'
+SET work_mem to '128MB', 
+    maintenance_work_mem to '256MB'
 
 BEFORE LOAD DO
 \$\$ DROP SCHEMA IF EXISTS public CASCADE; \$\$,
 \$\$ CREATE SCHEMA public; \$\$;
 EOF
 
-    # Run pgloader in Docker container on the same network
+    # Run pgloader with increased memory limits and better error handling
     if [ "$VERBOSE" = true ]; then
         docker run --rm \
             --network $NETWORK_NAME \
+            --memory=6g \
+            --memory-swap=12g \
+            --shm-size=1g \
             -v "$PGLOADER_CONFIG:/config.load" \
             dimitri/pgloader pgloader --verbose /config.load
     else
         docker run --rm \
             --network $NETWORK_NAME \
+            --memory=6g \
+            --memory-swap=12g \
+            --shm-size=1g \
             -v "$PGLOADER_CONFIG:/config.load" \
             dimitri/pgloader pgloader /config.load
     fi

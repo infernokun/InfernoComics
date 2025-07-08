@@ -58,4 +58,14 @@ export class SeriesService {
   getRecentSeries(limit: number = 10): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/recent?limit=${limit}`);
   }
+
+  addComicByImage(seriesId: number, imageFile: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    return this.http.post<any>(
+      `${this.apiUrl}/${seriesId}/add-comic-by-image`,
+      formData
+    );
+  }
 }

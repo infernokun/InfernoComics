@@ -1,19 +1,25 @@
 package com.infernokun.infernoComics.services;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Hibernate;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -24,13 +30,24 @@ public class SeriesService {
     private final SeriesRepository seriesRepository;
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
+    private final GCDatabaseService gcDatabaseService;
+    private final WebClient webClient;
 
     public SeriesService(SeriesRepository seriesRepository,
                          ComicVineService comicVineService,
-                         DescriptionGeneratorService descriptionGeneratorService) {
+                         DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, InfernoComicsConfig infernoComicsConfig) {
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
+        this.gcDatabaseService = gcDatabaseService;
+        this.webClient = WebClient.builder()
+                .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(configurer -> configurer
+                                .defaultCodecs()
+                                .maxInMemorySize(1024 * 1024))
+                        .build())
+                .build();
     }
 
     @Cacheable(value = "all-series")
@@ -282,6 +299,75 @@ public class SeriesService {
                 .sorted((s1, s2) -> Integer.compare(s2.getComicBooks().size(), s1.getComicBooks().size()))
                 .limit(limit)
                 .collect(Collectors.toList());
+    }
+
+    public JsonNode addComicByImage(Long seriesId, MultipartFile imageFile) {
+        Optional<Series> series = seriesRepository.findById(seriesId);
+        if (series.isEmpty()) {
+            throw new IllegalArgumentException("Series not found with id: " + seriesId);
+        }
+
+        Series seriesEntity = series.get();
+        List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
+
+        // Batch fetch variants for all issues
+        List<String> issueNumbers = results.stream()
+                .map(ComicVineService.ComicVineIssueDto::getIssueNumber)
+                .collect(Collectors.toList());
+
+        Map<String, List<String>> variantMap = gcDatabaseService.getVariantCoversForMultipleIssues(
+                seriesEntity.getName(),
+                seriesEntity.getPublisher(),
+                seriesEntity.getStartYear().toString(),
+                issueNumbers
+        );
+
+        // Enhance results with variants
+        List<ComicVineService.ComicVineIssueDto> enhancedResults = results.stream()
+                .peek(issue -> {
+                    List<String> variants = variantMap.getOrDefault(issue.getIssueNumber(), Collections.emptyList());
+                    issue.setVariants(variants);
+                })
+                .toList();
+
+        List<String> candidateUrls = enhancedResults.stream()
+                .map(ComicVineService.ComicVineIssueDto::getImageUrl)
+                .toList();
+
+        // Add variant URLs to candidate URLs for matching
+        List<String> variantUrls = enhancedResults.stream()
+                .filter(issue -> issue.getVariants() != null)
+                .flatMap(issue -> issue.getVariants().stream())
+                .toList();
+
+        List<String> allCandidateUrls = new ArrayList<>(candidateUrls);
+        allCandidateUrls.addAll(variantUrls);
+
+        try {
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
+
+            builder.part("image", imageFile.getResource())
+                    .contentType(MediaType.valueOf(Objects.requireNonNull(imageFile.getContentType())));
+
+            for (String url : allCandidateUrls) {
+                builder.part("candidate_urls", url);
+            }
+
+            String response = webClient.post()
+                    .uri("/image-matcher")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(BodyInserters.fromMultipartData(builder.build()))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(response);
+
+            return root.get("top_matches");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send image to matcher service", e);
+        }
     }
 
     // Private helper methods

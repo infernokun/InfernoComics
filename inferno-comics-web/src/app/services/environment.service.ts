@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 
 export interface EnvironmentSettings {
   production: boolean;
-  host: string;
   baseUrl: string;
   restUrl: string;
   baseEndPoint: string;

@@ -352,6 +352,28 @@ export class SeriesDetailComponent implements OnInit {
   toggleCompactView(): void {
     this.isCompactView = !this.isCompactView;
   }
+
+    addComicByImage(seriesId: number): void {
+    // Open file input dialog to select image
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (event: any) => {
+      const file = event.target.files[0];
+      if (file) {
+        this.seriesService.addComicByImage(seriesId, file).subscribe({
+          next: (response) => {
+            this.snackBar.open('Comic book added successfully', 'Close', { duration: 3000 });
+          },
+          error: (error) => {
+            console.error('Error adding comic by image:', error);
+            this.snackBar.open('Error adding comic book', 'Close', { duration: 3000 });
+          }
+        });
+      }
+    };
+    input.click();
+  }
 }
 
 // Range Selection Dialog Component

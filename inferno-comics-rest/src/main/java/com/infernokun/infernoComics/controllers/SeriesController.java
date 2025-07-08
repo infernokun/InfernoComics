@@ -1,5 +1,8 @@
 package com.infernokun.infernoComics.controllers;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
@@ -7,8 +10,10 @@ import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -162,6 +167,31 @@ public class SeriesController {
         } catch (Exception e) {
             log.error("Error batch creating series from Comic Vine: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("{seriesId}/add-comic-by-image")
+    public ResponseEntity<JsonNode> addComicByImage(@PathVariable Long seriesId, @RequestParam("image") MultipartFile imageFile) {
+        try {
+            // Validate image
+            if (imageFile.isEmpty()) {
+                // Returning a simple JSON message in JsonNode form
+                ObjectMapper mapper = new ObjectMapper();
+                ObjectNode errorJson = mapper.createObjectNode();
+                errorJson.put("error", "Image file is missing.");
+                return ResponseEntity.badRequest().body(errorJson);
+            }
+
+            // Call service and get JSON response
+            JsonNode responseJson = seriesService.addComicByImage(seriesId, imageFile);
+            return ResponseEntity.ok(responseJson);
+
+        } catch (Exception e) {
+            // Return structured JSON error
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode errorJson = mapper.createObjectNode();
+            errorJson.put("error", "Error processing image: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorJson);
         }
     }
 

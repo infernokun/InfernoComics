@@ -20,4 +20,6 @@ public class InfernoComicsConfig {
     private String groqAPIKey;
     private String groqModel;
     private boolean descriptionGeneration;
+    private String recognitionServerHost;
+    private int recognitionServerPort;
 }

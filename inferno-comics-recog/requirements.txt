@@ -1,0 +1,10 @@
+opencv-python
+numpy
+requests
+scikit-learn
+scikit-image
+matplotlib
+scipy
+Pillow
+tqdm
+opemcv-python

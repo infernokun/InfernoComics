@@ -69,6 +69,10 @@
             <span class="view-label">{{ isCompactView ? 'Compact View' : 'Grid View' }}</span>
           </div>
 
+          <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
+            Add Comic By Image
+          </button>
+
           <!-- Grid View (Default) -->
           <div class="collection-grid" *ngIf="comicBooks.length > 0 && !isCompactView">
             <mat-card *ngFor="let comic of comicBooks" class="comic-card">
