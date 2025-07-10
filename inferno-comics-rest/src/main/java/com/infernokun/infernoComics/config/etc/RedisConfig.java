@@ -1,4 +1,4 @@
-package com.infernokun.infernoComics.config;
+package com.infernokun.infernoComics.config.etc;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;

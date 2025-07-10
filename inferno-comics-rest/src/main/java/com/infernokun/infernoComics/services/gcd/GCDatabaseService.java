@@ -1,5 +1,9 @@
-package com.infernokun.infernoComics.services;
+package com.infernokun.infernoComics.services.gcd;
 
+import com.infernokun.infernoComics.models.gcd.GCDIssue;
+import com.infernokun.infernoComics.models.gcd.GCDSeries;
+import com.infernokun.infernoComics.repositories.gcd.GCDIssueRepository;
+import com.infernokun.infernoComics.repositories.gcd.GCDSeriesRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -17,14 +21,18 @@ import java.util.*;
 @Slf4j
 @Service
 public class GCDatabaseService {
-
     private final WebClient webClient;
 
     private static final String GCD_BASE_URL = "https://www.comics.org";
     private static final String GCD_SEARCH_PATH = "/search/advanced/process/";
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
 
-    public GCDatabaseService() {
+    private final GCDSeriesRepository gcdSeriesRepository;
+    private final GCDIssueRepository gcdIssueRepository;
+
+    public GCDatabaseService(GCDSeriesRepository gcdSeriesRepository, GCDIssueRepository gcdIssueRepository) {
+        this.gcdSeriesRepository = gcdSeriesRepository;
+        this.gcdIssueRepository = gcdIssueRepository;
         this.webClient = WebClient.builder()
                 .baseUrl(GCD_BASE_URL)
                 .defaultHeaders(headers -> {
@@ -37,6 +45,26 @@ public class GCDatabaseService {
                 })
                 .codecs(config -> config.defaultCodecs().maxInMemorySize(1024 * 1024))
                 .build();
+    }
+
+    public List<GCDSeries> findGCDSeries() {
+        return gcdSeriesRepository.findAll();
+    }
+
+    public List<GCDIssue> findGCDIssues() {
+        return gcdIssueRepository.findAll();
+    }
+
+    public List<GCDSeries> findGCDSeriesByName(String name) {
+        return gcdSeriesRepository.findByNameContainingIgnoreCase(name);
+    }
+
+    public List<GCDSeries> findGCDSeriesByYearBeganAndNameContainingIgnoreCase(int year, String name) {
+        return gcdSeriesRepository.findByYearBeganAndNameContainingIgnoreCase(year, name);
+    }
+
+    public List<GCDIssue> findGCDIssueBySeriesIds(List<Long> seriesIds) {
+        return gcdIssueRepository.findBySeriesIdIn(seriesIds);
     }
 
     public List<String> getVariantCovers(String seriesName, String publisher, String startYear, String issueNumber) {

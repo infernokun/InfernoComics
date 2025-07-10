@@ -1,4 +1,4 @@
-package com.infernokun.infernoComics.config;
+package com.infernokun.infernoComics.config.web;
 
 import com.infernokun.infernoComics.utils.RSAKeyProperties;
 import com.nimbusds.jose.jwk.JWK;

@@ -53,6 +53,12 @@ public class Series {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "cached_cover_urls")
+    private List<String> cachedCoverUrls = new ArrayList<>();
+
+    @Column(name = "last_cached_covers")
+    private LocalDateTime lastCachedCovers;
+
     @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // Change to LAZY
     @JsonManagedReference
     @JsonIgnore

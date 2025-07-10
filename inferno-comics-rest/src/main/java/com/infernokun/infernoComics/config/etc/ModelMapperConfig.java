@@ -1,4 +1,4 @@
-package com.infernokun.infernoComics.config;
+package com.infernokun.infernoComics.config.etc;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.context.annotation.Bean;

@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.gcd.GCDIssue;
+import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
+import com.infernokun.infernoComics.services.gcd.GCDCoverPageScraper;
+import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -26,20 +30,22 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class SeriesService {
-
     private final SeriesRepository seriesRepository;
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
+    private final GCDCoverPageScraper gcdCoverPageScraper;
+
     private final WebClient webClient;
 
     public SeriesService(SeriesRepository seriesRepository,
                          ComicVineService comicVineService,
-                         DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, InfernoComicsConfig infernoComicsConfig) {
+                         DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, GCDCoverPageScraper gcdCoverPageScraper, InfernoComicsConfig infernoComicsConfig) {
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
+        this.gcdCoverPageScraper = gcdCoverPageScraper;
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
                 .exchangeStrategies(ExchangeStrategies.builder()
@@ -302,56 +308,73 @@ public class SeriesService {
     }
 
     public JsonNode addComicByImage(Long seriesId, MultipartFile imageFile) {
+        log.info("🚀 Starting image processing for series ID: {}", seriesId);
+
         Optional<Series> series = seriesRepository.findById(seriesId);
         if (series.isEmpty()) {
+            log.error("❌ Series not found with id: {}", seriesId);
             throw new IllegalArgumentException("Series not found with id: " + seriesId);
         }
 
         Series seriesEntity = series.get();
+        log.info("📚 Processing series: '{}' ({})", seriesEntity.getName(), seriesEntity.getStartYear());
+
+        // Step 1: Get ComicVine candidates
+        log.info("🦸 Starting ComicVine search for series: {}", seriesId);
         List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
 
-        // Batch fetch variants for all issues
-        List<String> issueNumbers = results.stream()
-                .map(ComicVineService.ComicVineIssueDto::getIssueNumber)
-                .collect(Collectors.toList());
+        log.info("🦸 ComicVine completed: Found {} issues",
+                results.size());
 
-        Map<String, List<String>> variantMap = gcDatabaseService.getVariantCoversForMultipleIssues(
-                seriesEntity.getName(),
-                seriesEntity.getPublisher(),
-                seriesEntity.getStartYear().toString(),
-                issueNumbers
+        // Debug: Log first few URLs
+        List<String> candidateUrls = new ArrayList<>(results.stream().map(ComicVineService.ComicVineIssueDto::getImageUrl).toList());
+
+        List<Long> gcdSeriesIds = gcDatabaseService.findGCDSeriesByYearBeganAndNameContainingIgnoreCase(
+                seriesEntity.getStartYear(), seriesEntity.getName()).stream().map(GCDSeries::getId).toList();
+
+        List<GCDIssue> gcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);
+
+//        if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty()) {
+//            return sendToImageMatcher(imageFile, seriesEntity.getCachedCoverUrls(), seriesEntity);
+//        }
+
+        gcdIssues.forEach(i -> {
+                    GCDCoverPageScraper.CoverResult coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
+                    candidateUrls.addAll(coverResult.getAllCoverUrls());
+                }
         );
 
-        // Enhance results with variants
-        List<ComicVineService.ComicVineIssueDto> enhancedResults = results.stream()
-                .peek(issue -> {
-                    List<String> variants = variantMap.getOrDefault(issue.getIssueNumber(), Collections.emptyList());
-                    issue.setVariants(variants);
-                })
-                .toList();
+        seriesEntity.setCachedCoverUrls(candidateUrls);
+        seriesRepository.save(seriesEntity);
 
-        List<String> candidateUrls = enhancedResults.stream()
-                .map(ComicVineService.ComicVineIssueDto::getImageUrl)
-                .toList();
+        return sendToImageMatcher(imageFile, candidateUrls, seriesEntity);
+    }
 
-        // Add variant URLs to candidate URLs for matching
-        List<String> variantUrls = enhancedResults.stream()
-                .filter(issue -> issue.getVariants() != null)
-                .flatMap(issue -> issue.getVariants().stream())
-                .toList();
-
-        List<String> allCandidateUrls = new ArrayList<>(candidateUrls);
-        allCandidateUrls.addAll(variantUrls);
-
+    private JsonNode sendToImageMatcher(MultipartFile imageFile, List<String> candidateUrls, Series seriesEntity) {
         try {
+            log.info("📤 Preparing image matcher request...");
+            log.info("   📁 Image file: {} ({} bytes)",
+                    imageFile.getOriginalFilename(), imageFile.getSize());
+            log.info("   ✅ Candidate URLs: {}", candidateUrls.size());
+
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
 
             builder.part("image", imageFile.getResource())
                     .contentType(MediaType.valueOf(Objects.requireNonNull(imageFile.getContentType())));
 
-            for (String url : allCandidateUrls) {
+            // Add all candidate URLs
+            for (String url : candidateUrls) {
                 builder.part("candidate_urls", url);
             }
+
+            // Add metadata for better debugging
+            builder.part("series_name", seriesEntity.getName());
+            builder.part("series_start_year", seriesEntity.getStartYear().toString());
+            builder.part("total_candidates", String.valueOf(candidateUrls.size()));
+            builder.part("urls_scraped", "true"); // Flag to indicate these are scraped URLs
+
+            log.info("📡 Sending request to image matcher service...");
+            long startTime = System.currentTimeMillis();
 
             String response = webClient.post()
                     .uri("/image-matcher")
@@ -361,11 +384,32 @@ public class SeriesService {
                     .bodyToMono(String.class)
                     .block();
 
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("📨 Image matcher response received in {}ms", duration);
+
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(response);
+            JsonNode topMatches = root.get("top_matches");
 
-            return root.get("top_matches");
+            if (topMatches != null && topMatches.isArray()) {
+                log.info("🎯 Image matcher found {} top matches", topMatches.size());
+
+                // Debug: Log match details
+                for (int i = 0; i < Math.min(3, topMatches.size()); i++) {
+                    JsonNode match = topMatches.get(i);
+                    log.info("   🏆 Match {}: score={}, url={}",
+                            i + 1,
+                            match.has("score") ? match.get("score").asText() : "N/A",
+                            match.has("url") ? match.get("url").asText() : "N/A");
+                }
+            } else {
+                log.warn("⚠️ No top_matches found in response");
+            }
+
+            return topMatches;
+
         } catch (Exception e) {
+            log.error("❌ Failed to send image to matcher service: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to send image to matcher service", e);
         }
     }

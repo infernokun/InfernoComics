@@ -2,6 +2,8 @@ from flask import Flask
 from flask_cors import CORS
 from config.Config import Config
 from models.OptimizedComicMatcher import OptimizedComicMatcher
+from models.PHashComicMatcher import PHashComicMatcher
+from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 
 from routes.Health import health_bp
 from routes.ImageMatcher import image_matcher_bp
@@ -94,5 +96,61 @@ def main2():
         else:
             print("⚠️ NEEDS TUNING: Correct match not in top 3")
 
+def main3(): 
+    matcher = PHashComicMatcher()
+    
+    query_image_path = './images/20250703_012111.jpg'
+    
+    # Candidate URLs
+    candidate_urls = [
+        'https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5457725-01.jpg',  # Correct match
+        'https://m.media-amazon.com/images/I/91fC1cA57XL._UF1000,1000_QL80_.jpg',
+        'https://sanctumsanctorumcomics.com/cdn/shop/files/STL027051.jpg',
+        'https://i.ebayimg.com/images/g/y-8AAOSwOtVkg1nf/s-l1200.png',
+        'https://dccomicsnews.com/wp-content/uploads/2016/07/Teen-Titans-Annual-2-2016.jpg'
+    ]
+    
+    # Find matches
+    try:
+        results, query_hashes = matcher.find_matches(query_image_path, candidate_urls, threshold=0.6)
+        
+        # Show results
+        matcher.print_results(results, top_n=5)
+        
+        # Visualize if matplotlib is available
+        matcher.visualize_results(query_image_path, results, query_hashes, top_n=5)
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        
+def main4():
+    matcher = FeatureMatchingComicMatcher()
+    
+    query_image_path = './images/20250703_012111.jpg'
+    
+    # Candidate URLs
+    candidate_urls = [
+        'https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/5457725-01.jpg',  # Correct match
+        'https://m.media-amazon.com/images/I/91fC1cA57XL._UF1000,1000_QL80_.jpg',
+        'https://sanctumsanctorumcomics.com/cdn/shop/files/STL027051.jpg',
+        'https://i.ebayimg.com/images/g/y-8AAOSwOtVkg1nf/s-l1200.png',
+        'https://dccomicsnews.com/wp-content/uploads/2016/07/Teen-Titans-Annual-2-2016.jpg'
+    ]
+    
+    try:
+        results, query_features = matcher.find_matches(query_image_path, candidate_urls, threshold=0.02)
+        
+        # Show results
+        matcher.print_results(results, top_n=5)
+        
+        # Create visualization
+        matcher.visualize_results(query_image_path, results, query_features, top_n=5)
+        
+    except Exception as e:
+        print(f"Error: {e}")
+    except Exception as e:
+        print(f"Error: {e}")
+        
 if __name__ == '__main__':
     main()
+    

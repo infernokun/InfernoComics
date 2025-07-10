@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
+import lombok.ToString;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -460,6 +461,7 @@ public class ComicVineService {
 
     @Setter
     @Getter
+    @ToString
     public static class ComicVineIssueDto {
         private String id;
         private String issueNumber;

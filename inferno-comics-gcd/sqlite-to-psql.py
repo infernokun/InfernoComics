@@ -45,6 +45,20 @@ def create_database(pg_config, new_db_name):
         print(f"Error: {e}")
         return False
 
+def check_existing_database(pg_config, db_name):
+    """
+    Check if a database exists and can be connected to
+    """
+    try:
+        test_config = pg_config.copy()
+        test_config['database'] = db_name
+        
+        conn = psycopg2.connect(**test_config)
+        conn.close()
+        return True
+    except psycopg2.Error:
+        return False
+
 def map_sqlite_to_postgres_type(sqlite_type):
     """
     Map SQLite data types to PostgreSQL data types
@@ -64,10 +78,14 @@ def map_sqlite_to_postgres_type(sqlite_type):
     }
     return type_mapping.get(sqlite_type, 'TEXT')
 
-def create_postgres_table(cursor, table_name, columns):
+def create_postgres_table(cursor, table_name, columns, replace_existing=False):
     """
     Create PostgreSQL table with proper column types
     """
+    if replace_existing:
+        cursor.execute(f'DROP TABLE IF EXISTS {table_name} CASCADE')
+        print(f"Dropped existing table {table_name}")
+    
     column_defs = []
     for col_name, col_type, is_pk in columns:
         pg_type = map_sqlite_to_postgres_type(col_type)
@@ -84,7 +102,7 @@ def create_postgres_table(cursor, table_name, columns):
     cursor.execute(create_sql)
     return create_sql
 
-def migrate_table(sqlite_path, pg_conn, table_name, batch_size=10000):
+def migrate_table(sqlite_path, pg_conn, table_name, batch_size=10000, replace_existing=False):
     """
     Migrate a single table from SQLite to PostgreSQL (optimized for speed)
     """
@@ -102,7 +120,7 @@ def migrate_table(sqlite_path, pg_conn, table_name, batch_size=10000):
         column_names = [col[0] for col in columns]
         
         # Create table in PostgreSQL
-        create_postgres_table(pg_cursor, table_name, columns)
+        create_postgres_table(pg_cursor, table_name, columns, replace_existing)
         
         # Get total row count
         sqlite_cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
@@ -110,9 +128,11 @@ def migrate_table(sqlite_path, pg_conn, table_name, batch_size=10000):
         
         print(f"Migrating {total_rows:,} rows from {table_name}...")
         
-        # Clear existing data
-        pg_cursor.execute(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE")
-        pg_conn.commit()  # Commit truncate before optimizations
+        # Clear existing data if not replacing the table
+        if not replace_existing:
+            pg_cursor.execute(f"TRUNCATE TABLE {table_name} RESTART IDENTITY CASCADE")
+        
+        pg_conn.commit()  # Commit truncate/create before optimizations
         
         # SPEED OPTIMIZATIONS
         # 1. Optimize PostgreSQL settings for bulk insert (only session-level settings)
@@ -191,22 +211,28 @@ def migrate_table(sqlite_path, pg_conn, table_name, batch_size=10000):
     finally:
         sqlite_conn.close()
 
-def migrate_database(sqlite_path, pg_config, new_db_name, tables_to_migrate=None):
+def migrate_database(sqlite_path, pg_config, target_db_name, tables_to_migrate=None, use_existing=False, replace_tables=False):
     """
     Migrate entire database or specific tables
     """
     try:
-        # First create the database
-        if not create_database(pg_config, new_db_name):
-            return
+        # Handle database creation or connection
+        if use_existing:
+            if not check_existing_database(pg_config, target_db_name):
+                print(f"Error: Database '{target_db_name}' does not exist or cannot be accessed.")
+                return
+            print(f"Using existing database: {target_db_name}")
+        else:
+            if not create_database(pg_config, target_db_name):
+                return
         
-        # Update config to connect to new database
+        # Update config to connect to target database
         target_config = pg_config.copy()
-        target_config['database'] = new_db_name
+        target_config['database'] = target_db_name
         
-        # Connect to the new database
+        # Connect to the target database
         pg_conn = psycopg2.connect(**target_config)
-        print(f"Connected to PostgreSQL database: {new_db_name}")
+        print(f"Connected to PostgreSQL database: {target_db_name}")
         
         # Get tables from SQLite
         sqlite_conn = sqlite3.connect(sqlite_path)
@@ -218,15 +244,26 @@ def migrate_database(sqlite_path, pg_config, new_db_name, tables_to_migrate=None
         # Determine which tables to migrate
         if tables_to_migrate:
             tables = [t for t in tables_to_migrate if t in all_tables]
+            missing_tables = [t for t in tables_to_migrate if t not in all_tables]
+            if missing_tables:
+                print(f"Warning: These tables were not found in SQLite: {missing_tables}")
         else:
             tables = all_tables
         
         print(f"Tables to migrate: {tables}")
+        if use_existing:
+            print(f"Target: Existing database '{target_db_name}'")
+            if replace_tables:
+                print("Mode: Replace existing tables")
+            else:
+                print("Mode: Append to existing tables (truncate first)")
+        else:
+            print(f"Target: New database '{target_db_name}'")
         print("=" * 60)
         
         # Migrate each table
         for table_name in tables:
-            migrate_table(sqlite_path, pg_conn, table_name)
+            migrate_table(sqlite_path, pg_conn, table_name, replace_existing=replace_tables)
             print()
         
         pg_conn.close()
@@ -239,18 +276,45 @@ def migrate_database(sqlite_path, pg_config, new_db_name, tables_to_migrate=None
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python migrate.py <sqlite_file> [table1,table2,...]")
+        print("Usage: python migrate.py <sqlite_file> [options]")
+        print("\nOptions:")
+        print("  --tables table1,table2,...    Migrate specific tables only")
+        print("  --existing-db db_name         Use existing database instead of creating new")
+        print("  --replace-tables              Drop and recreate tables (default: truncate)")
         print("\nExamples:")
         print("  python migrate.py comics.db")
-        print("  python migrate.py comics.db gcd_series,gcd_issue")
-        print("\nMake sure to set environment variables: DB_HOST, DB_USER, DB_PASS")
+        print("  python migrate.py comics.db --tables gcd_series,gcd_issue")
+        print("  python migrate.py comics.db --existing-db mydb")
+        print("  python migrate.py comics.db --existing-db mydb --replace-tables")
+        print("\nEnvironment variables: DB_HOST, DB_USER, DB_PASS")
         return
     
     sqlite_path = sys.argv[1]
-    tables_to_migrate = sys.argv[2].split(',') if len(sys.argv) > 2 else None
+    
+    # Parse command line arguments
+    tables_to_migrate = None
+    existing_db = None
+    replace_tables = False
+    
+    i = 2
+    while i < len(sys.argv):
+        if sys.argv[i] == '--tables' and i + 1 < len(sys.argv):
+            tables_to_migrate = sys.argv[i + 1].split(',')
+            i += 2
+        elif sys.argv[i] == '--existing-db' and i + 1 < len(sys.argv):
+            existing_db = sys.argv[i + 1]
+            i += 2
+        elif sys.argv[i] == '--replace-tables':
+            replace_tables = True
+            i += 1
+        else:
+            print(f"Unknown argument: {sys.argv[i]}")
+            return
     
     # Configuration
-    NEW_DB_NAME = 'gcd'
+    DEFAULT_NEW_DB_NAME = 'gcd'
+    target_db_name = existing_db if existing_db else DEFAULT_NEW_DB_NAME
+    use_existing = existing_db is not None
     
     pg_config = {
         'host': os.getenv('DB_HOST'),
@@ -272,7 +336,13 @@ def main():
     print("SQLite to PostgreSQL Migration")
     print("=" * 60)
     print(f"Source: {sqlite_path}")
-    print(f"Target: {pg_config['host']}:{pg_config['port']}/{NEW_DB_NAME}")
+    print(f"Target: {pg_config['host']}:{pg_config['port']}/{target_db_name}")
+    if use_existing:
+        print("Mode: Using existing database")
+    else:
+        print("Mode: Creating new database")
+    if tables_to_migrate:
+        print(f"Tables: {', '.join(tables_to_migrate)}")
     print()
     
     # Confirm before proceeding
@@ -281,7 +351,7 @@ def main():
         print("Migration cancelled.")
         return
     
-    migrate_database(sqlite_path, pg_config, NEW_DB_NAME, tables_to_migrate)
+    migrate_database(sqlite_path, pg_config, target_db_name, tables_to_migrate, use_existing, replace_tables)
 
 if __name__ == "__main__":
     main()

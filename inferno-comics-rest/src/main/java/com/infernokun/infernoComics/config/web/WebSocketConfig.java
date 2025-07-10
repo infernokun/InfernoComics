@@ -1,4 +1,4 @@
-package com.infernokun.infernoComics.config;
+package com.infernokun.infernoComics.config.web;
 
 import com.infernokun.infernoComics.websocket.InfernoComicsSocketHandler;
 import org.springframework.context.annotation.Bean;

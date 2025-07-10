@@ -18,7 +18,13 @@ management:
     env:
       enabled: true
 
+selenium:
+  enabled: true
+
 spring:
+  devtools:
+    restart:
+      enabled: false
   servlet:
     multipart:
       max-file-size: 10MB

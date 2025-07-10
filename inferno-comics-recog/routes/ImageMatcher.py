@@ -1,8 +1,6 @@
 from flask import Blueprint, jsonify
-from datetime import datetime
-from config.Config import Config
 from models.OptimizedComicMatcher import OptimizedComicMatcher
-
+from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 
 image_matcher_bp = Blueprint('imager-matcher', __name__)
 
@@ -13,7 +11,6 @@ def image_matcher():
 from flask import request, jsonify
 import numpy as np
 import cv2
-import io
 
 @image_matcher_bp.route('/image-matcher', methods=['POST'])
 def image_matcher_operation():
@@ -52,7 +49,7 @@ def image_matcher_operation():
 
     print(candidate_urls)
     # Initialize matcher
-    matcher = OptimizedComicMatcher(max_workers=6)
+    matcher = FeatureMatchingComicMatcher(max_workers=6)
 
     try:
         # Run matching
