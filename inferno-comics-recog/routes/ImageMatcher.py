@@ -1,13 +1,8 @@
 from flask import Blueprint, jsonify
-from models.OptimizedComicMatcher import OptimizedComicMatcher
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 
 image_matcher_bp = Blueprint('imager-matcher', __name__)
 
-'''
-@image_matcher_bp.route('/imager-matcher', methods=['GET'])
-def image_matcher():
-    pass'''
 from flask import request, jsonify
 import numpy as np
 import cv2
@@ -56,7 +51,7 @@ def image_matcher_operation():
         results, query_elements = matcher.find_matches_img(query_image, candidate_urls)
 
         # Return top 3 matches as JSON
-        top_matches = results[:1] # Limit to top 1 match for performance
+        top_matches = results[:5]
         
         return jsonify({
             'top_matches': [
@@ -65,7 +60,6 @@ def image_matcher_operation():
                     'similarity': r['similarity'],
                     'status': r['status'],
                     'similarities': r.get('similarities')
-                    # Do NOT include 'elements' if it contains ndarrays
                 }
                 for r in top_matches
             ],
@@ -73,5 +67,5 @@ def image_matcher_operation():
         })
     except Exception as e:
         import traceback
-        traceback.print_exc()  # <--- LOG full stack trace
+        traceback.print_exc()
         return jsonify({'error': f'Matching failed: {str(e)}'}), 500

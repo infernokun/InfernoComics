@@ -72,6 +72,11 @@ public class Series {
         this.publisher = publisher;
     }
 
+    public Series(String name, int year) {
+        this.name = name;
+        this.startYear = year;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

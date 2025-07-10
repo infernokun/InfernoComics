@@ -38,6 +38,8 @@ public class SeriesService {
 
     private final WebClient webClient;
 
+    private final Map<Integer, List<String>> urlCache = new HashMap<>();
+
     public SeriesService(SeriesRepository seriesRepository,
                          ComicVineService comicVineService,
                          DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, GCDCoverPageScraper gcdCoverPageScraper, InfernoComicsConfig infernoComicsConfig) {
@@ -46,6 +48,7 @@ public class SeriesService {
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
         this.gcdCoverPageScraper = gcdCoverPageScraper;
+        urlCache.put(0, new ArrayList<>());
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
                 .exchangeStrategies(ExchangeStrategies.builder()
@@ -307,8 +310,34 @@ public class SeriesService {
                 .collect(Collectors.toList());
     }
 
-    public JsonNode addComicByImage(Long seriesId, MultipartFile imageFile) {
+    public JsonNode addComicByImage(Long seriesId, MultipartFile imageFile, String name, int year) {
         log.info("🚀 Starting image processing for series ID: {}", seriesId);
+
+        if (seriesId == 0) {
+            List<Long> gcdSeriesIds = gcDatabaseService.findGCDSeriesByYearBeganAndNameContainingIgnoreCase(
+                    year, name).stream().map(GCDSeries::getId).toList();
+
+            List<GCDIssue> gcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);
+
+            if (!urlCache.get(0).isEmpty()) {
+                Series series = new Series(name, year);
+
+                return sendToImageMatcher(imageFile, urlCache.get(0), series);
+            }
+
+            List<String> candidateUrls = new ArrayList<>();
+            gcdIssues.forEach(i -> {
+                        GCDCoverPageScraper.CoverResult coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
+                        candidateUrls.addAll(coverResult.getAllCoverUrls());
+                    }
+            );
+
+            urlCache.put(0, candidateUrls);
+
+            Series series = new Series(name, year);
+
+            return sendToImageMatcher(imageFile, candidateUrls, series);
+        }
 
         Optional<Series> series = seriesRepository.findById(seriesId);
         if (series.isEmpty()) {

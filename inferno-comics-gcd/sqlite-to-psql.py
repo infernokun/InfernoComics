@@ -3,8 +3,8 @@ import psycopg2
 from psycopg2.extras import execute_values
 import sys
 import os
-from datetime import datetime
 from tqdm import tqdm
+import re
 
 def create_database(pg_config, new_db_name):
     """
@@ -78,9 +78,90 @@ def map_sqlite_to_postgres_type(sqlite_type):
     }
     return type_mapping.get(sqlite_type, 'TEXT')
 
+def analyze_column_data(sqlite_cursor, table_name, column_name, sample_size=1000):
+    """
+    Analyze column data to determine the best PostgreSQL type
+    """
+    # Get sample data
+    sqlite_cursor.execute(f"SELECT {column_name} FROM {table_name} WHERE {column_name} IS NOT NULL LIMIT {sample_size}")
+    sample_data = [row[0] for row in sqlite_cursor.fetchall()]
+    
+    if not sample_data:
+        return 'TEXT'
+    
+    # Check if all values are integers
+    all_integers = True
+    all_booleans = True
+    all_dates = True
+    
+    for value in sample_data:
+        str_value = str(value).strip()
+        
+        # Check integer
+        if all_integers:
+            try:
+                int(str_value)
+            except (ValueError, TypeError):
+                all_integers = False
+        
+        # Check boolean (0/1 or true/false)
+        if all_booleans:
+            if str_value.lower() not in ['0', '1', 'true', 'false', 't', 'f']:
+                all_booleans = False
+        
+        # Check date formats
+        if all_dates:
+            if not re.match(r'^\d{4}-\d{2}-\d{2}', str_value):
+                all_dates = False
+    
+    # Determine best type
+    if all_integers:
+        # Check if it's a boolean (only 0s and 1s)
+        if all_booleans and all(str(v).strip() in ['0', '1'] for v in sample_data):
+            return 'INTEGER'  # Keep as INTEGER for JPA compatibility
+        return 'BIGINT'  # Use BIGINT for IDs and large integers
+    elif all_dates:
+        return 'DATE'
+    else:
+        return 'TEXT'
+
+def get_optimized_postgres_type(sqlite_cursor, table_name, column_name, sqlite_type, is_pk=False):
+    """
+    Get the optimal PostgreSQL type based on SQLite type and data analysis
+    """
+    # First check explicit type mappings
+    explicit_mappings = {
+        'varchar(255)': 'VARCHAR(255)',
+        'varchar(50)': 'VARCHAR(50)',
+        'varchar(32)': 'VARCHAR(32)',
+        'varchar(38)': 'VARCHAR(38)',
+        'varchar(13)': 'VARCHAR(13)',
+        'varchar(10)': 'VARCHAR(10)',
+        'longtext': 'TEXT',
+        'datetime': 'TIMESTAMP',
+        'decimal(10,3)': 'DECIMAL(10,3)',
+    }
+    
+    # If we have an explicit mapping, use it
+    if sqlite_type.lower() in [k.lower() for k in explicit_mappings.keys()]:
+        return explicit_mappings.get(sqlite_type.lower(), explicit_mappings.get(sqlite_type))
+    
+    # For TEXT and INTEGER, analyze the actual data
+    if sqlite_type.upper() in ['TEXT', 'INTEGER'] or is_pk:
+        analyzed_type = analyze_column_data(sqlite_cursor, table_name, column_name)
+        
+        # Override for primary keys - they should be BIGINT
+        if is_pk and analyzed_type in ['INTEGER', 'BIGINT']:
+            return 'BIGINT'
+        
+        return analyzed_type
+    
+    # Default fallback
+    return 'TEXT'
+
 def create_postgres_table(cursor, table_name, columns, replace_existing=False):
     """
-    Create PostgreSQL table with proper column types
+    Create PostgreSQL table with intelligent column types
     """
     if replace_existing:
         cursor.execute(f'DROP TABLE IF EXISTS {table_name} CASCADE')
@@ -88,9 +169,8 @@ def create_postgres_table(cursor, table_name, columns, replace_existing=False):
     
     column_defs = []
     for col_name, col_type, is_pk in columns:
-        pg_type = map_sqlite_to_postgres_type(col_type)
         pk_constraint = ' PRIMARY KEY' if is_pk else ''
-        column_defs.append(f'"{col_name}" {pg_type}{pk_constraint}')
+        column_defs.append(f'"{col_name}" {col_type}{pk_constraint}')
     
     newline = '\n'
     indent = '    '
@@ -104,7 +184,7 @@ def create_postgres_table(cursor, table_name, columns, replace_existing=False):
 
 def migrate_table(sqlite_path, pg_conn, table_name, batch_size=10000, replace_existing=False):
     """
-    Migrate a single table from SQLite to PostgreSQL (optimized for speed)
+    Migrate a single table from SQLite to PostgreSQL with intelligent type detection
     """
     sqlite_conn = sqlite3.connect(sqlite_path)
     sqlite_cursor = sqlite_conn.cursor()
@@ -115,8 +195,21 @@ def migrate_table(sqlite_path, pg_conn, table_name, batch_size=10000, replace_ex
         sqlite_cursor.execute(f"PRAGMA table_info({table_name})")
         columns_info = sqlite_cursor.fetchall()
         
-        # Format: (cid, name, type, notnull, dflt_value, pk)
-        columns = [(col[1], col[2], col[5] == 1) for col in columns_info]
+        # Analyze each column and determine optimal PostgreSQL type
+        print(f"Analyzing column types for {table_name}...")
+        columns = []
+        for col_info in columns_info:
+            col_name = col_info[1]
+            sqlite_type = col_info[2]
+            is_pk = col_info[5] == 1
+            
+            # Get optimized PostgreSQL type
+            pg_type = get_optimized_postgres_type(sqlite_cursor, table_name, col_name, sqlite_type, is_pk)
+            columns.append((col_name, pg_type, is_pk))
+            
+            print(f"  {col_name}: {sqlite_type} -> {pg_type}")
+        
+        # Rest of the migration function remains the same...
         column_names = [col[0] for col in columns]
         
         # Create table in PostgreSQL

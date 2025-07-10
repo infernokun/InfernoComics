@@ -457,7 +457,6 @@ class FeatureMatchingComicMatcher:
         print(f"🎯 Found {len(good_matches)} matches above threshold ({threshold})")
         
         return results, query_features
-    
 
     def visualize_results(self, query_image_path, results, query_features, top_n=5):
         """Create visual comparison with proper display handling"""

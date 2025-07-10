@@ -171,7 +171,9 @@ public class SeriesController {
     }
 
     @PostMapping("{seriesId}/add-comic-by-image")
-    public ResponseEntity<JsonNode> addComicByImage(@PathVariable Long seriesId, @RequestParam("image") MultipartFile imageFile) {
+    public ResponseEntity<JsonNode> addComicByImage(@PathVariable Long seriesId, @RequestParam("image") MultipartFile imageFile,
+                                                    @RequestParam(value = "name", required = false) String name,
+                                                    @RequestParam(value = "year", required = false) int year) {
         try {
             // Validate image
             if (imageFile.isEmpty()) {
@@ -183,7 +185,7 @@ public class SeriesController {
             }
 
             // Call service and get JSON response
-            JsonNode responseJson = seriesService.addComicByImage(seriesId, imageFile);
+            JsonNode responseJson = seriesService.addComicByImage(seriesId, imageFile, name, year);
             return ResponseEntity.ok(responseJson);
 
         } catch (Exception e) {
