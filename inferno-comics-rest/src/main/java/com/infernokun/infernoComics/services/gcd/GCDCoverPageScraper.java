@@ -1,14 +1,17 @@
 package com.infernokun.infernoComics.services.gcd;
 
+import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDIssue;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +19,8 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.Duration;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -108,8 +113,16 @@ public class GCDCoverPageScraper {
             prefs.put("profile.managed_default_content_settings.media_stream", 2); // Block media
             options.setExperimentalOption("prefs", prefs);
 
-            // Minimal user agent
-            options.addArguments("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36");
+            String[] userAgents = {
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            };
+            options.addArguments("--user-agent=" + userAgents[new Random().nextInt(userAgents.length)]);
+
+            // Remove automation indicators
+            options.setExperimentalOption("excludeSwitches", List.of("enable-automation"));
+            options.setExperimentalOption("useAutomationExtension", false);
 
             WebDriver driver = new ChromeDriver(options);
 
@@ -124,6 +137,50 @@ public class GCDCoverPageScraper {
             throw new RuntimeException("Could not create optimized WebDriver", e);
         }
     }
+
+    private boolean waitForCloudflareBypass(WebDriver driver) {
+        try {
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
+
+            // Check if we're on a Cloudflare challenge page
+            String title = Objects.requireNonNull(driver.getTitle()).toLowerCase();
+            if (title.contains("just a moment") || title.contains("checking") || title.contains("please wait")) {
+                log.info("⚡ Cloudflare challenge detected, waiting for bypass...");
+
+                // Wait for the page to change from the challenge page
+                wait.until(driver1 -> {
+                    String currentTitle = Objects.requireNonNull(driver1.getTitle()).toLowerCase();
+                    return !currentTitle.contains("just a moment") &&
+                            !currentTitle.contains("checking") &&
+                            !currentTitle.contains("please wait");
+                });
+
+                // Additional wait for page to fully load
+                Thread.sleep(2000);
+
+                log.info("⚡ Cloudflare bypass successful, page title: {}", driver.getTitle());
+                return true;
+            }
+
+            // Check for other error indicators
+            String pageSource = driver.getPageSource().toLowerCase();
+            if (pageSource.contains("access denied") || pageSource.contains("blocked") ||
+                    pageSource.contains("captcha") || pageSource.contains("security check")) {
+                log.warn("⚡ Access denied or security check detected");
+                return false;
+            }
+
+            return true;
+
+        } catch (TimeoutException e) {
+            log.error("⚡ Timeout waiting for Cloudflare bypass");
+            return false;
+        } catch (Exception e) {
+            log.error("⚡ Error during Cloudflare bypass: {}", e.getMessage());
+            return false;
+        }
+    }
+
 
     /**
      * Get next available driver from pool (round-robin)
@@ -141,50 +198,69 @@ public class GCDCoverPageScraper {
     /**
      * Main scraping method - always collects ALL covers found on the page
      */
-    public CoverResult scrapeCoverPage(GCDIssue issue) {
-        CoverResult result = new CoverResult(issue.getId(), issue.getNumber());
+    public GCDCover scrapeCoverPage(GCDIssue issue) {
+        GCDCover gcdCover = new GCDCover();
         WebDriver driver = null;
 
         try {
             driver = getNextDriver();
 
             String coverPageUrl = String.format(GCD_COVER_URL, issue.getId());
-            result.setCoverPageUrl(coverPageUrl);
 
             log.info("⚡ Scraping all covers: {}", coverPageUrl);
 
             // Navigate to the cover page
             driver.get(coverPageUrl);
 
-            // Minimal wait - page should load fast with our optimizations
-            Thread.sleep(300);
+            // Wait for page to load properly - increase wait time
+            Thread.sleep(2000);
 
-            // Get ALL cover images from the page
-            List<String> allCoverUrls = findAllCoverImages(driver);
+            driver.get(coverPageUrl);
 
-            if (!allCoverUrls.isEmpty()) {
-                result.setAllCoverUrls(allCoverUrls); // All covers
-                result.setFound(true);
-                log.info("⚡ ✅ Found {} covers: {}", allCoverUrls.size(), allCoverUrls);
-                return result;
+            if (waitForCloudflareBypass(driver)) {
+                gcdCover = findAllCoverImages(driver);
+                gcdCover.setCoverPageUrl(coverPageUrl);
+
+                // Check if page loaded correctly
+                String currentUrl = driver.getCurrentUrl();
+                String pageTitle = driver.getTitle();
+                log.info("⚡ Page loaded - URL: {}, Title: {}", currentUrl, pageTitle);
+
+                // Check for error pages or redirects
+                if (Objects.requireNonNull(currentUrl).contains("error") || Objects.requireNonNull(pageTitle).toLowerCase().contains("error") ||
+                        pageTitle.toLowerCase().contains("not found")) {
+                    gcdCover.setError("Page not found or error page detected");
+                    log.warn("⚡ ❌ Error page detected for issue {}", issue.getId());
+                    return gcdCover;
+                }
+
+                if (!gcdCover.getUrls().isEmpty()) {
+                    gcdCover.setFound(true);
+                    log.info("⚡ ✅ Found {} covers: {}", gcdCover.getUrls().size(), gcdCover.getUrls());
+                    return gcdCover;
+                }
             }
+            // If no covers found, let's debug what's on the page
+            logPageDebugInfo(driver);
 
-            result.setError("No cover images found on page");
+            gcdCover.setError("No cover images found on page");
             log.info("⚡ ❌ No covers found for issue {}", issue.getId());
-            return result;
+            return gcdCover;
 
         } catch (Exception e) {
-            log.error("⚡ 💥 Error scraping issue {}: {}", issue.getId(), e.getMessage());
-            result.setError("Error: " + e.getMessage());
-            return result;
+            log.error("⚡  Error scraping issue {}: {}", issue.getId(), e.getMessage(), e);
+            gcdCover.setError("Error: " + e.getMessage());
+            return gcdCover;
         }
     }
 
     /**
      * Find ALL cover images on the page - collects every matching image
      */
-    private List<String> findAllCoverImages(WebDriver driver) {
-        List<String> allCoverUrls = new ArrayList<>();
+    private GCDCover findAllCoverImages(WebDriver driver) {
+        GCDCover gcdCover = new GCDCover();
+
+        gcdCover.setUrls(new ArrayList<>());
 
         // Search through all selectors to find every possible cover
         String[] selectors = {
@@ -195,35 +271,50 @@ public class GCDCoverPageScraper {
                 "img[alt*='cover']"              // Images with 'cover' in alt text
         };
 
+        try {
+            Pattern pattern = Pattern.compile(".*:: (.+)$");
+            Matcher matcher = pattern.matcher(Objects.requireNonNull(driver.getTitle()));
+            gcdCover.setIssueName(matcher.find() ? matcher.group(1) : driver.getTitle());
+            log.info("⚡ Extracted comic name: {}", gcdCover.getIssueName());
+        } catch (Exception e) {
+            log.warn("⚡ Failed to extract comic name: {}", e.getMessage());
+            gcdCover.setIssueName("Unknown");
+        }
+
+        Set<String> foundUrls = new HashSet<>(); // Use Set to prevent duplicates
+
         for (String selector : selectors) {
             try {
                 List<WebElement> images = driver.findElements(By.cssSelector(selector));
+                log.debug("⚡ Selector '{}' found {} elements", selector, images.size());
 
                 for (WebElement img : images) {
-                    String src = img.getAttribute("src");
-                    if (src != null && !src.trim().isEmpty()) {
-                        // Validate this looks like a cover URL
-                        if (src.contains("files1.comics.org") || src.contains("covers")) {
+                    try {
+                        String src = img.getAttribute("src");
+                        if (src != null && !src.trim().isEmpty()) {
+
+                        // More comprehensive URL validation
                             String fullUrl = normalizeUrl(src);
 
-                            // Add to list if not already present (avoid duplicates)
-                            if (!allCoverUrls.contains(fullUrl)) {
-                                allCoverUrls.add(fullUrl);
+                            // Add to set first to check for duplicates
+                            if (foundUrls.add(fullUrl)) {
+                                gcdCover.getUrls().add(fullUrl);
                                 log.info("⚡ Added cover #{} from '{}': {}",
-                                        allCoverUrls.size(), selector, fullUrl);
+                                        gcdCover.getUrls().size(), selector, fullUrl);
                             }
                         }
+                    } catch (Exception e) {
+                        log.debug("⚡ Error processing image element: {}", e.getMessage());
                     }
                 }
 
             } catch (Exception e) {
                 log.debug("⚡ Selector '{}' failed: {}", selector, e.getMessage());
-                // Continue to next selector
             }
         }
 
-        log.info("⚡ Total covers collected: {}", allCoverUrls.size());
-        return allCoverUrls;
+        log.info("⚡ Total covers collected: {}", gcdCover.getUrls().size());
+        return gcdCover;
     }
 
     /**
@@ -238,6 +329,42 @@ public class GCDCoverPageScraper {
             return "https://www.comics.org/" + url;
         }
         return url;
+    }
+
+    private void logPageDebugInfo(WebDriver driver) {
+        try {
+            log.info("⚡ DEBUG: Page source length: {}", Objects.requireNonNull(driver.getPageSource()).length());
+
+            // Check for common error indicators
+            String pageSource = driver.getPageSource().toLowerCase();
+            if (pageSource.contains("error") || pageSource.contains("not found") ||
+                    pageSource.contains("404") || pageSource.contains("403")) {
+                log.warn("⚡ DEBUG: Page appears to contain error content");
+
+                log.error(pageSource);
+            }
+
+            // Log all images found on page for debugging
+            List<WebElement> allImages = driver.findElements(By.tagName("img"));
+            log.info("⚡ DEBUG: Total images on page: {}", allImages.size());
+
+            // Log first few image sources for debugging
+            for (int i = 0; i < Math.min(5, allImages.size()); i++) {
+                try {
+                    String src = allImages.get(i).getAttribute("src");
+                    log.info("⚡ DEBUG: Image {}: {}", i + 1, src);
+                } catch (Exception e) {
+                    log.debug("⚡ DEBUG: Error getting image src: {}", e.getMessage());
+                }
+            }
+
+            // Check if there are any links to covers
+            List<WebElement> coverLinks = driver.findElements(By.cssSelector("a[href*='cover']"));
+            log.info("⚡ DEBUG: Cover-related links found: {}", coverLinks.size());
+
+        } catch (Exception e) {
+            log.debug("⚡ DEBUG: Error during page debug: {}", e.getMessage());
+        }
     }
 
     @Setter

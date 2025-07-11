@@ -1,15 +1,14 @@
-from flask import Blueprint, jsonify
+import cv2
+import json
+import numpy as np
+from flask import Blueprint, jsonify, request
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 
 image_matcher_bp = Blueprint('imager-matcher', __name__)
 
-from flask import request, jsonify
-import numpy as np
-import cv2
-
 @image_matcher_bp.route('/image-matcher', methods=['POST'])
 def image_matcher_operation():
-    """Optimized comic matching API with image upload and candidate URLs"""
+    """Optimized comic matching API with image upload and candidate cover objects"""
     
     # Check for image file in request
     if 'image' not in request.files:
@@ -29,42 +28,100 @@ def image_matcher_operation():
     except Exception as e:
         return jsonify({'error': f'Failed to process uploaded image: {str(e)}'}), 400
 
-    # Parse candidate URLs (assumes JSON body or form field)
+    # Parse candidate covers (now expecting GCDCover objects as JSON)
     try:
-        if request.is_json:
-            data = request.get_json()
-            candidate_urls = data.get('candidate_urls', [])
-        else:
-            candidate_urls = request.form.getlist('candidate_urls')
+        candidate_covers_json = request.form.get('candidate_covers')
+        if not candidate_covers_json:
+            raise ValueError("Missing candidate_covers field")
             
-        if not candidate_urls or not isinstance(candidate_urls, list):
-            raise ValueError("Invalid or missing candidate_urls")
+        candidate_covers = json.loads(candidate_covers_json)
+        if not isinstance(candidate_covers, list):
+            raise ValueError("candidate_covers must be a list")
+        
+        print(f" Received {len(candidate_covers)} candidate covers")
+        
+        # Extract URLs and create a mapping from URL to cover info
+        candidate_urls = []
+        url_to_cover_map = {}
+        
+        for cover in candidate_covers:
+            if not isinstance(cover, dict):
+                continue
+                
+            comic_name = cover.get('comicName', 'Unknown')
+            issue_name = cover.get('issueName', 'Unknown')
+            cover_urls = cover.get('urls', [])
+            
+            # Handle both single URL and list of URLs
+            if isinstance(cover_urls, str):
+                cover_urls = [cover_urls]
+            elif not isinstance(cover_urls, list):
+                continue
+                
+            for url in cover_urls:
+                if url and isinstance(url, str):
+                    candidate_urls.append(url)
+                    url_to_cover_map[url] = {
+                        'comic_name': comic_name,
+                        'issue_name': issue_name,
+                        'cover_page_url': cover.get('coverPageUrl', ''),
+                        'found': cover.get('found', False),
+                        'error': cover.get('error', '')
+                    }
+        
+        print(f" Extracted {len(candidate_urls)} URLs from covers")
+        
+        if not candidate_urls:
+            raise ValueError("No valid URLs found in candidate covers")
+            
     except Exception as e:
-        return jsonify({'error': f'Invalid candidate URLs: {str(e)}'}), 400
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Invalid candidate covers: {str(e)}'}), 400
 
-    print(candidate_urls)
     # Initialize matcher
     matcher = FeatureMatchingComicMatcher(max_workers=6)
 
     try:
-        # Run matching
+        # Run matching with the extracted URLs
         results, query_elements = matcher.find_matches_img(query_image, candidate_urls)
 
-        # Return top 3 matches as JSON
-        top_matches = results[:5]
+        # Enhance results with comic names and cover information
+        enhanced_results = []
+        for result in results:
+            url = result['url']
+            cover_info = url_to_cover_map.get(url, {})
+            
+            enhanced_result = {
+                'url': url,
+                'similarity': result['similarity'],
+                'status': result['status'],
+                'match_details': result['match_details'],
+                'candidate_features': result['candidate_features'],
+                # Add comic information
+                'comic_name': cover_info.get('comic_name', 'Unknown'),
+                'issue_name': cover_info.get('issue_name', 'Unknown'),
+                'cover_page_url': cover_info.get('cover_page_url', ''),
+                'cover_found': cover_info.get('found', False),
+                'cover_error': cover_info.get('error', '')
+            }
+            enhanced_results.append(enhanced_result)
+        
+        # Return top 5 matches as JSON
+        top_matches = enhanced_results[:5]
+        
+        # Log top matches for debugging
+        print(f" Top {len(top_matches)} matches:")
+        for i, match in enumerate(top_matches[:3], 1):
+            print(f"   {i}. {match['comic_name']} - Similarity: {match['similarity']:.3f}")
         
         return jsonify({
-            'top_matches': [
-                {
-                    'url': r['url'],
-                    'similarity': r['similarity'],
-                    'status': r['status'],
-                    'similarities': r.get('similarities')
-                }
-                for r in top_matches
-            ],
-            'total_matches': len(results)
+            'top_matches': top_matches,
+            'total_matches': len(enhanced_results),
+            'total_covers_processed': len(candidate_covers),
+            'total_urls_processed': len(candidate_urls)
         })
+        
     except Exception as e:
         import traceback
         traceback.print_exc()

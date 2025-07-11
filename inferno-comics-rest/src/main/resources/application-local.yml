@@ -74,6 +74,7 @@ inferno-comics:
   descriptionGeneration: ${DESCRIPTION_GENERATION:true}
   recognitionServerHost: "${RECOGNITION_SERVER_HOST:localhost}"
   recognitionServerPort: "${RECOGNITION_SERVER_PORT:5000}"
+  skipScrape: true
 
 logging:
   level:

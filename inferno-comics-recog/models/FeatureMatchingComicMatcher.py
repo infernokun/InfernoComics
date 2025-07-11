@@ -409,8 +409,8 @@ class FeatureMatchingComicMatcher:
         # Process each candidate
         results = []
         
-        for i, url in enumerate(candidate_urls, 1):
-            print(f"🔄 Processing candidate {i}/{len(candidate_urls)}...")
+        from tqdm import tqdm
+        for i, url in enumerate(tqdm(candidate_urls, desc="Processing candidates", unit="url"), 1):
             
             if url not in candidate_images:
                 results.append({

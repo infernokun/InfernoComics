@@ -22,4 +22,5 @@ public class InfernoComicsConfig {
     private boolean descriptionGeneration;
     private String recognitionServerHost;
     private int recognitionServerPort;
+    private boolean skipScrape;
 }

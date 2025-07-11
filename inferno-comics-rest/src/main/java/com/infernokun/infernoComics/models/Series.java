@@ -2,6 +2,8 @@ package com.infernokun.infernoComics.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.infernokun.infernoComics.models.gcd.GCDCover;
+import com.infernokun.infernoComics.utils.GCDCoverListConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -53,8 +55,9 @@ public class Series {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "cached_cover_urls")
-    private List<String> cachedCoverUrls = new ArrayList<>();
+    @Column(name = "cached_cover_urls", columnDefinition = "TEXT")
+    @Convert(converter = GCDCoverListConverter.class)
+    private List<GCDCover> cachedCoverUrls = new ArrayList<>();
 
     @Column(name = "last_cached_covers")
     private LocalDateTime lastCachedCovers;

@@ -1,13 +1,16 @@
 package com.infernokun.infernoComics.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDIssue;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
+import com.infernokun.infernoComics.services.gcd.GCDAPIService;
 import com.infernokun.infernoComics.services.gcd.GCDCoverPageScraper;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -35,19 +40,23 @@ public class SeriesService {
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
     private final GCDCoverPageScraper gcdCoverPageScraper;
+    private final InfernoComicsConfig infernoComicsConfig;
+    private final GCDAPIService gcdapiService;
 
     private final WebClient webClient;
 
-    private final Map<Integer, List<String>> urlCache = new HashMap<>();
+    private final Map<Integer, List<GCDCover>> urlCache = new HashMap<>();
 
     public SeriesService(SeriesRepository seriesRepository,
                          ComicVineService comicVineService,
-                         DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, GCDCoverPageScraper gcdCoverPageScraper, InfernoComicsConfig infernoComicsConfig) {
+                         DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, GCDCoverPageScraper gcdCoverPageScraper, InfernoComicsConfig infernoComicsConfig1, GCDAPIService gcdapiService, InfernoComicsConfig infernoComicsConfig) {
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
         this.gcdCoverPageScraper = gcdCoverPageScraper;
+        this.infernoComicsConfig = infernoComicsConfig1;
+        this.gcdapiService = gcdapiService;
         urlCache.put(0, new ArrayList<>());
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
@@ -325,10 +334,10 @@ public class SeriesService {
                 return sendToImageMatcher(imageFile, urlCache.get(0), series);
             }
 
-            List<String> candidateUrls = new ArrayList<>();
+            List<GCDCover> candidateUrls = new ArrayList<>();
             gcdIssues.forEach(i -> {
-                        GCDCoverPageScraper.CoverResult coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
-                        candidateUrls.addAll(coverResult.getAllCoverUrls());
+                        GCDCover coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
+                candidateUrls.add(coverResult);
                     }
             );
 
@@ -348,6 +357,11 @@ public class SeriesService {
         Series seriesEntity = series.get();
         log.info("📚 Processing series: '{}' ({})", seriesEntity.getName(), seriesEntity.getStartYear());
 
+        if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty() && seriesEntity.getLastCachedCovers() != null) {
+            log.info("Using cached images");
+            return sendToImageMatcher(imageFile, seriesEntity.getCachedCoverUrls(), seriesEntity);
+        }
+
         // Step 1: Get ComicVine candidates
         log.info("🦸 Starting ComicVine search for series: {}", seriesId);
         List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
@@ -355,54 +369,94 @@ public class SeriesService {
         log.info("🦸 ComicVine completed: Found {} issues",
                 results.size());
 
-        // Debug: Log first few URLs
-        List<String> candidateUrls = new ArrayList<>(results.stream().map(ComicVineService.ComicVineIssueDto::getImageUrl).toList());
+        List<GCDCover> candidateCovers = new ArrayList<>(results.stream()
+                .map(issue -> new GCDCover(
+                        seriesEntity.getName() + " #" + issue.getIssueNumber(),
+                        issue.getName(),
+                        Collections.singletonList(issue.getImageUrl()),
+                        "comicVineAPI",
+                        true,
+                        ""
+                ))
+                .toList());
+        log.info("Comic vine has {} GCDCovers", candidateCovers.size());
 
         List<Long> gcdSeriesIds = gcDatabaseService.findGCDSeriesByYearBeganAndNameContainingIgnoreCase(
                 seriesEntity.getStartYear(), seriesEntity.getName()).stream().map(GCDSeries::getId).toList();
 
         List<GCDIssue> gcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);
 
-//        if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty()) {
-//            return sendToImageMatcher(imageFile, seriesEntity.getCachedCoverUrls(), seriesEntity);
-//        }
+        if (!infernoComicsConfig.isSkipScrape()) {
+            gcdIssues.forEach(i -> {
+                        GCDCover coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
+                candidateCovers.add(coverResult);
+                    }
+            );
+        }
 
-        gcdIssues.forEach(i -> {
-                    GCDCoverPageScraper.CoverResult coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
-                    candidateUrls.addAll(coverResult.getAllCoverUrls());
-                }
-        );
+        // https://www.comics.org/api/series/103021/
+        // Process your list of GCDCover objects here
+        gcdSeriesIds.forEach(gcdSeriesId -> {
+            this.gcdapiService.getIssueIdsFromSeries(gcdSeriesId)
+                    .flatMapMany(Flux::fromIterable)
+                    .flatMap(this.gcdapiService::getIssueById)
+                    .map(issueResponse -> {
+                        String title = issueResponse.getStorySet().stream()
+                                .filter(r -> "comic story".equals(r.getType()))
+                                .findFirst()
+                                .map(GCDAPIService.Story::getTitle)
+                                .orElse("");
 
-        seriesEntity.setCachedCoverUrls(candidateUrls);
+                        return new GCDCover(
+                                seriesEntity.getName() + " # " + issueResponse.getDescriptor().split(" ")[0],
+                                title,
+                                Collections.singletonList(issueResponse.getCover()), // Single cover URL as list
+                                "api",
+                                true,
+                                ""
+                        );
+                    })
+                    .collectList()
+                    .subscribe(candidateCovers::addAll);
+        });
+
+        seriesEntity.setCachedCoverUrls(candidateCovers);
+        //seriesEntity.setLastCachedCovers(LocalDateTime.now());
         seriesRepository.save(seriesEntity);
 
-        return sendToImageMatcher(imageFile, candidateUrls, seriesEntity);
+        return sendToImageMatcher(imageFile, candidateCovers, seriesEntity);
     }
 
-    private JsonNode sendToImageMatcher(MultipartFile imageFile, List<String> candidateUrls, Series seriesEntity) {
+    private JsonNode sendToImageMatcher(MultipartFile imageFile, List<GCDCover> candidateCovers, Series seriesEntity) {
         try {
-            log.info("📤 Preparing image matcher request...");
-            log.info("   📁 Image file: {} ({} bytes)",
+            log.info(" Preparing image matcher request...");
+            log.info("    Image file: {} ({} bytes)",
                     imageFile.getOriginalFilename(), imageFile.getSize());
-            log.info("   ✅ Candidate URLs: {}", candidateUrls.size());
+            log.info("   ✅ Candidate covers: {}", candidateCovers.size());
 
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
 
             builder.part("image", imageFile.getResource())
                     .contentType(MediaType.valueOf(Objects.requireNonNull(imageFile.getContentType())));
 
-            // Add all candidate URLs
-            for (String url : candidateUrls) {
-                builder.part("candidate_urls", url);
+            // Convert GCDCover objects to JSON and send as candidate_covers
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String candidateCoversJson = mapper.writeValueAsString(candidateCovers);
+                builder.part("candidate_covers", candidateCoversJson);
+                log.info(" Sending {} candidate covers as JSON", candidateCovers.size());
+            } catch (JsonProcessingException e) {
+                log.error("❌ Failed to serialize candidate covers to JSON: {}", e.getMessage());
+                throw new RuntimeException("Failed to serialize candidate covers", e);
             }
 
             // Add metadata for better debugging
             builder.part("series_name", seriesEntity.getName());
             builder.part("series_start_year", seriesEntity.getStartYear().toString());
-            builder.part("total_candidates", String.valueOf(candidateUrls.size()));
-            builder.part("urls_scraped", "true"); // Flag to indicate these are scraped URLs
+            builder.part("total_candidates", String.valueOf(candidateCovers.size()));
+            builder.part("urls_scraped", "true");
 
-            log.info("📡 Sending request to image matcher service...");
+            log.info(" Sending request to image matcher service...");
             long startTime = System.currentTimeMillis();
 
             String response = webClient.post()
@@ -414,25 +468,27 @@ public class SeriesService {
                     .block();
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("📨 Image matcher response received in {}ms", duration);
+            log.info(" Image matcher response received in {}ms", duration);
 
-            ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(response);
             JsonNode topMatches = root.get("top_matches");
 
             if (topMatches != null && topMatches.isArray()) {
-                log.info("🎯 Image matcher found {} top matches", topMatches.size());
+                log.info(" Image matcher found {} top matches", topMatches.size());
 
-                // Debug: Log match details
+                // Debug: Log match details with comic names
                 for (int i = 0; i < Math.min(3, topMatches.size()); i++) {
                     JsonNode match = topMatches.get(i);
-                    log.info("   🏆 Match {}: score={}, url={}",
+                    log.info("    Match {}: drop={}, issue={}, comic='{}', url={}, similarity={}",
                             i + 1,
-                            match.has("score") ? match.get("score").asText() : "N/A",
-                            match.has("url") ? match.get("url").asText() : "N/A");
+                            match.has("similarity") && match.get("similarity").asDouble() < 0.15,
+                            match.has("issue_name") ? match.get("issue_name").asText() : "N/A",
+                            match.has("comic_name") ? match.get("comic_name").asText() : "N/A",
+                            match.has("url") ? match.get("url").asText() : "N/A",
+                            match.has("similarity") ? match.get("similarity").asDouble() : 0);
                 }
             } else {
-                log.warn("⚠️ No top_matches found in response");
+                log.warn("⚠ No top_matches found in response");
             }
 
             return topMatches;

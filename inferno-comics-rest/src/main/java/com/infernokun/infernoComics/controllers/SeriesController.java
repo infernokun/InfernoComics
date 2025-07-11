@@ -172,8 +172,8 @@ public class SeriesController {
 
     @PostMapping("{seriesId}/add-comic-by-image")
     public ResponseEntity<JsonNode> addComicByImage(@PathVariable Long seriesId, @RequestParam("image") MultipartFile imageFile,
-                                                    @RequestParam(value = "name", required = false) String name,
-                                                    @RequestParam(value = "year", required = false) int year) {
+                                                    @RequestParam(value = "name", required = false, defaultValue = "") String name,
+                                                    @RequestParam(value = "year", required = false, defaultValue = "0") Integer year) {
         try {
             // Validate image
             if (imageFile.isEmpty()) {
