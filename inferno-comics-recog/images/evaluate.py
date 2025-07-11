@@ -30,45 +30,6 @@ def get_image_files(folder_path):
     
     return sorted(image_files)
 
-def upload_comic_image(series_id, image_path, name, year):
-    """Upload a single comic image to the API"""
-    url = f"http://localhost:8080/inferno-comics-rest/api/series/{series_id}/add-comic-by-image"
-    
-    try:
-        with open(image_path, 'rb') as image_file:
-            files = {'image': (os.path.basename(image_path), image_file, 'image/jpeg')}
-            data = {
-                'name': name,
-                'year': str(year) if year else ''
-            }
-            
-            response = requests.post(url, files=files, data=data)
-            
-            return {
-                'status_code': response.status_code,
-                'success': response.status_code == 200,
-                'response_data': response.json() if response.content and response.headers.get('content-type', '').startswith('application/json') else None,
-                'response_text': response.text,
-                'error': None
-            }
-    
-    except requests.exceptions.RequestException as e:
-        return {
-            'status_code': None,
-            'success': False,
-            'response_data': None,
-            'response_text': None,
-            'error': str(e)
-        }
-    except Exception as e:
-        return {
-            'status_code': None,
-            'success': False,
-            'response_data': None,
-            'response_text': None,
-            'error': f"Unexpected error: {str(e)}"
-        }
-
 def image_to_base64(image_path):
     """Convert image to base64 for embedding in HTML"""
     try:
@@ -87,6 +48,74 @@ def image_to_base64(image_path):
     except Exception as e:
         print(f"Error converting image to base64: {e}")
         return None
+
+def upload_comic_image(series_id, image_path, name, year):
+    """Upload a single comic image to the API"""
+    url = f"http://localhost:8080/inferno-comics-rest/api/series/{series_id}/add-comic-by-image"
+    
+    try:
+        with open(image_path, 'rb') as image_file:
+            files = {'image': (os.path.basename(image_path), image_file, 'image/jpeg')}
+            data = {
+                'name': name,
+                'year': str(year) if year else ''
+            }
+            
+            print(f"DEBUG: Uploading {os.path.basename(image_path)} to {url}")
+            response = requests.post(url, files=files, data=data)
+            print(f"DEBUG: Response status: {response.status_code}")
+            
+            # Try to parse JSON response
+            response_data = None
+            try:
+                raw_response = response.json()
+                print(f"DEBUG: Successfully parsed JSON response")
+                
+                # Handle the case where server returns an array directly
+                if isinstance(raw_response, list):
+                    # Convert array format to expected dictionary format
+                    response_data = {
+                        'top_matches': raw_response,
+                        'total_matches': len(raw_response)
+                    }
+                    print(f"DEBUG: Converted array response to dict format - {len(raw_response)} matches")
+                elif isinstance(raw_response, dict):
+                    # Server already returns expected format
+                    response_data = raw_response
+                    print(f"DEBUG: Response already in dict format")
+                else:
+                    print(f"DEBUG: Unexpected response type: {type(raw_response)}")
+                    
+            except ValueError as json_error:
+                print(f"DEBUG: Failed to parse JSON: {json_error}")
+                print(f"DEBUG: Raw response text: {response.text[:500]}...")
+            
+            return {
+                'status_code': response.status_code,
+                'success': response.status_code == 200,
+                'response_data': response_data,
+                'response_text': response.text,
+                'error': None
+            }
+    
+    except requests.exceptions.RequestException as e:
+        print(f"DEBUG: Request exception: {e}")
+        return {
+            'status_code': None,
+            'success': False,
+            'response_data': None,
+            'response_text': None,
+            'error': str(e)
+        }
+    except Exception as e:
+        print(f"DEBUG: Unexpected exception: {e}")
+        return {
+            'status_code': None,
+            'success': False,
+            'response_data': None,
+            'response_text': None,
+            'error': f"Unexpected error: {str(e)}"
+        }
 
 def generate_visual_report(results, folder_path, series_name, year):
     """Generate a visual HTML report"""
@@ -255,6 +284,15 @@ def generate_visual_report(results, folder_path, series_name, year):
                 font-style: italic;
                 padding: 20px;
             }}
+            .debug-info {{
+                background: #e7f3ff;
+                border: 1px solid #b3d9ff;
+                border-radius: 5px;
+                padding: 10px;
+                margin-top: 10px;
+                font-size: 0.9em;
+                color: #0066cc;
+            }}
             .scrollbar-custom {{
                 scrollbar-width: thin;
                 scrollbar-color: #667eea #f0f0f0;
@@ -333,7 +371,7 @@ def generate_visual_report(results, folder_path, series_name, year):
             response_data = result['response_data']
             if response_data and 'top_matches' in response_data:
                 total_matches = response_data.get('total_matches', 0)
-                top_matches = response_data['top_matches'][:3]  # Top 3 matches
+                top_matches = response_data['top_matches'][:6]  # Show top 6 matches
                 
                 html_content += f"<p><strong>Total matches found:</strong> {total_matches}</p>"
                 
@@ -349,6 +387,8 @@ def generate_visual_report(results, folder_path, series_name, year):
                             score_color = '#28a745'  # Green
                         elif similarity >= 0.6:
                             score_color = '#ffc107'  # Yellow
+                        elif similarity >= 0.4:
+                            score_color = '#fd7e14'  # Orange
                         else:
                             score_color = '#dc3545'  # Red
                         
@@ -362,10 +402,27 @@ def generate_visual_report(results, folder_path, series_name, year):
                             </div>
                         """
                     html_content += '</div>'
+                    
+                    # Add debug info showing raw response data
+                    html_content += f'''
+                        <div class="debug-info">
+                            <strong>Debug:</strong> Found {len(response_data['top_matches'])} total matches. 
+                            Response keys: {list(response_data.keys()) if isinstance(response_data, dict) else 'Not a dict'}
+                        </div>
+                    '''
                 else:
                     html_content += '<div class="no-matches">No matches found</div>'
             else:
                 html_content += '<p>Success, but no detailed match data available</p>'
+                # Add debug info to see what we actually got
+                if response_data:
+                    html_content += f'''
+                        <div class="debug-info">
+                            <strong>Debug:</strong> Response data type: {type(response_data)}<br>
+                            Response keys: {list(response_data.keys()) if isinstance(response_data, dict) else 'Not a dict'}<br>
+                            Raw response sample: {str(response_data)[:200]}...
+                        </div>
+                    '''
         else:
             # Show error information
             error_msg = result['error'] or result.get('response_text', 'Unknown error')
