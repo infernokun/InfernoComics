@@ -13,10 +13,10 @@ import { CodeEditorModule, provideCodeEditor } from '@ngstack/code-editor';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AuthInterceptor } from './services/auth/auth-interceptor.service';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { ComicBookViewDialog, RangeSelectionDialog, SeriesDetailComponent } from './components/series-detail/series-detail.component';
+import { IssueViewDialog, RangeSelectionDialog, SeriesDetailComponent } from './components/series-detail/series-detail.component';
 import { SeriesFormComponent } from './components/series-form/series-form.component';
 import { SeriesListComponent } from './components/series-list/series-list.component';
-import { ComicBookFormComponent } from './components/comic-book-form/comic-book-form.component';
+import { IssueFormComponent } from './components/issue-form/issue-form.component';
 import { ThemeService } from './services/theme.service';
 
 export function init_app(environmentService: EnvironmentService) {
@@ -42,11 +42,11 @@ export function init_app(environmentService: EnvironmentService) {
     AppComponent,
     SeriesListComponent,
     SeriesDetailComponent,
-    ComicBookFormComponent,
+    IssueFormComponent,
     SeriesFormComponent,
     DashboardComponent,
     RangeSelectionDialog,
-    ComicBookViewDialog
+    IssueViewDialog
   ],
   imports: [
     BrowserModule,

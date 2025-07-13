@@ -21,6 +21,16 @@
                     </mat-form-field>
                 </div>
 
+                <div class="form-row">
+                    <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Issue Count</mat-label>
+                        <input matInput type="number" formControlName="issueCount" [disabled]="true">
+                        <mat-hint *ngIf="seriesForm.get('issueCount')?.value">
+                            {{ seriesForm.get('issueCount')?.value }} issues
+                        </mat-hint>
+                    </mat-form-field>
+                </div>
+
                 <div class="comic-vine-search" *ngIf="!isEditMode">
                     <button type="button" mat-stroked-button color="primary" (click)="searchComicVine()"
                         [disabled]="!seriesForm.get('name')?.value || searchingComicVine">
@@ -31,19 +41,102 @@
                 </div>
 
                 <div class="comic-vine-results" *ngIf="comicVineResults.length > 0">
-                    <h4>Comic Vine Results:</h4>
+                    <h4>Comic Vine Results (Select multiple series to combine):</h4>
                     <div class="results-grid">
                         <mat-card *ngFor="let result of comicVineResults" class="result-card"
-                            (click)="selectComicVineSeries(result)">
+                            [class.selected]="isSeriesSelected(result)"
+                            (click)="toggleSeriesSelection(result)">
+                            <mat-checkbox 
+                                [checked]="isSeriesSelected(result)"
+                                (click)="$event.stopPropagation()"
+                                (change)="toggleSeriesSelection(result)">
+                            </mat-checkbox>
                             <img *ngIf="result.imageUrl" [src]="result.imageUrl" [alt]="result.name"
                                 class="result-image">
                             <div class="result-info">
                                 <h5>{{ result.name }}</h5>
                                 <p>{{ result.publisher }}</p>
                                 <span *ngIf="result.startYear">{{ result.startYear }}</span>
+                                <span class="issue-count" *ngIf="result.issueCount">
+                                    ({{ result.issueCount }} issues)
+                                </span>
                             </div>
                         </mat-card>
                     </div>
+                    
+                    <div class="selected-series-actions" *ngIf="selectedSeries.length > 0">
+                        <button type="button" mat-raised-button color="accent" (click)="combineSelectedSeries()">
+                            Combine {{ selectedSeries.length }} Selected Series
+                        </button>
+                        <button type="button" mat-button (click)="clearSelection()">
+                            Clear Selection
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Series Combination Configuration -->
+                <div class="combination-config" *ngIf="selectedSeries.length > 0 && showCombinationConfig">
+                    <mat-card class="config-card">
+                        <mat-card-header>
+                            <mat-card-title>Configure Combined Series</mat-card-title>
+                        </mat-card-header>
+                        <mat-card-content>
+                            <!-- Cover Selection -->
+                            <div class="cover-selection">
+                                <h4>Choose Cover Image:</h4>
+                                <div class="cover-options">
+                                    <div *ngFor="let series of selectedSeries" class="cover-option"
+                                         [class.selected]="selectedCover === series.imageUrl"
+                                         (click)="selectCover(series.imageUrl!)">
+                                        <img [src]="series.imageUrl" [alt]="series.name" class="cover-thumbnail">
+                                        <span>{{ series.name }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Details Selection -->
+                            <div class="details-selection">
+                                <h4>Choose Primary Details From:</h4>
+                                <mat-radio-group [(ngModel)]="selectedPrimarySeries" [ngModelOptions]="{standalone: true}">
+                                    <mat-radio-button *ngFor="let series of selectedSeries" [value]="series" class="series-option">
+                                        <div class="series-details">
+                                            <strong>{{ series.name }}</strong>
+                                            <p>{{ series.publisher }} ({{ series.startYear }})</p>
+                                            <p class="description" *ngIf="series.description">
+                                                {{ series.description | slice:0:150 }}...
+                                            </p>
+                                        </div>
+                                    </mat-radio-button>
+                                </mat-radio-group>
+                            </div>
+
+                            <!-- Selected Series Summary -->
+                            <div class="selected-summary">
+                                <h4>Selected Series ({{ selectedSeries.length }}):</h4>
+                                <mat-chip-set>
+                                    <mat-chip *ngFor="let series of selectedSeries" 
+                                              [removable]="true" 
+                                              (removed)="removeFromSelection(series)">
+                                        {{ series.name }} ({{ series.startYear }})
+                                        <button matChipRemove>
+                                            <mat-icon>cancel</mat-icon>
+                                        </button>
+                                    </mat-chip>
+                                </mat-chip-set>
+                            </div>
+
+                            <div class="config-actions">
+                                <button type="button" mat-raised-button color="primary" 
+                                        (click)="applyCombinedConfiguration()"
+                                        [disabled]="!selectedPrimarySeries || !selectedCover">
+                                    Apply Configuration
+                                </button>
+                                <button type="button" mat-button (click)="cancelCombination()">
+                                    Cancel
+                                </button>
+                            </div>
+                        </mat-card-content>
+                    </mat-card>
                 </div>
 
                 <div class="form-row">
@@ -66,9 +159,9 @@
                 <div class="form-row">
                     <mat-form-field appearance="outline" class="full-width">
                         <mat-label>Description</mat-label>
-                        <textarea matInput formControlName="description" rows="4" maxlength="1000"></textarea>
+                        <textarea matInput formControlName="description" rows="4" maxlength="10000"></textarea>
                         <mat-hint align="end">
-                            {{ seriesForm.get('description')?.value?.length || 0 }}/1000
+                            {{ seriesForm.get('description')?.value?.length || 0 }}/10000
                         </mat-hint>
                     </mat-form-field>
                 </div>
@@ -78,6 +171,16 @@
                         <mat-label>Image URL</mat-label>
                         <input matInput formControlName="imageUrl">
                     </mat-form-field>
+                </div>
+
+                <!-- Combined Series IDs Display -->
+                <div class="combined-series-info" *ngIf="seriesForm.get('comicVineIds')?.value?.length > 0">
+                    <h4>Combined Series IDs:</h4>
+                    <mat-chip-set>
+                        <mat-chip *ngFor="let id of seriesForm.get('comicVineIds')?.value">
+                            {{ id }}
+                        </mat-chip>
+                    </mat-chip-set>
                 </div>
 
                 <div class="image-preview" *ngIf="seriesForm.get('imageUrl')?.value">

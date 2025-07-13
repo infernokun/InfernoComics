@@ -1,6 +1,6 @@
 package com.infernokun.infernoComics.controllers;
 
-import com.infernokun.infernoComics.services.ComicBookService;
+import com.infernokun.infernoComics.services.IssueService;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
 import com.infernokun.infernoComics.services.DescriptionGeneratorService;
@@ -16,16 +16,16 @@ import java.util.Map;
 @RequestMapping("/api/admin/cache")
 public class CacheManagementController {
 
-    private final ComicBookService comicBookService;
+    private final IssueService issueService;
     private final SeriesService seriesService;
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
 
-    public CacheManagementController(ComicBookService comicBookService,
+    public CacheManagementController(IssueService issueService,
                                      SeriesService seriesService,
                                      ComicVineService comicVineService,
                                      DescriptionGeneratorService descriptionGeneratorService) {
-        this.comicBookService = comicBookService;
+        this.issueService = issueService;
         this.seriesService = seriesService;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
@@ -66,7 +66,7 @@ public class CacheManagementController {
         try {
             log.info("Clearing all application caches");
 
-            comicBookService.clearAllComicBookCaches();
+            issueService.clearAllIssueCaches();
             seriesService.clearAllSeriesCaches();
             comicVineService.clearAllComicVineCache();
             descriptionGeneratorService.clearAllDescriptionCache();
@@ -89,7 +89,7 @@ public class CacheManagementController {
     public ResponseEntity<Map<String, String>> clearComicBookCaches() {
         try {
             log.info("Clearing comic book caches");
-            comicBookService.clearAllComicBookCaches();
+            issueService.clearAllIssueCaches();
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",

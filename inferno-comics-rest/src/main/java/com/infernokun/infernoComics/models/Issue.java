@@ -1,25 +1,27 @@
 package com.infernokun.infernoComics.models;
 
+import com.infernokun.infernoComics.utils.VariantCoverListConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonBackReference;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
 @Setter
-@Table(name = "comic_books")
+@Table(name = "issues")
 @AllArgsConstructor
 @NoArgsConstructor
-public class ComicBook {
+public class Issue {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +35,7 @@ public class ComicBook {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "description", length = 1000)
+    @Column(name = "description", length = 10000)
     private String description;
 
     @Column(name = "cover_date")
@@ -61,6 +63,13 @@ public class ComicBook {
     @Column(name = "comic_vine_id")
     private String comicVineId;
 
+    @Column(name = "variant_covers", columnDefinition = "TEXT")
+    @Convert(converter = VariantCoverListConverter.class)
+    private List<VariantCover> variantCovers = new ArrayList<>();
+
+    @Column(name = "has_variants")
+    private Boolean hasVariants = false;
+
     @Column(name = "is_key_issue")
     private Boolean isKeyIssue = false;
 
@@ -83,7 +92,7 @@ public class ComicBook {
         MINT, NEAR_MINT, VERY_FINE, FINE, VERY_GOOD, GOOD, FAIR, POOR
     }
 
-    public ComicBook(String issueNumber, String title, Series series) {
+    public Issue(String issueNumber, String title, Series series) {
         this.issueNumber = issueNumber;
         this.title = title;
         this.series = series;
@@ -98,5 +107,15 @@ public class ComicBook {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class VariantCover {
+        private String id;
+        private String originalUrl;
+        private String caption;
+        private String imageTags;
     }
 }

@@ -23,4 +23,6 @@ public class InfernoComicsConfig {
     private String recognitionServerHost;
     private int recognitionServerPort;
     private boolean skipScrape;
+    private String gcdUsername;
+    private String gcdPassword;
 }

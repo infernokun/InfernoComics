@@ -4,6 +4,8 @@ import requests
 import base64
 from datetime import datetime
 
+SIMILARITY_THRESHOLD = 0.25
+
 def extract_name_and_year(folder_path):
     """Extract series name and year from folder name like 'Green Lanterns (2016)'"""
     folder_name = os.path.basename(folder_path.rstrip('/\\'))
@@ -49,6 +51,19 @@ def image_to_base64(image_path):
         print(f"Error converting image to base64: {e}")
         return None
 
+def check_match_success(response_data, threshold=SIMILARITY_THRESHOLD):
+    """Check if any match meets the similarity threshold"""
+    if not response_data or 'top_matches' not in response_data:
+        return False, 0.0
+    
+    best_similarity = 0.0
+    for match in response_data['top_matches']:
+        similarity = match.get('similarity', 0)
+        if similarity > best_similarity:
+            best_similarity = similarity
+    
+    return best_similarity >= threshold, best_similarity
+
 def upload_comic_image(series_id, image_path, name, year):
     """Upload a single comic image to the API"""
     url = f"http://localhost:8080/inferno-comics-rest/api/series/{series_id}/add-comic-by-image"
@@ -90,9 +105,19 @@ def upload_comic_image(series_id, image_path, name, year):
                 print(f"DEBUG: Failed to parse JSON: {json_error}")
                 print(f"DEBUG: Raw response text: {response.text[:500]}...")
             
+            # Check if this constitutes a successful match based on similarity threshold
+            api_success = response.status_code == 200
+            match_success = False
+            best_similarity = 0.0
+            
+            if api_success and response_data:
+                match_success, best_similarity = check_match_success(response_data)
+            
             return {
                 'status_code': response.status_code,
-                'success': response.status_code == 200,
+                'api_success': api_success,  # API call succeeded
+                'match_success': match_success,
+                'best_similarity': best_similarity,
                 'response_data': response_data,
                 'response_text': response.text,
                 'error': None
@@ -102,7 +127,9 @@ def upload_comic_image(series_id, image_path, name, year):
         print(f"DEBUG: Request exception: {e}")
         return {
             'status_code': None,
-            'success': False,
+            'api_success': False,
+            'match_success': False,
+            'best_similarity': 0.0,
             'response_data': None,
             'response_text': None,
             'error': str(e)
@@ -111,7 +138,9 @@ def upload_comic_image(series_id, image_path, name, year):
         print(f"DEBUG: Unexpected exception: {e}")
         return {
             'status_code': None,
-            'success': False,
+            'api_success': False,
+            'match_success': False,
+            'best_similarity': 0.0,
             'response_data': None,
             'response_text': None,
             'error': f"Unexpected error: {str(e)}"
@@ -121,18 +150,26 @@ def generate_visual_report(results, folder_path, series_name, year):
     """Generate a visual HTML report"""
     # Calculate statistics
     total_images = len(results)
-    successful_uploads = sum(1 for r in results if r['success'])
-    failed_uploads = total_images - successful_uploads
+    api_successful_uploads = sum(1 for r in results if r['api_success'])
+    match_successful_uploads = sum(1 for r in results if r['match_success'])
+    failed_uploads = sum(1 for r in results if not r['api_success'])
+    no_match_uploads = sum(1 for r in results if r['api_success'] and not r['match_success'])
     
-    # Calculate average similarity for successful matches
+    # Overall iteration success: at least one image has a match
+    overall_success = any(r['match_success'] for r in results)
+    
+    # Calculate average similarity for all processed images
     all_similarities = []
     for result in results:
-        if result['success'] and result['response_data'] and 'top_matches' in result['response_data']:
+        if result['api_success'] and result['response_data'] and 'top_matches' in result['response_data']:
             for match in result['response_data']['top_matches']:
                 if match.get('similarity'):
                     all_similarities.append(match['similarity'])
     
     avg_similarity = sum(all_similarities) / len(all_similarities) if all_similarities else 0
+    
+    # Get best overall match
+    best_overall_similarity = max((r['best_similarity'] for r in results), default=0.0)
     
     html_content = f"""
     <!DOCTYPE html>
@@ -150,12 +187,17 @@ def generate_visual_report(results, folder_path, series_name, year):
                 color: #333;
             }}
             .header {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                background: linear-gradient(135deg, {'#28a745' if overall_success else '#dc3545'} 0%, {'#20c997' if overall_success else '#c82333'} 100%);
                 color: white;
                 padding: 30px;
                 border-radius: 10px;
                 margin-bottom: 30px;
                 text-align: center;
+            }}
+            .overall-status {{
+                font-size: 1.5em;
+                font-weight: bold;
+                margin-bottom: 10px;
             }}
             .stats {{
                 display: grid;
@@ -174,6 +216,15 @@ def generate_visual_report(results, folder_path, series_name, year):
                 font-size: 2em;
                 font-weight: bold;
                 color: #667eea;
+            }}
+            .stat-value.success {{
+                color: #28a745;
+            }}
+            .stat-value.warning {{
+                color: #ffc107;
+            }}
+            .stat-value.danger {{
+                color: #dc3545;
             }}
             .stat-label {{
                 color: #666;
@@ -194,6 +245,18 @@ def generate_visual_report(results, folder_path, series_name, year):
                 border: 1px solid #e0e0e0;
                 border-radius: 10px;
                 background: #fafafa;
+            }}
+            .result-item.match-success {{
+                border-left: 5px solid #28a745;
+                background: #f8fff9;
+            }}
+            .result-item.no-match {{
+                border-left: 5px solid #ffc107;
+                background: #fffcf0;
+            }}
+            .result-item.error {{
+                border-left: 5px solid #dc3545;
+                background: #fff5f5;
             }}
             .result-item:hover {{
                 box-shadow: 0 4px 15px rgba(0,0,0,0.1);
@@ -229,15 +292,38 @@ def generate_visual_report(results, folder_path, series_name, year):
                 font-weight: bold;
                 margin-bottom: 15px;
             }}
-            .success {{
+            .match-found {{
                 background: #d4edda;
                 color: #155724;
                 border: 1px solid #c3e6cb;
             }}
-            .failure {{
+            .no-match-found {{
+                background: #fff3cd;
+                color: #856404;
+                border: 1px solid #ffeaa7;
+            }}
+            .api-failure {{
                 background: #f8d7da;
                 color: #721c24;
                 border: 1px solid #f5c6cb;
+            }}
+            .similarity-highlight {{
+                background: #e7f3ff;
+                border: 1px solid #b3d9ff;
+                border-radius: 5px;
+                padding: 8px;
+                margin: 10px 0;
+                font-weight: bold;
+            }}
+            .similarity-highlight.good {{
+                background: #d4edda;
+                border-color: #c3e6cb;
+                color: #155724;
+            }}
+            .similarity-highlight.poor {{
+                background: #fff3cd;
+                border-color: #ffeaa7;
+                color: #856404;
             }}
             .matches-grid {{
                 display: grid;
@@ -252,6 +338,10 @@ def generate_visual_report(results, folder_path, series_name, year):
                 border-radius: 8px;
                 border: 1px solid #e0e0e0;
             }}
+            .match-item.threshold-met {{
+                border: 2px solid #28a745;
+                background: #f8fff9;
+            }}
             .match-item img {{
                 width: 100%;
                 height: 150px;
@@ -261,7 +351,6 @@ def generate_visual_report(results, folder_path, series_name, year):
             }}
             .similarity-score {{
                 font-weight: bold;
-                color: #667eea;
                 margin-bottom: 5px;
             }}
             .match-status {{
@@ -270,6 +359,10 @@ def generate_visual_report(results, folder_path, series_name, year):
                 background: #f0f0f0;
                 padding: 2px 6px;
                 border-radius: 4px;
+            }}
+            .match-status.success {{
+                background: #d4edda;
+                color: #155724;
             }}
             .error-message {{
                 color: #721c24;
@@ -315,9 +408,13 @@ def generate_visual_report(results, folder_path, series_name, year):
     </head>
     <body>
         <div class="header">
+            <div class="overall-status">
+                {'🎯 OVERALL SUCCESS' if overall_success else '❌ NO MATCHES FOUND'}
+            </div>
             <h1>Comic Upload Report</h1>
             <h2>{series_name} ({year})</h2>
             <p>Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>Threshold: ≥ {SIMILARITY_THRESHOLD} similarity for successful match</p>
         </div>
         
         <div class="stats">
@@ -326,20 +423,24 @@ def generate_visual_report(results, folder_path, series_name, year):
                 <div class="stat-label">Total Images</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{successful_uploads}</div>
-                <div class="stat-label">Successful Uploads</div>
+                <div class="stat-value success">{match_successful_uploads}</div>
+                <div class="stat-label">Successful Matches (≥{SIMILARITY_THRESHOLD})</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{failed_uploads}</div>
-                <div class="stat-label">Failed Uploads</div>
+                <div class="stat-value warning">{no_match_uploads}</div>
+                <div class="stat-label">No Matches Found</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{(successful_uploads/total_images)*100:.1f}%</div>
-                <div class="stat-label">Success Rate</div>
+                <div class="stat-value danger">{failed_uploads}</div>
+                <div class="stat-label">API Failures</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value">{avg_similarity:.3f}</div>
-                <div class="stat-label">Avg Similarity</div>
+                <div class="stat-value {'success' if overall_success else 'danger'}">{('YES' if overall_success else 'NO')}</div>
+                <div class="stat-label">Overall Success</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{best_overall_similarity:.3f}</div>
+                <div class="stat-label">Best Match Found</div>
             </div>
         </div>
         
@@ -352,8 +453,16 @@ def generate_visual_report(results, folder_path, series_name, year):
         image_name = os.path.basename(result['image_path'])
         image_base64 = image_to_base64(result['image_path'])
         
+        # Determine result class for styling
+        if not result['api_success']:
+            result_class = "error"
+        elif result['match_success']:
+            result_class = "match-success"
+        else:
+            result_class = "no-match"
+        
         html_content += f"""
-            <div class="result-item">
+            <div class="result-item {result_class}">
                 <div class="uploaded-image">
                     <img src="{image_base64}" alt="{image_name}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjI4MCIgdmlld0JveD0iMCAwIDIwMCAyODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjgwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjY2IiBmb250LXNpemU9IjE0Ij5JbWFnZSBub3QgZm91bmQ8L3RleHQ+Cjwvc3ZnPgo='">
                     <div class="image-info">
@@ -362,12 +471,27 @@ def generate_visual_report(results, folder_path, series_name, year):
                 </div>
                 
                 <div class="matches-container">
-                    <div class="status-badge {'success' if result['success'] else 'failure'}">
-                        {'✓ SUCCESS' if result['success'] else '✗ FAILED'}
-                    </div>
         """
         
-        if result['success']:
+        # Status badge
+        if not result['api_success']:
+            html_content += '<div class="status-badge api-failure">❌ API FAILURE</div>'
+        elif result['match_success']:
+            html_content += '<div class="status-badge match-found">✅ MATCH FOUND</div>'
+        else:
+            html_content += '<div class="status-badge no-match-found">⚠️ NO MATCH</div>'
+        
+        # Best similarity highlight
+        if result['api_success']:
+            similarity_class = "good" if result['best_similarity'] >= SIMILARITY_THRESHOLD else "poor"
+            html_content += f"""
+                <div class="similarity-highlight {similarity_class}">
+                    Best Similarity: {result['best_similarity']:.4f} 
+                    {'(Threshold Met ✓)' if result['best_similarity'] >= SIMILARITY_THRESHOLD else '(Below Threshold)'}
+                </div>
+            """
+        
+        if result['api_success']:
             response_data = result['response_data']
             if response_data and 'top_matches' in response_data:
                 total_matches = response_data.get('total_matches', 0)
@@ -380,25 +504,30 @@ def generate_visual_report(results, folder_path, series_name, year):
                     for j, match in enumerate(top_matches, 1):
                         similarity = match.get('similarity', 0)
                         url = match.get('url', '')
-                        status = match.get('status', 'Unknown')
+                        meets_threshold = similarity >= SIMILARITY_THRESHOLD
                         
                         # Create a color-coded similarity score
-                        if similarity >= 0.8:
+                        if similarity >= SIMILARITY_THRESHOLD:
                             score_color = '#28a745'  # Green
-                        elif similarity >= 0.6:
+                        elif similarity >= 0.10:
                             score_color = '#ffc107'  # Yellow
-                        elif similarity >= 0.4:
+                        elif similarity >= 0.05:
                             score_color = '#fd7e14'  # Orange
                         else:
                             score_color = '#dc3545'  # Red
                         
+                        match_class = "threshold-met" if meets_threshold else ""
+                        status_class = "success" if meets_threshold else ""
+                        
                         html_content += f"""
-                            <div class="match-item">
+                            <div class="match-item {match_class}">
                                 <img src="{url}" alt="Match {j}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY2NiIgZm9udC1zaXplPSIxMiI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPgo='">
                                 <div class="similarity-score" style="color: {score_color};">
-                                    {similarity:.3f}
+                                    {similarity:.4f}
                                 </div>
-                                <div class="match-status">{status}</div>
+                                <div class="match-status {status_class}">
+                                    {'✅ SUCCESS' if meets_threshold else '❌ BELOW THRESHOLD'}
+                                </div>
                             </div>
                         """
                     html_content += '</div>'
@@ -407,6 +536,7 @@ def generate_visual_report(results, folder_path, series_name, year):
                     html_content += f'''
                         <div class="debug-info">
                             <strong>Debug:</strong> Found {len(response_data['top_matches'])} total matches. 
+                            Best similarity: {result['best_similarity']:.4f}. 
                             Response keys: {list(response_data.keys()) if isinstance(response_data, dict) else 'Not a dict'}
                         </div>
                     '''
@@ -445,12 +575,13 @@ def generate_visual_report(results, folder_path, series_name, year):
 
 def main():
     # Configuration
-    SERIES_ID = 0
-    FOLDER_PATH = "./Green Lanterns (2016)/"
+    SERIES_ID = 3
+    FOLDER_PATH = "./images/Green Lanterns (2016)/"
     
     print(f"DEBUG: Looking for folder: {FOLDER_PATH}")
     print(f"DEBUG: Absolute path: {os.path.abspath(FOLDER_PATH)}")
     print(f"DEBUG: Folder exists: {os.path.exists(FOLDER_PATH)}")
+    print(f"DEBUG: Using similarity threshold: {SIMILARITY_THRESHOLD}")
     
     # If the exact folder doesn't exist, let's see what folders are available
     if not os.path.exists(FOLDER_PATH):
@@ -480,7 +611,7 @@ def main():
         return
     
     # Get all image files
-    image_files = get_image_files(FOLDER_PATH)
+    image_files = get_image_files(FOLDER_PATH)[:10]
     if not image_files:
         print("No image files found in the folder!")
         return
@@ -499,18 +630,23 @@ def main():
         results.append(result)
         
         # Print immediate result
-        if result['success']:
-            response_data = result['response_data']
-            if response_data and 'total_matches' in response_data:
-                print(f"  ✓ Success - {response_data['total_matches']} matches found")
+        if result['api_success']:
+            if result['match_success']:
+                print(f"  🎯 SUCCESS - Best similarity: {result['best_similarity']:.4f} (≥{SIMILARITY_THRESHOLD})")
             else:
-                print("  ✓ Success")
+                print(f"  ⚠️  NO MATCH - Best similarity: {result['best_similarity']:.4f} (<{SIMILARITY_THRESHOLD})")
         else:
             error_msg = result['error'] or result.get('response_text', 'Unknown error')
-            print(f"  ✗ Failed - {error_msg}")
+            print(f"  ❌ API FAILED - {error_msg}")
         
         # Add a small delay to avoid overwhelming the server
         # time.sleep(0.1)
+    
+    # Calculate overall success
+    overall_success = any(r['match_success'] for r in results)
+    successful_matches = sum(1 for r in results if r['match_success'])
+    api_failures = sum(1 for r in results if not r['api_success'])
+    no_matches = sum(1 for r in results if r['api_success'] and not r['match_success'])
     
     # Generate and save visual report
     print("\nGenerating visual report...")
@@ -523,11 +659,16 @@ def main():
     
     print(f"Visual report saved to: {report_filename}")
     print("Open this file in your web browser to view the results!")
-    print("\n" + "="*50)
+    print("\n" + "="*60)
     print("FINAL SUMMARY:")
-    successful = sum(1 for r in results if r['success'])
-    print(f"Successfully uploaded: {successful}/{len(results)} images")
-    print("="*50)
+    print(f"Overall Result: {'🎯 SUCCESS' if overall_success else '❌ NO MATCHES FOUND'}")
+    print(f"Successful matches (≥{SIMILARITY_THRESHOLD}): {successful_matches}/{len(results)}")
+    print(f"No matches found: {no_matches}")
+    print(f"API failures: {api_failures}")
+    if overall_success:
+        best_match = max(results, key=lambda x: x['best_similarity'])
+        print(f"Best match: {best_match['best_similarity']:.4f} from {os.path.basename(best_match['image_path'])}")
+    print("="*60)
 
 if __name__ == "__main__":
     main()

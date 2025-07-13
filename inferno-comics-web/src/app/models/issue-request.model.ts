@@ -1,13 +1,13 @@
-import { ComicBookCondition } from "./comic-book.model";
+import { IssueCondition } from "./issue.model";
 
-export interface ComicBookRequest {
+export interface IssueRequest {
   seriesId: number;
   issueNumber: string;
   title?: string;
   description?: string;
   coverDate?: Date;
   imageUrl?: string;
-  condition?: ComicBookCondition;
+  condition?: IssueCondition;
   purchasePrice?: number;
   currentValue?: number;
   purchaseDate?: Date;

@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
-import lombok.ToString;
+import com.infernokun.infernoComics.models.Series;
+import lombok.*;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -13,12 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import lombok.extern.slf4j.Slf4j;
-import lombok.Getter;
-import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -67,10 +69,26 @@ public class ComicVineService {
     }
 
     // Cache issues for a series
-    @Cacheable(value = "comic-vine-issues", key = "#seriesId")
-    public List<ComicVineIssueDto> searchIssues(String seriesId) {
-        log.info("Fetching issues from Comic Vine API for series ID: {}", seriesId);
-        return searchIssuesFromAPI(seriesId);
+    @Cacheable(value = "comic-vine-issues", key = "#series.comicVineIds")
+    public List<ComicVineIssueDto> searchIssues(Series series) {
+        List<String> comicVineIds = series.getComicVineIds();
+
+        if (comicVineIds == null || comicVineIds.isEmpty()) {
+            log.warn("No Comic Vine IDs found for series: {}", series.getId());
+            return Collections.emptyList();
+        }
+
+        // Remove duplicates based on issue ID
+        List<ComicVineIssueDto> allIssues = comicVineIds.parallelStream()
+                .map(this::searchIssuesFromAPI)
+                .flatMap(List::stream)
+                .distinct().sorted(this::compareIssueNumbers)
+                .collect(Collectors.toList());
+
+        // Sort the final combined result
+
+        log.info("Retrieved and sorted {} total issues for series {}", allIssues.size(), series.getId());
+        return allIssues;
     }
 
     // Force refresh issues cache
@@ -182,7 +200,7 @@ public class ComicVineService {
                             .queryParam("format", "json")
                             .queryParam("filter", "volume:" + seriesId)
                             .queryParam("limit", "100")
-                            .queryParam("sort", "issue_number:asc")
+                            .queryParam("sort", "issue_number:asc") // API sorting might not work properly
                             .build())
                     .header("User-Agent", "ComicBookCollectionApp/1.0")
                     .retrieve()
@@ -288,7 +306,8 @@ public class ComicVineService {
                 ComicVineSeriesDto dto = new ComicVineSeriesDto();
                 dto.setId(result.path("id").asText());
                 dto.setName(result.path("name").asText());
-                dto.setDescription(result.path("deck").asText());
+                dto.setDescription(result.path("description").asText());
+                dto.setIssueCount(result.path("count_of_issues").asInt());
 
                 JsonNode publisher = result.path("publisher");
                 if (!publisher.isMissingNode()) {
@@ -338,7 +357,7 @@ public class ComicVineService {
                 ComicVineSeriesDto dto = new ComicVineSeriesDto();
                 dto.setId(result.path("id").asText());
                 dto.setName(result.path("name").asText());
-                dto.setDescription(result.path("deck").asText());
+                dto.setDescription(result.path("description").asText());
                 dto.setPublisher(result.path("publisher").path("name").asText());
                 dto.setStartYear(result.path("start_year").asInt(0));
 
@@ -366,7 +385,7 @@ public class ComicVineService {
                 dto.setId(result.path("id").asText());
                 dto.setIssueNumber(result.path("issue_number").asText());
                 dto.setName(result.path("name").asText());
-                dto.setDescription(result.path("deck").asText());
+                dto.setDescription(result.path("description").asText());
                 dto.setCoverDate(result.path("cover_date").asText());
 
                 JsonNode image = result.path("image");
@@ -374,9 +393,24 @@ public class ComicVineService {
                     dto.setImageUrl(image.path("medium_url").asText());
                 }
 
+                JsonNode associatedImages = result.path("associated_images");
+                if (!associatedImages.isMissingNode() && associatedImages.isArray()) {
+                    List<ComicVineIssueDto.VariantCover> variants = new ArrayList<>();
+
+                    for (JsonNode imageNode : associatedImages) {
+                        ComicVineIssueDto.VariantCover variant = new ComicVineIssueDto.VariantCover();
+                        variant.setId(imageNode.path("id").asText());
+                        variant.setOriginalUrl(imageNode.path("original_url").asText());
+                        variant.setCaption(imageNode.path("caption").asText());
+                        variant.setImageTags(imageNode.path("image_tags").asText());
+                        variants.add(variant);
+                    }
+
+                    dto.setVariants(variants);
+                }
+
                 // Generate description if missing, using cached generation
                 if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
-                    // Extract series name from the context or use a generic approach
                     String seriesName = "Unknown Series"; // You might want to pass this as a parameter
                     DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                             seriesName,
@@ -391,34 +425,7 @@ public class ComicVineService {
                 issues.add(dto);
             }
 
-            // Sort by issue number
-            issues.sort((issue1, issue2) -> {
-                try {
-                    // Try to parse as integers for proper numeric sorting
-                    String num1 = issue1.getIssueNumber();
-                    String num2 = issue2.getIssueNumber();
-
-                    // Handle null or empty issue numbers
-                    if (num1 == null || num1.isEmpty()) return 1;
-                    if (num2 == null || num2.isEmpty()) return -1;
-
-                    // Extract numeric part for comparison (handles cases like "1", "1.1", "1A", etc.)
-                    Double numericPart1 = extractNumericPart(num1);
-                    Double numericPart2 = extractNumericPart(num2);
-
-                    int numericComparison = Double.compare(numericPart1, numericPart2);
-
-                    // If numeric parts are equal, compare the full strings
-                    if (numericComparison == 0) {
-                        return num1.compareToIgnoreCase(num2);
-                    }
-
-                    return numericComparison;
-                } catch (Exception e) {
-                    // Fallback to string comparison if parsing fails
-                    return issue1.getIssueNumber().compareToIgnoreCase(issue2.getIssueNumber());
-                }
-            });
+            // Don't sort here - let the main method handle final sorting
 
         } catch (Exception e) {
             log.error("Error parsing issues response: {}", e.getMessage(), e);
@@ -426,25 +433,89 @@ public class ComicVineService {
         return issues;
     }
 
-    private Double extractNumericPart(String issueNumber) {
+    private int compareIssueNumbers(ComicVineIssueDto issue1, ComicVineIssueDto issue2) {
         try {
-            // Remove leading/trailing whitespace
-            String cleaned = issueNumber.trim();
+            String num1 = issue1.getIssueNumber();
+            String num2 = issue2.getIssueNumber();
 
-            // Extract the numeric part (handles decimals)
-            String numericPart = cleaned.replaceAll("[^0-9.]", "");
+            // Handle null or empty issue numbers
+            if (num1 == null || num1.isEmpty()) return 1;
+            if (num2 == null || num2.isEmpty()) return -1;
 
-            // If we have a valid numeric string, parse it
-            if (!numericPart.isEmpty() && !numericPart.equals(".")) {
-                return Double.parseDouble(numericPart);
+            // Extract numeric part for comparison
+            Double numericPart1 = extractNumericPart(num1);
+            Double numericPart2 = extractNumericPart(num2);
+
+            int numericComparison = Double.compare(numericPart1, numericPart2);
+
+            // If numeric parts are equal, use publication date as tie-breaker
+            if (numericComparison == 0) {
+                int dateComparison = compareCoverDates(issue1.getCoverDate(), issue2.getCoverDate());
+
+                // If dates are also equal, compare the full issue number strings
+                if (dateComparison == 0) {
+                    return num1.compareToIgnoreCase(num2);
+                }
+
+                return dateComparison;
             }
 
-            // If no numeric part found, return a high value to sort to end
-            return Double.MAX_VALUE;
-        } catch (NumberFormatException e) {
-            // If parsing fails, return a high value to sort to end
-            return Double.MAX_VALUE;
+            return numericComparison;
+        } catch (Exception e) {
+            // Fallback to string comparison if parsing fails
+            return issue1.getIssueNumber().compareToIgnoreCase(issue2.getIssueNumber());
         }
+    }
+
+    /**
+     * Compare cover dates for tie-breaking when issue numbers are the same
+     */
+    private int compareCoverDates(String date1, String date2) {
+        try {
+            if (date1 == null && date2 == null) return 0;
+            if (date1 == null) return 1;
+            if (date2 == null) return -1;
+
+            // Parse dates in format "YYYY-MM-DD"
+            LocalDate localDate1 = LocalDate.parse(date1);
+            LocalDate localDate2 = LocalDate.parse(date2);
+
+            return localDate1.compareTo(localDate2);
+        } catch (Exception e) {
+            // Fallback to string comparison if date parsing fails
+            return date1.compareToIgnoreCase(date2);
+        }
+    }
+
+    /**
+     * Extract numeric part from issue number string
+     * Examples: "1" -> 1.0, "1.5" -> 1.5, "1A" -> 1.0, "Annual 1" -> 1.0
+     */
+    private Double extractNumericPart(String issueNumber) {
+        if (issueNumber == null || issueNumber.trim().isEmpty()) {
+            return Double.MAX_VALUE; // Put empty/null at the end
+        }
+
+        // Remove common prefixes and clean the string
+        String cleaned = issueNumber.toLowerCase()
+                .replaceAll("^(annual|special|one-shot)\\s*", "")
+                .trim();
+
+        // Try to extract the first numeric part
+        Pattern pattern = Pattern.compile("^(\\d+(?:\\.\\d+)?)");
+        Matcher matcher = pattern.matcher(cleaned);
+
+        if (matcher.find()) {
+            try {
+                return Double.parseDouble(matcher.group(1));
+            } catch (NumberFormatException e) {
+                // If parsing fails, use a hash of the string for consistent ordering
+                return (double) issueNumber.hashCode();
+            }
+        }
+
+        // If no numeric part found, use a hash for consistent ordering
+        return (double) issueNumber.hashCode();
     }
 
     @Setter
@@ -453,6 +524,7 @@ public class ComicVineService {
         private String id;
         private String name;
         private String description;
+        private Integer issueCount;
         private String publisher;
         private Integer startYear;
         private String imageUrl;
@@ -469,7 +541,17 @@ public class ComicVineService {
         private String description;
         private String coverDate;
         private String imageUrl;
-        private List<String> variants;
+        private List<VariantCover> variants;
         private boolean generatedDescription;
+
+        @Data
+        @NoArgsConstructor
+        @AllArgsConstructor
+        public static class VariantCover {
+            private String id;
+            private String originalUrl;
+            private String caption;
+            private String imageTags;
+        }
     }
 }

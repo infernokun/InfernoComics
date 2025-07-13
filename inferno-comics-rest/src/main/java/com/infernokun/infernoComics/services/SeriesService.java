@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
@@ -14,6 +15,7 @@ import com.infernokun.infernoComics.services.gcd.GCDAPIService;
 import com.infernokun.infernoComics.services.gcd.GCDCoverPageScraper;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import lombok.extern.slf4j.Slf4j;
+import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -25,9 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,6 +42,7 @@ public class SeriesService {
     private final GCDCoverPageScraper gcdCoverPageScraper;
     private final InfernoComicsConfig infernoComicsConfig;
     private final GCDAPIService gcdapiService;
+    private final ModelMapper modelMapper;
 
     private final WebClient webClient;
 
@@ -49,7 +50,7 @@ public class SeriesService {
 
     public SeriesService(SeriesRepository seriesRepository,
                          ComicVineService comicVineService,
-                         DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, GCDCoverPageScraper gcdCoverPageScraper, InfernoComicsConfig infernoComicsConfig1, GCDAPIService gcdapiService, InfernoComicsConfig infernoComicsConfig) {
+                         DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, GCDCoverPageScraper gcdCoverPageScraper, InfernoComicsConfig infernoComicsConfig1, GCDAPIService gcdapiService, ModelMapper modelMapper, InfernoComicsConfig infernoComicsConfig) {
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
@@ -57,6 +58,7 @@ public class SeriesService {
         this.gcdCoverPageScraper = gcdCoverPageScraper;
         this.infernoComicsConfig = infernoComicsConfig1;
         this.gcdapiService = gcdapiService;
+        this.modelMapper = modelMapper;
         urlCache.put(0, new ArrayList<>());
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
@@ -78,7 +80,7 @@ public class SeriesService {
     @Transactional(readOnly = true)
     public Optional<Series> getSeriesById(Long id) {
         log.info("Fetching series with ID: {}", id);
-        return seriesRepository.findByIdWithComicBooks(id);
+        return seriesRepository.findByIdWithIssues(id);
     }
 
     // Cache series search results
@@ -107,7 +109,7 @@ public class SeriesService {
         try {
             Optional<Series> series = seriesRepository.findById(seriesId);
             if (series.isPresent() && series.get().getComicVineId() != null) {
-                return comicVineService.searchIssues(series.get().getComicVineId());
+                return comicVineService.searchIssues(series.get());
             }
             log.warn("Series {} not found or has no Comic Vine ID", seriesId);
             return List.of();
@@ -119,11 +121,12 @@ public class SeriesService {
 
     // Create series and invalidate relevant caches
     @CacheEvict(value = {"all-series", "series-stats", "recent-series"}, allEntries = true)
-    public Series createSeries(SeriesCreateRequest request) {
+    public Series createSeries(SeriesController.SeriesCreateRequestDto request) {
         log.info("Creating series: {}", request.getName());
 
-        Series series = new Series();
-        mapRequestToSeries(request, series);
+        Series series = this.modelMapper.map(request, Series.class);
+
+        //mapRequestToSeries(request, series);
 
         // Generate description if not provided
         if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
@@ -154,8 +157,8 @@ public class SeriesService {
             throw new IllegalArgumentException("Series with ID " + id + " not found");
         }
 
-        Series series = optionalSeries.get();
-        mapRequestToSeries(request, series);
+        Series series = modelMapper.map(request, Series.class);
+        //mapRequestToSeries(request, series);
 
         Series updatedSeries = seriesRepository.save(series);
 
@@ -314,38 +317,51 @@ public class SeriesService {
         log.info("Fetching {} popular series", limit);
 
         return seriesRepository.findAll().stream()
-                .sorted((s1, s2) -> Integer.compare(s2.getComicBooks().size(), s1.getComicBooks().size()))
+                .sorted((s1, s2) -> Integer.compare(s2.getIssues().size(), s1.getIssues().size()))
                 .limit(limit)
                 .collect(Collectors.toList());
     }
 
-    public JsonNode addComicByImage(Long seriesId, MultipartFile imageFile, String name, int year) {
+    public JsonNode addIssueByImage(Long seriesId, MultipartFile imageFile, String name, int year) {
         log.info("🚀 Starting image processing for series ID: {}", seriesId);
 
+
         if (seriesId == 0) {
-            List<Long> gcdSeriesIds = gcDatabaseService.findGCDSeriesByYearBeganAndNameContainingIgnoreCase(
-                    year, name).stream().map(GCDSeries::getId).toList();
-
-            List<GCDIssue> gcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);
-
-            if (!urlCache.get(0).isEmpty()) {
-                Series series = new Series(name, year);
-
-                return sendToImageMatcher(imageFile, urlCache.get(0), series);
-            }
-
-            List<GCDCover> candidateUrls = new ArrayList<>();
-            gcdIssues.forEach(i -> {
-                        GCDCover coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
-                candidateUrls.add(coverResult);
-                    }
-            );
-
-            urlCache.put(0, candidateUrls);
-
             Series series = new Series(name, year);
 
-            return sendToImageMatcher(imageFile, candidateUrls, series);
+            log.info("EVALUATION: for series: {}", seriesId);
+            List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
+
+            List<GCDCover> candidateCovers = new ArrayList<>(results.stream()
+                    .map(issue -> new GCDCover(
+                            series.getName() + " #" + issue.getIssueNumber(),
+                            issue.getName(),
+                            Collections.singletonList(issue.getImageUrl()),
+                            "comicVineAPI",
+                            true,
+                            ""
+                    ))
+                    .toList());
+            log.info("Comic vine has {} GCDCovers", candidateCovers.size());
+            int prev = candidateCovers.size();
+
+            results.forEach(issueDto -> {
+                GCDCover gcdCover = new GCDCover();
+
+                gcdCover.setUrls(issueDto.getVariants().stream().map(ComicVineService.ComicVineIssueDto.VariantCover::getOriginalUrl).toList());
+                gcdCover.setIssueName(series.getName() + " #" + issueDto.getIssueNumber());
+                gcdCover.setIssueName(issueDto.getName());
+                gcdCover.setFound(true);
+
+                candidateCovers.add(gcdCover);
+            });
+
+            log.info("Variants added has {} GCDCovers", candidateCovers.size() - prev);
+
+
+            urlCache.put(0, candidateCovers);
+
+            return sendToImageMatcher(imageFile, candidateCovers, series);
         }
 
         Optional<Series> series = seriesRepository.findById(seriesId);
@@ -381,45 +397,65 @@ public class SeriesService {
                 .toList());
         log.info("Comic vine has {} GCDCovers", candidateCovers.size());
 
-        List<Long> gcdSeriesIds = gcDatabaseService.findGCDSeriesByYearBeganAndNameContainingIgnoreCase(
+        int prev = candidateCovers.size();
+
+        /*List<Long> gcdSeriesIds = gcDatabaseService.findGCDSeriesByYearBeganAndNameContainingIgnoreCase(
                 seriesEntity.getStartYear(), seriesEntity.getName()).stream().map(GCDSeries::getId).toList();
 
-        List<GCDIssue> gcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);
+        List<GCDIssue> gcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);*/
+
+        results.forEach(issueDto -> {
+            GCDCover gcdCover = new GCDCover();
+
+            gcdCover.setUrls(issueDto.getVariants().stream().map(ComicVineService.ComicVineIssueDto.VariantCover::getOriginalUrl).toList());
+            gcdCover.setIssueName(seriesEntity.getName() + " #" + issueDto.getIssueNumber());
+            gcdCover.setIssueName(issueDto.getName());
+            gcdCover.setFound(true);
+
+            candidateCovers.add(gcdCover);
+        });
+
+        log.info("Variants added has {} GCDCovers", candidateCovers.size() - prev);
+
+        /*
 
         if (!infernoComicsConfig.isSkipScrape()) {
-            gcdIssues.forEach(i -> {
+            gcdIssues.stream().limit(1).forEach(i -> {
                         GCDCover coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
                 candidateCovers.add(coverResult);
                     }
             );
         }
 
-        // https://www.comics.org/api/series/103021/
-        // Process your list of GCDCover objects here
-        gcdSeriesIds.forEach(gcdSeriesId -> {
-            this.gcdapiService.getIssueIdsFromSeries(gcdSeriesId)
-                    .flatMapMany(Flux::fromIterable)
-                    .flatMap(this.gcdapiService::getIssueById)
-                    .map(issueResponse -> {
-                        String title = issueResponse.getStorySet().stream()
-                                .filter(r -> "comic story".equals(r.getType()))
-                                .findFirst()
-                                .map(GCDAPIService.Story::getTitle)
-                                .orElse("");
+        if (infernoComicsConfig.isSkipScrape()) {
+            // https://www.comics.org/api/series/103021/
+            // Process your list of GCDCover objects here
+            gcdSeriesIds.stream().limit(1).forEach(gcdSeriesId -> {
+                this.gcdapiService.getIssueIdsFromSeries(gcdSeriesId)
+                        .flatMapMany(Flux::fromIterable)
+                        .flatMap(this.gcdapiService::getIssueById)
+                        .map(issueResponse -> {
+                            String title = issueResponse.getStorySet().stream()
+                                    .filter(r -> "comic story".equals(r.getType()))
+                                    .findFirst()
+                                    .map(GCDAPIService.Story::getTitle)
+                                    .orElse("");
 
-                        return new GCDCover(
-                                seriesEntity.getName() + " # " + issueResponse.getDescriptor().split(" ")[0],
-                                title,
-                                Collections.singletonList(issueResponse.getCover()), // Single cover URL as list
-                                "api",
-                                true,
-                                ""
-                        );
-                    })
-                    .collectList()
-                    .subscribe(candidateCovers::addAll);
-        });
+                            return new GCDCover(
+                                    seriesEntity.getName() + " # " + issueResponse.getDescriptor().split(" ")[0],
+                                    title,
+                                    Collections.singletonList(issueResponse.getCover()), // Single cover URL as list
+                                    "api",
+                                    true,
+                                    ""
+                            );
+                        })
+                        .collectList()
+                        .subscribe(candidateCovers::addAll);
+            });
+        }
 
+        */
         seriesEntity.setCachedCoverUrls(candidateCovers);
         //seriesEntity.setLastCachedCovers(LocalDateTime.now());
         seriesRepository.save(seriesEntity);

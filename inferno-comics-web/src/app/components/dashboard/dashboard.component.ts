@@ -1,8 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { SeriesService } from '../../services/series.service';
-import { ComicBookService } from '../../services/comic-book.service';
+import { IssueService } from '../../services/issue.service';
 import { Series } from '../../models/series.model';
-import { ComicBook } from '../../models/comic-book.model';
+import { Issue } from '../../models/issue.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -12,14 +12,14 @@ import { ComicBook } from '../../models/comic-book.model';
 })
 export class DashboardComponent implements OnInit {
   totalSeries = 0;
-  totalComicBooks = 0;
-  keyIssues: ComicBook[] = [];
+  totalIssues = 0;
+  keyIssues: Issue[] = [];
   recentSeries: Series[] = [];
   loading = true;
 
   constructor(
     private seriesService: SeriesService,
-    private comicBookService: ComicBookService
+    private issueService: IssueService
   ) {}
 
   ngOnInit(): void {
@@ -39,15 +39,15 @@ export class DashboardComponent implements OnInit {
     });
 
     // Load all comic books
-    this.comicBookService.getAllComicBooks().subscribe({
-      next: (comicBooks) => {
-        this.totalComicBooks = comicBooks.length;
+    this.issueService.getAllIssues().subscribe({
+      next: (issues) => {
+        this.totalIssues = issues.length;
       },
       error: (error) => console.error('Error loading comic books:', error)
     });
 
     // Load key issues
-    this.comicBookService.getKeyIssues().subscribe({
+    this.issueService.getKeyIssues().subscribe({
       next: (keyIssues) => {
         this.keyIssues = keyIssues.slice(0, 6);
         this.loading = false;

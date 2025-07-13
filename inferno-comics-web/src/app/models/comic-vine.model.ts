@@ -4,6 +4,10 @@ export interface ComicVineSeries {
   description?: string;
   publisher?: string;
   startYear?: number;
+  endYear?: number;
+  comicVineId?: string; // For backwards compatibility
+  comicVineIds?: string[]; // Array of Comic Vine IDs for combined series
+  issueCount?: number;
   imageUrl?: string;
   generatedDescription: boolean;
 }

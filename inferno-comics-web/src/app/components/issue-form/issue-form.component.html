@@ -4,12 +4,12 @@
     </h2>
 
     <mat-dialog-content>
-        <form [formGroup]="comicBookForm" class="comic-form">
+        <form [formGroup]="issueForm" class="comic-form">
             <div class="form-row">
                 <mat-form-field appearance="outline" class="half-width">
                     <mat-label>Issue Number *</mat-label>
                     <input matInput formControlName="issueNumber" required>
-                    <mat-error *ngIf="comicBookForm.get('issueNumber')?.hasError('required')">
+                    <mat-error *ngIf="issueForm.get('issueNumber')?.hasError('required')">
                         Issue number is required
                     </mat-error>
                 </mat-form-field>
@@ -81,9 +81,9 @@
                 </mat-form-field>
             </div>
 
-            <div class="image-preview" *ngIf="comicBookForm.get('imageUrl')?.value">
-                <img [src]="comicBookForm.get('imageUrl')?.value"
-                    [alt]="'Issue #' + comicBookForm.get('issueNumber')?.value" class="preview-image"
+            <div class="image-preview" *ngIf="issueForm.get('imageUrl')?.value">
+                <img [src]="issueForm.get('imageUrl')?.value"
+                    [alt]="'Issue #' + issueForm.get('issueNumber')?.value" class="preview-image"
                     onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'; this.style.display='block'} else {this.style.display='none'}">
             </div>
 
@@ -98,7 +98,7 @@
 
     <mat-dialog-actions align="end">
         <button mat-button (click)="cancel()">Cancel</button>
-        <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!comicBookForm.valid || loading">
+        <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!issueForm.valid || loading">
             <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
             {{ isEditMode ? 'Update' : 'Add' }} Comic Book
         </button>

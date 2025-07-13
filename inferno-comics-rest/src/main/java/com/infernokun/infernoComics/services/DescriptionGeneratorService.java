@@ -1,7 +1,7 @@
 package com.infernokun.infernoComics.services;
 
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
-import com.infernokun.infernoComics.models.ComicBook;
+import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ public class DescriptionGeneratorService {
     private final StringRedisTemplate stringRedisTemplate;
 
     private final String apiUrl = "https://api.groq.com/openai/v1/chat/completions";
-    private static final String MANUAL_CACHE_KEY_PREFIX = "comic_description_manual:";
+    private static final String MANUAL_CACHE_KEY_PREFIX = "issue_description_manual:";
     private static final long CACHE_TTL_HOURS = 24 * 7; // Cache for 7 days
 
     public DescriptionGeneratorService(ObjectMapper objectMapper,
@@ -54,7 +54,7 @@ public class DescriptionGeneratorService {
     }
 
     // Annotation-based caching approach (recommended for most use cases)
-    @Cacheable(value = "comic-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
+    @Cacheable(value = "issue-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
     public DescriptionGenerated generateDescription(String seriesName, String issueNumber, String issueTitle, String coverDate, String description) {
         log.debug("Generating description for {}, Issue #{}: {}", seriesName, issueNumber, issueTitle);
 
@@ -110,14 +110,14 @@ public class DescriptionGeneratorService {
     }
 
     // Force refresh cache with new description
-    @CachePut(value = "comic-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
+    @CachePut(value = "issue-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
     public String refreshDescription(String seriesName, String issueNumber, String issueTitle, String coverDate) {
         log.info("Force refreshing description for {}, Issue #{}: {}", seriesName, issueNumber, issueTitle);
         return generateDescriptionInternal(seriesName, issueNumber, issueTitle, coverDate);
     }
 
     // Remove from cache
-    @CacheEvict(value = "comic-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
+    @CacheEvict(value = "issue-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
     public void invalidateDescription(String seriesName, String issueNumber, String issueTitle) {
         log.info("Invalidated cache for {}, Issue #{}: {}", seriesName, issueNumber, issueTitle);
 
@@ -127,7 +127,7 @@ public class DescriptionGeneratorService {
     }
 
     // Clear all description caches
-    @CacheEvict(value = "comic-descriptions", allEntries = true)
+    @CacheEvict(value = "issue-descriptions", allEntries = true)
     public void clearAllDescriptionCache() {
         log.info("Cleared all annotation-based description caches");
 
@@ -217,7 +217,7 @@ public class DescriptionGeneratorService {
                     "manual_cached_descriptions", manualCacheKeys,
                     "manual_cache_key_prefix", MANUAL_CACHE_KEY_PREFIX,
                     "cache_ttl_hours", CACHE_TTL_HOURS,
-                    "annotation_based_caches", List.of("comic-descriptions", "comic-metadata", "series-info", "user-collections")
+                    "annotation_based_caches", List.of("issue-descriptions", "issue-metadata", "series-info", "user-collections")
             );
         } catch (Exception e) {
             log.warn("Error getting cache stats: {}", e.getMessage());
@@ -226,23 +226,23 @@ public class DescriptionGeneratorService {
     }
 
     // Batch processing with smart caching strategy
-    public void generateDescriptionsForComics(List<ComicBook> comics) {
+    public void generateDescriptionsForIssues(List<Issue> issues) {
         int annotationCacheHits = 0;
         int apiCalls = 0;
 
-        for (ComicBook comic : comics) {
-            if (comic.getDescription() == null || comic.getDescription().isEmpty()) {
+        for (Issue issue : issues) {
+            if (issue.getDescription() == null || issue.getDescription().isEmpty()) {
                 try {
                     // Use annotation-based caching for batch processing
                     DescriptionGenerated descriptionGenerated = generateDescription(
-                            comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
-                            comic.getIssueNumber(),
-                            comic.getTitle(),
-                            comic.getCoverDate() != null ? comic.getCoverDate().toString() : null,
-                            comic.getDescription()
+                            issue.getSeries() != null ? issue.getSeries().getName() : "Unknown Series",
+                            issue.getIssueNumber(),
+                            issue.getTitle(),
+                            issue.getCoverDate() != null ? issue.getCoverDate().toString() : null,
+                            issue.getDescription()
                     );
 
-                    comic.setDescription(descriptionGenerated.getDescription());
+                    issue.setDescription(descriptionGenerated.getDescription());
 
                     // Only add delay if we actually made an API call (not a cache hit)
                     // You can determine this by checking if the method was actually executed
@@ -250,19 +250,19 @@ public class DescriptionGeneratorService {
                     Thread.sleep(100); // Reduced delay since many will be cache hits
 
                 } catch (Exception e) {
-                    log.error("Error generating description for comic {}: {}", comic.getId(), e.getMessage());
+                    log.error("Error generating description for issue {}: {}", issue.getId(), e.getMessage());
                 }
             }
         }
 
-        log.info("Batch processing completed for {} comics", comics.size());
+        log.info("Batch processing completed for {} issues", issues.size());
     }
 
-    // Cache comic book entities
-    @Cacheable(value = "comic-metadata", key = "#comicId")
-    public ComicBook getComicMetadata(Long comicId) {
-        log.debug("Fetching metadata for comic ID: {}", comicId);
-        // This would typically call your ComicBookRepository
+    // Cache issue entities
+    @Cacheable(value = "issue-metadata", key = "#issueId")
+    public Issue getIssueMetadata(Long issueId) {
+        log.debug("Fetching metadata for issue ID: {}", issueId);
+        // This would typically call your IssueRepository
         // For now, this is a placeholder - implement with your actual repository
         return null; // Replace with actual repository call
     }
@@ -276,10 +276,10 @@ public class DescriptionGeneratorService {
         return null; // Replace with actual repository call
     }
 
-    // Cache eviction when comic is updated
-    @CacheEvict(value = {"comic-descriptions", "comic-metadata"}, key = "#comic.series.name + ':' + #comic.issueNumber + ':' + (#comic.title ?: 'no_title')")
-    public void evictComicCache(ComicBook comic) {
-        log.info("Evicted cache for comic: {} #{}", comic.getSeries().getName(), comic.getIssueNumber());
+    // Cache eviction when issue is updated
+    @CacheEvict(value = {"issue-descriptions", "issue-metadata"}, key = "#issue.series.name + ':' + #issue.issueNumber + ':' + (#issue.title ?: 'no_title')")
+    public void evictIssueCache(Issue issue) {
+        log.info("Evicted cache for issue: {} #{}", issue.getSeries().getName(), issue.getIssueNumber());
     }
 
     // Cache eviction when series is updated

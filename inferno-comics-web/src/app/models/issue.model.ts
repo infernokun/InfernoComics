@@ -1,6 +1,6 @@
 import { Series } from "./series.model";
 
-export enum ComicBookCondition {
+export enum IssueCondition {
   MINT = 'MINT',
   NEAR_MINT = 'NEAR_MINT',
   VERY_FINE = 'VERY_FINE',
@@ -11,14 +11,14 @@ export enum ComicBookCondition {
   POOR = 'POOR',
 }
 
-export interface ComicBook {
+export interface Issue {
   id?: number;
   issueNumber: string;
   title?: string;
   description?: string;
   coverDate?: Date;
   imageUrl?: string;
-  condition?: ComicBookCondition;
+  condition?: IssueCondition;
   purchasePrice?: number;
   currentValue?: number;
   purchaseDate?: Date;

@@ -114,6 +114,8 @@ def image_matcher_operation():
         print(f" Top {len(top_matches)} matches:")
         for i, match in enumerate(top_matches[:3], 1):
             print(f"   {i}. {match['comic_name']} - Similarity: {match['similarity']:.3f}")
+            
+        matcher.print_cache_stats()
         
         return jsonify({
             'top_matches': top_matches,

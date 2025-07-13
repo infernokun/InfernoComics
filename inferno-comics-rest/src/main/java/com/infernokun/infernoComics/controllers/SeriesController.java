@@ -185,7 +185,7 @@ public class SeriesController {
             }
 
             // Call service and get JSON response
-            JsonNode responseJson = seriesService.addComicByImage(seriesId, imageFile, name, year);
+            JsonNode responseJson = seriesService.addIssueByImage(seriesId, imageFile, name, year);
             return ResponseEntity.ok(responseJson);
 
         } catch (Exception e) {
@@ -250,13 +250,16 @@ public class SeriesController {
     // DTO Classes
     @Setter
     @Getter
-    public static class SeriesCreateRequestDto implements SeriesService.SeriesCreateRequest {
+    public static class SeriesCreateRequestDto {
         private String name;
         private String description;
         private String publisher;
         private Integer startYear;
         private Integer endYear;
         private String imageUrl;
+        private List<String> comicVineIds;
+        private int issueCount;
+        private boolean generatedDescription;
         private String comicVineId;
     }
 
@@ -269,6 +272,8 @@ public class SeriesController {
         private Integer startYear;
         private Integer endYear;
         private String imageUrl;
+        private List<String> comicVineIds;
+        private int issueCount;
         private String comicVineId;
     }
 }

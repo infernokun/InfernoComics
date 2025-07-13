@@ -3,11 +3,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SeriesService } from '../../services/series.service';
-import { ComicBookService } from '../../services/comic-book.service';
-import { ComicBookFormComponent } from '../comic-book-form/comic-book-form.component';
+import { IssueService } from '../../services/issue.service';
+import { IssueFormComponent } from '../issue-form/issue-form.component';
 import { ComicVineService } from '../../services/comic-vine.service';
 import { Series } from '../../models/series.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
+import { Issue, IssueCondition } from '../../models/issue.model';
 
 @Component({
   selector: 'app-series-detail',
@@ -17,7 +18,7 @@ import { ComicVineIssue } from '../../models/comic-vine.model';
 })
 export class SeriesDetailComponent implements OnInit {
   series: Series | null = null;
-  comicBooks: any[] = [];
+  issues: any[] = [];
   comicVineIssues: any[] = [];
   selectedIssues: Set<string> = new Set();
   lastSelectedIndex: number = -1;
@@ -30,7 +31,7 @@ export class SeriesDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private seriesService: SeriesService,
-    private comicBookService: ComicBookService,
+    private issueService: IssueService,
     private comicVineService: ComicVineService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
@@ -40,7 +41,7 @@ export class SeriesDetailComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.loadSeries(+id);
-      this.loadComicBooks(+id);
+      this.loadIssues(+id);
     }
   }
 
@@ -63,10 +64,10 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  loadComicBooks(seriesId: number): void {
-    this.comicBookService.getComicBooksBySeries(seriesId).subscribe({
+  loadIssues(seriesId: number): void {
+    this.issueService.getIssuesBySeries(seriesId).subscribe({
       next: (books) => {
-        this.comicBooks = books;
+        this.issues = books;
       },
       error: (error) => {
         console.error('Error loading comic books:', error);
@@ -195,7 +196,7 @@ export class SeriesDetailComponent implements OnInit {
 
     // Create comic books for all selected issues
     const creationPromises = selectedIssues.map((issue: ComicVineIssue) => {
-      const comicBookData = {
+      const issueData = {
         seriesId: this.series!.id,
         issueNumber: issue.issueNumber,
         title: issue.name,
@@ -210,12 +211,12 @@ export class SeriesDetailComponent implements OnInit {
         generatedDescription: issue.generatedDescription || false
       };
 
-      return this.comicBookService.createComicBook(comicBookData).toPromise();
+      return this.issueService.createIssue(issueData).toPromise();
     });
 
     Promise.all(creationPromises).then(() => {
       this.snackBar.open(`Added ${selectedIssues.length} issues to collection`, 'Close', { duration: 3000 });
-      this.loadComicBooks(this.series?.id!);
+      this.loadIssues(this.series?.id!);
       this.clearSelection();
     }).catch(error => {
       console.error('Error adding issues:', error);
@@ -224,7 +225,7 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   isIssueOwned(issue: any): boolean {
-    return this.comicBooks.some(book => 
+    return this.issues.some(book => 
       book.comicVineId === issue.id || 
       book.issueNumber === issue.issueNumber
     );
@@ -240,58 +241,58 @@ export class SeriesDetailComponent implements OnInit {
 
   // Value calculation methods
   calculateTotalPurchasePrice(): number {
-    return this.comicBooks.reduce((total, book) => total + (book.purchasePrice || 0), 0);
+    return this.issues.reduce((total, book) => total + (book.purchasePrice || 0), 0);
   }
 
   calculateCurrentValue(): number {
-    return this.comicBooks.reduce((total, book) => total + (book.currentValue || 0), 0);
+    return this.issues.reduce((total, book) => total + (book.currentValue || 0), 0);
   }
 
   // Existing methods...
-  addComicBook(): void {
-    const dialogRef = this.dialog.open(ComicBookFormComponent, {
+  addIssue(): void {
+    const dialogRef = this.dialog.open(IssueFormComponent, {
       width: '600px',
       data: { seriesId: this.series!.id }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadComicBooks(this.series?.id!);
+        this.loadIssues(this.series?.id!);
       }
     });
   }
 
-  viewComicBook(comicBookId: number): void {
+  viewIssue(issueId: number): void {
     // Find the comic book in our current list
-    const comicBook = this.comicBooks.find(comic => comic.id === comicBookId);
-    if (comicBook) {
-      const dialogRef = this.dialog.open(ComicBookViewDialog, {
+    const issue = this.issues.find(comic => comic.id === issueId);
+    if (issue) {
+      const dialogRef = this.dialog.open(IssueViewDialog, {
         width: '700px',
         maxWidth: '90vw',
-        data: { comicBook }
+        data: { issue }
       });
     }
   }
 
-  editComicBook(comicBook: any): void {
-    const dialogRef = this.dialog.open(ComicBookFormComponent, {
+  editIssue(issue: any): void {
+    const dialogRef = this.dialog.open(IssueFormComponent, {
       width: '600px',
-      data: { comicBook, seriesId: this.series!.id }
+      data: { issue, seriesId: this.series!.id }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadComicBooks(this.series?.id!);
+        this.loadIssues(this.series?.id!);
       }
     });
   }
 
-  deleteComicBook(id: number): void {
+  deleteIssue(id: number): void {
     if (confirm('Are you sure you want to delete this comic book?')) {
-      this.comicBookService.deleteComicBook(id).subscribe({
+      this.issueService.deleteIssue(id).subscribe({
         next: () => {
           this.snackBar.open('Comic book deleted', 'Close', { duration: 3000 });
-          this.loadComicBooks(this.series?.id!);
+          this.loadIssues(this.series?.id!);
         },
         error: (error) => {
           console.error('Error deleting comic book:', error);
@@ -302,7 +303,8 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   addFromComicVine(issue: any): void {
-    const dialogRef = this.dialog.open(ComicBookFormComponent, {
+    console.log('Adding issue from Comic Vine:', issue);
+    const dialogRef = this.dialog.open(IssueFormComponent, {
       width: '600px',
       data: { 
         seriesId: this.series?.id,
@@ -312,7 +314,7 @@ export class SeriesDetailComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadComicBooks(this.series?.id!);
+        this.loadIssues(this.series?.id!);
       }
     });
   }
@@ -463,7 +465,7 @@ export class RangeSelectionDialog {
   template: `
     <div class="comic-view-container">
       <div class="comic-view-header">
-        <h2 mat-dialog-title>{{ data.comicBook.title || 'Issue #' + data.comicBook.issueNumber }}</h2>
+        <h2 mat-dialog-title>{{ data.issue.title || 'Issue #' + data.issue.issueNumber }}</h2>
         <button mat-icon-button mat-dialog-close class="close-button">
           <mat-icon>close</mat-icon>
         </button>
@@ -473,10 +475,10 @@ export class RangeSelectionDialog {
         <div class="comic-view-layout">
           <div class="comic-image-section">
             <div class="comic-image-container">
-              <img [src]="data.comicBook.imageUrl || 'assets/placeholder-comic.jpg'" 
-                   [alt]="'Issue #' + data.comicBook.issueNumber"
+              <img [src]="data.issue.imageUrl || 'assets/placeholder-comic.jpg'" 
+                   [alt]="'Issue #' + data.issue.issueNumber"
                    onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-              <div class="key-issue-badge" *ngIf="data.comicBook.keyIssue">
+              <div class="key-issue-badge" *ngIf="data.issue.keyIssue">
                 <mat-icon>star</mat-icon>
                 <span>Key Issue</span>
               </div>
@@ -489,24 +491,24 @@ export class RangeSelectionDialog {
               <div class="detail-grid">
                 <div class="detail-item">
                   <span class="label">Issue Number:</span>
-                  <span class="value">#{{ data.comicBook.issueNumber }}</span>
+                  <span class="value">#{{ data.issue.issueNumber }}</span>
                 </div>
                 <div class="detail-item">
                   <span class="label">Cover Date:</span>
-                  <span class="value">{{ data.comicBook.coverDate || 'Not specified' }}</span>
+                  <span class="value">{{ data.issue.coverDate || 'Not specified' }}</span>
                 </div>
                 <div class="detail-item">
                   <span class="label">Condition:</span>
-                  <span class="value condition-badge" [class]="getConditionClass(data.comicBook.condition)">
-                    {{ formatCondition(data.comicBook.condition) }}
+                  <span class="value condition-badge" [class]="getConditionClass(data.issue.condition)">
+                    {{ formatCondition(data.issue.condition) }}
                   </span>
                 </div>
               </div>
             </div>
 
-            <div class="detail-group" *ngIf="data.comicBook.description">
+            <div class="detail-group" *ngIf="data.issue.description">
               <h3>Description</h3>
-              <p class="description-text">{{ data.comicBook.description }}</p>
+              <p class="description-text">{{ data.issue.description }}</p>
             </div>
 
             <div class="detail-group">
@@ -514,11 +516,11 @@ export class RangeSelectionDialog {
               <div class="financial-grid">
                 <div class="financial-card purchase">
                   <div class="financial-label">Purchase Price</div>
-                  <div class="financial-value">\${{ data.comicBook.purchasePrice || 0 }}</div>
+                  <div class="financial-value">\${{ data.issue.purchasePrice || 0 }}</div>
                 </div>
                 <div class="financial-card current">
                   <div class="financial-label">Current Value</div>
-                  <div class="financial-value">\${{ data.comicBook.currentValue || 0 }}</div>
+                  <div class="financial-value">\${{ data.issue.currentValue || 0 }}</div>
                 </div>
                 <div class="financial-card profit" *ngIf="getProfitLoss() !== 0">
                   <div class="financial-label">{{ getProfitLoss() >= 0 ? 'Profit' : 'Loss' }}</div>
@@ -529,11 +531,11 @@ export class RangeSelectionDialog {
               </div>
             </div>
 
-            <div class="detail-group" *ngIf="data.comicBook.comicVineId">
+            <div class="detail-group" *ngIf="data.issue.comicVineId">
               <h3>Comic Vine Integration</h3>
               <div class="comic-vine-info">
                 <mat-icon>link</mat-icon>
-                <span>Linked to Comic Vine ID: {{ data.comicBook.comicVineId }}</span>
+                <span>Linked to Comic Vine ID: {{ data.issue.comicVineId }}</span>
               </div>
             </div>
           </div>
@@ -798,11 +800,11 @@ export class RangeSelectionDialog {
   `],
   standalone: false
 })
-export class ComicBookViewDialog {
+export class IssueViewDialog {
   Math = Math; // Make Math available in template
 
   constructor(
-    public dialogRef: MatDialogRef<ComicBookViewDialog>,
+    public dialogRef: MatDialogRef<IssueViewDialog>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private dialog: MatDialog
   ) {}
@@ -810,11 +812,11 @@ export class ComicBookViewDialog {
   editComic(): void {
     this.dialogRef.close();
     // Open edit dialog
-    const editDialogRef = this.dialog.open(ComicBookFormComponent, {
+    const editDialogRef = this.dialog.open(IssueFormComponent, {
       width: '600px',
       data: { 
-        comicBook: this.data.comicBook, 
-        seriesId: this.data.comicBook.seriesId 
+        issue: this.data.issue, 
+        seriesId: this.data.issue.seriesId 
       }
     });
   }
@@ -833,8 +835,8 @@ export class ComicBookViewDialog {
   }
 
   getProfitLoss(): number {
-    const purchase = this.data.comicBook.purchasePrice || 0;
-    const current = this.data.comicBook.currentValue || 0;
+    const purchase = this.data.issue.purchasePrice || 0;
+    const current = this.data.issue.currentValue || 0;
     return current - purchase;
   }
 }

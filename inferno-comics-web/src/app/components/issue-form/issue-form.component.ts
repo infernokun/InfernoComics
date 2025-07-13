@@ -2,43 +2,43 @@ import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ComicBookService } from '../../services/comic-book.service';
-import { ComicBook, ComicBookCondition } from '../../models/comic-book.model';
+import { IssueService } from '../../services/issue.service';
+import { Issue, IssueCondition } from '../../models/issue.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
-import { ComicBookRequest } from '../../models/comic-book-request.model';
+import { IssueRequest } from '../../models/issue-request.model';
 
 export interface DialogData {
   seriesId: number;
-  comicBook?: ComicBook;
+  issue?: Issue;
   comicVineIssue?: ComicVineIssue;
   comicVineIssues?: ComicVineIssue[];
 }
 
 @Component({
-  selector: 'app-comic-book-form',
-  templateUrl: './comic-book-form.component.html',
-  styleUrls: ['./comic-book-form.component.scss'],
+  selector: 'app-issue-form',
+  templateUrl: './issue-form.component.html',
+  styleUrls: ['./issue-form.component.scss'],
   standalone: false
 })
-export class ComicBookFormComponent implements OnInit {
-  comicBookForm: FormGroup;
-  conditions = Object.values(ComicBookCondition);
+export class IssueFormComponent implements OnInit {
+  issueForm: FormGroup;
+  conditions = Object.values(IssueCondition);
   loading = false;
   isEditMode = false;
 
   constructor(
     private fb: FormBuilder,
-    private comicBookService: ComicBookService,
+    private issueService: IssueService,
     private snackBar: MatSnackBar,
-    public dialogRef: MatDialogRef<ComicBookFormComponent>,
+    public dialogRef: MatDialogRef<IssueFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: DialogData
   ) {
-    this.comicBookForm = this.createForm();
-    this.isEditMode = !!data.comicBook;
+    this.issueForm = this.createForm();
+    this.isEditMode = !!data.issue;
   }
 
   ngOnInit(): void {
-    if (this.data.comicBook) {
+    if (this.data.issue) {
       // Edit mode - populate form with existing data
       this.populateFormForEdit();
     } else if (this.data.comicVineIssue) {
@@ -65,20 +65,20 @@ export class ComicBookFormComponent implements OnInit {
   }
 
   populateFormForEdit(): void {
-    if (this.data.comicBook) {
-      this.comicBookForm.patchValue({
-        issueNumber: this.data.comicBook.issueNumber,
-        title: this.data.comicBook.title,
-        description: this.data.comicBook.description,
-        coverDate: this.data.comicBook.coverDate,
-        imageUrl: this.data.comicBook.imageUrl,
-        condition: this.data.comicBook.condition,
-        purchasePrice: this.data.comicBook.purchasePrice,
-        currentValue: this.data.comicBook.currentValue,
-        purchaseDate: this.data.comicBook.purchaseDate,
-        notes: this.data.comicBook.notes,
-        comicVineId: this.data.comicBook.comicVineId,
-        isKeyIssue: this.data.comicBook.isKeyIssue
+    if (this.data.issue) {
+      this.issueForm.patchValue({
+        issueNumber: this.data.issue.issueNumber,
+        title: this.data.issue.title,
+        description: this.data.issue.description,
+        coverDate: this.data.issue.coverDate,
+        imageUrl: this.data.issue.imageUrl,
+        condition: this.data.issue.condition,
+        purchasePrice: this.data.issue.purchasePrice,
+        currentValue: this.data.issue.currentValue,
+        purchaseDate: this.data.issue.purchaseDate,
+        notes: this.data.issue.notes,
+        comicVineId: this.data.issue.comicVineId,
+        isKeyIssue: this.data.issue.isKeyIssue
       });
     }
   }
@@ -86,7 +86,7 @@ export class ComicBookFormComponent implements OnInit {
   populateFormFromComicVine(): void {
     if (this.data.comicVineIssue) {
       const issue = this.data.comicVineIssue;
-      this.comicBookForm.patchValue({
+      this.issueForm.patchValue({
         issueNumber: issue.issueNumber,
         title: issue.name,
         description: issue.description,
@@ -98,11 +98,11 @@ export class ComicBookFormComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.comicBookForm.valid) {
+    if (this.issueForm.valid) {
       this.loading = true;
-      const formData = this.comicBookForm.value;
+      const formData = this.issueForm.value;
       
-      const comicBookRequest: ComicBookRequest = {
+      const issueRequest: IssueRequest = {
         seriesId: this.data.seriesId,
         issueNumber: formData.issueNumber,
         title: formData.title,
@@ -119,9 +119,9 @@ export class ComicBookFormComponent implements OnInit {
         generatedDescription: this.data.comicVineIssue?.generatedDescription || false
       };
 
-      const operation = this.isEditMode && this.data.comicBook?.id
-        ? this.comicBookService.updateComicBook(this.data.comicBook.id, comicBookRequest)
-        : this.comicBookService.createComicBook(comicBookRequest);
+      const operation = this.isEditMode && this.data.issue?.id
+        ? this.issueService.updateIssue(this.data.issue.id, issueRequest)
+        : this.issueService.createIssue(issueRequest);
 
       operation.subscribe({
         next: (result) => {

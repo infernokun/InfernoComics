@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ComicBookFormComponent } from './comic-book-form.component';
+import { IssueFormComponent } from './issue-form.component';
 
-describe('ComicBookFormComponent', () => {
-  let component: ComicBookFormComponent;
-  let fixture: ComponentFixture<ComicBookFormComponent>;
+describe('IssueFormComponent', () => {
+  let component: IssueFormComponent;
+  let fixture: ComponentFixture<IssueFormComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ComicBookFormComponent]
+      declarations: [IssueFormComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(ComicBookFormComponent);
+    fixture = TestBed.createComponent(IssueFormComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

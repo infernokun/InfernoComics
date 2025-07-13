@@ -1,53 +1,57 @@
 package com.infernokun.infernoComics.services.gcd;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+@Slf4j
 @Service
 public class GCDAPIService {
 
     private final WebClient webClient;
-    private final ObjectMapper objectMapper;
+    private String sessionCookie;
+    private String csrfToken;
 
-    private static final String BASE_URL = "https://www.comics.org/api";
+    private static final String BASE_URL = "https://www.comics.org";
+    private static final String API_BASE_URL = "https://www.comics.org/api";
 
     @Autowired
-    public GCDAPIService(WebClient.Builder webClientBuilder, ObjectMapper objectMapper) {
+    public GCDAPIService(WebClient.Builder webClientBuilder) {
+
+        // Web client for authentication (main site)
         this.webClient = webClientBuilder
                 .baseUrl(BASE_URL)
                 .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                .defaultHeader("Accept", "application/json")
+                .defaultHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .defaultHeader("Accept-Language", "en-US,en;q=0.9")
+                .defaultHeader(HttpHeaders.COOKIE, "csrftoken=xlYHZLNfSnOh9tunU1PSs6d6B5zRo4pM; cf_clearance=bSRhg8voot0Z2EG5VnDsgqO36hjHDJaQlRYtfsUao4g-1752347282-1.2.1.1-OvkuTOZ2xFHAxedL2v78JWor21EqeIFvdxOR3rKCwsQoDuB48RT7_0sqhY5Yw1KbtK54M8MbfU2VzWMUt..Ga9nXJJcOio2Jxr4qMh0F0UhPseuj61rpe8fMWWs86bhFYAuaNbNgSb.gQ2RRG4ygSEcBt3aSBfadD7xzbABgR4bLm1BqK7hrph97V7KCtemv18tfu5K8Z.HfJ3U2Vltxt92wKan6L_HEyBdyebPs8vlSY5aabdbTbies1XzA4wFI; gcdsessionid=6w9voqifvwcdbn7u8a1r7y50tjpkep6f")
                 .build();
-        this.objectMapper = objectMapper;
     }
 
+    // Enhanced API methods with better error handling
     public Mono<SeriesResponse> getSeriesById(Long seriesId) {
         return webClient.get()
                 .uri("/series/{id}/", seriesId)
                 .retrieve()
-                .bodyToMono(SeriesResponse.class);
+                .bodyToMono(SeriesResponse.class)
+                .doOnError(error -> log.error("Error fetching series {}: {}", seriesId, error.getMessage()))
+                .doOnNext(response -> log.debug("Successfully fetched series: {}", response.getName()));
     }
 
     public Mono<IssueResponse> getIssueById(Long issueId) {
         return webClient.get()
                 .uri("/issue/{id}/", issueId)
                 .retrieve()
-                .bodyToMono(IssueResponse.class);
-    }
-
-    public Mono<String> getPublisherById(Long publisherId) {
-        return webClient.get()
-                .uri("/publisher/{id}/", publisherId)
-                .retrieve()
-                .bodyToMono(String.class);
+                .bodyToMono(IssueResponse.class)
+                .doOnError(error -> log.error("Error fetching issue {}: {}", issueId, error.getMessage()))
+                .doOnNext(response -> log.debug("Successfully fetched issue: {}", response.getSeriesName()));
     }
 
     @Data
@@ -105,7 +109,13 @@ public class GCDAPIService {
         private String series;
         @JsonProperty("story_set")
         private List<Story> storySet;
-        private String cover;
+        private String cover; // This might contain cover information!
+
+        // Additional fields that might be present with authentication
+        @JsonProperty("cover_set")
+        private List<String> coverSet;
+        @JsonProperty("active_covers")
+        private List<String> activeCovers;
     }
 
     @Data

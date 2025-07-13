@@ -6,11 +6,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
-import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -102,7 +102,7 @@ public class GCDCoverPageScraper {
             options.addArguments("--disable-web-security");
 
             // Block unnecessary resources
-            Map<String, Object> prefs = new HashMap<>();
+            /*Map<String, Object> prefs = new HashMap<>();
             prefs.put("profile.managed_default_content_settings.images", 2); // Block images
             prefs.put("profile.managed_default_content_settings.stylesheets", 2); // Block CSS
             prefs.put("profile.managed_default_content_settings.cookies", 2); // Block cookies
@@ -111,7 +111,7 @@ public class GCDCoverPageScraper {
             prefs.put("profile.managed_default_content_settings.popups", 2); // Block popups
             prefs.put("profile.managed_default_content_settings.geolocation", 2); // Block location
             prefs.put("profile.managed_default_content_settings.media_stream", 2); // Block media
-            options.setExperimentalOption("prefs", prefs);
+            options.setExperimentalOption("prefs", prefs);*/
 
             String[] userAgents = {
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -138,50 +138,6 @@ public class GCDCoverPageScraper {
         }
     }
 
-    private boolean waitForCloudflareBypass(WebDriver driver) {
-        try {
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-
-            // Check if we're on a Cloudflare challenge page
-            String title = Objects.requireNonNull(driver.getTitle()).toLowerCase();
-            if (title.contains("just a moment") || title.contains("checking") || title.contains("please wait")) {
-                log.info("⚡ Cloudflare challenge detected, waiting for bypass...");
-
-                // Wait for the page to change from the challenge page
-                wait.until(driver1 -> {
-                    String currentTitle = Objects.requireNonNull(driver1.getTitle()).toLowerCase();
-                    return !currentTitle.contains("just a moment") &&
-                            !currentTitle.contains("checking") &&
-                            !currentTitle.contains("please wait");
-                });
-
-                // Additional wait for page to fully load
-                Thread.sleep(2000);
-
-                log.info("⚡ Cloudflare bypass successful, page title: {}", driver.getTitle());
-                return true;
-            }
-
-            // Check for other error indicators
-            String pageSource = driver.getPageSource().toLowerCase();
-            if (pageSource.contains("access denied") || pageSource.contains("blocked") ||
-                    pageSource.contains("captcha") || pageSource.contains("security check")) {
-                log.warn("⚡ Access denied or security check detected");
-                return false;
-            }
-
-            return true;
-
-        } catch (TimeoutException e) {
-            log.error("⚡ Timeout waiting for Cloudflare bypass");
-            return false;
-        } catch (Exception e) {
-            log.error("⚡ Error during Cloudflare bypass: {}", e.getMessage());
-            return false;
-        }
-    }
-
-
     /**
      * Get next available driver from pool (round-robin)
      */
@@ -200,7 +156,7 @@ public class GCDCoverPageScraper {
      */
     public GCDCover scrapeCoverPage(GCDIssue issue) {
         GCDCover gcdCover = new GCDCover();
-        WebDriver driver = null;
+        WebDriver driver;
 
         try {
             driver = getNextDriver();
@@ -217,28 +173,26 @@ public class GCDCoverPageScraper {
 
             driver.get(coverPageUrl);
 
-            if (waitForCloudflareBypass(driver)) {
-                gcdCover = findAllCoverImages(driver);
-                gcdCover.setCoverPageUrl(coverPageUrl);
+            gcdCover = findAllCoverImages(driver);
+            gcdCover.setCoverPageUrl(coverPageUrl);
 
-                // Check if page loaded correctly
-                String currentUrl = driver.getCurrentUrl();
-                String pageTitle = driver.getTitle();
-                log.info("⚡ Page loaded - URL: {}, Title: {}", currentUrl, pageTitle);
+            // Check if page loaded correctly
+            String currentUrl = driver.getCurrentUrl();
+            String pageTitle = driver.getTitle();
+            log.info("⚡ Page loaded - URL: {}, Title: {}", currentUrl, pageTitle);
 
-                // Check for error pages or redirects
-                if (Objects.requireNonNull(currentUrl).contains("error") || Objects.requireNonNull(pageTitle).toLowerCase().contains("error") ||
-                        pageTitle.toLowerCase().contains("not found")) {
-                    gcdCover.setError("Page not found or error page detected");
-                    log.warn("⚡ ❌ Error page detected for issue {}", issue.getId());
-                    return gcdCover;
-                }
+            // Check for error pages or redirects
+            if (Objects.requireNonNull(currentUrl).contains("error") || Objects.requireNonNull(pageTitle).toLowerCase().contains("error") ||
+                    pageTitle.toLowerCase().contains("not found")) {
+                gcdCover.setError("Page not found or error page detected");
+                log.warn("⚡ ❌ Error page detected for issue {}", issue.getId());
+                return gcdCover;
+            }
 
-                if (!gcdCover.getUrls().isEmpty()) {
-                    gcdCover.setFound(true);
-                    log.info("⚡ ✅ Found {} covers: {}", gcdCover.getUrls().size(), gcdCover.getUrls());
-                    return gcdCover;
-                }
+            if (!gcdCover.getUrls().isEmpty()) {
+                gcdCover.setFound(true);
+                log.info("⚡ ✅ Found {} covers: {}", gcdCover.getUrls().size(), gcdCover.getUrls());
+                return gcdCover;
             }
             // If no covers found, let's debug what's on the page
             logPageDebugInfo(driver);

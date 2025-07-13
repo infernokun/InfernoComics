@@ -31,7 +31,7 @@ public class Series {
     @Column(nullable = false)
     private String name;
 
-    @Column(length = 1000)
+    @Column(length = 10000)
     private String description;
 
     @Column(name = "publisher")
@@ -49,6 +49,9 @@ public class Series {
     @Column(name = "comic_vine_id")
     private String comicVineId;
 
+    @Column(name = "comic_vine_ids")
+    private List<String> comicVineIds;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -65,9 +68,11 @@ public class Series {
     @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // Change to LAZY
     @JsonManagedReference
     @JsonIgnore
-    private List<ComicBook> comicBooks = new ArrayList<>();
+    private List<Issue> issues = new ArrayList<>();
 
     private boolean generatedDescription = false;
+
+    private int issueCount = 0;
 
     public Series(String name, String description, String publisher) {
         this.name = name;

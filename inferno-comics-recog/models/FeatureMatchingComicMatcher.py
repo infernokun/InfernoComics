@@ -1,41 +1,321 @@
 import os
-# Set OpenCV to headless mode BEFORE importing cv2
-os.environ['QT_QPA_PLATFORM'] = 'offscreen'
-os.environ['OPENCV_LOG_LEVEL'] = 'ERROR'
-
 import cv2
 import numpy as np
 import requests
 import hashlib
 import time
 import concurrent.futures
+import sqlite3
+import pickle
+import json
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Any
 
-# Force OpenCV to use headless backend
+# Set OpenCV to headless mode BEFORE importing cv2
+os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+os.environ['OPENCV_LOG_LEVEL'] = 'ERROR'
 cv2.setNumThreads(1)
 
 class FeatureMatchingComicMatcher:
-    def __init__(self, cache_dir='image_cache', max_workers=4):
+    def __init__(self, cache_dir='image_cache', db_path='comic_cache.db', max_workers=4):
         self.cache_dir = cache_dir
+        self.db_path = db_path
         self.max_workers = max_workers
+        
+        # Create directories
         os.makedirs(cache_dir, exist_ok=True)
         
+        # Initialize database
+        self._init_database()
+        
         # Initialize feature detectors
-        self.sift = cv2.SIFT_create(nfeatures=1000)  # More features for better matching
+        self.sift = cv2.SIFT_create(nfeatures=1000)
         self.orb = cv2.ORB_create(nfeatures=1000)
         
-        # Matcher for SIFT features
+        # Matchers
         self.bf_matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-        # Matcher for ORB features  
         self.orb_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
         
-        # Simple session for downloads
+        # Session for downloads
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
+        
+        # Cache statistics
+        self.cache_stats = {
+            'image_cache_hits': 0,
+            'image_cache_misses': 0,
+            'feature_cache_hits': 0,
+            'feature_cache_misses': 0,
+            'processing_time_saved': 0.0
+        }
+    
+    def _init_database(self):
+        """Initialize SQLite database with proper schema"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Table for cached images
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS cached_images (
+                url_hash TEXT PRIMARY KEY,
+                url TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                file_size INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Table for cached features
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS cached_features (
+                url_hash TEXT PRIMARY KEY,
+                url TEXT NOT NULL,
+                sift_keypoints BLOB,
+                sift_descriptors BLOB,
+                sift_count INTEGER,
+                orb_keypoints BLOB,
+                orb_descriptors BLOB,
+                orb_count INTEGER,
+                processing_time REAL,
+                image_shape TEXT,
+                was_cropped BOOLEAN,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (url_hash) REFERENCES cached_images (url_hash)
+            )
+        ''')
+        
+        # Table for match results cache (optional - for repeated queries)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS cached_matches (
+                query_hash TEXT,
+                candidate_hash TEXT,
+                similarity REAL,
+                match_details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (query_hash, candidate_hash)
+            )
+        ''')
+        
+        # Create indexes for performance
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_images_url ON cached_images(url)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_features_url ON cached_features(url)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_images_accessed ON cached_images(last_accessed)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_features_accessed ON cached_features(last_accessed)')
+        
+        conn.commit()
+        conn.close()
+    
+    def _get_url_hash(self, url: str) -> str:
+        """Generate consistent hash for URL"""
+        return hashlib.md5(url.encode()).hexdigest()
+    
+    def _serialize_keypoints(self, keypoints) -> bytes:
+        """Serialize OpenCV keypoints to bytes"""
+        if not keypoints:
+            return b''
+        
+        # Convert keypoints to serializable format
+        kp_data = []
+        for kp in keypoints:
+            kp_data.append({
+                'pt': kp.pt,
+                'angle': kp.angle,
+                'class_id': kp.class_id,
+                'octave': kp.octave,
+                'response': kp.response,
+                'size': kp.size
+            })
+        return pickle.dumps(kp_data)
+    
+    def _deserialize_keypoints(self, data: bytes):
+        """Deserialize bytes back to OpenCV keypoints"""
+        if not data:
+            return []
+        
+        kp_data = pickle.loads(data)
+        keypoints = []
+        for kp_dict in kp_data:
+            kp = cv2.KeyPoint(
+                x=kp_dict['pt'][0],
+                y=kp_dict['pt'][1],
+                size=kp_dict['size'],
+                angle=kp_dict['angle'],
+                response=kp_dict['response'],
+                octave=kp_dict['octave'],
+                class_id=kp_dict['class_id']
+            )
+            keypoints.append(kp)
+        return keypoints
+    
+    def _get_cached_image(self, url: str) -> Optional[np.ndarray]:
+        """Get cached image from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        url_hash = self._get_url_hash(url)
+        cursor.execute('''
+            SELECT file_path FROM cached_images 
+            WHERE url_hash = ?
+        ''', (url_hash,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and os.path.exists(result[0]):
+            # Update last accessed time
+            self._update_access_time('cached_images', url_hash)
+            self.cache_stats['image_cache_hits'] += 1
+            return cv2.imread(result[0])
+        
+        self.cache_stats['image_cache_misses'] += 1
+        return None
+    
+    def _cache_image(self, url: str, image: np.ndarray) -> str:
+        """Cache image to database and filesystem"""
+        url_hash = self._get_url_hash(url)
+        file_path = os.path.join(self.cache_dir, f"{url_hash}.jpg")
+        
+        # Save image to filesystem
+        cv2.imwrite(file_path, image)
+        file_size = os.path.getsize(file_path)
+        
+        # Save metadata to database
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO cached_images 
+            (url_hash, url, file_path, file_size, created_at, last_accessed)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (url_hash, url, file_path, file_size, datetime.now(), datetime.now()))
+        
+        conn.commit()
+        conn.close()
+        
+        return file_path
+    
+    def _get_cached_features(self, url: str) -> Optional[Dict]:
+        """Get cached features from database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        url_hash = self._get_url_hash(url)
+        cursor.execute('''
+            SELECT sift_keypoints, sift_descriptors, sift_count,
+                   orb_keypoints, orb_descriptors, orb_count,
+                   processing_time, image_shape, was_cropped
+            FROM cached_features 
+            WHERE url_hash = ?
+        ''', (url_hash,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            # Update last accessed time
+            self._update_access_time('cached_features', url_hash)
+            self.cache_stats['feature_cache_hits'] += 1
+            self.cache_stats['processing_time_saved'] += result[6]  # processing_time
+            
+            # Deserialize features
+            sift_kp = self._deserialize_keypoints(result[0])
+            sift_desc = pickle.loads(result[1]) if result[1] else None
+            orb_kp = self._deserialize_keypoints(result[3])
+            orb_desc = pickle.loads(result[4]) if result[4] else None
+            
+            return {
+                'sift': {
+                    'keypoints': sift_kp,
+                    'descriptors': sift_desc,
+                    'count': result[2]
+                },
+                'orb': {
+                    'keypoints': orb_kp,
+                    'descriptors': orb_desc,
+                    'count': result[5]
+                },
+                'processing_time': result[6],
+                'image_shape': json.loads(result[7]) if result[7] else None,
+                'was_cropped': bool(result[8])
+            }
+        
+        self.cache_stats['feature_cache_misses'] += 1
+        return None
+    
+    def _cache_features(self, url: str, features: Dict, processing_time: float, 
+                       image_shape: Tuple, was_cropped: bool):
+        """Cache features to database"""
+        url_hash = self._get_url_hash(url)
+        
+        # Serialize features
+        sift_kp_data = self._serialize_keypoints(features['sift']['keypoints'])
+        sift_desc_data = pickle.dumps(features['sift']['descriptors']) if features['sift']['descriptors'] is not None else b''
+        orb_kp_data = self._serialize_keypoints(features['orb']['keypoints'])
+        orb_desc_data = pickle.dumps(features['orb']['descriptors']) if features['orb']['descriptors'] is not None else b''
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO cached_features 
+            (url_hash, url, sift_keypoints, sift_descriptors, sift_count,
+             orb_keypoints, orb_descriptors, orb_count, processing_time,
+             image_shape, was_cropped, created_at, last_accessed)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            url_hash, url, sift_kp_data, sift_desc_data, features['sift']['count'],
+            orb_kp_data, orb_desc_data, features['orb']['count'], processing_time,
+            json.dumps(image_shape), was_cropped, datetime.now(), datetime.now()
+        ))
+        
+        conn.commit()
+        conn.close()
+    
+    def _update_access_time(self, table: str, url_hash: str):
+        """Update last accessed time for cache entry"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute(f'''
+            UPDATE {table} 
+            SET last_accessed = ? 
+            WHERE url_hash = ?
+        ''', (datetime.now(), url_hash))
+        
+        conn.commit()
+        conn.close()
+    
+    def download_image(self, url: str, timeout: int = 10) -> Optional[np.ndarray]:
+        """Download image with caching support"""
+        # Check cache first
+        cached_image = self._get_cached_image(url)
+        if cached_image is not None:
+            return cached_image
+        
+        # Download if not cached
+        try:
+            response = self.session.get(url, timeout=timeout)
+            response.raise_for_status()
+            
+            image_array = np.frombuffer(response.content, np.uint8)
+            image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+            
+            if image is not None:
+                # Cache the downloaded image
+                self._cache_image(url, image)
+            
+            return image
+            
+        except Exception as e:
+            print(f"Download error for {url}: {e}")
+            return None
     
     def detect_comic_area(self, image):
-        """Detect and crop comic area from photo"""
+        """Detect and crop comic area from photo (same as original)"""
         if image is None:
             return image, False
             
@@ -105,31 +385,31 @@ class FeatureMatchingComicMatcher:
         return original, False
     
     def preprocess_image(self, image):
-        """Preprocess image for better feature detection"""
+        """Preprocess image for better feature detection (same as original)"""
         if image is None:
             return None
         
-        # Resize to reasonable size for feature detection (speeds up processing)
+        # Resize to reasonable size for feature detection
         h, w = image.shape[:2]
         if max(h, w) > 800:
             scale = 800 / max(h, w)
             new_w, new_h = int(w * scale), int(h * scale)
             image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
         
-        # Convert to grayscale for feature detection
+        # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
         
-        # Apply histogram equalization to handle lighting differences
+        # Apply histogram equalization
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         enhanced = clahe.apply(gray)
         
-        # Slight Gaussian blur to reduce noise
+        # Slight Gaussian blur
         processed = cv2.GaussianBlur(enhanced, (3, 3), 0)
         
         return processed
     
     def extract_features(self, image):
-        """Extract features using both SIFT and ORB"""
+        """Extract features using both SIFT and ORB (same as original)"""
         if image is None:
             return None
         
@@ -140,7 +420,7 @@ class FeatureMatchingComicMatcher:
         features = {}
         
         try:
-            # SIFT features (better for detailed matching)
+            # SIFT features
             sift_kp, sift_desc = self.sift.detectAndCompute(processed, None)
             features['sift'] = {
                 'keypoints': sift_kp,
@@ -152,7 +432,7 @@ class FeatureMatchingComicMatcher:
             features['sift'] = {'keypoints': [], 'descriptors': None, 'count': 0}
         
         try:
-            # ORB features (faster, good for basic matching)
+            # ORB features
             orb_kp, orb_desc = self.orb.detectAndCompute(processed, None)
             features['orb'] = {
                 'keypoints': orb_kp,
@@ -165,8 +445,33 @@ class FeatureMatchingComicMatcher:
         
         return features
     
+    def extract_features_cached(self, url: str) -> Optional[Dict]:
+        """Extract features with caching support"""
+        # Check cache first
+        cached_features = self._get_cached_features(url)
+        if cached_features is not None:
+            return cached_features
+        
+        # Download image
+        image = self.download_image(url)
+        if image is None:
+            return None
+        
+        # Process image
+        start_time = time.time()
+        cropped_image, was_cropped = self.detect_comic_area(image)
+        features = self.extract_features(cropped_image)
+        processing_time = time.time() - start_time
+        
+        if features is not None:
+            # Cache the features
+            self._cache_features(url, features, processing_time, 
+                               cropped_image.shape, was_cropped)
+        
+        return features
+    
     def match_features(self, query_features, candidate_features):
-        """Match features between query and candidate images"""
+        """Match features between query and candidate images (same as original)"""
         if not query_features or not candidate_features:
             return 0.0, {}
         
@@ -181,22 +486,19 @@ class FeatureMatchingComicMatcher:
             len(candidate_features['sift']['descriptors']) > 10):
             
             try:
-                # Use KNN matching for better results
                 matches = self.bf_matcher.knnMatch(
                     query_features['sift']['descriptors'], 
                     candidate_features['sift']['descriptors'], 
                     k=2
                 )
                 
-                # Apply ratio test (Lowe's ratio test)
                 good_matches = []
                 for match_pair in matches:
                     if len(match_pair) == 2:
                         m, n = match_pair
-                        if m.distance < 0.75 * n.distance:  # Stricter ratio for comics
+                        if m.distance < 0.75 * n.distance:
                             good_matches.append(m)
                 
-                # Calculate similarity based on good matches
                 max_features = max(query_features['sift']['count'], candidate_features['sift']['count'])
                 if max_features > 0:
                     sift_similarity = len(good_matches) / max_features
@@ -225,12 +527,11 @@ class FeatureMatchingComicMatcher:
                     k=2
                 )
                 
-                # Apply ratio test
                 good_matches = []
                 for match_pair in matches:
                     if len(match_pair) == 2:
                         m, n = match_pair
-                        if m.distance < 0.7 * n.distance:  # Slightly stricter for ORB
+                        if m.distance < 0.7 * n.distance:
                             good_matches.append(m)
                 
                 max_features = max(query_features['orb']['count'], candidate_features['orb']['count'])
@@ -247,7 +548,7 @@ class FeatureMatchingComicMatcher:
                 print(f"ORB matching error: {e}")
                 match_results['orb'] = {'total_matches': 0, 'good_matches': 0, 'similarity': 0.0}
         
-        # Combine similarities with weights (SIFT is generally better for detailed images)
+        # Combine similarities
         if sift_similarity > 0 and orb_similarity > 0:
             overall_similarity = 0.7 * sift_similarity + 0.3 * orb_similarity
         elif sift_similarity > 0:
@@ -259,129 +560,9 @@ class FeatureMatchingComicMatcher:
         
         return overall_similarity, match_results
     
-    def download_image(self, url, timeout=10):
-        """Download image with caching"""
-        url_hash = hashlib.md5(url.encode()).hexdigest()
-        cache_path = os.path.join(self.cache_dir, f"{url_hash}.jpg")
-        
-        if os.path.exists(cache_path):
-            return cv2.imread(cache_path)
-        
-        try:
-            response = self.session.get(url, timeout=timeout)
-            response.raise_for_status()
-            
-            image_array = np.frombuffer(response.content, np.uint8)
-            image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
-            
-            if image is not None:
-                cv2.imwrite(cache_path, image)
-            
-            return image
-        except Exception as e:
-            print(f"Download error for {url}: {e}")
-            return None
-    
-    def download_images_batch(self, urls):
-        """Download multiple images in parallel"""
-        images = {}
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_to_url = {executor.submit(self.download_image, url): url for url in urls}
-            
-            for future in concurrent.futures.as_completed(future_to_url):
-                url = future_to_url[future]
-                try:
-                    image = future.result()
-                    if image is not None:
-                        images[url] = image
-                except Exception as e:
-                    print(f"Error processing {url}: {e}")
-        return images
-    
-    def find_matches(self, query_image_path, candidate_urls, threshold=0.1):
-        """Main matching function using feature matching"""
-        print("🚀 Starting Feature Matching Comic Search...")
-        start_time = time.time()
-        
-        # Load and process query image
-        query_image = cv2.imread(query_image_path)
-        if query_image is None:
-            raise ValueError(f"Could not load query image: {query_image_path}")
-        
-        print(f"📷 Loaded query image: {query_image.shape}")
-        
-        # Detect comic area
-        query_image, was_cropped = self.detect_comic_area(query_image)
-        
-        # Extract features from query
-        print("🔍 Extracting features from query image...")
-        query_features = self.extract_features(query_image)
-        
-        if not query_features:
-            raise ValueError("Could not extract features from query image")
-        
-        print(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
-        
-        # Download candidate images
-        print(f"⬇️ Downloading {len(candidate_urls)} candidate images...")
-        candidate_images = self.download_images_batch(candidate_urls)
-        print(f"✅ Downloaded {len(candidate_images)} images")
-        
-        # Process each candidate
-        results = []
-        
-        for i, url in enumerate(candidate_urls, 1):
-            print(f"🔄 Processing candidate {i}/{len(candidate_urls)}...")
-            
-            if url not in candidate_images:
-                results.append({
-                    'url': url,
-                    'similarity': 0.0,
-                    'status': 'failed_download',
-                    'match_details': {}
-                })
-                continue
-            
-            # Extract features from candidate
-            candidate_features = self.extract_features(candidate_images[url])
-            
-            if not candidate_features:
-                results.append({
-                    'url': url,
-                    'similarity': 0.0,
-                    'status': 'failed_features',
-                    'match_details': {}
-                })
-                continue
-            
-            # Match features
-            similarity, match_details = self.match_features(query_features, candidate_features)
-            
-            results.append({
-                'url': url,
-                'similarity': similarity,
-                'status': 'success',
-                'match_details': match_details,
-                'candidate_features': {
-                    'sift_count': candidate_features['sift']['count'],
-                    'orb_count': candidate_features['orb']['count']
-                }
-            })
-        
-        # Sort by similarity
-        results.sort(key=lambda x: x['similarity'], reverse=True)
-        
-        # Filter by threshold
-        good_matches = [r for r in results if r['similarity'] >= threshold]
-        
-        print(f"✨ Feature matching completed in {time.time() - start_time:.2f}s")
-        print(f"🎯 Found {len(good_matches)} matches above threshold ({threshold})")
-        
-        return results, query_features
-    
     def find_matches_img(self, query_image, candidate_urls, threshold=0.1):
-        """Main matching function where query_image is a loaded image"""
-        print("🚀 Starting Feature Matching Comic Search...")
+        """Main matching function with caching support"""
+        print("🚀 Starting Cached Feature Matching Comic Search...")
         start_time = time.time()
         
         if query_image is None:
@@ -389,11 +570,8 @@ class FeatureMatchingComicMatcher:
         
         print(f"📷 Received query image: {query_image.shape}")
         
-        # Detect comic area
+        # Process query image (not cached since it's user input)
         query_image, was_cropped = self.detect_comic_area(query_image)
-        
-        # Extract features from query
-        print("🔍 Extracting features from query image...")
         query_features = self.extract_features(query_image)
         
         if not query_features:
@@ -401,28 +579,16 @@ class FeatureMatchingComicMatcher:
         
         print(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
         
-        # Download candidate images
-        print(f"⬇️ Downloading {len(candidate_urls)} candidate images...")
-        candidate_images = self.download_images_batch(candidate_urls)
-        print(f"✅ Downloaded {len(candidate_images)} images")
+        # Process candidates with caching
+        print(f"⬇️ Processing {len(candidate_urls)} candidate images (with caching)...")
         
-        # Process each candidate
         results = []
         
         from tqdm import tqdm
         for i, url in enumerate(tqdm(candidate_urls, desc="Processing candidates", unit="url"), 1):
             
-            if url not in candidate_images:
-                results.append({
-                    'url': url,
-                    'similarity': 0.0,
-                    'status': 'failed_download',
-                    'match_details': {}
-                })
-                continue
-            
-            # Extract features from candidate
-            candidate_features = self.extract_features(candidate_images[url])
+            # Extract features (cached)
+            candidate_features = self.extract_features_cached(url)
             
             if not candidate_features:
                 results.append({
@@ -453,208 +619,138 @@ class FeatureMatchingComicMatcher:
         # Filter by threshold
         good_matches = [r for r in results if r['similarity'] >= threshold]
         
-        print(f"✨ Feature matching completed in {time.time() - start_time:.2f}s")
+        print(f"✨ Cached feature matching completed in {time.time() - start_time:.2f}s")
         print(f"🎯 Found {len(good_matches)} matches above threshold ({threshold})")
         
         return results, query_features
-
-    def visualize_results(self, query_image_path, results, query_features, top_n=5):
-        """Create visual comparison with proper display handling"""
-        # Set matplotlib backend before importing pyplot
-        import matplotlib
-        matplotlib.use('Agg')  # Use non-interactive backend
-        import matplotlib.pyplot as plt
-        
-        # Load query image (avoid any Qt-related OpenCV functions)
-        query_image = cv2.imread(query_image_path, cv2.IMREAD_COLOR)
-        query_image, _ = self.detect_comic_area(query_image)
-        query_rgb = cv2.cvtColor(query_image, cv2.COLOR_BGR2RGB)
-        
-        # Filter successful results
-        successful_results = [r for r in results if r['status'] == 'success']
-        top_results = successful_results[:top_n]
-        
-        if not top_results:
-            print("❌ No successful matches to visualize")
-            return
-        
-        # Create figure with explicit backend
-        plt.ioff()  # Turn off interactive mode
-        fig = plt.figure(figsize=(20, 12))
-        gs = fig.add_gridspec(3, len(top_results) + 1, hspace=0.3, wspace=0.2)
-        
-        # Query image section
-        ax_query = fig.add_subplot(gs[:2, 0])
-        ax_query.imshow(query_rgb)
-        ax_query.set_title("📷 Query Image\n(Your Photo)", fontsize=14, fontweight='bold')
-        ax_query.axis('off')
-        
-        # Query analysis
-        ax_query_info = fig.add_subplot(gs[2, 0])
-        info_text = f"""🔍 QUERY FEATURES:
-🎯 SIFT: {query_features['sift']['count']} keypoints
-⚡ ORB: {query_features['orb']['count']} keypoints
-📐 Method: Feature Matching
-🔬 Detection: Keypoint-based"""
-        
-        ax_query_info.text(0.05, 0.95, info_text, ha='left', va='top', fontsize=10,
-                          bbox=dict(boxstyle="round,pad=0.3", facecolor="lightblue", alpha=0.8))
-        ax_query_info.set_xlim(0, 1)
-        ax_query_info.set_ylim(0, 1)
-        ax_query_info.axis('off')
-        
-        # Show top matches
-        for i, result in enumerate(top_results, 1):
-            try:
-                # Download candidate image for display
-                candidate_image = self.download_image(result['url'])
-                if candidate_image is not None:
-                    candidate_rgb = cv2.cvtColor(candidate_image, cv2.COLOR_BGR2RGB)
-                    
-                    # Main image
-                    ax_img = fig.add_subplot(gs[0, i])
-                    ax_img.imshow(candidate_rgb)
-                    
-                    # Color-code based on similarity
-                    if result['similarity'] > 0.15:
-                        title_color = 'green'
-                        emoji = '🏆'
-                    elif result['similarity'] > 0.08:
-                        title_color = 'orange'  
-                        emoji = '🥈'
-                    else:
-                        title_color = 'red'
-                        emoji = '🥉'
-                    
-                    ax_img.set_title(f"{emoji} RANK #{i}\nSimilarity: {result['similarity']:.4f}", 
-                                   fontsize=12, fontweight='bold', color=title_color)
-                    ax_img.axis('off')
-                    
-                    # Detailed metrics
-                    ax_metrics = fig.add_subplot(gs[1, i])
-                    details = result['match_details']
-                    
-                    metrics_text = f"""📊 FEATURE BREAKDOWN:
-🎯 SIFT: {details.get('sift', {}).get('good_matches', 0)} good matches
-⚡ ORB: {details.get('orb', {}).get('good_matches', 0)} good matches
-🔍 SIFT Features: {result['candidate_features']['sift_count']}
-⚡ ORB Features: {result['candidate_features']['orb_count']}
-📐 SIFT Sim: {details.get('sift', {}).get('similarity', 0):.3f}
-⚡ ORB Sim: {details.get('orb', {}).get('similarity', 0):.3f}"""
-                    
-                    # Color-code metrics box
-                    if result['similarity'] > 0.15:
-                        bg_color = 'lightgreen'
-                    elif result['similarity'] > 0.08:
-                        bg_color = 'lightyellow'
-                    else:
-                        bg_color = 'lightcoral'
-                    
-                    ax_metrics.text(0.05, 0.95, metrics_text, ha='left', va='top', fontsize=9,
-                                   bbox=dict(boxstyle="round,pad=0.3", facecolor=bg_color, alpha=0.8))
-                    ax_metrics.set_xlim(0, 1)
-                    ax_metrics.set_ylim(0, 1)
-                    ax_metrics.axis('off')
-                    
-                    # URL info
-                    ax_url = fig.add_subplot(gs[2, i])
-                    url_short = result['url'].split('/')[-1][:25] + '...' if len(result['url'].split('/')[-1]) > 25 else result['url'].split('/')[-1]
-                    
-                    # Analysis
-                    sift_matches = details.get('sift', {}).get('good_matches', 0)
-                    orb_matches = details.get('orb', {}).get('good_matches', 0)
-                    
-                    url_text = f"""🔗 SOURCE:
-{url_short}
-
-✅ Total Good Matches: {sift_matches + orb_matches}
-🎯 Best Method: {'SIFT' if sift_matches > orb_matches else 'ORB'}
-📊 Confidence: {'High' if result['similarity'] > 0.15 else 'Medium' if result['similarity'] > 0.08 else 'Low'}"""
-                    
-                    ax_url.text(0.05, 0.95, url_text, ha='left', va='top', fontsize=8,
-                               bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgray", alpha=0.8))
-                    ax_url.set_xlim(0, 1)
-                    ax_url.set_ylim(0, 1)
-                    ax_url.axis('off')
-                    
-                else:
-                    # Handle failed image load
-                    for row in range(3):
-                        ax = fig.add_subplot(gs[row, i])
-                        ax.text(0.5, 0.5, "❌ Failed to\nload image", ha='center', va='center', 
-                               fontsize=12, color='red')
-                        ax.axis('off')
-                        
-            except Exception as e:
-                print(f"Error visualizing result {i}: {e}")
-                for row in range(3):
-                    ax = fig.add_subplot(gs[row, i])
-                    ax.text(0.5, 0.5, f"❌ Error:\n{str(e)[:15]}...", ha='center', va='center', 
-                           fontsize=10, color='red')
-                    ax.axis('off')
-        
-        plt.suptitle("🎯 FEATURE MATCHING COMIC RESULTS", fontsize=16, fontweight='bold', y=0.98)
-        plt.tight_layout()
-        
-        # Save the plot instead of showing (headless mode)
-        save_path = 'feature_matching_results.png'
-        plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"📊 Visualization saved to: {save_path}")
-        plt.close('all')  # Close all figures
     
-    def print_results(self, results, top_n=10):
-        """Print results in a nice format"""
-        print("\n" + "="*70)
-        print("🎯 FEATURE MATCHING COMIC RESULTS")
-        print("="*70)
+    def get_cache_stats(self) -> Dict:
+        """Get cache performance statistics"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
         
-        successful_results = [r for r in results if r['status'] == 'success']
+        # Get database stats
+        cursor.execute('SELECT COUNT(*) FROM cached_images')
+        cached_images_count = cursor.fetchone()[0]
         
-        for i, result in enumerate(successful_results[:top_n], 1):
-            emoji = '🏆' if i == 1 else '🥈' if i == 2 else '🥉' if i == 3 else '📄'
-            print(f"\n{emoji} RANK #{i}")
-            print(f"🔗 URL: {result['url']}")
-            print(f"📊 Overall Similarity: {result['similarity']:.4f}")
-            print(f"🔍 Features Found:")
-            print(f"   SIFT: {result['candidate_features']['sift_count']} keypoints")
-            print(f"   ORB:  {result['candidate_features']['orb_count']} keypoints")
+        cursor.execute('SELECT COUNT(*) FROM cached_features')
+        cached_features_count = cursor.fetchone()[0]
+        
+        cursor.execute('SELECT SUM(file_size) FROM cached_images')
+        total_disk_usage = cursor.fetchone()[0] or 0
+        
+        cursor.execute('SELECT SUM(processing_time) FROM cached_features')
+        total_processing_time = cursor.fetchone()[0] or 0
+        
+        conn.close()
+        
+        # Calculate cache hit rates
+        total_image_requests = self.cache_stats['image_cache_hits'] + self.cache_stats['image_cache_misses']
+        total_feature_requests = self.cache_stats['feature_cache_hits'] + self.cache_stats['feature_cache_misses']
+        
+        image_hit_rate = (self.cache_stats['image_cache_hits'] / total_image_requests * 100) if total_image_requests > 0 else 0
+        feature_hit_rate = (self.cache_stats['feature_cache_hits'] / total_feature_requests * 100) if total_feature_requests > 0 else 0
+        
+        return {
+            'cached_images_count': cached_images_count,
+            'cached_features_count': cached_features_count,
+            'total_disk_usage_mb': total_disk_usage / (1024 * 1024),
+            'total_processing_time_saved': self.cache_stats['processing_time_saved'],
+            'image_cache_hit_rate': image_hit_rate,
+            'feature_cache_hit_rate': feature_hit_rate,
+            'image_cache_hits': self.cache_stats['image_cache_hits'],
+            'image_cache_misses': self.cache_stats['image_cache_misses'],
+            'feature_cache_hits': self.cache_stats['feature_cache_hits'],
+            'feature_cache_misses': self.cache_stats['feature_cache_misses']
+        }
+    
+    def print_cache_stats(self):
+        """Print cache statistics in a nice format"""
+        stats = self.get_cache_stats()
+        
+        print("\n" + "="*50)
+        print("📊 CACHE PERFORMANCE STATISTICS")
+        print("="*50)
+        print(f"💾 Cached Images: {stats['cached_images_count']}")
+        print(f"🔍 Cached Features: {stats['cached_features_count']}")
+        print(f"💿 Disk Usage: {stats['total_disk_usage_mb']:.1f} MB")
+        print(f"⏱️ Processing Time Saved: {stats['total_processing_time_saved']:.2f} seconds")
+        print(f"📈 Image Cache Hit Rate: {stats['image_cache_hit_rate']:.1f}%")
+        print(f"🎯 Feature Cache Hit Rate: {stats['feature_cache_hit_rate']:.1f}%")
+        print(f"✅ Image Cache Hits: {stats['image_cache_hits']}")
+        print(f"❌ Image Cache Misses: {stats['image_cache_misses']}")
+        print(f"✅ Feature Cache Hits: {stats['feature_cache_hits']}")
+        print(f"❌ Feature Cache Misses: {stats['feature_cache_misses']}")
+        
+        if stats['total_processing_time_saved'] > 0:
+            print(f"🚀 Efficiency Gained: {stats['total_processing_time_saved']:.1f}s saved!")
+    
+    def cleanup_old_cache(self, days_old: int = 30):
+        """Remove cache entries older than specified days"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Get old entries
+        cursor.execute('''
+            SELECT url_hash, file_path FROM cached_images 
+            WHERE last_accessed < datetime('now', '-{} days')
+        '''.format(days_old))
+        
+        old_entries = cursor.fetchall()
+        
+        # Delete old files and database entries
+        for url_hash, file_path in old_entries:
+            if os.path.exists(file_path):
+                os.remove(file_path)
             
-            if 'match_details' in result:
-                details = result['match_details']
-                print(f"📋 Match Details:")
-                
-                if 'sift' in details:
-                    sift = details['sift']
-                    status = "✅ Excellent" if sift['good_matches'] > 50 else \
-                            "🟢 Good" if sift['good_matches'] > 20 else \
-                            "🟡 Fair" if sift['good_matches'] > 5 else "🔴 Poor"
-                    print(f"   🎯 SIFT: {sift['good_matches']}/{sift['total_matches']} good matches (sim: {sift['similarity']:.4f}) {status}")
-                
-                if 'orb' in details:
-                    orb = details['orb']
-                    status = "✅ Excellent" if orb['good_matches'] > 30 else \
-                            "🟢 Good" if orb['good_matches'] > 15 else \
-                            "🟡 Fair" if orb['good_matches'] > 5 else "🔴 Poor"
-                    print(f"   ⚡ ORB:  {orb['good_matches']}/{orb['total_matches']} good matches (sim: {orb['similarity']:.4f}) {status}")
+            cursor.execute('DELETE FROM cached_features WHERE url_hash = ?', (url_hash,))
+            cursor.execute('DELETE FROM cached_images WHERE url_hash = ?', (url_hash,))
         
-        print(f"\n📈 Summary: {len(successful_results)} successful feature extractions")
+        conn.commit()
+        conn.close()
         
-        # Show the best match analysis
-        if successful_results:
-            best_result = successful_results[0]
-            print(f"\n🔬 Best match analysis:")
-            print(f"   URL: {best_result['url']}")
-            print(f"   Similarity: {best_result['similarity']:.4f}")
-            
-            details = best_result['match_details']
-            total_good_matches = 0
-            if 'sift' in details:
-                total_good_matches += details['sift']['good_matches']
-            if 'orb' in details:
-                total_good_matches += details['orb']['good_matches']
-            
-            confidence = "HIGH" if total_good_matches > 50 else \
-                        "MEDIUM" if total_good_matches > 20 else \
-                        "LOW"
-            print(f"   Total Good Matches: {total_good_matches}")
-            print(f"   Confidence Level: {confidence}")
+        print(f"🧹 Cleaned up {len(old_entries)} old cache entries")
+
+# Usage example for your evaluation setup
+if __name__ == "__main__":
+    # Initialize the cached matcher
+    matcher = FeatureMatchingComicMatcher(
+        cache_dir='comic_cache_images',
+        db_path='comic_evaluation_cache.db',
+        max_workers=8  # Increase for faster processing
+    )
+    
+    # Example evaluation run
+    query_image_path = "green_lanterns_issue_1.jpg"
+    candidate_urls = [
+        "https://comicvine.gamespot.com/a/uploads/original/6/67663/5332341-03-variant.jpg",
+        "https://comicvine.gamespot.com/a/uploads/original/6/67663/5332342-04.jpg",
+        # ... more URLs
+    ]
+    
+    print("🚀 Starting evaluation with caching...")
+    
+    # First run - will populate cache
+    start_time = time.time()
+    results1, query_features1 = matcher.find_matches_img(
+        cv2.imread(query_image_path), 
+        candidate_urls, 
+        threshold=0.05
+    )
+    first_run_time = time.time() - start_time
+    
+    print(f"First run completed in: {first_run_time:.2f}s")
+    matcher.print_cache_stats()
+    
+    # Second run - should be much faster due to caching
+    start_time = time.time()
+    results2, query_features2 = matcher.find_matches_img(
+        cv2.imread(query_image_path), 
+        candidate_urls, 
+        threshold=0.05
+    )
+    second_run_time = time.time() - start_time
+    
+    print(f"Second run completed in: {second_run_time:.2f}s")
+    print(f"Speed improvement: {((first_run_time - second_run_time) / first_run_time * 100):.1f}%")
+    matcher.print_cache_stats()

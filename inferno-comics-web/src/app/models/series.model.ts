@@ -1,4 +1,4 @@
-import { ComicBook } from "./comic-book.model";
+import { Issue } from "./issue.model";
 
 export interface Series {
   id?: number;
@@ -9,8 +9,10 @@ export interface Series {
   endYear?: number;
   imageUrl?: string;
   comicVineId?: string;
+  comicVineIds?: string[]; // Array of Comic Vine IDs for combined series
+  issueCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
-  comicBooks?: ComicBook[];
+  comicBooks?: Issue[];
   generatedDescription: boolean;
 }

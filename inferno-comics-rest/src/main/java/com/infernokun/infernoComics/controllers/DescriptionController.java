@@ -1,8 +1,8 @@
 package com.infernokun.infernoComics.controllers;
 
-import com.infernokun.infernoComics.models.ComicBook;
+import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
-import com.infernokun.infernoComics.repositories.ComicBookRepository;
+import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.services.DescriptionGeneratorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,30 +20,30 @@ import java.util.Optional;
 public class DescriptionController {
 
     private final DescriptionGeneratorService descriptionGeneratorService;
-    private final ComicBookRepository comicBookRepository;
+    private final IssueRepository issueRepository;
 
-    @PostMapping("/generate/{comicBookId}")
-    public ResponseEntity<Map<String, String>> generateDescriptionForComic(@PathVariable Long comicBookId) {
+    @PostMapping("/generate/{issueId}")
+    public ResponseEntity<Map<String, String>> generateDescriptionForIssue(@PathVariable Long issueId) {
         try {
-            Optional<ComicBook> comicOptional = comicBookRepository.findById(comicBookId);
+            Optional<Issue> issueOptional = issueRepository.findById(issueId);
 
-            if (comicOptional.isEmpty()) {
+            if (issueOptional.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
 
-            ComicBook comic = comicOptional.get();
+            Issue issue = issueOptional.get();
             DescriptionGenerated description = descriptionGeneratorService.generateDescription(
-                    comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
-                    comic.getIssueNumber(),
-                    comic.getTitle(),
-                    comic.getCoverDate().toString(),
-                    comic.getDescription()
+                    issue.getSeries() != null ? issue.getSeries().getName() : "Unknown Series",
+                    issue.getIssueNumber(),
+                    issue.getTitle(),
+                    issue.getCoverDate() != null ? issue.getCoverDate().toString() : null,
+                    issue.getDescription()
             );
 
-            // Update the comic with the new description
-            comic.setDescription(description.getDescription());
-            comic.setGeneratedDescription(description.isGenerated());
-            comicBookRepository.save(comic);
+            // Update the issue with the new description
+            issue.setDescription(description.getDescription());
+            issue.setGeneratedDescription(description.isGenerated());
+            issueRepository.save(issue);
 
             return ResponseEntity.ok(Map.of(
                     "description", description.getDescription(),
@@ -51,7 +51,7 @@ public class DescriptionController {
             ));
 
         } catch (Exception e) {
-            log.error("Error generating description for comic {}: {}", comicBookId, e.getMessage());
+            log.error("Error generating description for issue {}: {}", issueId, e.getMessage());
             return ResponseEntity.ok(Map.of(
                     "description", "",
                     "message", "Error generating description: " + e.getMessage()
@@ -62,43 +62,43 @@ public class DescriptionController {
     @PostMapping("/generate/series/{seriesId}")
     public ResponseEntity<Map<String, Object>> generateDescriptionsForSeries(@PathVariable Long seriesId) {
         try {
-            List<ComicBook> comics = comicBookRepository.findBySeriesIdAndDescriptionIsNull(seriesId);
+            List<Issue> issues = issueRepository.findBySeriesIdAndDescriptionIsNull(seriesId);
 
-            if (comics.isEmpty()) {
+            if (issues.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "processed", 0,
-                        "message", "No comics found without descriptions"
+                        "message", "No issues found without descriptions"
                 ));
             }
 
             int processed = 0;
-            for (ComicBook comic : comics) {
+            for (Issue issue : issues) {
                 try {
                     DescriptionGenerated description = descriptionGeneratorService.generateDescription(
-                            comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
-                            comic.getIssueNumber(),
-                            comic.getTitle(),
-                            comic.getCoverDate().toString(),
-                            comic.getDescription()
+                            issue.getSeries() != null ? issue.getSeries().getName() : "Unknown Series",
+                            issue.getIssueNumber(),
+                            issue.getTitle(),
+                            issue.getCoverDate() != null ? issue.getCoverDate().toString() : null,
+                            issue.getDescription()
                     );
 
-                    comic.setDescription(description.getDescription());
-                    comic.setGeneratedDescription(description.isGenerated());
-                    comicBookRepository.save(comic);
+                    issue.setDescription(description.getDescription());
+                    issue.setGeneratedDescription(description.isGenerated());
+                    issueRepository.save(issue);
                     processed++;
 
                     // Rate limiting
                     Thread.sleep(1500);
 
                 } catch (Exception e) {
-                    log.error("Error processing comic {}: {}", comic.getId(), e.getMessage());
+                    log.error("Error processing issue {}: {}", issue.getId(), e.getMessage());
                 }
             }
 
             return ResponseEntity.ok(Map.of(
                     "processed", processed,
-                    "total", comics.size(),
-                    "message", String.format("Generated descriptions for %d out of %d comics", processed, comics.size())
+                    "total", issues.size(),
+                    "message", String.format("Generated descriptions for %d out of %d issues", processed, issues.size())
             ));
 
         } catch (Exception e) {
@@ -113,49 +113,49 @@ public class DescriptionController {
     @PostMapping("/generate/all")
     public ResponseEntity<Map<String, Object>> generateAllMissingDescriptions() {
         try {
-            List<ComicBook> comics = comicBookRepository.findByDescriptionIsNullOrDescriptionEmpty();
+            List<Issue> issues = issueRepository.findByDescriptionIsNullOrDescriptionEmpty();
 
-            if (comics.isEmpty()) {
+            if (issues.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "processed", 0,
-                        "message", "No comics found without descriptions"
+                        "message", "No issues found without descriptions"
                 ));
             }
 
             // Limit to 50 at a time to avoid timeouts
-            int limit = Math.min(comics.size(), 50);
+            int limit = Math.min(issues.size(), 50);
             int processed = 0;
 
             for (int i = 0; i < limit; i++) {
-                ComicBook comic = comics.get(i);
+                Issue issue = issues.get(i);
                 try {
                     DescriptionGenerated description = descriptionGeneratorService.generateDescription(
-                            comic.getSeries() != null ? comic.getSeries().getName() : "Unknown Series",
-                            comic.getIssueNumber(),
-                            comic.getTitle(),
-                            comic.getCoverDate().toString(),
-                            comic.getDescription()
+                            issue.getSeries() != null ? issue.getSeries().getName() : "Unknown Series",
+                            issue.getIssueNumber(),
+                            issue.getTitle(),
+                            issue.getCoverDate() != null ? issue.getCoverDate().toString() : null,
+                            issue.getDescription()
                     );
 
-                    comic.setDescription(description.getDescription());
-                    comic.setGeneratedDescription(description.isGenerated());
-                    comicBookRepository.save(comic);
+                    issue.setDescription(description.getDescription());
+                    issue.setGeneratedDescription(description.isGenerated());
+                    issueRepository.save(issue);
                     processed++;
 
                     // Rate limiting - 2 second delay
                     Thread.sleep(2000);
 
                 } catch (Exception e) {
-                    log.error("Error processing comic, {}: {}", comic.getId(), e.getMessage());
+                    log.error("Error processing issue {}: {}", issue.getId(), e.getMessage());
                 }
             }
 
             return ResponseEntity.ok(Map.of(
                     "processed", processed,
-                    "total", comics.size(),
-                    "remaining", comics.size() - processed,
-                    "message", String.format("Generated descriptions for %d comics. %d remaining.",
-                            processed, comics.size() - processed)
+                    "total", issues.size(),
+                    "remaining", issues.size() - processed,
+                    "message", String.format("Generated descriptions for %d issues. %d remaining.",
+                            processed, issues.size() - processed)
             ));
 
         } catch (Exception e) {
@@ -163,6 +163,105 @@ public class DescriptionController {
             return ResponseEntity.ok(Map.of(
                     "processed", 0,
                     "message", "Error: " + e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/cache/stats")
+    public ResponseEntity<Map<String, Object>> getCacheStats() {
+        try {
+            Map<String, Object> stats = descriptionGeneratorService.getCacheStats();
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            log.error("Error getting cache stats: {}", e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "error", "Unable to retrieve cache statistics",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    @DeleteMapping("/cache/clear")
+    public ResponseEntity<Map<String, String>> clearDescriptionCache() {
+        try {
+            descriptionGeneratorService.clearAllDescriptionCache();
+            return ResponseEntity.ok(Map.of(
+                    "message", "Description cache cleared successfully"
+            ));
+        } catch (Exception e) {
+            log.error("Error clearing description cache: {}", e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "error", "Failed to clear cache",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/refresh/{issueId}")
+    public ResponseEntity<Map<String, String>> refreshDescriptionForIssue(@PathVariable Long issueId) {
+        try {
+            Optional<Issue> issueOptional = issueRepository.findById(issueId);
+
+            if (issueOptional.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Issue issue = issueOptional.get();
+
+            // Force refresh the description (bypasses cache)
+            String refreshedDescription = descriptionGeneratorService.refreshDescription(
+                    issue.getSeries() != null ? issue.getSeries().getName() : "Unknown Series",
+                    issue.getIssueNumber(),
+                    issue.getTitle(),
+                    issue.getCoverDate() != null ? issue.getCoverDate().toString() : null
+            );
+
+            // Update the issue with the refreshed description
+            issue.setDescription(refreshedDescription);
+            issue.setGeneratedDescription(true);
+            issueRepository.save(issue);
+
+            return ResponseEntity.ok(Map.of(
+                    "description", refreshedDescription,
+                    "message", "Description refreshed successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error refreshing description for issue {}: {}", issueId, e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "description", "",
+                    "message", "Error refreshing description: " + e.getMessage()
+            ));
+        }
+    }
+
+    @DeleteMapping("/cache/invalidate/{issueId}")
+    public ResponseEntity<Map<String, String>> invalidateDescriptionForIssue(@PathVariable Long issueId) {
+        try {
+            Optional<Issue> issueOptional = issueRepository.findById(issueId);
+
+            if (issueOptional.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Issue issue = issueOptional.get();
+
+            // Invalidate the cache for this specific issue
+            descriptionGeneratorService.invalidateDescription(
+                    issue.getSeries() != null ? issue.getSeries().getName() : "Unknown Series",
+                    issue.getIssueNumber(),
+                    issue.getTitle()
+            );
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Description cache invalidated for issue " + issueId
+            ));
+
+        } catch (Exception e) {
+            log.error("Error invalidating description cache for issue {}: {}", issueId, e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "error", "Failed to invalidate cache",
+                    "message", e.getMessage()
             ));
         }
     }

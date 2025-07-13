@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { ComicBookService } from './comic-book.service';
+import { ComicBookService } from './issue.service';
 
 describe('ComicBookService', () => {
   let service: ComicBookService;

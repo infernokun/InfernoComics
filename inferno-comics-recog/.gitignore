@@ -1,2 +1,4 @@
 *.pyc
 image_cache/
+*.db
+comic_*.html
