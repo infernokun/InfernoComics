@@ -61,7 +61,7 @@ COPY --from=build-stage --chown=python:python /root/.local /home/python/.local
 COPY --link --chown=python:python . /app/
 
 # Set environment variables
-ENV FLASK_APP=app.py
+ENV FLASK_APP=recog.py
 ENV FLASK_ENV=production
 ENV PYTHONPATH=/app
 ENV PATH=/home/python/.local/bin:$PATH
@@ -78,4 +78,4 @@ WORKDIR /app/
 EXPOSE 5000
 
 ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/docker-entrypoint.sh"]
-CMD ["python", "app.py"]
+CMD ["python", "src/recog.py"]
