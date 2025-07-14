@@ -48,9 +48,11 @@ def image_matcher_operation():
             if not isinstance(cover, dict):
                 continue
                 
-            comic_name = cover.get('comicName', 'Unknown')
-            issue_name = cover.get('issueName', 'Unknown')
+            comic_name = cover.get('name', 'Unknown')
+            issue_number = cover.get('issueNumber', 'Unknown')
             cover_urls = cover.get('urls', [])
+            comic_vine_id = cover.get('comicVineId', None)
+            parent_comic_vine_id = cover.get('parentComicVineId', None)
             
             # Handle both single URL and list of URLs
             if isinstance(cover_urls, str):
@@ -63,10 +65,10 @@ def image_matcher_operation():
                     candidate_urls.append(url)
                     url_to_cover_map[url] = {
                         'comic_name': comic_name,
-                        'issue_name': issue_name,
-                        'cover_page_url': cover.get('coverPageUrl', ''),
-                        'found': cover.get('found', False),
-                        'error': cover.get('error', '')
+                        'issue_number': issue_number,
+                        'comic_vine_id': comic_vine_id,
+                        'error': cover.get('error', ''),
+                        'parent_comic_vine_id': parent_comic_vine_id
                     }
         
         print(f" Extracted {len(candidate_urls)} URLs from covers")
@@ -100,10 +102,10 @@ def image_matcher_operation():
                 'candidate_features': result['candidate_features'],
                 # Add comic information
                 'comic_name': cover_info.get('comic_name', 'Unknown'),
-                'issue_name': cover_info.get('issue_name', 'Unknown'),
-                'cover_page_url': cover_info.get('cover_page_url', ''),
-                'cover_found': cover_info.get('found', False),
-                'cover_error': cover_info.get('error', '')
+                'issue_number': cover_info.get('issue_number', 'Unknown'),
+                'comic_vine_id': cover_info.get('comic_vine_id', None),
+                'cover_error': cover_info.get('error', ''),
+                'parent_comic_vine_id': cover_info.get('parent_comic_vine_id', None)
             }
             enhanced_results.append(enhanced_result)
         

@@ -1,0 +1,58 @@
+<div class="dialog-container">
+    <h2 mat-dialog-title>Select Comic Match</h2>
+
+    <div mat-dialog-content class="matches-container">
+        <p class="instruction-text">
+            Select the comic that best matches your uploaded image. Higher
+            similarity scores indicate better matches.
+        </p>
+
+        <div class="matches-grid">
+            <div *ngFor="let match of sortedMatches; let i = index" class="match-card" [class.best-match]="i === 0"
+                (click)="selectMatch(match)">
+                <div class="match-header">
+                    <span class="similarity-badge" [class.high-similarity]="match.similarity >= 0.25">
+                        {{ (match.similarity * 100).toFixed(1) }}% match
+                    </span>
+                    <span *ngIf="i === 0" class="best-match-label">Best Match</span>
+                </div>
+
+                <div class="image-container">
+                    <img [src]="match.url" [alt]="match.comic_name" (error)="onImageError($event)" loading="lazy" />
+                </div>
+
+                <div class="match-info">
+                    <h3 class="comic-title">{{ match.comic_name }}</h3>
+                    <p class="issue-number">Issue #{{ match.issue_number }}</p>
+
+                    <div class="match-details">
+                        <div class="detail-row">
+                            <span class="detail-label">ORB:</span>
+                            <span class="detail-value">{{ match.match_details.orb.good_matches }}/{{
+                                match.match_details.orb.total_matches
+                                }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">SIFT:</span>
+                            <span class="detail-value">{{ match.match_details.sift.good_matches }}/{{
+                                match.match_details.sift.total_matches
+                                }}</span>
+                        </div>
+
+                        <div class="detail-row">
+                            <span class="detail-label">Comic Vine Id:</span>
+                            <span class="detail-value">{{ match.comic_vine_id ? match.comic_vine_id : 'N/A' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div mat-dialog-actions class="dialog-actions">
+        <button mat-button (click)="onCancel()">Cancel</button>
+        <button mat-button color="primary" (click)="onNoMatch()">
+            None of these match
+        </button>
+    </div>
+</div>

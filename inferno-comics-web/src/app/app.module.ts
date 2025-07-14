@@ -13,7 +13,7 @@ import { CodeEditorModule, provideCodeEditor } from '@ngstack/code-editor';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AuthInterceptor } from './services/auth/auth-interceptor.service';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { IssueViewDialog, RangeSelectionDialog, SeriesDetailComponent } from './components/series-detail/series-detail.component';
+import { SeriesDetailComponent } from './components/series-detail/series-detail.component';
 import { SeriesFormComponent } from './components/series-form/series-form.component';
 import { SeriesListComponent } from './components/series-list/series-list.component';
 import { IssueFormComponent } from './components/issue-form/issue-form.component';
@@ -41,12 +41,8 @@ export function init_app(environmentService: EnvironmentService) {
   declarations: [
     AppComponent,
     SeriesListComponent,
-    SeriesDetailComponent,
-    IssueFormComponent,
     SeriesFormComponent,
-    DashboardComponent,
-    RangeSelectionDialog,
-    IssueViewDialog
+    DashboardComponent
   ],
   imports: [
     BrowserModule,

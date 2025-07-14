@@ -325,45 +325,6 @@ public class SeriesService {
     public JsonNode addIssueByImage(Long seriesId, MultipartFile imageFile, String name, int year) {
         log.info("🚀 Starting image processing for series ID: {}", seriesId);
 
-
-        if (seriesId == 0) {
-            Series series = new Series(name, year);
-
-            log.info("EVALUATION: for series: {}", seriesId);
-            List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
-
-            List<GCDCover> candidateCovers = new ArrayList<>(results.stream()
-                    .map(issue -> new GCDCover(
-                            series.getName() + " #" + issue.getIssueNumber(),
-                            issue.getName(),
-                            Collections.singletonList(issue.getImageUrl()),
-                            "comicVineAPI",
-                            true,
-                            ""
-                    ))
-                    .toList());
-            log.info("Comic vine has {} GCDCovers", candidateCovers.size());
-            int prev = candidateCovers.size();
-
-            results.forEach(issueDto -> {
-                GCDCover gcdCover = new GCDCover();
-
-                gcdCover.setUrls(issueDto.getVariants().stream().map(ComicVineService.ComicVineIssueDto.VariantCover::getOriginalUrl).toList());
-                gcdCover.setIssueName(series.getName() + " #" + issueDto.getIssueNumber());
-                gcdCover.setIssueName(issueDto.getName());
-                gcdCover.setFound(true);
-
-                candidateCovers.add(gcdCover);
-            });
-
-            log.info("Variants added has {} GCDCovers", candidateCovers.size() - prev);
-
-
-            urlCache.put(0, candidateCovers);
-
-            return sendToImageMatcher(imageFile, candidateCovers, series);
-        }
-
         Optional<Series> series = seriesRepository.findById(seriesId);
         if (series.isEmpty()) {
             log.error("❌ Series not found with id: {}", seriesId);
@@ -385,77 +346,34 @@ public class SeriesService {
         log.info("🦸 ComicVine completed: Found {} issues",
                 results.size());
 
-        List<GCDCover> candidateCovers = new ArrayList<>(results.stream()
-                .map(issue -> new GCDCover(
-                        seriesEntity.getName() + " #" + issue.getIssueNumber(),
-                        issue.getName(),
-                        Collections.singletonList(issue.getImageUrl()),
-                        "comicVineAPI",
-                        true,
-                        ""
-                ))
-                .toList());
+        List<GCDCover> candidateCovers = results.stream()
+                .flatMap(issue -> {
+                    List<GCDCover> covers = new ArrayList<>();
+
+                    // First cover: Main cover from the issue
+                    GCDCover mainCover = new GCDCover();
+                    mainCover.setName(issue.getName());
+                    mainCover.setIssueNumber(issue.getIssueNumber());
+                    mainCover.setComicVineId(issue.getId());
+                    mainCover.setUrls(Collections.singletonList(issue.getImageUrl()));
+                    covers.add(mainCover);
+
+                    // Second cover: Variant covers from the issue
+                    issue.getVariants().forEach(i -> {
+                        GCDCover variantCover = new GCDCover();
+                        variantCover.setName(issue.getName());
+                        variantCover.setIssueNumber(issue.getIssueNumber());
+                        variantCover.setComicVineId(i.getId());
+                        variantCover.setUrls(Collections.singletonList(i.getOriginalUrl()));
+                        variantCover.setParentComicVineId(issue.getId());
+                        covers.add(variantCover);
+                    });
+
+                    return covers.stream();
+                })
+                .collect(Collectors.toList());
+
         log.info("Comic vine has {} GCDCovers", candidateCovers.size());
-
-        int prev = candidateCovers.size();
-
-        /*List<Long> gcdSeriesIds = gcDatabaseService.findGCDSeriesByYearBeganAndNameContainingIgnoreCase(
-                seriesEntity.getStartYear(), seriesEntity.getName()).stream().map(GCDSeries::getId).toList();
-
-        List<GCDIssue> gcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);*/
-
-        results.forEach(issueDto -> {
-            GCDCover gcdCover = new GCDCover();
-
-            gcdCover.setUrls(issueDto.getVariants().stream().map(ComicVineService.ComicVineIssueDto.VariantCover::getOriginalUrl).toList());
-            gcdCover.setIssueName(seriesEntity.getName() + " #" + issueDto.getIssueNumber());
-            gcdCover.setIssueName(issueDto.getName());
-            gcdCover.setFound(true);
-
-            candidateCovers.add(gcdCover);
-        });
-
-        log.info("Variants added has {} GCDCovers", candidateCovers.size() - prev);
-
-        /*
-
-        if (!infernoComicsConfig.isSkipScrape()) {
-            gcdIssues.stream().limit(1).forEach(i -> {
-                        GCDCover coverResult = gcdCoverPageScraper.scrapeCoverPage(i);
-                candidateCovers.add(coverResult);
-                    }
-            );
-        }
-
-        if (infernoComicsConfig.isSkipScrape()) {
-            // https://www.comics.org/api/series/103021/
-            // Process your list of GCDCover objects here
-            gcdSeriesIds.stream().limit(1).forEach(gcdSeriesId -> {
-                this.gcdapiService.getIssueIdsFromSeries(gcdSeriesId)
-                        .flatMapMany(Flux::fromIterable)
-                        .flatMap(this.gcdapiService::getIssueById)
-                        .map(issueResponse -> {
-                            String title = issueResponse.getStorySet().stream()
-                                    .filter(r -> "comic story".equals(r.getType()))
-                                    .findFirst()
-                                    .map(GCDAPIService.Story::getTitle)
-                                    .orElse("");
-
-                            return new GCDCover(
-                                    seriesEntity.getName() + " # " + issueResponse.getDescriptor().split(" ")[0],
-                                    title,
-                                    Collections.singletonList(issueResponse.getCover()), // Single cover URL as list
-                                    "api",
-                                    true,
-                                    ""
-                            );
-                        })
-                        .collectList()
-                        .subscribe(candidateCovers::addAll);
-            });
-        }
-
-        */
         seriesEntity.setCachedCoverUrls(candidateCovers);
         //seriesEntity.setLastCachedCovers(LocalDateTime.now());
         seriesRepository.save(seriesEntity);
@@ -527,23 +445,12 @@ public class SeriesService {
                 log.warn("⚠ No top_matches found in response");
             }
 
-            return topMatches;
+            return root;
 
         } catch (Exception e) {
             log.error("❌ Failed to send image to matcher service: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to send image to matcher service", e);
         }
-    }
-
-    // Private helper methods
-    private void mapRequestToSeries(SeriesRequest request, Series series) {
-        series.setName(request.getName());
-        series.setDescription(request.getDescription());
-        series.setPublisher(request.getPublisher());
-        series.setStartYear(request.getStartYear());
-        series.setEndYear(request.getEndYear());
-        series.setImageUrl(request.getImageUrl());
-        series.setComicVineId(request.getComicVineId());
     }
 
     // Base request interface
@@ -555,10 +462,6 @@ public class SeriesService {
         Integer getEndYear();
         String getImageUrl();
         String getComicVineId();
-    }
-
-    // Create request
-    public interface SeriesCreateRequest extends SeriesRequest {
     }
 
     // Update request

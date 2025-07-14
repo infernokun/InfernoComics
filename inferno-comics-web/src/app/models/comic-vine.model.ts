@@ -20,4 +20,6 @@ export interface ComicVineIssue {
   coverDate?: string;
   imageUrl?: string;
   generatedDescription: boolean;
+  keyIssue?: boolean;
+  variant?: boolean;
 }

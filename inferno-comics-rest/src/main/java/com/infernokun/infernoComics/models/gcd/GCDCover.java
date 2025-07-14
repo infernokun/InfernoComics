@@ -11,10 +11,10 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class GCDCover {
-    private String issueName;
-    private String comicName;
+    private String name;
+    private String issueNumber;
+    private String comicVineId;
     private List<String> urls = new ArrayList<>();
-    private String coverPageUrl;
-    private boolean found;
     private String error;
+    private String parentComicVineId;
 }

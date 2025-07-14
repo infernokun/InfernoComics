@@ -131,14 +131,14 @@
 
           <!-- Compact View -->
           <div class="collection-list" *ngIf="issues.length > 0 && isCompactView">
-            <mat-card class="compact-card" *ngFor="let comic of issues">
+            <mat-card class="compact-card" *ngFor="let issue of issues">
               <div class="compact-content">
                 <!-- Thumbnail -->
                 <div class="compact-image">
-                  <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'" 
-                       [alt]="'Issue #' + comic.issueNumber"
+                  <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" 
+                       [alt]="'Issue #' + issue.issueNumber"
                        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                  <div class="key-issue-badge" *ngIf="comic.keyIssue">
+                  <div class="key-issue-badge" *ngIf="issue.variant">
                     <mat-icon>star</mat-icon>
                   </div>
                 </div>
@@ -146,26 +146,26 @@
                 <!-- Comic Information -->
                 <div class="compact-info">
                   <div class="compact-header">
-                    <h3 class="issue-title">Issue #{{ comic.issueNumber }}</h3>
-                    <span class="issue-subtitle" *ngIf="comic.title">{{ comic.title }}</span>
+                    <h3 class="issue-title">Issue #{{ issue.issueNumber }}</h3>
+                    <span class="issue-subtitle" *ngIf="issue.title">{{ issue.title }}</span>
                   </div>
 
                   <div class="compact-details">
                     <span class="detail-item">
                       <mat-icon class="detail-icon">grade</mat-icon>
-                      {{ comic.condition }}
+                      {{ issue.condition }}
                     </span>
                     <span class="detail-item">
                       <mat-icon class="detail-icon">attach_money</mat-icon>
-                      ${{ comic.purchasePrice }}
+                      ${{ issue.purchasePrice }}
                     </span>
                     <span class="detail-item">
                       <mat-icon class="detail-icon">trending_up</mat-icon>
-                      ${{ comic.currentValue }}
+                      ${{ issue.currentValue }}
                     </span>
-                    <span class="detail-item" *ngIf="comic.coverDate">
+                    <span class="detail-item" *ngIf="issue.coverDate">
                       <mat-icon class="detail-icon">calendar_today</mat-icon>
-                      {{ comic.coverDate | date:'MMM yyyy' }}
+                      {{ issue.coverDate | date:'MMM yyyy' }}
                     </span>
                   </div>
                 </div>
@@ -174,17 +174,17 @@
                 <div class="compact-actions">
                   <button mat-icon-button color="accent" 
                           matTooltip="View Details" 
-                          (click)="viewIssue(comic.id)">
+                          (click)="viewIssue(issue.id)">
                     <mat-icon>visibility</mat-icon>
                   </button>
                   <button mat-icon-button color="primary" 
                           matTooltip="Edit Comic" 
-                          (click)="editIssue(comic)">
+                          (click)="editIssue(issue)">
                     <mat-icon>edit</mat-icon>
                   </button>
                   <button mat-icon-button color="warn" 
                           matTooltip="Delete Comic" 
-                          (click)="deleteIssue(comic.id)">
+                          (click)="deleteIssue(issue.id)">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </div>

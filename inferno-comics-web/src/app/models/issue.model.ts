@@ -24,7 +24,8 @@ export interface Issue {
   purchaseDate?: Date;
   notes?: string;
   comicVineId?: string;
-  isKeyIssue?: boolean;
+  keyIssue?: boolean;
+  variant?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
   series?: Series;

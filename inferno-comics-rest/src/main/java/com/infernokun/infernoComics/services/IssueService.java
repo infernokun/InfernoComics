@@ -97,6 +97,10 @@ public class IssueService {
         }
     }
 
+    public ComicVineService.ComicVineIssueDto getComicVineIssueById(Long comicVineId) {
+        return comicVineService.getIssueById(comicVineId);
+    }
+
     private Double extractNumericPart(String issueNumber) {
         try {
             // Remove leading/trailing whitespace
@@ -143,11 +147,11 @@ public class IssueService {
     }
 
     // Get issues with variant covers
-    @Cacheable(value = "issues-with-variants")
-    public List<Issue> getIssuesWithVariants() {
+    @Cacheable(value = "variant-issues")
+    public List<Issue> getVariantIssues() {
         log.info("Fetching issues with variant covers");
         return issueRepository.findAll().stream()
-                .filter(Issue::getHasVariants)
+                .filter(Issue::getIsVariant)
                 .collect(Collectors.toList());
     }
 
@@ -235,7 +239,7 @@ public class IssueService {
 
         long totalIssues = allIssues.size();
         long keyIssues = allIssues.stream().mapToLong(issue -> issue.getIsKeyIssue() ? 1 : 0).sum();
-        long issuesWithVariants = allIssues.stream().mapToLong(issue -> issue.getHasVariants() ? 1 : 0).sum();
+        long variantIssues = allIssues.stream().mapToLong(issue -> issue.getIsVariant() ? 1 : 0).sum();
 
         Map<String, Long> conditionCounts = allIssues.stream()
                 .filter(issue -> issue.getCondition() != null)
@@ -258,7 +262,7 @@ public class IssueService {
         return Map.of(
                 "totalIssues", totalIssues,
                 "keyIssues", keyIssues,
-                "issuesWithVariants", issuesWithVariants,
+                "variantIssues", variantIssues,
                 "conditionBreakdown", conditionCounts,
                 "seriesBreakdown", seriesCounts,
                 "totalCollectionValue", totalValue
@@ -350,7 +354,7 @@ public class IssueService {
         Issue issue = optionalIssue.get();
         if (issue.getVariantCovers() != null) {
             issue.getVariantCovers().removeIf(variant -> variant.getId().equals(variantId));
-            issue.setHasVariants(!issue.getVariantCovers().isEmpty());
+            issue.setIsVariant(!issue.getVariantCovers().isEmpty());
         }
 
         Issue updatedIssue = issueRepository.save(issue);
@@ -386,7 +390,6 @@ public class IssueService {
             IssueRequestWithVariants variantRequest = (IssueRequestWithVariants) request;
             if (variantRequest.getVariantCovers() != null && !variantRequest.getVariantCovers().isEmpty()) {
                 issue.setVariantCovers(new ArrayList<>(variantRequest.getVariantCovers()));
-                issue.setHasVariants(true);
             }
         }
     }
@@ -407,7 +410,7 @@ public class IssueService {
         target.setIsKeyIssue(source.getIsKeyIssue());
         target.setSeries(source.getSeries());
         target.setVariantCovers(source.getVariantCovers() != null ? new ArrayList<>(source.getVariantCovers()) : null);
-        target.setHasVariants(source.getHasVariants());
+        target.setIsVariant(source.getIsVariant());
     }
 
     private Issue createIssueFromComicVineIssue(ComicVineService.ComicVineIssueDto issueDto, Series series) {
@@ -418,6 +421,7 @@ public class IssueService {
         issue.setImageUrl(issueDto.getImageUrl());
         issue.setComicVineId(issueDto.getId());
         issue.setSeries(series);
+        issue.setIsVariant(issueDto.isVariant());
 
         // Handle variant covers from Comic Vine
         if (issueDto.getVariants() != null && !issueDto.getVariants().isEmpty()) {
@@ -431,7 +435,6 @@ public class IssueService {
                     .collect(Collectors.toList());
 
             issue.setVariantCovers(variants);
-            issue.setHasVariants(true);
             log.info("Added {} variant covers to issue {} #{}", variants.size(), series.getName(), issueDto.getIssueNumber());
         }
 

@@ -13,6 +13,7 @@ export interface IssueRequest {
   purchaseDate?: Date;
   notes?: string;
   comicVineId?: string;
-  isKeyIssue?: boolean;
+  keyIssue?: boolean;
+  variant?: boolean; 
   generatedDescription: boolean;
 }

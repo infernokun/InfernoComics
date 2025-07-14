@@ -4,20 +4,23 @@ import numpy as np
 import requests
 import hashlib
 import time
-import concurrent.futures
 import sqlite3
 import pickle
 import json
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple
 
 # Set OpenCV to headless mode BEFORE importing cv2
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 os.environ['OPENCV_LOG_LEVEL'] = 'ERROR'
+
 cv2.setNumThreads(1)
 
+DB_PATH = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
+DB_IMAGE_CACHE = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
+
 class FeatureMatchingComicMatcher:
-    def __init__(self, cache_dir='image_cache', db_path='comic_cache.db', max_workers=4):
+    def __init__(self, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH, max_workers=4):
         self.cache_dir = cache_dir
         self.db_path = db_path
         self.max_workers = max_workers
@@ -710,47 +713,3 @@ class FeatureMatchingComicMatcher:
         conn.close()
         
         print(f"🧹 Cleaned up {len(old_entries)} old cache entries")
-
-# Usage example for your evaluation setup
-if __name__ == "__main__":
-    # Initialize the cached matcher
-    matcher = FeatureMatchingComicMatcher(
-        cache_dir='comic_cache_images',
-        db_path='comic_evaluation_cache.db',
-        max_workers=8  # Increase for faster processing
-    )
-    
-    # Example evaluation run
-    query_image_path = "green_lanterns_issue_1.jpg"
-    candidate_urls = [
-        "https://comicvine.gamespot.com/a/uploads/original/6/67663/5332341-03-variant.jpg",
-        "https://comicvine.gamespot.com/a/uploads/original/6/67663/5332342-04.jpg",
-        # ... more URLs
-    ]
-    
-    print("🚀 Starting evaluation with caching...")
-    
-    # First run - will populate cache
-    start_time = time.time()
-    results1, query_features1 = matcher.find_matches_img(
-        cv2.imread(query_image_path), 
-        candidate_urls, 
-        threshold=0.05
-    )
-    first_run_time = time.time() - start_time
-    
-    print(f"First run completed in: {first_run_time:.2f}s")
-    matcher.print_cache_stats()
-    
-    # Second run - should be much faster due to caching
-    start_time = time.time()
-    results2, query_features2 = matcher.find_matches_img(
-        cv2.imread(query_image_path), 
-        candidate_urls, 
-        threshold=0.05
-    )
-    second_run_time = time.time() - start_time
-    
-    print(f"Second run completed in: {second_run_time:.2f}s")
-    print(f"Speed improvement: {((first_run_time - second_run_time) / first_run_time * 100):.1f}%")
-    matcher.print_cache_stats()

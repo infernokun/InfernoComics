@@ -1,0 +1,286 @@
+  .comic-view-container {
+      max-width: 100%;
+      overflow: hidden;
+  }
+
+  .comic-view-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px 0 24px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 0;
+
+      h2 {
+          margin: 0;
+          color: var(--text-primary);
+          font-weight: 600;
+          font-size: 1.5rem;
+      }
+
+      .close-button {
+          color: var(--text-muted);
+      }
+  }
+
+  .comic-view-content {
+      padding: 24px !important;
+      max-height: 70vh;
+      overflow-y: auto;
+  }
+
+  .comic-view-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 32px;
+  }
+
+  .comic-image-section {
+      .comic-image-container {
+          position: relative;
+          text-align: center;
+
+          img {
+              width: 100%;
+              max-width: 300px;
+              height: auto;
+              border-radius: 12px;
+              box-shadow: var(--shadow-lg);
+              border: 2px solid var(--border-color);
+          }
+
+          .key-issue-badge {
+              position: absolute;
+              top: 12px;
+              right: 12px;
+              background: linear-gradient(135deg, var(--accent-color), #f59e0b);
+              color: white;
+              padding: 8px 12px;
+              border-radius: 20px;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              font-weight: 600;
+              font-size: 0.9rem;
+              box-shadow: var(--shadow-md);
+
+              mat-icon {
+                  font-size: 18px;
+                  width: 18px;
+                  height: 18px;
+              }
+          }
+      }
+  }
+
+  .comic-details-section {
+      .detail-group {
+          margin-bottom: 32px;
+
+          h3 {
+              margin: 0 0 16px 0;
+              color: var(--primary-color);
+              font-weight: 600;
+              font-size: 1.2rem;
+              border-bottom: 2px solid var(--primary-color);
+              padding-bottom: 8px;
+          }
+
+          .detail-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 16px;
+          }
+
+          .detail-item {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+
+              .label {
+                  font-size: 0.9rem;
+                  color: var(--text-secondary);
+                  font-weight: 500;
+              }
+
+              .value {
+                  font-size: 1.1rem;
+                  color: var(--text-primary);
+                  font-weight: 600;
+
+                  &.condition-badge {
+                      display: inline-block;
+                      padding: 4px 12px;
+                      border-radius: 12px;
+                      font-size: 0.9rem;
+                      text-transform: uppercase;
+                      letter-spacing: 0.5px;
+
+                      &.mint {
+                          background: linear-gradient(135deg, #10b981, #059669);
+                          color: white;
+                      }
+
+                      &.near-mint {
+                          background: linear-gradient(135deg, #3b82f6, #2563eb);
+                          color: white;
+                      }
+
+                      &.very-fine {
+                          background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+                          color: white;
+                      }
+
+                      &.fine {
+                          background: linear-gradient(135deg, #f59e0b, #d97706);
+                          color: white;
+                      }
+
+                      &.very-good {
+                          background: linear-gradient(135deg, #ef4444, #dc2626);
+                          color: white;
+                      }
+
+                      &.good {
+                          background: linear-gradient(135deg, #6b7280, #4b5563);
+                          color: white;
+                      }
+
+                      &.fair {
+                          background: linear-gradient(135deg, #92400e, #78350f);
+                          color: white;
+                      }
+
+                      &.poor {
+                          background: linear-gradient(135deg, #1f2937, #111827);
+                          color: white;
+                      }
+                  }
+              }
+          }
+
+          .description-text {
+              line-height: 1.6;
+              color: var(--text-primary);
+              background: var(--background-color);
+              padding: 16px;
+              border-radius: 8px;
+              border-left: 4px solid var(--primary-color);
+              margin: 0;
+          }
+
+          .financial-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+              gap: 16px;
+          }
+
+          .financial-card {
+              text-align: center;
+              padding: 20px 16px;
+              border-radius: 12px;
+              border: 2px solid var(--border-color);
+              background: var(--surface-color);
+
+              &.purchase {
+                  border-color: var(--primary-color);
+                  background: linear-gradient(135deg,
+                          rgba(59, 130, 246, 0.1),
+                          rgba(59, 130, 246, 0.05));
+              }
+
+              &.current {
+                  border-color: var(--secondary-color);
+                  background: linear-gradient(135deg,
+                          rgba(16, 185, 129, 0.1),
+                          rgba(16, 185, 129, 0.05));
+              }
+
+              &.profit {
+                  border-color: var(--success-color);
+                  background: linear-gradient(135deg,
+                          rgba(16, 185, 129, 0.1),
+                          rgba(16, 185, 129, 0.05));
+              }
+
+              .financial-label {
+                  font-size: 0.9rem;
+                  color: var(--text-secondary);
+                  margin-bottom: 8px;
+                  font-weight: 500;
+              }
+
+              .financial-value {
+                  font-size: 1.5rem;
+                  font-weight: 700;
+                  color: var(--text-primary);
+
+                  &.profit {
+                      color: var(--success-color);
+                  }
+
+                  &.loss {
+                      color: var(--error-color);
+                  }
+              }
+          }
+
+          .comic-vine-info {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+              padding: 16px;
+              background: var(--background-color);
+              border-radius: 8px;
+              color: var(--text-secondary);
+
+              mat-icon {
+                  color: var(--primary-color);
+              }
+          }
+      }
+  }
+
+  .comic-view-actions {
+      padding: 16px 24px !important;
+      border-top: 1px solid var(--border-color);
+      background: var(--background-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+
+      button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 20px;
+          font-weight: 500;
+          border-radius: 8px;
+
+          &.mat-mdc-raised-button {
+              background: linear-gradient(135deg,
+                      var(--primary-color),
+                      var(--secondary-color)) !important;
+              color: white !important;
+          }
+      }
+  }
+
+  @media (max-width: 768px) {
+      .comic-view-layout {
+          grid-template-columns: 1fr;
+          gap: 24px;
+      }
+
+      .comic-image-section {
+          text-align: center;
+      }
+
+      .detail-grid {
+          grid-template-columns: 1fr !important;
+      }
+
+      .financial-grid {
+          grid-template-columns: 1fr !important;
+      }
+  }

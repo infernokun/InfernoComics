@@ -34,6 +34,70 @@ mat-dialog-content {
     }
 }
 
+// Image matching styles
+.prefill-notice {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(37, 99, 235, 0.05));
+    padding: 16px 20px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    color: var(--primary-color);
+    font-size: 14px;
+    font-weight: 500;
+    border: 2px solid rgba(37, 99, 235, 0.2);
+    backdrop-filter: blur(10px);
+
+    mat-icon {
+        color: var(--primary-color);
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+        animation: sparkle 2s ease-in-out infinite;
+    }
+
+    @keyframes sparkle {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+}
+
+.auto-fill-icon {
+    color: #4caf50 !important;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    animation: fadeIn 0.5s ease-in-out;
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1); }
+    }
+}
+
+.image-match-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
+    color: #2e7d32;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(76, 175, 80, 0.3);
+
+    mat-icon {
+        color: #4caf50;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+    }
+}
+
 .comic-form {
     .form-row {
         display: flex;
@@ -142,15 +206,22 @@ mat-dialog-content {
     text-align: center;
     padding: 20px;
     background: var(--background-color);
-    border-radius: 8px;
+    border-radius: 12px;
     border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
 
     .preview-image {
         max-width: 180px;
         max-height: 240px;
-        border-radius: 8px;
-        box-shadow: var(--shadow-md);
-        border: 2px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg);
+        border: 3px solid var(--border-color);
+        transition: all 0.3s ease;
+
+        &:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
     }
 }
 
@@ -200,8 +271,24 @@ mat-dialog-actions {
     }
 }
 
-// Date picker styling
+// Theme-specific overrides
 .dark-theme {
+    .prefill-notice {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(37, 99, 235, 0.08));
+        border-color: rgba(37, 99, 235, 0.3);
+        color: #64b5f6;
+    }
+
+    .image-match-info {
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.15), rgba(76, 175, 80, 0.08));
+        border-color: rgba(76, 175, 80, 0.4);
+        color: #81c784;
+    }
+
+    .auto-fill-icon {
+        color: #81c784 !important;
+    }
+
     .mat-datepicker-popup {
         .mat-calendar {
             background: var(--surface-color) !important;
@@ -223,7 +310,6 @@ mat-dialog-actions {
         }
     }
 
-    // Select dropdown styling
     .mat-mdc-select-panel {
         background: var(--surface-color) !important;
         border: 1px solid var(--border-color) !important;
@@ -256,8 +342,23 @@ mat-dialog-actions {
     }
 }
 
-// Light theme overrides
 .light-theme {
+    .prefill-notice {
+        background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(37, 99, 235, 0.03));
+        border-color: rgba(37, 99, 235, 0.15);
+        color: #1565c0;
+    }
+
+    .image-match-info {
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.08), rgba(76, 175, 80, 0.03));
+        border-color: rgba(76, 175, 80, 0.2);
+        color: #2e7d32;
+    }
+
+    .auto-fill-icon {
+        color: #4caf50 !important;
+    }
+
     .mat-datepicker-popup {
         .mat-calendar {
             background: var(--surface-color) !important;
@@ -332,5 +433,31 @@ mat-dialog-actions {
     .mat-mdc-form-field.mat-focused .mat-datepicker-toggle-default-icon,
     .mat-mdc-form-field.mat-focused .mat-icon {
         color: var(--primary-color) !important;
+    }
+
+    // Ensure auto-fill icons are visible
+    .auto-fill-icon {
+        color: #4caf50 !important;
+    }
+
+    .dark-theme & .auto-fill-icon {
+        color: #81c784 !important;
+    }
+
+    .light-theme & .auto-fill-icon {
+        color: #4caf50 !important;
+    }
+
+    // Ensure prefill notice icons are visible
+    .prefill-notice mat-icon {
+        color: var(--primary-color) !important;
+    }
+
+    .image-match-info mat-icon {
+        color: #4caf50 !important;
+    }
+
+    .dark-theme & .image-match-info mat-icon {
+        color: #81c784 !important;
     }
 }

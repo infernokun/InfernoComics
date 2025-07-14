@@ -85,8 +85,6 @@ public class ComicVineService {
                 .distinct().sorted(this::compareIssueNumbers)
                 .collect(Collectors.toList());
 
-        // Sort the final combined result
-
         log.info("Retrieved and sorted {} total issues for series {}", allIssues.size(), series.getId());
         return allIssues;
     }
@@ -135,6 +133,40 @@ public class ComicVineService {
         List<ComicVineSeriesDto> series = searchSeriesFromAPI(query);
         cacheResult(cacheKey, serializeSeriesList(series));
         return series;
+    }
+
+    @Cacheable(value = "comic_vine_issues", key = "#comicVineId", unless = "#result == null")
+    public ComicVineIssueDto getIssueById(Long comicVineId) {
+        String apiKey = infernoComicsConfig.getComicVineAPIKey();
+        if (apiKey == null || apiKey.isEmpty()) {
+            log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
+            return null;
+        }
+
+        try {
+            String response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/issue/4000-" + comicVineId + "/")
+                            .queryParam("api_key", apiKey)
+                            .queryParam("format", "json")
+                            .build())
+                    .header("User-Agent", "ComicBookCollectionApp/1.0")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            if (response == null || response.isEmpty()) {
+                log.warn("Empty response from Comic Vine API for issue ID: {}", comicVineId);
+                return null;
+            }
+
+            // Parse the single issue response (not a list)
+            return parseSingleIssueResponse(response);
+
+        } catch (Exception e) {
+            log.error("Error fetching issue from Comic Vine API for ID: {}", comicVineId, e);
+            return null;
+        }
     }
 
     // Internal method that does the actual API call
@@ -326,7 +358,7 @@ public class ComicVineService {
                 log.debug("Original description: {}", dto.getDescription());
 
                 // Generate description if missing, using cached generation
-                if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
+                /*if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
                     DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                             dto.getName(),
                             "Series",
@@ -337,7 +369,7 @@ public class ComicVineService {
                     dto.setDescription(generatedDescription.getDescription());
                     dto.setGeneratedDescription(generatedDescription.isGenerated());
                     log.debug("Generated description: {}", dto.getDescription());
-                }
+                }*/
             }
 
             log.info("Total series parsed: {}", series.size());
@@ -378,6 +410,7 @@ public class ComicVineService {
         List<ComicVineIssueDto> issues = new ArrayList<>();
         try {
             JsonNode root = objectMapper.readTree(response);
+
             JsonNode results = root.path("results");
 
             for (JsonNode result : results) {
@@ -410,7 +443,7 @@ public class ComicVineService {
                 }
 
                 // Generate description if missing, using cached generation
-                if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
+                /*if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
                     String seriesName = "Unknown Series"; // You might want to pass this as a parameter
                     DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                             seriesName,
@@ -421,18 +454,54 @@ public class ComicVineService {
                     );
                     dto.setDescription(generatedDescription.getDescription());
                     dto.setGeneratedDescription(generatedDescription.isGenerated());
-                }
+                }*/
                 issues.add(dto);
             }
-
-            // Don't sort here - let the main method handle final sorting
-
         } catch (Exception e) {
             log.error("Error parsing issues response: {}", e.getMessage(), e);
         }
         return issues;
     }
 
+    private ComicVineIssueDto parseSingleIssueResponse(String response) {
+        ComicVineIssueDto dto = new ComicVineIssueDto();
+
+        try {
+            JsonNode root = objectMapper.readTree(response);
+
+            JsonNode result = root.path("results");
+
+            dto.setId(result.path("id").asText());
+            dto.setIssueNumber(result.path("issue_number").asText());
+            dto.setName(result.path("name").asText());
+            dto.setDescription(result.path("description").asText());
+            dto.setCoverDate(result.path("cover_date").asText());
+
+            JsonNode image = result.path("image");
+            if (!image.isMissingNode()) {
+                dto.setImageUrl(image.path("medium_url").asText());
+            }
+
+            JsonNode associatedImages = result.path("associated_images");
+            if (!associatedImages.isMissingNode() && associatedImages.isArray()) {
+                List<ComicVineIssueDto.VariantCover> variants = new ArrayList<>();
+
+                for (JsonNode imageNode : associatedImages) {
+                    ComicVineIssueDto.VariantCover variant = new ComicVineIssueDto.VariantCover();
+                    variant.setId(imageNode.path("id").asText());
+                    variant.setOriginalUrl(imageNode.path("original_url").asText());
+                    variant.setCaption(imageNode.path("caption").asText());
+                    variant.setImageTags(imageNode.path("image_tags").asText());
+                    variants.add(variant);
+                }
+
+                dto.setVariants(variants);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return dto;
+    }
     private int compareIssueNumbers(ComicVineIssueDto issue1, ComicVineIssueDto issue2) {
         try {
             String num1 = issue1.getIssueNumber();
@@ -543,6 +612,7 @@ public class ComicVineService {
         private String imageUrl;
         private List<VariantCover> variants;
         private boolean generatedDescription;
+        private boolean isVariant;
 
         @Data
         @NoArgsConstructor

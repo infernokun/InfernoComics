@@ -1,14 +1,21 @@
 <div class="comic-book-form-container">
     <h2 mat-dialog-title>
-        {{ isEditMode ? 'Edit Comic Book' : 'Add Comic Book' }}
+        {{ isEditMode ? 'Edit Comic Book' : (isFromImageMatch ? 'Confirm Comic Details' : 'Add Comic Book') }}
     </h2>
 
     <mat-dialog-content>
+        <!-- Show notice if this is from image matching -->
+        <div *ngIf="isFromImageMatch" class="prefill-notice">
+            <mat-icon>auto_awesome</mat-icon>
+            <span>The following details were detected from your image. You can edit them if needed.</span>
+        </div>
+
         <form [formGroup]="issueForm" class="comic-form">
             <div class="form-row">
                 <mat-form-field appearance="outline" class="half-width">
                     <mat-label>Issue Number *</mat-label>
                     <input matInput formControlName="issueNumber" required>
+                    <mat-icon *ngIf="isFieldAutoFilled('issueNumber')" matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
                     <mat-error *ngIf="issueForm.get('issueNumber')?.hasError('required')">
                         Issue number is required
                     </mat-error>
@@ -17,6 +24,7 @@
                 <mat-form-field appearance="outline" class="half-width">
                     <mat-label>Title</mat-label>
                     <input matInput formControlName="title">
+                    <mat-icon *ngIf="isFieldAutoFilled('title')" matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
                 </mat-form-field>
             </div>
 
@@ -68,8 +76,14 @@
                 </mat-form-field>
 
                 <div class="checkbox-row">
-                    <mat-checkbox formControlName="isKeyIssue">
+                    <mat-checkbox formControlName="keyIssue">
                         Key Issue
+                    </mat-checkbox>
+                </div>
+
+                <div class="checkbox-row">
+                    <mat-checkbox formControlName="variant">
+                        Variant Cover
                     </mat-checkbox>
                 </div>
             </div>
@@ -78,6 +92,7 @@
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Image URL</mat-label>
                     <input matInput formControlName="imageUrl">
+                    <mat-icon *ngIf="isFieldAutoFilled('imageUrl')" matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
                 </mat-form-field>
             </div>
 
@@ -85,6 +100,10 @@
                 <img [src]="issueForm.get('imageUrl')?.value"
                     [alt]="'Issue #' + issueForm.get('issueNumber')?.value" class="preview-image"
                     onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'; this.style.display='block'} else {this.style.display='none'}">
+                <div *ngIf="isFromImageMatch" class="image-match-info">
+                    <mat-icon>auto_awesome</mat-icon>
+                    <span>Cover image detected from your upload</span>
+                </div>
             </div>
 
             <div class="form-row">
@@ -100,7 +119,7 @@
         <button mat-button (click)="cancel()">Cancel</button>
         <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!issueForm.valid || loading">
             <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
-            {{ isEditMode ? 'Update' : 'Add' }} Comic Book
+            {{ isEditMode ? 'Update' : (isFromImageMatch ? 'Confirm & Add' : 'Add') }} Comic Book
         </button>
     </mat-dialog-actions>
 </div>

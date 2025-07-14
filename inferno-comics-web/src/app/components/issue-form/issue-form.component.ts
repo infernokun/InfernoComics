@@ -1,49 +1,80 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { IssueService } from '../../services/issue.service';
 import { Issue, IssueCondition } from '../../models/issue.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
 import { IssueRequest } from '../../models/issue-request.model';
+import { CommonModule } from '@angular/common';
+import { MaterialModule } from '../../material.module';
 
-export interface DialogData {
+export interface IssueFormData {
   seriesId: number;
   issue?: Issue;
   comicVineIssue?: ComicVineIssue;
   comicVineIssues?: ComicVineIssue[];
+  prefillData?: {
+    title?: string;
+    issueNumber?: string;
+    coverImageUrl?: string;
+  };
 }
 
 @Component({
   selector: 'app-issue-form',
   templateUrl: './issue-form.component.html',
   styleUrls: ['./issue-form.component.scss'],
-  standalone: false
+  imports: [CommonModule, MaterialModule, ReactiveFormsModule],
 })
 export class IssueFormComponent implements OnInit {
   issueForm: FormGroup;
   conditions = Object.values(IssueCondition);
   loading = false;
   isEditMode = false;
+  isFromImageMatch = false;  // New property to track if this is from image matching
 
   constructor(
     private fb: FormBuilder,
     private issueService: IssueService,
     private snackBar: MatSnackBar,
     public dialogRef: MatDialogRef<IssueFormComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: DialogData
+    @Inject(MAT_DIALOG_DATA) public data: IssueFormData
   ) {
     this.issueForm = this.createForm();
     this.isEditMode = !!data.issue;
+    this.isFromImageMatch = !!data.prefillData;  // Set flag if prefill data exists
   }
 
   ngOnInit(): void {
+    console.log('IssueFormComponent initialized with data:', this.data);
     if (this.data.issue) {
       // Edit mode - populate form with existing data
       this.populateFormForEdit();
     } else if (this.data.comicVineIssue) {
       // Add from Comic Vine - populate with Comic Vine data
       this.populateFormFromComicVine();
+    }
+
+    // Handle prefill data from image matching (this should come last to override other data)
+    if (this.data.prefillData) {
+      this.prefillForm();
+    }
+  }
+
+  private prefillForm(): void {
+    const prefillData = this.data.prefillData;
+    
+    if (prefillData) {
+      // Update form with prefilled values
+      this.issueForm.patchValue({
+        title: prefillData.title || '',
+        issueNumber: prefillData.issueNumber || '',
+        imageUrl: prefillData.coverImageUrl || '',  // Note: using imageUrl not coverImageUrl to match your form
+      });
+
+      // Don't disable fields, just mark them as auto-filled for visual indication
+      // Users should be able to edit these values if needed
     }
   }
 
@@ -60,7 +91,8 @@ export class IssueFormComponent implements OnInit {
       purchaseDate: [''],
       notes: [''],
       comicVineId: [''],
-      isKeyIssue: [false]
+      keyIssue: [false],
+      variant: [false]
     });
   }
 
@@ -78,7 +110,8 @@ export class IssueFormComponent implements OnInit {
         purchaseDate: this.data.issue.purchaseDate,
         notes: this.data.issue.notes,
         comicVineId: this.data.issue.comicVineId,
-        isKeyIssue: this.data.issue.isKeyIssue
+        keyIssue: this.data.issue.keyIssue,
+        variant: this.data.issue.variant || false
       });
     }
   }
@@ -92,7 +125,9 @@ export class IssueFormComponent implements OnInit {
         description: issue.description,
         coverDate: issue.coverDate ? new Date(issue.coverDate) : null,
         imageUrl: issue.imageUrl,
-        comicVineId: issue.id
+        comicVineId: issue.id,
+        keyIssue: issue.keyIssue || false,
+        variant: issue.variant || false
       });
     }
   }
@@ -115,7 +150,8 @@ export class IssueFormComponent implements OnInit {
         purchaseDate: formData.purchaseDate,
         notes: formData.notes,
         comicVineId: formData.comicVineId,
-        isKeyIssue: formData.isKeyIssue,
+        keyIssue: formData.keyIssue,
+        variant: formData.variant || false,  // New field for variant cover
         generatedDescription: this.data.comicVineIssue?.generatedDescription || false
       };
 
@@ -147,5 +183,17 @@ export class IssueFormComponent implements OnInit {
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  }
+
+  // Helper method to check if a field was auto-filled from image matching
+  isFieldAutoFilled(fieldName: string): boolean {
+    if (!this.isFromImageMatch || !this.data.prefillData) return false;
+    
+    switch (fieldName) {
+      case 'title': return !!this.data.prefillData.title;
+      case 'issueNumber': return !!this.data.prefillData.issueNumber;
+      case 'imageUrl': return !!this.data.prefillData.coverImageUrl;
+      default: return false;
+    }
   }
 }

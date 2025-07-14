@@ -67,8 +67,8 @@ public class Issue {
     @Convert(converter = VariantCoverListConverter.class)
     private List<VariantCover> variantCovers = new ArrayList<>();
 
-    @Column(name = "has_variants")
-    private Boolean hasVariants = false;
+    @Column(name = "is_variants")
+    private Boolean isVariant = false;
 
     @Column(name = "is_key_issue")
     private Boolean isKeyIssue = false;

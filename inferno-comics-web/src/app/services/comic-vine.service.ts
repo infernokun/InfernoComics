@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { EnvironmentService } from './environment.service';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Issue } from '../models/issue.model';
 
 @Injectable({
   providedIn: 'root',
@@ -30,6 +31,10 @@ export class ComicVineService {
     return this.http.get<any[]>(
       `${this.apiUrl}/series/${seriesId}/search-comic-vine`
     );
+  }
+
+  getIssueById(issueId: string): Observable<Issue> {
+    return this.http.get<any>(`${this.apiUrl}/issues/get-comic-vine/${issueId}`);
   }
 }
 

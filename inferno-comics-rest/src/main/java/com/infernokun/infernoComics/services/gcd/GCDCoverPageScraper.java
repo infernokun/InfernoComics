@@ -174,7 +174,7 @@ public class GCDCoverPageScraper {
             driver.get(coverPageUrl);
 
             gcdCover = findAllCoverImages(driver);
-            gcdCover.setCoverPageUrl(coverPageUrl);
+            //gcdCover.setCoverPageUrl(coverPageUrl);
 
             // Check if page loaded correctly
             String currentUrl = driver.getCurrentUrl();
@@ -190,7 +190,7 @@ public class GCDCoverPageScraper {
             }
 
             if (!gcdCover.getUrls().isEmpty()) {
-                gcdCover.setFound(true);
+                //gcdCover.setFound(true);
                 log.info("⚡ ✅ Found {} covers: {}", gcdCover.getUrls().size(), gcdCover.getUrls());
                 return gcdCover;
             }
@@ -228,11 +228,11 @@ public class GCDCoverPageScraper {
         try {
             Pattern pattern = Pattern.compile(".*:: (.+)$");
             Matcher matcher = pattern.matcher(Objects.requireNonNull(driver.getTitle()));
-            gcdCover.setIssueName(matcher.find() ? matcher.group(1) : driver.getTitle());
-            log.info("⚡ Extracted comic name: {}", gcdCover.getIssueName());
+            //gcdCover.setIssueName(matcher.find() ? matcher.group(1) : driver.getTitle());
+            //log.info("⚡ Extracted comic name: {}", gcdCover.getIssueName());
         } catch (Exception e) {
             log.warn("⚡ Failed to extract comic name: {}", e.getMessage());
-            gcdCover.setIssueName("Unknown");
+            //gcdCover.setIssueName("Unknown");
         }
 
         Set<String> foundUrls = new HashSet<>(); // Use Set to prevent duplicates

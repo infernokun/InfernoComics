@@ -1,5 +1,7 @@
+import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MaterialModule } from '../../../../material.module';
 
 export interface ConfirmationDialogData {
   title: string;
@@ -13,7 +15,7 @@ export interface ConfirmationDialogData {
   selector: 'amaterasu-confirmation-dialog',
   templateUrl: './confirmation-dialog.component.html',
   styleUrl: './confirmation-dialog.component.scss',
-  standalone: false
+  imports: [CommonModule, MaterialModule]
 })
 export class ConfirmationDialogComponent {
   constructor(
