@@ -17,6 +17,18 @@ build-rest:
   tags:
     - docker
 
+build-recog:
+  stage: build
+  image: docker:24.0.7
+  before_script:
+    - echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+    - apk add --no-cache nodejs npm bash jq
+  script:
+    - cd inferno-comics-recog
+    - npm run docker:build
+  tags:
+    - docker
+
 build-web:
   stage: build
   image: docker:24.0.7
@@ -57,5 +69,6 @@ deploy:
     - docker
   dependencies:
     - build-rest
+    - build-recog
     - build-web
 #  when: manual
