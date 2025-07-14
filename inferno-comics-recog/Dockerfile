@@ -31,9 +31,6 @@ LABEL maintainer="infernokun@infernokun.com" \
 
 VOLUME ["/data/certs"]
 
-ENV COMIC_CACHE_DB_PATH=/var/tmp/inferno-comics/comic_cache.db
-ENV COMIC_CACHE_IMAGE_PATH=/var/tmp/inferno-comics/image_cache
-
 # Install runtime dependencies and tini
 RUN apt-get update && apt-get install -y \
     tini \
@@ -68,6 +65,8 @@ ENV FLASK_APP=app.py
 ENV FLASK_ENV=production
 ENV PYTHONPATH=/app
 ENV PATH=/home/python/.local/bin:$PATH
+ENV COMIC_CACHE_DB_PATH=/var/tmp/inferno-comics/comic_cache.db
+ENV COMIC_CACHE_IMAGE_PATH=/var/tmp/inferno-comics/image_cache
 
 # Copy entrypoint script
 COPY --link --chown=python:python scripts/docker-entrypoint.sh /
