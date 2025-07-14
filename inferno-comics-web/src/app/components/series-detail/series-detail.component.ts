@@ -1,12 +1,10 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-  MAT_DIALOG_DATA,
   MatDialog,
-  MatDialogRef,
 } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { SeriesService } from '../../services/series.service';
+import { SeriesService, SSEProgressData } from '../../services/series.service';
 import { IssueService } from '../../services/issue.service';
 import { IssueFormComponent } from '../issue-form/issue-form.component';
 import { ComicVineService } from '../../services/comic-vine.service';
@@ -23,6 +21,7 @@ import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { ConfirmationDialogComponent } from '../common/dialog/confirmation-dialog/confirmation-dialog.component';
 import { Issue } from '../../models/issue.model';
+import { ImageProcessingDialogComponent } from './image-processing-progress/image-processing-progress.component';
 
 @Component({
   selector: 'app-series-detail',
@@ -393,50 +392,155 @@ export class SeriesDetailComponent implements OnInit {
     this.isCompactView = !this.isCompactView;
   }
 
+  // ENHANCED IMAGE PROCESSING - Main entry point with SSE/fallback logic
   addComicByImage(seriesId: number): void {
-    // Open file input dialog to select image
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
     input.onchange = (event: any) => {
       const file = event.target.files[0];
       if (file) {
-        // Show loading indicator
-        this.snackBar.open('Analyzing image...', '', {
-          duration: 0, // Keep open until dismissed
-        });
-
-        this.seriesService.addComicByImage(seriesId, file).subscribe({
-          next: (response: ImageMatcherResponse) => {
-            // Dismiss loading indicator
-            this.snackBar.dismiss();
-
-            if (
-              response &&
-              response.top_matches &&
-              response.top_matches.length > 0
-            ) {
-              // Open the match selection dialog with the top matches
-              this.openMatchSelectionDialog(response.top_matches, seriesId);
-            } else {
-              this.snackBar.open('No matching comics found', 'Close', {
-                duration: 3000,
-              });
-            }
-          },
-          error: (error) => {
-            // Dismiss loading indicator
-            this.snackBar.dismiss();
-
-            console.error('Error adding comic by image:', error);
-            this.snackBar.open('Error analyzing image', 'Close', {
-              duration: 3000,
-            });
-          },
-        });
+        // Check if SSE is supported and use enhanced version, otherwise fallback
+        if (this.seriesService.isSSESupported()) {
+          this.processImageWithSSE(seriesId, file);
+        } else {
+          this.processImageFallback(seriesId, file);
+        }
       }
     };
     input.click();
+  }
+
+  // NEW SSE-BASED PROCESSING - Real-time progress updates
+  private processImageWithSSE(seriesId: number, file: File): void {
+    // Open the progress dialog
+    const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      disableClose: true,
+      data: {
+        file: file,
+        seriesId: seriesId
+      }
+    });
+
+    const dialogComponent = progressDialogRef.componentInstance;
+
+    // Start SSE-based processing
+    this.seriesService.addComicByImageWithSSE(seriesId, file).subscribe({
+      next: (progressData: SSEProgressData) => {
+        this.handleSSEProgress(seriesId, progressData, dialogComponent);
+      },
+      error: (error) => {
+        console.error('SSE Error:', error);
+        const errorMessage = this.getErrorMessage(error);
+        dialogComponent.setError(errorMessage);
+      },
+      complete: () => {
+        console.log('SSE stream completed');
+      }
+    });
+  }
+
+  private handleSSEProgress(seriesId: number, data: SSEProgressData, dialogComponent: ImageProcessingDialogComponent): void {
+    switch (data.type) {
+      case 'progress':
+        const stageName = this.getStageDisplayName(data.stage || '');
+        dialogComponent.updateProgress(
+          stageName,
+          data.progress || 0,
+          data.message
+        );
+        break;
+
+      case 'complete':
+        dialogComponent.setComplete(data.result);
+        
+        // Handle the results after dialog auto-closes
+        setTimeout(() => {
+          if (data.result && data.result.top_matches && data.result.top_matches.length > 0) {
+            this.openMatchSelectionDialog(data.result.top_matches, seriesId);
+          } else {
+            this.snackBar.open('No matching comics found', 'Close', {
+              duration: 3000,
+            });
+          }
+        }, 1600);
+        break;
+
+      case 'error':
+        dialogComponent.setError(data.error || 'Unknown error occurred');
+        break;
+    }
+  }
+
+  private getStageDisplayName(stage: string): string {
+    const stageMap: {[key: string]: string} = {
+      'preparing': 'Preparing image analysis',
+      'initializing': 'Initializing image matcher',
+      'extracting_features': 'Extracting image features',
+      'preparing_comparison': 'Preparing comparison',
+      'comparing_images': 'Comparing with database',
+      'processing_results': 'Processing results',
+      'finalizing': 'Finalizing matches',
+      'complete': 'Analysis complete'
+    };
+    
+    return stageMap[stage] || stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  // FALLBACK PROCESSING - Original method with simulated progress (backward compatibility)
+  private processImageFallback(seriesId: number, file: File): void {
+    // Show loading indicator (original behavior)
+    this.snackBar.open('Analyzing image...', '', {
+      duration: 0, // Keep open until dismissed
+    });
+
+    this.seriesService.addComicByImage(seriesId, file).subscribe({
+      next: (response: ImageMatcherResponse) => {
+        // Dismiss loading indicator
+        this.snackBar.dismiss();
+
+        if (
+          response &&
+          response.top_matches &&
+          response.top_matches.length > 0
+        ) {
+          // Open the match selection dialog with the top matches
+          this.openMatchSelectionDialog(response.top_matches, seriesId);
+        } else {
+          this.snackBar.open('No matching comics found', 'Close', {
+            duration: 3000,
+          });
+        }
+      },
+      error: (error) => {
+        // Dismiss loading indicator
+        this.snackBar.dismiss();
+
+        console.error('Error adding comic by image:', error);
+        this.snackBar.open('Error analyzing image', 'Close', {
+          duration: 3000,
+        });
+      },
+    });
+  }
+
+  private getErrorMessage(error: any): string {
+    if (error.status === 400) {
+      return 'Invalid image file or format';
+    } else if (error.status === 413) {
+      return 'Image file is too large';
+    } else if (error.status === 500) {
+      return 'Server error during image analysis';
+    } else if (error.status === 0) {
+      return 'Network connection error';
+    } else if (error.error?.message) {
+      return error.error.message;
+    } else if (error.message) {
+      return error.message;
+    }
+    return 'Failed to analyze image';
   }
 
   private openMatchSelectionDialog(

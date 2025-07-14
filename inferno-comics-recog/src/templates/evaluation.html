@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Comic Series Evaluation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .evaluation-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            animation: fadeInUp 1s ease-out;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #ff4757 0%, #ff3742 100%);
+            margin-left: 10px;
+        }
+
+        .progress-container {
+            display: none;
+            margin-bottom: 30px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .progress-title {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .progress-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+        }
+
+        .stat {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.9);
+        }
+
+        .stat.success { color: #155724; }
+        .stat.warning { color: #856404; }
+        .stat.error { color: #721c24; }
+
+        .progress-bar-container {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 20px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.9em;
+            font-weight: 600;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .current-processing {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .processing-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .processing-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .current-image-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .current-image-preview {
+            width: 120px;
+            height: 160px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            object-fit: cover;
+            background: #f0f0f0;
+        }
+
+        .current-image-info {
+            flex: 1;
+        }
+
+        .current-image-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .current-status {
+            color: #667eea;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .processing-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        .detailed-results {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .detailed-results h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .result-item {
+            display: flex;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            background: #fafafa;
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        .result-item.match-success {
+            border-left: 5px solid #28a745;
+            background: #f8fff9;
+        }
+
+        .result-item.no-match {
+            border-left: 5px solid #ffc107;
+            background: #fffcf0;
+        }
+
+        .result-item.error {
+            border-left: 5px solid #dc3545;
+            background: #fff5f5;
+        }
+
+        .result-item:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+
+        .uploaded-image {
+            flex: 0 0 200px;
+            margin-right: 20px;
+        }
+
+        .uploaded-image img {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+
+        .image-info {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .matches-container {
+            flex: 1;
+            padding-left: 20px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .match-found {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .no-match-found {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .api-failure {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .similarity-highlight {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 5px;
+            padding: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .similarity-highlight.good {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .similarity-highlight.poor {
+            background: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .match-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .match-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .match-item.threshold-met {
+            border: 2px solid #28a745;
+            background: #f8fff9;
+        }
+
+        .match-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+
+        .similarity-score {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .match-status {
+            font-size: 0.8em;
+            color: #666;
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .match-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .error-message {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+
+        .no-matches {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        .debug-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #0066cc;
+        }
+
+        .completion-summary {
+            display: none;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .completion-summary.success {
+            border-left: 5px solid #28a745;
+        }
+
+        .completion-summary.failure {
+            border-left: 5px solid #dc3545;
+        }
+
+        .completion-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .completion-icon {
+            font-size: 4em;
+            margin-bottom: 15px;
+        }
+
+        .completion-title {
+            font-size: 2em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .completion-subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .detailed-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .detailed-stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .detailed-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .detailed-stat-value {
+            font-size: 2.2em;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .detailed-stat-value.success { color: #28a745; }
+        .detailed-stat-value.warning { color: #ffc107; }
+        .detailed-stat-value.danger { color: #dc3545; }
+        .detailed-stat-value.info { color: #667eea; }
+
+        .detailed-stat-label {
+            color: #666;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .threshold-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: #0066cc;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        .scrollbar-custom {
+            scrollbar-width: thin;
+            scrollbar-color: #667eea #f0f0f0;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+            background: #5a67d8;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1> Enhanced Comic Series Evaluation</h1>
+            <p>Real-time image matching with detailed visualization</p>
+        </div>
+
+        <div class="evaluation-card">
+            <form id="evaluationForm">
+                <div class="form-group">
+                    <label for="folderInput">Series Folder Name:</label>
+                    <input type="text" id="folderInput" name="folder" 
+                           placeholder="e.g., Green Lanterns (2016)" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="btn" id="startBtn">
+                        <span class="loading-spinner" id="loadingSpinner" style="display: none;"></span>
+                        Start Evaluation
+                    </button>
+                    <button type="button" class="btn btn-stop" id="stopBtn" style="display: none;">
+                        Stop Evaluation
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-header">
+                <div class="progress-title">Evaluation Progress</div>
+                <div class="progress-stats" id="progressStats">
+                    <span class="stat success" id="successCount">✅ 0</span>
+                    <span class="stat warning" id="warningCount">⚠️ 0</span>
+                    <span class="stat error" id="errorCount">❌ 0</span>
+                </div>
+            </div>
+
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                <div class="progress-text" id="progressText">0%</div>
+            </div>
+        </div>
+
+        <div class="current-processing" id="currentProcessing">
+            <div class="processing-header">
+                <div class="processing-title">
+                    <span class="processing-spinner"></span>
+                    Currently Processing
+                </div>
+            </div>
+            
+            <div class="current-image-container">
+                <img class="current-image-preview" id="currentImagePreview" 
+                     src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDEyMCAxNjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTYwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjYwIiB5PSI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY2NiIgZm9udC1zaXplPSIxMiI+UHJvY2Vzc2luZy4uLjwvdGV4dD4KPC9zdmc+"
+                     alt="Current processing image">
+                
+                <div class="current-image-info">
+                    <div class="current-image-name" id="currentImageName">Preparing...</div>
+                    <div class="current-status" id="currentImageStatus">Getting ready to start evaluation</div>
+                    <div id="currentImageProgress">Image 0 of 0</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="detailed-results scrollbar-custom" id="detailedResults">
+            <h3>Detailed Results with Match Visualization</h3>
+            <div id="detailedResultsContent" style="text-align: center; color: #666; font-style: italic; padding: 20px;">
+                Detailed results will appear here as images are processed...
+            </div>
+        </div>
+
+        <div class="completion-summary" id="completionSummary">
+            <div class="completion-header">
+                <div class="completion-icon" id="completionIcon"></div>
+                <div class="completion-title" id="completionTitle">Evaluation Complete</div>
+                <div class="completion-subtitle" id="completionSubtitle">All images have been processed</div>
+            </div>
+
+            <div class="threshold-info" id="thresholdInfo">
+                <strong>Similarity Threshold:</strong> ≥ 0.25 for successful match
+            </div>
+
+            <div class="detailed-stats" id="detailedStats">
+                <div class="detailed-stat-card">
+                    <div class="detailed-stat-value info" id="totalImagesDetail">0</div>
+                    <div class="detailed-stat-label">Total Images</div>
+                </div>
+                <div class="detailed-stat-card">
+                    <div class="detailed-stat-value success" id="successfulMatchesDetail">0</div>
+                    <div class="detailed-stat-label">Successful Matches</div>
+                </div>
+                <div class="detailed-stat-card">
+                    <div class="detailed-stat-value warning" id="noMatchesDetail">0</div>
+                    <div class="detailed-stat-label">No Matches Found</div>
+                </div>
+                <div class="detailed-stat-card">
+                    <div class="detailed-stat-value danger" id="apiFailuresDetail">0</div>
+                    <div class="detailed-stat-label">API Failures</div>
+                </div>
+                <div class="detailed-stat-card">
+                    <div class="detailed-stat-value info" id="bestSimilarityDetail">0.000</div>
+                    <div class="detailed-stat-label">Best Similarity Found</div>
+                </div>
+                <div class="detailed-stat-card">
+                    <div class="detailed-stat-value" id="overallResultDetail">❌</div>
+                    <div class="detailed-stat-label">Overall Success</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        let isEvaluating = false;
+        let currentSessionId = null;
+        let processedResults = [];
+
+        const form = document.getElementById('evaluationForm');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const currentProcessing = document.getElementById('currentProcessing');
+        const currentImagePreview = document.getElementById('currentImagePreview');
+        const currentImageName = document.getElementById('currentImageName');
+        const currentImageStatus = document.getElementById('currentImageStatus');
+        const currentImageProgress = document.getElementById('currentImageProgress');
+        const detailedResults = document.getElementById('detailedResults');
+        const detailedResultsContent = document.getElementById('detailedResultsContent');
+        const completionSummary = document.getElementById('completionSummary');
+        const successCount = document.getElementById('successCount');
+        const warningCount = document.getElementById('warningCount');
+        const errorCount = document.getElementById('errorCount');
+
+        let stats = {
+            success: 0,
+            warning: 0,
+            error: 0,
+            totalImages: 0,
+            processed: 0
+        };
+
+        form.addEventListener('submit', startEvaluation);
+        stopBtn.addEventListener('click', stopEvaluation);
+
+        function startEvaluation(e) {
+            e.preventDefault();
+            
+            if (isEvaluating) return;
+            
+            const folder = document.getElementById('folderInput').value.trim();
+            if (!folder) {
+                alert('Please enter a folder name');
+                return;
+            }
+
+            isEvaluating = true;
+            startBtn.disabled = true;
+            loadingSpinner.style.display = 'inline-block';
+            startBtn.innerHTML = '<span class="loading-spinner"></span> Starting...';
+            stopBtn.style.display = 'inline-block';
+            
+            // Reset UI
+            resetUI();
+            progressContainer.style.display = 'block';
+            currentProcessing.style.display = 'block';
+            completionSummary.style.display = 'none';
+            
+            // Start evaluation
+            fetch('/inferno-comics-recognition/api/v1/evaluation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ folder: folder })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                currentSessionId = data.session_id;
+                console.log('Evaluation started with session ID:', currentSessionId);
+                
+                startProgressListener();
+            })
+            .catch(error => {
+                console.error('Error starting evaluation:', error);
+                alert('Error starting evaluation: ' + error.message);
+                resetEvaluationState();
+            });
+        }
+
+        function startProgressListener() {
+            if (!currentSessionId) {
+                console.error('No session ID available');
+                return;
+            }
+            
+            eventSource = new EventSource(`/inferno-comics-recognition/api/v1/evaluation/progress?session_id=${currentSessionId}`);
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                handleProgressUpdate(data);
+            };
+            
+            eventSource.onerror = function(event) {
+                console.error('EventSource failed:', event);
+                if (isEvaluating) {
+                    setTimeout(() => {
+                        if (isEvaluating && currentSessionId) {
+                            startProgressListener();
+                        }
+                    }, 1000);
+                }
+            };
+        }
+
+        function handleProgressUpdate(data) {
+            console.log('Progress update:', data);
+            
+            switch (data.type) {
+                case 'status':
+                    updateCurrentStatus(data.message);
+                    updateProgress(data.progress);
+                    if (data.total_images) {
+                        stats.totalImages = data.total_images;
+                        updateImageProgress();
+                    }
+                    break;
+                    
+                case 'processing':
+                    updateCurrentStatus(data.message);
+                    updateProgress(data.progress);
+                    if (data.current_image_preview) {
+                        updateCurrentImage(data.current_image, data.current_image_preview, data.processed, data.total_images);
+                    }
+                    stats.processed = data.processed;
+                    stats.totalImages = data.total_images;
+                    break;
+                    
+                case 'detailed_result':
+                    updateCurrentStatus(data.message);
+                    updateProgress(data.progress);
+                    addDetailedResultItem(data.detailed_result);
+                    updateStats(data);
+                    processedResults.push(data.detailed_result);
+                    break;
+                    
+                case 'complete':
+                    updateCurrentStatus('Evaluation completed!');
+                    updateProgress(100);
+                    showCompletionSummary(data);
+                    currentProcessing.style.display = 'none';
+                    resetEvaluationState();
+                    break;
+                    
+                case 'error':
+                    updateCurrentStatus(`Error: ${data.message}`);
+                    alert('Evaluation failed: ' + data.message);
+                    currentProcessing.style.display = 'none';
+                    resetEvaluationState();
+                    break;
+                    
+                case 'stopped':
+                    updateCurrentStatus('Evaluation stopped by user');
+                    currentProcessing.style.display = 'none';
+                    resetEvaluationState();
+                    break;
+                    
+                case 'heartbeat':
+                    break;
+            }
+        }
+
+        function updateCurrentStatus(message) {
+            currentImageStatus.innerHTML = `<span class="processing-spinner"></span> ${message}`;
+        }
+
+        function updateProgress(progress) {
+            progressBar.style.width = `${progress}%`;
+            progressText.textContent = `${Math.round(progress)}%`;
+        }
+
+        function updateCurrentImage(imageName, imageBase64, processed, total) {
+            currentImageName.textContent = imageName;
+            currentImageProgress.textContent = `Image ${processed + 1} of ${total}`;
+            
+            if (imageBase64) {
+                currentImagePreview.src = imageBase64;
+            }
+        }
+
+        function updateImageProgress() {
+            currentImageProgress.textContent = `Image ${stats.processed} of ${stats.totalImages}`;
+        }
+
+        function updateStats(data) {
+            if (data.status === 'success') {
+                stats.success++;
+            } else if (data.status === 'warning') {
+                stats.warning++;
+            } else if (data.status === 'error') {
+                stats.error++;
+            }
+            
+            successCount.textContent = `✅ ${stats.success}`;
+            warningCount.textContent = `⚠️ ${stats.warning}`;
+            errorCount.textContent = `❌ ${stats.error}`;
+        }
+
+        function addDetailedResultItem(detailedResult) {
+            const resultItem = document.createElement('div');
+            let resultClass = 'error';
+            
+            if (detailedResult.api_success) {
+                resultClass = detailedResult.match_success ? 'match-success' : 'no-match';
+            }
+            
+            resultItem.className = `result-item ${resultClass}`;
+            
+            // Clear placeholder if this is first result
+            if (detailedResultsContent.style.textAlign === 'center') {
+                detailedResultsContent.innerHTML = '';
+                detailedResultsContent.style.textAlign = '';
+            }
+            
+            let statusBadgeHtml = '';
+            if (!detailedResult.api_success) {
+                statusBadgeHtml = '<div class="status-badge api-failure">❌ API FAILURE</div>';
+            } else if (detailedResult.match_success) {
+                statusBadgeHtml = '<div class="status-badge match-found">✅ MATCH FOUND</div>';
+            } else {
+                statusBadgeHtml = '<div class="status-badge no-match-found">⚠️ NO MATCH</div>';
+            }
+            
+            let similarityHtml = '';
+            if (detailedResult.api_success) {
+                const similarityClass = detailedResult.best_similarity >= 0.25 ? "good" : "poor";
+                const thresholdText = detailedResult.best_similarity >= 0.25 ? "(Threshold Met ✓)" : "(Below Threshold)";
+                similarityHtml = `
+                    <div class="similarity-highlight ${similarityClass}">
+                        Best Similarity: ${detailedResult.best_similarity.toFixed(4)} ${thresholdText}
+                    </div>
+                `;
+            }
+            
+            let matchesHtml = '';
+            if (detailedResult.api_success && detailedResult.matches && detailedResult.matches.length > 0) {
+                matchesHtml = `
+                    <p><strong>Total matches found:</strong> ${detailedResult.total_matches || detailedResult.matches.length}</p>
+                    <div class="matches-grid">
+                `;
+                
+                detailedResult.matches.forEach((match, index) => {
+                    const scoreColor = match.similarity >= 0.25 ? '#28a745' : 
+                                     match.similarity >= 0.10 ? '#ffc107' : 
+                                     match.similarity >= 0.05 ? '#fd7e14' : '#dc3545';
+                    
+                    const matchClass = match.meets_threshold ? "threshold-met" : "";
+                    const statusClass = match.meets_threshold ? "success" : "";
+                    
+                    matchesHtml += `
+                        <div class="match-item ${matchClass}">
+                            <img src="${match.url}" alt="Match ${index + 1}" 
+                                 onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY2NiIgZm9udC1zaXplPSIxMiI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPgo='">
+                            <div class="similarity-score" style="color: ${scoreColor};">
+                                ${match.similarity.toFixed(4)}
+                            </div>
+                            <div class="match-status ${statusClass}">
+                                ${match.meets_threshold ? '✅ SUCCESS' : '❌ BELOW THRESHOLD'}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                matchesHtml += '</div>';
+            } else if (detailedResult.api_success) {
+                matchesHtml = '<div class="no-matches">No matches found</div>';
+            }
+            
+            let errorHtml = '';
+            if (!detailedResult.api_success && detailedResult.error) {
+                errorHtml = `<div class="error-message"><strong>Error:</strong> ${detailedResult.error}</div>`;
+            }
+            
+            resultItem.innerHTML = `
+                <div class="uploaded-image">
+                    <img src="${detailedResult.image_base64}" alt="${detailedResult.image_name}" 
+                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjI4MCIgdmlld0JveD0iMCAwIDIwMCAyODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjgwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjY2IiBmb250LXNpemU9IjE0Ij5JbWFnZSBub3QgZm91bmQ8L3RleHQ+Cjwvc3ZnPgo='">
+                    <div class="image-info">
+                        <strong>${detailedResult.image_name}</strong>
+                    </div>
+                </div>
+                
+                <div class="matches-container">
+                    ${statusBadgeHtml}
+                    ${similarityHtml}
+                    ${matchesHtml}
+                    ${errorHtml}
+                </div>
+            `;
+            
+            detailedResultsContent.insertBefore(resultItem, detailedResultsContent.firstChild);
+            
+            // Limit to last 10 results to prevent memory issues
+            while (detailedResultsContent.children.length > 10) {
+                detailedResultsContent.removeChild(detailedResultsContent.lastChild);
+            }
+            
+            // Scroll to top to show latest result
+            detailedResults.scrollTop = 0;
+        }
+
+        function showCompletionSummary(data) {
+            const isSuccess = data.overall_success;
+            
+            completionSummary.className = `completion-summary ${isSuccess ? 'success' : 'failure'}`;
+            completionSummary.style.display = 'block';
+            
+            // Update completion header
+            document.getElementById('completionIcon').textContent = isSuccess ? '' : '❌';
+            document.getElementById('completionTitle').textContent = isSuccess ? 'OVERALL SUCCESS' : 'NO MATCHES FOUND';
+            document.getElementById('completionSubtitle').textContent = isSuccess 
+                ? `At least one image was successfully matched for ${data.series_name} (${data.year})!`
+                : 'No images met the similarity threshold.';
+            
+            // Update detailed stats
+            document.getElementById('totalImagesDetail').textContent = data.total_images || 0;
+            document.getElementById('successfulMatchesDetail').textContent = data.successful_matches || 0;
+            document.getElementById('noMatchesDetail').textContent = data.no_matches || 0;
+            document.getElementById('apiFailuresDetail').textContent = data.failed_uploads || 0;
+            document.getElementById('bestSimilarityDetail').textContent = (data.best_similarity || 0).toFixed(4);
+            
+            const overallResultElement = document.getElementById('overallResultDetail');
+            overallResultElement.textContent = isSuccess ? '✅' : '❌';
+            overallResultElement.className = `detailed-stat-value ${isSuccess ? 'success' : 'danger'}`;
+            
+            // Scroll to summary
+            completionSummary.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function stopEvaluation() {
+            if (!isEvaluating || !currentSessionId) return;
+            
+            fetch('/inferno-comics-recognition/api/v1/evaluation/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ session_id: currentSessionId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Evaluation stopped:', data);
+            })
+            .catch(error => {
+                console.error('Error stopping evaluation:', error);
+            });
+            
+            resetEvaluationState();
+        }
+
+        function resetEvaluationState() {
+            isEvaluating = false;
+            currentSessionId = null;
+            startBtn.disabled = false;
+            startBtn.innerHTML = 'Start Evaluation';
+            loadingSpinner.style.display = 'none';
+            stopBtn.style.display = 'none';
+            
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        }
+
+        function resetUI() {
+            stats = { success: 0, warning: 0, error: 0, totalImages: 0, processed: 0 };
+            processedResults = [];
+            
+            successCount.textContent = '✅ 0';
+            warningCount.textContent = '⚠️ 0';
+            errorCount.textContent = '❌ 0';
+            
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            
+            currentImageName.textContent = 'Preparing...';
+            currentImageStatus.innerHTML = '<span class="processing-spinner"></span> Getting ready to start evaluation';
+            currentImageProgress.textContent = 'Image 0 of 0';
+            currentImagePreview.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDEyMCAxNjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTYwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjYwIiB5PSI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY2NiIgZm9udC1zaXplPSIxMiI+UHJvY2Vzc2luZy4uLjwvdGV4dD4KPC9zdmc+";
+            
+            detailedResultsContent.innerHTML = `
+                <div style="text-align: center; color: #666; font-style: italic; padding: 20px;">
+                    Detailed results will appear here as images are processed...
+                </div>
+            `;
+            detailedResultsContent.style.textAlign = 'center';
+        }
+
+        // Handle page unload to clean up event source
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+
+        // Example folder names for user reference
+        document.getElementById('folderInput').addEventListener('focus', function() {
+            if (!this.value) {
+                this.placeholder = 'e.g., Green Lanterns (2016), Batman (2016), etc.';
+            }
+        });
+
+        // Add smooth scrolling for better UX
+        document.addEventListener('DOMContentLoaded', function() {
+            document.documentElement.style.scrollBehavior = 'smooth';
+        });
+    </script>
+</body>
+</html>

@@ -7,6 +7,7 @@ from config.Config import Config
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 from routes.Health import health_bp
 from routes.ImageMatcher import image_matcher_bp
+from routes.evaluate.Evaluation import evaluation_bp
 
 # Configure logging
 logging.basicConfig(
@@ -27,6 +28,7 @@ def create_app():
     URL_PREFIX = Config.API_URL_PREFIX
     app.register_blueprint(health_bp, url_prefix=URL_PREFIX)
     app.register_blueprint(image_matcher_bp, url_prefix=URL_PREFIX)
+    app.register_blueprint(evaluation_bp, url_prefix=URL_PREFIX)
     
     return app
 
@@ -51,7 +53,7 @@ def main():
             channel_timeout=120
         )
     else:
-        logger.warning("Running in development mode")
+        logger.warning(f"Running in development mode on: http://localhost:{port}/{Config.API_URL_PREFIX}")
         app.run(host=host, port=port, debug=True)
 
      

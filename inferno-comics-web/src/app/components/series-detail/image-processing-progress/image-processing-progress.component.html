@@ -1,0 +1,87 @@
+<div class="image-processing-dialog">
+    <div class="dialog-header">
+        <h2 mat-dialog-title>
+            <mat-icon class="processing-icon">image_search</mat-icon>
+            Analyzing Comic Image
+        </h2>
+        <button mat-icon-button mat-dialog-close class="close-button" [disabled]="isProcessing">
+            <mat-icon>close</mat-icon>
+        </button>
+    </div>
+
+    <mat-dialog-content class="dialog-content">
+        <!-- Image Preview -->
+        <div class="image-preview-section">
+            <div class="image-container">
+                <img [src]="imagePreview" alt="Uploaded comic image" class="uploaded-image">
+                <div class="processing-overlay" *ngIf="isProcessing">
+                    <div class="processing-indicator">
+                        <mat-spinner diameter="40"></mat-spinner>
+                    </div>
+                </div>
+            </div>
+            <div class="image-info">
+                <h3>{{ data.file.name }}</h3>
+                <p>{{ formatFileSize(data.file.size) }}</p>
+            </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div class="progress-section">
+            <div class="progress-header">
+                <h3>{{ currentStage }}</h3>
+                <span class="progress-percentage">{{ Math.round(progress) }}%</span>
+            </div>
+
+            <div class="progress-bar-container">
+                <mat-progress-bar [value]="progress" mode="determinate" class="progress-bar">
+                </mat-progress-bar>
+            </div>
+
+            <div class="progress-details">
+                <div class="stage-indicator" *ngFor="let stage of processingStages; let i = index"
+                    [class.completed]="i < currentStageIndex" [class.active]="i === currentStageIndex"
+                    [class.pending]="i > currentStageIndex">
+                    <div class="stage-icon">
+                        <mat-icon *ngIf="i < currentStageIndex">check_circle</mat-icon>
+                        <mat-icon *ngIf="i === currentStageIndex && isProcessing">radio_button_checked</mat-icon>
+                        <mat-icon *ngIf="i > currentStageIndex">radio_button_unchecked</mat-icon>
+                    </div>
+                    <span class="stage-name">{{ stage.name }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div class="status-section" *ngIf="statusMessages.length > 0">
+            <h4>Processing Log</h4>
+            <div class="status-messages">
+                <div *ngFor="let message of statusMessages; let i = index" class="status-message"
+                    [class.success]="message.type === 'success'" [class.warning]="message.type === 'warning'"
+                    [class.error]="message.type === 'error'" [class.info]="message.type === 'info'">
+                    <mat-icon class="message-icon">{{ getMessageIcon(message.type) }}</mat-icon>
+                    <span class="message-text">{{ message.text }}</span>
+                    <span class="message-time">{{ message.timestamp | date:'HH:mm:ss' }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div class="error-section" *ngIf="hasError">
+            <mat-icon class="error-icon">error</mat-icon>
+            <h3>Processing Failed</h3>
+            <p>{{ errorMessage }}</p>
+        </div>
+    </mat-dialog-content>
+
+    <mat-dialog-actions class="dialog-actions">
+        <button mat-button mat-dialog-close [disabled]="isProcessing">
+            {{ isProcessing ? 'Cancel' : 'Close' }}
+        </button>
+        <button mat-raised-button color="primary" *ngIf="!isProcessing && !hasError" (click)="retryProcessing()"
+            [disabled]="!canRetry">
+            <mat-icon>refresh</mat-icon>
+            Retry
+        </button>
+    </mat-dialog-actions>
+</div>

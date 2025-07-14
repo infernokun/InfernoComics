@@ -24,6 +24,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @NgModule({
   imports: [
@@ -53,7 +54,8 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     MatOptionModule,
     MatTabsModule,
     MatChipsModule,
-    MatAutocompleteModule
+    MatAutocompleteModule,
+    MatProgressBarModule
   ],
   exports: [
     DragDropModule,
@@ -81,7 +83,8 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
     MatOptionModule,
     MatTabsModule,
     MatChipsModule,
-    MatAutocompleteModule
+    MatAutocompleteModule,
+    MatProgressBarModule
   ],
   declarations: [],
   providers: [
