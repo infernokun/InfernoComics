@@ -399,7 +399,6 @@ def run_evaluation(folder_path, session_id):
         })
         evaluation_state['status'] = 'error'
 
-# Routes (same as before)
 @evaluation_bp.route('/evaluation', methods=['GET', 'POST'])
 def evaluation():
     if request.method == 'GET':

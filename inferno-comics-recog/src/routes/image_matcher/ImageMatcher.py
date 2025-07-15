@@ -201,7 +201,8 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
                 'issue_number': cover_info.get('issue_number', 'Unknown'),
                 'comic_vine_id': cover_info.get('comic_vine_id', None),
                 'cover_error': cover_info.get('error', ''),
-                'parent_comic_vine_id': cover_info.get('parent_comic_vine_id', None)
+                'parent_comic_vine_id': cover_info.get('parent_comic_vine_id', None),
+                'session_id': session_id
             }
             enhanced_results.append(enhanced_result)
         
