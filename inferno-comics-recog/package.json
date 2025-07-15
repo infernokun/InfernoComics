@@ -2,10 +2,31 @@
   "name": "inferno-comics-recog",
   "version": "0.0.1",
   "scripts": {
-    "start": "python3 src/recog.py",
+    "start": "venv/bin/python3 src/recog.py",
+    "start:debug": "/usr/bin/python3 src/recog.py --debug",
+    
+    "dev:setup": "npm run venv:init && echo 'Now activate the venv and run: npm run deps:install'",
+    "dev:activate": "source venv/bin/activate",
+    "dev:reset": "npm run venv:remove && npm run venv:init && echo 'Virtual environment reset. Activate it and run: npm run deps:install'",
+    "dev:clean": "npm run venv:remove && echo 'Development environment cleaned'",
+    
+    "venv:init": "/usr/bin/python3 -m venv venv && echo 'Virtual environment created. Run: pnpm run dev:activate'",
+    "venv:remove": "rm -rf venv && echo 'Virtual environment removed'",
+    "venv:remove:win": "rmdir /s venv && echo 'Virtual environment removed'",
+    "venv:activate": "echo 'Run: source venv/bin/activate (Linux/Mac) or venv\\Scripts\\activate.bat (Windows)'",
+    
+    "deps:install": "venv/bin/python3 -m pip install -r requirements.txt",
+    "deps:freeze": "venv/bin/python3 -m pip freeze > requirements.txt && echo 'Requirements exported to requirements.txt'",
+    "deps:upgrade": "venv/bin/python3 -m pip install --upgrade -r requirements.txt",
+    "deps:check": "venv/bin/python3 -m pip list --outdated",
+
+    "lint": "venv/bin/python3 -m flake8 src/ --max-line-length=100",
+    "format": "venv/bin/python3 -m black src/",
+    "test": "venv/bin/python3 -m pytest tests/ -v",
+    
+    "docker:build": "npm run docker:build-compile && npm run docker:build-runtime && npm run docker:push",
     "docker:build-compile": "export PROJECT=$(jq -r .name package.json) && docker buildx build --target build-stage --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg PROJECT=$PROJECT -t infernokun/${npm_package_name}:compile .",
     "docker:build-runtime": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && PORT=$(jq -r .port package.json) && docker buildx build --target runtime-stage --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg PORT=$PORT --build-arg PROJECT=$PROJECT -t infernokun/${npm_package_name}:$VERSION -t infernokun/${npm_package_name}:latest .",
-    "docker:push": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker push infernokun/$PROJECT:$VERSION && docker push infernokun/$PROJECT:latest",
-    "docker:build": "npm run docker:build-compile && npm run docker:build-runtime && npm run docker:push"
+    "docker:push": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker push infernokun/$PROJECT:$VERSION && docker push infernokun/$PROJECT:latest"
   }
 }
