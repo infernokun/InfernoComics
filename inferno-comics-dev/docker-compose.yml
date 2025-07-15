@@ -1,34 +1,50 @@
 services:
   postgres:
+    container_name: inferno_comics_psql
     image: postgres:17.4
-    container_name: postgres-db
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-inferno-comics}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-inferno-comics}
       POSTGRES_DB: ${POSTGRES_DB:-inferno-comics}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - inferno-comics-network
 
   pgadmin:
+    container_name: inferno_comics_pgadmin
     image: dpage/pgadmin4:latest
-    container_name: pgadmin_container
     restart: always
     environment:
       PGADMIN_DEFAULT_EMAIL: ${POSTGRES_USER:-inferno-comics}@${POSTGRES_USER:-inferno-comics}.com
       PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD:-inferno-comics}
     ports:
-      - "5050:80"
+      - "5051:80"
     networks:
       - inferno-comics-network
 
+  redis:
+    container_name: inferno_comics_redis
+    image: redis:latest
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - inferno-comics-network
+    environment:
+      - REDIS_PASSWORD=inferno-comics
+    command: redis-server --appendonly yes
+
 volumes:
   postgres-data:
-
+    driver: local
+  redis_data:
+    driver: local
 networks:
   inferno-comics-network:
     driver: bridge

@@ -19,8 +19,10 @@ import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,6 +31,7 @@ import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,6 +46,7 @@ public class SeriesService {
     private final InfernoComicsConfig infernoComicsConfig;
     private final GCDAPIService gcdapiService;
     private final ModelMapper modelMapper;
+    private final ImageProcessingProgressService progressService;
 
     private final WebClient webClient;
 
@@ -50,7 +54,14 @@ public class SeriesService {
 
     public SeriesService(SeriesRepository seriesRepository,
                          ComicVineService comicVineService,
-                         DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, GCDCoverPageScraper gcdCoverPageScraper, InfernoComicsConfig infernoComicsConfig1, GCDAPIService gcdapiService, ModelMapper modelMapper, InfernoComicsConfig infernoComicsConfig) {
+                         DescriptionGeneratorService descriptionGeneratorService,
+                         GCDatabaseService gcDatabaseService,
+                         GCDCoverPageScraper gcdCoverPageScraper,
+                         InfernoComicsConfig infernoComicsConfig1,
+                         GCDAPIService gcdapiService,
+                         ModelMapper modelMapper,
+                         InfernoComicsConfig infernoComicsConfig,
+                         ImageProcessingProgressService progressService) {
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
@@ -59,6 +70,7 @@ public class SeriesService {
         this.infernoComicsConfig = infernoComicsConfig1;
         this.gcdapiService = gcdapiService;
         this.modelMapper = modelMapper;
+        this.progressService = progressService;
         urlCache.put(0, new ArrayList<>());
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
@@ -322,6 +334,7 @@ public class SeriesService {
                 .collect(Collectors.toList());
     }
 
+    // ORIGINAL METHOD - Keep for backward compatibility
     public JsonNode addIssueByImage(Long seriesId, MultipartFile imageFile, String name, int year) {
         log.info("🚀 Starting image processing for series ID: {}", seriesId);
 
@@ -343,8 +356,7 @@ public class SeriesService {
         log.info("🦸 Starting ComicVine search for series: {}", seriesId);
         List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
 
-        log.info("🦸 ComicVine completed: Found {} issues",
-                results.size());
+        log.info("🦸 ComicVine completed: Found {} issues", results.size());
 
         List<GCDCover> candidateCovers = results.stream()
                 .flatMap(issue -> {
@@ -383,10 +395,9 @@ public class SeriesService {
 
     private JsonNode sendToImageMatcher(MultipartFile imageFile, List<GCDCover> candidateCovers, Series seriesEntity) {
         try {
-            log.info(" Preparing image matcher request...");
-            log.info("    Image file: {} ({} bytes)",
-                    imageFile.getOriginalFilename(), imageFile.getSize());
-            log.info("   ✅ Candidate covers: {}", candidateCovers.size());
+            log.info("📤 Preparing image matcher request...");
+            log.info("    Image file: {} ({} bytes)", imageFile.getOriginalFilename(), imageFile.getSize());
+            log.info("    ✅ Candidate covers: {}", candidateCovers.size());
 
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
 
@@ -398,7 +409,7 @@ public class SeriesService {
             try {
                 String candidateCoversJson = mapper.writeValueAsString(candidateCovers);
                 builder.part("candidate_covers", candidateCoversJson);
-                log.info(" Sending {} candidate covers as JSON", candidateCovers.size());
+                log.info("📤 Sending {} candidate covers as JSON", candidateCovers.size());
             } catch (JsonProcessingException e) {
                 log.error("❌ Failed to serialize candidate covers to JSON: {}", e.getMessage());
                 throw new RuntimeException("Failed to serialize candidate covers", e);
@@ -410,7 +421,7 @@ public class SeriesService {
             builder.part("total_candidates", String.valueOf(candidateCovers.size()));
             builder.part("urls_scraped", "true");
 
-            log.info(" Sending request to image matcher service...");
+            log.info("📤 Sending request to image matcher service...");
             long startTime = System.currentTimeMillis();
 
             String response = webClient.post()
@@ -422,18 +433,18 @@ public class SeriesService {
                     .block();
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info(" Image matcher response received in {}ms", duration);
+            log.info("📥 Image matcher response received in {}ms", duration);
 
             JsonNode root = mapper.readTree(response);
             JsonNode topMatches = root.get("top_matches");
 
             if (topMatches != null && topMatches.isArray()) {
-                log.info(" Image matcher found {} top matches", topMatches.size());
+                log.info("🎯 Image matcher found {} top matches", topMatches.size());
 
                 // Debug: Log match details with comic names
                 for (int i = 0; i < Math.min(3, topMatches.size()); i++) {
                     JsonNode match = topMatches.get(i);
-                    log.info("    Match {}: drop={}, issue={}, comic='{}', url={}, similarity={}",
+                    log.info("    Match {}: drop={}, issue={}, comic='{}', url={}, similarity={}",
                             i + 1,
                             match.has("similarity") && match.get("similarity").asDouble() < 0.15,
                             match.has("issue_name") ? match.get("issue_name").asText() : "N/A",
@@ -442,7 +453,7 @@ public class SeriesService {
                             match.has("similarity") ? match.get("similarity").asDouble() : 0);
                 }
             } else {
-                log.warn("⚠ No top_matches found in response");
+                log.warn("⚠️ No top_matches found in response");
             }
 
             return root;
@@ -453,6 +464,173 @@ public class SeriesService {
         }
     }
 
+    // NEW SSE-BASED METHOD - Enhanced with real-time progress
+    @Async("imageProcessingExecutor")
+    public CompletableFuture<Void> startImageProcessingWithProgress(String sessionId, Long seriesId, byte[] imageBytes, String originalFilename, String contentType, String name, int year) {
+        log.info("🚀 Starting SSE image processing session: {} for series ID: {}", sessionId, seriesId);
+
+        try {
+            // Initialize progress tracking
+            progressService.initializeSession(sessionId);
+
+            // Stage 1: Series validation (quick)
+            progressService.updateProgress(sessionId, "preparing", 2, "Validating series...");
+
+            Optional<Series> series = seriesRepository.findById(seriesId);
+            if (series.isEmpty()) {
+                progressService.sendError(sessionId, "Series not found with id: " + seriesId);
+                return CompletableFuture.completedFuture(null);
+            }
+
+            Series seriesEntity = series.get();
+            log.info("📚 Processing series: '{}' ({})", seriesEntity.getName(), seriesEntity.getStartYear());
+
+            List<GCDCover> candidateCovers;
+
+            if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty() && seriesEntity.getLastCachedCovers() != null) {
+                log.info("Using cached images for session: {}", sessionId);
+                progressService.updateProgress(sessionId, "preparing", 8, "Using cached cover data...");
+                candidateCovers = seriesEntity.getCachedCoverUrls();
+            } else {
+                // Stage 2: ComicVine search (medium effort)
+                progressService.updateProgress(sessionId, "preparing", 5, "Searching ComicVine database...");
+
+                log.info("🦸 Starting ComicVine search for series: {} (session: {})", seriesId, sessionId);
+                List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
+
+                progressService.updateProgress(sessionId, "preparing", 8, String.format("Found %d ComicVine issues", results.size()));
+                log.info("🦸 ComicVine completed: Found {} issues (session: {})", results.size(), sessionId);
+
+                candidateCovers = results.stream()
+                        .flatMap(issue -> {
+                            List<GCDCover> covers = new ArrayList<>();
+
+                            // First cover: Main cover from the issue
+                            GCDCover mainCover = new GCDCover();
+                            mainCover.setName(issue.getName());
+                            mainCover.setIssueNumber(issue.getIssueNumber());
+                            mainCover.setComicVineId(issue.getId());
+                            mainCover.setUrls(Collections.singletonList(issue.getImageUrl()));
+                            covers.add(mainCover);
+
+                            // Second cover: Variant covers from the issue
+                            issue.getVariants().forEach(i -> {
+                                GCDCover variantCover = new GCDCover();
+                                variantCover.setName(issue.getName());
+                                variantCover.setIssueNumber(issue.getIssueNumber());
+                                variantCover.setComicVineId(i.getId());
+                                variantCover.setUrls(Collections.singletonList(i.getOriginalUrl()));
+                                variantCover.setParentComicVineId(issue.getId());
+                                covers.add(variantCover);
+                            });
+
+                            return covers.stream();
+                        })
+                        .collect(Collectors.toList());
+
+                log.info("Comic vine has {} GCDCovers (session: {})", candidateCovers.size(), sessionId);
+
+                // Cache the covers
+                seriesEntity.setCachedCoverUrls(candidateCovers);
+                seriesRepository.save(seriesEntity);
+            }
+
+            // Stage 3: Hand off to Python for the heavy work (10% -> 100%)
+            progressService.updateProgress(sessionId, "preparing", 10,
+                    String.format("Sending %d candidates to image matcher...", candidateCovers.size()));
+
+            // Let Python handle ALL remaining progress from 10% -> 100%
+            JsonNode result = sendToImageMatcherWithProgress(sessionId, imageBytes, originalFilename, contentType, candidateCovers, seriesEntity);
+
+            log.info("✅ SSE image processing completed for session: {}", sessionId);
+
+        } catch (Exception e) {
+            log.error("❌ Error in SSE image processing for session {}: {}", sessionId, e.getMessage(), e);
+            progressService.sendError(sessionId, "Error processing image: " + e.getMessage());
+        }
+
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private JsonNode sendToImageMatcherWithProgress(String sessionId, byte[] imageBytes,
+                                                    String originalFilename, String contentType, List<GCDCover> candidateCovers, Series seriesEntity) {
+        try {
+            log.info("📤 Preparing Flask SSE image matcher request for session: {}...", sessionId);
+            log.info("    Image file: {} ({} bytes)", originalFilename, imageBytes.length);
+            log.info("    ✅ Candidate covers: {}", candidateCovers.size());
+
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
+
+            // Create ByteArrayResource from image bytes
+            builder.part("image", new ByteArrayResource(imageBytes) {
+                @Override
+                public String getFilename() {
+                    return originalFilename;
+                }
+            }).contentType(MediaType.valueOf(contentType != null ? contentType : "image/jpeg"));
+
+            // Convert GCDCover objects to JSON and send as candidate_covers
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String candidateCoversJson = mapper.writeValueAsString(candidateCovers);
+                builder.part("candidate_covers", candidateCoversJson);
+                log.info("📤 Sending {} candidate covers as JSON (session: {})", candidateCovers.size(), sessionId);
+            } catch (JsonProcessingException e) {
+                log.error("❌ Failed to serialize candidate covers to JSON: {}", e.getMessage());
+                throw new RuntimeException("Failed to serialize candidate covers", e);
+            }
+
+            // Add session ID so Python can report progress directly
+            builder.part("session_id", sessionId);
+
+            // Add metadata for better debugging
+            builder.part("series_name", seriesEntity.getName());
+            builder.part("series_start_year", seriesEntity.getStartYear().toString());
+            builder.part("total_candidates", String.valueOf(candidateCovers.size()));
+            builder.part("urls_scraped", "true");
+
+            log.info("📤 Sending request to image matcher service (session: {})...", sessionId);
+            long startTime = System.currentTimeMillis();
+
+            String response = webClient.post()
+                    .uri("/image-matcher")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(BodyInserters.fromMultipartData(builder.build()))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("📥 Image matcher response received in {}ms (session: {})", duration, sessionId);
+
+            JsonNode root = mapper.readTree(response);
+            JsonNode topMatches = root.get("top_matches");
+
+            if (topMatches != null && topMatches.isArray()) {
+                log.info("🎯 Image matcher found {} top matches (session: {})", topMatches.size(), sessionId);
+
+                // Debug: Log match details with comic names
+                for (int i = 0; i < Math.min(3, topMatches.size()); i++) {
+                    JsonNode match = topMatches.get(i);
+                    log.info("    Match {}: drop={}, issue={}, comic='{}', url={}, similarity={}",
+                            i + 1,
+                            match.has("similarity") && match.get("similarity").asDouble() < 0.15,
+                            match.has("issue_name") ? match.get("issue_name").asText() : "N/A",
+                            match.has("comic_name") ? match.get("comic_name").asText() : "N/A",
+                            match.has("url") ? match.get("url").asText() : "N/A",
+                            match.has("similarity") ? match.get("similarity").asDouble() : 0);
+                }
+            } else {
+                log.warn("⚠️ No top_matches found in response (session: {})", sessionId);
+            }
+
+            return root;
+
+        } catch (Exception e) {
+            log.error("❌ Failed to send image to matcher service (session: {}): {}", sessionId, e.getMessage(), e);
+            throw new RuntimeException("Failed to send image to matcher service", e);
+        }
+    }
     // Base request interface
     public interface SeriesRequest {
         String getName();

@@ -41,9 +41,6 @@ importers:
       '@ngrx/store':
         specifier: 19.2.0
         version: 19.2.0(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
-      '@ngstack/code-editor':
-        specifier: ^9.0.0
-        version: 9.0.0(@angular/common@19.2.14(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))
       ag-grid-angular:
         specifier: ^33.3.0
         version: 33.3.1(@angular/common@19.2.14(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))
@@ -68,9 +65,6 @@ importers:
       material-icons:
         specifier: 1.13.14
         version: 1.13.14
-      monaco-editor:
-        specifier: ^0.52.2
-        version: 0.52.2
       ngx-papaparse:
         specifier: ^8.0.0
         version: 8.0.0
@@ -1895,12 +1889,6 @@ packages:
     peerDependencies:
       '@angular/core': ^19.0.0
       rxjs: ^6.5.3 || ^7.5.0
-
-  '@ngstack/code-editor@9.0.0':
-    resolution: {integrity: sha512-sioi0qyeo9Q8PIdhGFmUeuEx6LETqSjC/4A1Fnl9HFVYzCU7mDVdyeUITubu+4THjraH1mIAVw2t0R7rDgdHdA==}
-    peerDependencies:
-      '@angular/common': '>=17.1.1'
-      '@angular/core': '>=17.1.1'
 
   '@ngtools/webpack@19.2.14':
     resolution: {integrity: sha512-PqrY+eeSUoF6JC6NCEQRPE/0Y2umSllD/fsDE6pnQrvGfztBpj0Jt1WMhgEI8BBcl4S7QW0LhPynkBmnCvTUmw==}
@@ -4643,9 +4631,6 @@ packages:
     resolution: {integrity: sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==}
     engines: {node: '>=10'}
     hasBin: true
-
-  monaco-editor@0.52.2:
-    resolution: {integrity: sha512-GEQWEZmfkOGLdd3XK8ryrfWz3AIP8YymVXiPHEdewrUq7mh0qrKrfHLNCXcbB6sTnMLnOZ3ztSiKcciFUkIJwQ==}
 
   mrmime@2.0.1:
     resolution: {integrity: sha512-Y3wQdFg2Va6etvQ5I82yUhGdsKrcYox6p7FfL1LbK2J4V01F9TGlepTIhnK24t7koZibmg82KGglhA1XK5IsLQ==}
@@ -8971,12 +8956,6 @@ snapshots:
       rxjs: 7.8.2
       tslib: 2.8.1
 
-  '@ngstack/code-editor@9.0.0(@angular/common@19.2.14(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))':
-    dependencies:
-      '@angular/common': 19.2.14(@angular/core@19.2.14(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
-      '@angular/core': 19.2.14(rxjs@7.8.2)(zone.js@0.15.1)
-      tslib: 2.8.1
-
   '@ngtools/webpack@19.2.14(@angular/compiler-cli@19.2.14(@angular/compiler@19.2.14)(typescript@5.5.4))(typescript@5.5.4)(webpack@5.98.0(esbuild@0.25.4))':
     dependencies:
       '@angular/compiler-cli': 19.2.14(@angular/compiler@19.2.14)(typescript@5.5.4)
@@ -12298,8 +12277,6 @@ snapshots:
   mkdirp@1.0.4: {}
 
   mkdirp@3.0.1: {}
-
-  monaco-editor@0.52.2: {}
 
   mrmime@2.0.1: {}
 

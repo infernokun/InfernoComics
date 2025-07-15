@@ -5,7 +5,7 @@ import { EnvironmentService } from './environment.service';
 import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
 
 export interface SSEProgressData {
-  type: 'progress' | 'complete' | 'error';
+  type: 'progress' | 'complete' | 'error' | 'heartbeat';
   sessionId: string;
   stage?: string;
   progress?: number;
@@ -20,7 +20,7 @@ export interface SSEProgressData {
 })
 export class SeriesService {
   private apiUrl: string = '';
-  
+
   constructor(
     private http: HttpClient,
     private environmentService: EnvironmentService
@@ -80,22 +80,24 @@ export class SeriesService {
   }
 
   // NEW SSE-BASED METHOD - Enhanced with real-time progress
-  addComicByImageWithSSE(seriesId: number, imageFile: File): Observable<SSEProgressData> {
+  addComicByImageWithSSE(seriesId: number, file: File): Observable<SSEProgressData> {
     const progressSubject = new Subject<SSEProgressData>();
-    
+
     // Step 1: Start the process and get session ID
     const formData = new FormData();
-    formData.append('image', imageFile);
-    formData.append('name', 'Unknown');
-    formData.append('year', new Date().getFullYear().toString());
+    formData.append('image', file);
 
-    this.http.post<{sessionId: string}>(
+    this.http.post<{ sessionId: string }>(
       `${this.apiUrl}/${seriesId}/add-comic-by-image/start`,
       formData
     ).subscribe({
       next: (response) => {
-        // Step 2: Connect to SSE stream for real-time progress
-        this.connectToSSEProgress(seriesId, response.sessionId, progressSubject);
+        console.log('Received session ID:', response.sessionId);
+
+        // Step 2: Wait a moment for the backend to initialize, then connect to SSE stream
+        setTimeout(() => {
+          this.connectToSSEProgress(seriesId, response.sessionId, progressSubject);
+        }, 500); // 500ms delay to ensure backend is ready
       },
       error: (error) => {
         console.error('Error starting image analysis:', error);
@@ -107,50 +109,111 @@ export class SeriesService {
   }
 
   private connectToSSEProgress(
-    seriesId: number, 
-    sessionId: string, 
+    seriesId: number,
+    sessionId: string,
     progressSubject: Subject<SSEProgressData>
   ): void {
-    
-    const eventSource = new EventSource(
-      `${this.apiUrl}/${seriesId}/add-comic-by-image/progress?sessionId=${sessionId}`
-    );
 
-    eventSource.onmessage = (event) => {
+    const sseUrl = `${this.apiUrl}/${seriesId}/add-comic-by-image/progress?sessionId=${sessionId}`;
+    console.log('Connecting to SSE URL:', sseUrl);
+
+    const eventSource = new EventSource(sseUrl);
+
+    // Add more detailed error handling
+    eventSource.onopen = (event) => {
+      console.log('SSE connection opened successfully for session:', sessionId);
+      console.log('Connection state:', eventSource.readyState); // Should be 1 (OPEN)
+    };
+
+    // Listen for the specific "progress" event name (not onmessage)
+    eventSource.addEventListener('progress', (event: any) => {
       try {
+        console.log('SSE progress event received:', event.data);
         const data: SSEProgressData = JSON.parse(event.data);
+
+        console.log('Parsed SSE progress data:', data);
+
+        // Skip heartbeat events (just for connection keep-alive)
+        if (data.type === 'heartbeat') {
+          console.log('SSE heartbeat received for session:', sessionId);
+          return;
+        }
+
+        console.log('Processing SSE progress data:', data);
         progressSubject.next(data);
-        
+
         // Close connection when complete or error
         if (data.type === 'complete' || data.type === 'error') {
+          console.log('SSE stream ending for session:', sessionId, 'type:', data.type);
+          console.log('SSE result data:', data.result);
           eventSource.close();
           progressSubject.complete();
         }
       } catch (error) {
-        console.error('Error parsing SSE data:', error);
+        console.error('Error parsing SSE progress data:', error, 'Raw data:', event.data);
+
+        // Check if it's a large JSON that might be truncated
+        if (typeof event.data === 'string' && event.data.length > 10000) {
+          console.warn('Very large SSE message received (', event.data.length, 'chars), might be truncated');
+        }
+
         eventSource.close();
         progressSubject.error(new Error('Failed to parse progress data'));
       }
+    });
+
+    // Also listen for generic messages as fallback
+    eventSource.onmessage = (event) => {
+      console.log('SSE generic message received (fallback):', event.data);
+      // This shouldn't normally be called if we're using named events
     };
 
     eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error);
+      console.error('SSE connection error details:', {
+        readyState: eventSource.readyState,
+        url: sseUrl,
+        error: error,
+        target: error.target,
+        type: error.type
+      });
+
+      // Check if this is just a natural connection close after completion
+      if (eventSource.readyState === EventSource.CLOSED) {
+        console.log('SSE connection closed (might be natural completion)');
+        // Don't treat as error if we've already completed
+        return;
+      }
+
+      // Check the readyState to understand the error better
+      switch (eventSource.readyState) {
+        case EventSource.CONNECTING:
+          console.log('SSE: Still trying to connect...');
+          break;
+        case EventSource.OPEN:
+          console.log('SSE: Connection is open but got an error');
+          break;
+        case EventSource.CLOSED:
+          console.log('SSE: Connection is closed');
+          break;
+      }
+
       eventSource.close();
       progressSubject.error(new Error('Connection to server lost during image analysis'));
     };
 
-    // Handle EventSource states
-    eventSource.onopen = () => {
-      console.log('SSE connection opened for session:', sessionId);
-    };
-
-    // Clean up EventSource when observable is unsubscribed
-    /*progressSubject.add(() => {
-      if (eventSource.readyState !== EventSource.CLOSED) {
+    // Add timeout handling
+    const connectionTimeout = setTimeout(() => {
+      if (eventSource.readyState === EventSource.CONNECTING) {
+        console.error('SSE connection timeout after 10 seconds');
         eventSource.close();
-        console.log('SSE connection closed for session:', sessionId);
+        progressSubject.error(new Error('Connection timeout'));
       }
-    });*/
+    }, 10000); // 10 second timeout
+
+    // Clear timeout when connection opens
+    eventSource.addEventListener('open', () => {
+      clearTimeout(connectionTimeout);
+    });
   }
 
   // Utility method to check if SSE is supported

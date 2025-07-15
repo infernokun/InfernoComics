@@ -1,24 +1,36 @@
 package com.infernokun.infernoComics.config.web;
 
 import com.infernokun.infernoComics.logger.InfernoComicsLogger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@Configuration
+import java.util.Arrays;
+import java.util.List;
+
+@Slf4j
 @EnableWebMvc
+@Configuration
 public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowedOriginPatterns("*")  // Allow all origins
-                .allowedMethods("*")         // Allow all HTTP methods
-                .allowedHeaders("*")         // Allow all headers
-                .allowCredentials(false);    // Do not require credentials
+        log.info("Configuring CORS mappings for SSE support");
+
+        registry.addMapping("/api/**")
+                .allowedOrigins("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(false)
+                .exposedHeaders("Content-Type", "Cache-Control", "Connection", "Transfer-Encoding") // Important for SSE
+                .maxAge(3600);
     }
 
     @Bean

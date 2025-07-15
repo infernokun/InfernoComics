@@ -9,6 +9,8 @@ import pickle
 import json
 from datetime import datetime
 from typing import Dict, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 # Set OpenCV to headless mode BEFORE importing cv2
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -563,8 +565,8 @@ class FeatureMatchingComicMatcher:
         
         return overall_similarity, match_results
     
-    def find_matches_img(self, query_image, candidate_urls, threshold=0.1):
-        """Main matching function with caching support"""
+    def find_matches_img(self, query_image, candidate_urls, threshold=0.1, progress_callback=None):
+        """Main matching function with caching support and progress callback"""
         print("🚀 Starting Cached Feature Matching Comic Search...")
         start_time = time.time()
         
@@ -574,6 +576,9 @@ class FeatureMatchingComicMatcher:
         print(f"📷 Received query image: {query_image.shape}")
         
         # Process query image (not cached since it's user input)
+        if progress_callback:
+            progress_callback(0, "Processing query image...")
+        
         query_image, was_cropped = self.detect_comic_area(query_image)
         query_features = self.extract_features(query_image)
         
@@ -582,31 +587,93 @@ class FeatureMatchingComicMatcher:
         
         print(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
         
+        if progress_callback:
+            progress_callback(1, f"Query features extracted - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
+        
         # Process candidates with caching
         print(f"⬇️ Processing {len(candidate_urls)} candidate images (with caching)...")
         
-        results = []
+        if progress_callback:
+            progress_callback(2, f"Starting analysis of {len(candidate_urls)} candidates...")
         
-        from tqdm import tqdm
-        for i, url in enumerate(tqdm(candidate_urls, desc="Processing candidates", unit="url"), 1):
+        results = []
+        total_candidates = len(candidate_urls)
+        
+        # Determine batch size for progress updates
+        batch_size = max(1, total_candidates // 20)  # Max 20 progress updates
+        
+        # Use ThreadPoolExecutor for parallel processing with progress tracking
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # Submit all jobs
+            future_to_url = {}
+            for i, url in enumerate(candidate_urls):
+                future = executor.submit(self._process_single_candidate_cached, query_features, url, i)
+                future_to_url[future] = (url, i)
             
+            # Collect results with progress updates
+            completed = 0
+            for future in as_completed(future_to_url):
+                url, index = future_to_url[future]
+                completed += 1
+                
+                try:
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                    
+                    # Send progress update every batch_size completions or for the last few
+                    if progress_callback and (completed % batch_size == 0 or completed >= total_candidates - 5):
+                        message = f"Analyzed {completed}/{total_candidates} candidates"
+                        if result and 'similarity' in result:
+                            message += f" (latest: {result['similarity']:.3f})"
+                        progress_callback(completed + 2, message)  # +2 to account for initial processing
+                        
+                except Exception as e:
+                    print(f"Error processing candidate {url}: {e}")
+                    # Still add a failed result
+                    results.append({
+                        'url': url,
+                        'similarity': 0.0,
+                        'status': 'processing_error',
+                        'match_details': {'error': str(e)},
+                        'candidate_features': {}
+                    })
+                    continue
+        
+        # Sort results by similarity
+        results.sort(key=lambda x: x['similarity'], reverse=True)
+        
+        # Filter by threshold
+        good_matches = [r for r in results if r['similarity'] >= threshold]
+        
+        if progress_callback:
+            progress_callback(total_candidates + 2, f"Completed analysis - found {len(good_matches)} matches above threshold")
+        
+        print(f"✨ Cached feature matching completed in {time.time() - start_time:.2f}s")
+        print(f"🎯 Found {len(good_matches)} matches above threshold ({threshold})")
+        
+        return results, query_features
+
+    def _process_single_candidate_cached(self, query_features, candidate_url, index):
+        """Process a single candidate URL with caching and return result"""
+        try:
             # Extract features (cached)
-            candidate_features = self.extract_features_cached(url)
+            candidate_features = self.extract_features_cached(candidate_url)
             
             if not candidate_features:
-                results.append({
-                    'url': url,
+                return {
+                    'url': candidate_url,
                     'similarity': 0.0,
                     'status': 'failed_features',
-                    'match_details': {}
-                })
-                continue
+                    'match_details': {'error': 'Failed to extract features'},
+                    'candidate_features': {}
+                }
             
             # Match features
             similarity, match_details = self.match_features(query_features, candidate_features)
             
-            results.append({
-                'url': url,
+            return {
+                'url': candidate_url,
                 'similarity': similarity,
                 'status': 'success',
                 'match_details': match_details,
@@ -614,19 +681,17 @@ class FeatureMatchingComicMatcher:
                     'sift_count': candidate_features['sift']['count'],
                     'orb_count': candidate_features['orb']['count']
                 }
-            })
+            }
+            
+        except Exception as e:
+            return {
+                'url': candidate_url,
+                'similarity': 0.0,
+                'status': 'processing_failed',
+                'match_details': {'error': str(e)},
+                'candidate_features': {}
+            }
         
-        # Sort by similarity
-        results.sort(key=lambda x: x['similarity'], reverse=True)
-        
-        # Filter by threshold
-        good_matches = [r for r in results if r['similarity'] >= threshold]
-        
-        print(f"✨ Cached feature matching completed in {time.time() - start_time:.2f}s")
-        print(f"🎯 Found {len(good_matches)} matches above threshold ({threshold})")
-        
-        return results, query_features
-    
     def get_cache_stats(self) -> Dict:
         """Get cache performance statistics"""
         conn = sqlite3.connect(self.db_path)

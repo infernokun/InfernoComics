@@ -6,18 +6,23 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
+import com.infernokun.infernoComics.services.ImageProcessingProgressService;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -25,9 +30,11 @@ import java.util.Optional;
 public class SeriesController {
 
     private final SeriesService seriesService;
+    private final ImageProcessingProgressService progressService;
 
-    public SeriesController(SeriesService seriesService) {
+    public SeriesController(SeriesService seriesService, ImageProcessingProgressService progressService) {
         this.seriesService = seriesService;
+        this.progressService = progressService;
     }
 
     @GetMapping
@@ -170,6 +177,7 @@ public class SeriesController {
         }
     }
 
+    // ORIGINAL METHOD - Keep for backward compatibility
     @PostMapping("{seriesId}/add-comic-by-image")
     public ResponseEntity<JsonNode> addComicByImage(@PathVariable Long seriesId, @RequestParam("image") MultipartFile imageFile,
                                                     @RequestParam(value = "name", required = false, defaultValue = "") String name,
@@ -194,6 +202,160 @@ public class SeriesController {
             ObjectNode errorJson = mapper.createObjectNode();
             errorJson.put("error", "Error processing image: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorJson);
+        }
+    }
+
+    // NEW SSE-BASED ENDPOINTS
+
+    /**
+     * Start image processing and return session ID
+     */
+    @PostMapping("{seriesId}/add-comic-by-image/start")
+    public ResponseEntity<Map<String, String>> startImageProcessing(
+            @PathVariable Long seriesId,
+            @RequestParam("image") MultipartFile imageFile,
+            @RequestParam(value = "name", required = false, defaultValue = "") String name,
+            @RequestParam(value = "year", required = false, defaultValue = "0") Integer year) {
+
+        try {
+            // Validate image
+            if (imageFile.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Image file is missing."));
+            }
+
+            // IMPORTANT: Read image bytes immediately before async processing
+            // This prevents the temp file from being cleaned up by Tomcat
+            byte[] imageBytes;
+            try {
+                imageBytes = imageFile.getBytes();
+                log.info("Read {} bytes from uploaded file: {}", imageBytes.length, imageFile.getOriginalFilename());
+            } catch (IOException e) {
+                log.error("Failed to read image bytes: {}", e.getMessage());
+                return ResponseEntity.badRequest().body(Map.of("error", "Failed to read image file."));
+            }
+
+            // Generate unique session ID
+            String sessionId = UUID.randomUUID().toString();
+
+            log.info("Starting image processing session: {} for series: {}", sessionId, seriesId);
+
+            // IMPORTANT: Initialize the session in progress service BEFORE starting async processing
+            progressService.initializeSession(sessionId);
+
+            // Start async processing with image bytes instead of MultipartFile
+            seriesService.startImageProcessingWithProgress(sessionId, seriesId, imageBytes,
+                    imageFile.getOriginalFilename(), imageFile.getContentType(), name, year);
+
+            return ResponseEntity.ok(Map.of("sessionId", sessionId));
+
+        } catch (Exception e) {
+            log.error("Error starting image processing: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error starting image processing: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Test SSE endpoint to verify SSE is working
+     */
+    @CrossOrigin(origins = "*", allowCredentials = "false")
+    @GetMapping(value = "test-sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter testSSE() {
+        log.info("Test SSE endpoint called");
+
+        SseEmitter emitter = new SseEmitter(10000L); // 10 second timeout
+
+        try {
+            // Send a simple test message immediately
+            emitter.send(SseEmitter.event()
+                    .name("test")
+                    .data("Hello from SSE!"));
+
+            log.info("Initial test message sent");
+
+            // Send a JSON message
+            emitter.send(SseEmitter.event()
+                    .name("progress")
+                    .data("{\"message\":\"SSE connection working!\",\"timestamp\":" + System.currentTimeMillis() + "}"));
+
+            log.info("JSON test message sent");
+
+            // Complete the connection after sending the messages
+            new Thread(() -> {
+                try {
+                    Thread.sleep(2000);
+
+                    emitter.send(SseEmitter.event()
+                            .name("complete")
+                            .data("{\"message\":\"Test complete\",\"success\":true}"));
+
+                    log.info("Completion message sent");
+
+                    Thread.sleep(500);
+                    emitter.complete();
+                    log.info("Test SSE completed");
+
+                } catch (Exception e) {
+                    log.error("Error in test SSE: {}", e.getMessage(), e);
+                    emitter.completeWithError(e);
+                }
+            }).start();
+
+        } catch (Exception e) {
+            log.error("Failed to send test SSE message: {}", e.getMessage(), e);
+            emitter.completeWithError(e);
+        }
+
+        return emitter;
+    }
+
+    /**
+     * SSE endpoint for real-time progress updates
+     */
+    @CrossOrigin(origins = "*", allowCredentials = "false")
+    @GetMapping(value = "{seriesId}/add-comic-by-image/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getImageProcessingProgress(
+            @PathVariable Long seriesId,
+            @RequestParam String sessionId) {
+
+        log.info("Client connecting to SSE progress stream for session: {} (series: {})", sessionId, seriesId);
+
+        try {
+            SseEmitter emitter = progressService.createProgressEmitter(sessionId);
+            log.info("SSE emitter created successfully for session: {}", sessionId);
+            return emitter;
+        } catch (Exception e) {
+            log.error("Failed to create SSE emitter for session {}: {}", sessionId, e.getMessage(), e);
+
+            // Return a failed emitter
+            SseEmitter errorEmitter = new SseEmitter(1000L);
+            try {
+                errorEmitter.send(SseEmitter.event()
+                        .name("error")
+                        .data("{\"error\":\"Failed to create progress stream\"}"));
+                errorEmitter.complete();
+            } catch (Exception sendError) {
+                log.error("Failed to send error via SSE: {}", sendError.getMessage());
+            }
+            return errorEmitter;
+        }
+    }
+
+    /**
+     * Get current status of image processing session (optional - for debugging)
+     */
+    @GetMapping("{seriesId}/add-comic-by-image/status")
+    public ResponseEntity<Map<String, Object>> getImageProcessingStatus(
+            @PathVariable Long seriesId,
+            @RequestParam String sessionId) {
+
+        try {
+            Map<String, Object> status = progressService.getSessionStatus(sessionId);
+            return ResponseEntity.ok(status);
+        } catch (Exception e) {
+            log.error("Error getting session status: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error getting session status"));
         }
     }
 

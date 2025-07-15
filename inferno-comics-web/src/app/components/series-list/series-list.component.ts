@@ -3,12 +3,15 @@ import { Router } from '@angular/router';
 import { SeriesService } from '../../services/series.service';
 import { Series } from '../../models/series.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { CommonModule } from '@angular/common';
+import { MaterialModule } from '../../material.module';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-series-list',
   templateUrl: './series-list.component.html',
   styleUrls: ['./series-list.component.scss'],
-  standalone: false
+  imports: [CommonModule, MaterialModule, FormsModule],
 })
 export class SeriesListComponent implements OnInit {
   series: Series[] = [];

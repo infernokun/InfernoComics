@@ -33,7 +33,7 @@ public class GCDCoverPageScraper {
     private List<WebDriver> driverPool;
     private int currentDriverIndex = 0;
 
-    @PostConstruct
+    //@PostConstruct
     public void initializeDriverPool() {
         log.info("🚀 Initializing Selenium driver pool with {} drivers", DRIVER_POOL_SIZE);
 

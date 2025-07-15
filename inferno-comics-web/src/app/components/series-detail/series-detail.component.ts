@@ -39,6 +39,9 @@ export class SeriesDetailComponent implements OnInit {
   loadingComicVine = false;
   selectedTabIndex = 0;
   isCompactView = false;
+  showFullDescription = false;
+
+  readonly DESCRIPTION_LIMIT = 100;
 
   constructor(
     private route: ActivatedRoute,
@@ -458,9 +461,19 @@ export class SeriesDetailComponent implements OnInit {
         
         // Handle the results after dialog auto-closes
         setTimeout(() => {
-          if (data.result && data.result.top_matches && data.result.top_matches.length > 0) {
-            this.openMatchSelectionDialog(data.result.top_matches, seriesId);
+          // Cast the result to ImageMatcherResponse for proper typing
+          const imageMatcherResponse = data.result as ImageMatcherResponse;
+          
+          if (imageMatcherResponse && 
+              imageMatcherResponse.top_matches && 
+              imageMatcherResponse.top_matches.length > 0) {
+            console.log('SSE Processing completed successfully, opening match selection dialog');
+            console.log('Top matches found:', imageMatcherResponse.top_matches.length);
+            
+            // Use the same method as fallback processing
+            this.openMatchSelectionDialog(imageMatcherResponse.top_matches, seriesId);
           } else {
+            console.log('No matches found in SSE result:', imageMatcherResponse);
             this.snackBar.open('No matching comics found', 'Close', {
               duration: 3000,
             });
@@ -469,7 +482,12 @@ export class SeriesDetailComponent implements OnInit {
         break;
 
       case 'error':
+        console.error('SSE Error received:', data.error);
         dialogComponent.setError(data.error || 'Unknown error occurred');
+        break;
+
+      default:
+        console.log('Unknown SSE event type:', data.type);
         break;
     }
   }
@@ -753,4 +771,94 @@ export class SeriesDetailComponent implements OnInit {
       }
     });
   }
+  
+  get limitedDescription(): string {
+    if (!this.series?.description) return '';
+    if (this.showFullDescription) return this.series.description;
+    if (this.series.description.length <= this.DESCRIPTION_LIMIT) return this.series.description;
+
+    return this.series.description.substring(0, this.DESCRIPTION_LIMIT) + '...';
+  }
+
+  toggleDescription(): void {
+    this.showFullDescription = !this.showFullDescription;
+  }
+
+// Add this method to your Angular component to test basic SSE
+
+testSSE(): void {
+  console.log('Testing basic SSE connection...');
+  
+  const testUrl = 'http://localhost:8080/inferno-comics-rest/api/series/test-sse';
+  console.log('Connecting to test SSE URL:', testUrl);
+  
+  const eventSource = new EventSource(testUrl);
+  
+  eventSource.onopen = (event) => {
+    console.log('✅ Test SSE connection opened successfully');
+    console.log('Event:', event);
+  };
+  
+  eventSource.onmessage = (event) => {
+    console.log('📨 Test SSE DEFAULT message received:', event.data);
+    console.log('Event details:', event);
+    try {
+      const data = JSON.parse(event.data);
+      console.log('📨 Parsed test SSE data:', data);
+    } catch (e) {
+      console.log('📨 Raw test SSE data (not JSON):', event.data);
+    }
+  };
+  
+  // Listen for specific event types
+  eventSource.addEventListener('test', (event: any) => {
+    console.log('🧪 Test SSE "test" event received:', event.data);
+    console.log('Test event details:', event);
+  });
+  
+  eventSource.addEventListener('progress', (event: any) => {
+    console.log('📈 Test SSE "progress" event received:', event.data);
+    console.log('Progress event details:', event);
+  });
+  
+  eventSource.addEventListener('complete', (event: any) => {
+    console.log('✅ Test SSE "complete" event received:', event.data);
+    console.log('Complete event details:', event);
+    eventSource.close();
+    console.log('Test SSE connection closed after complete event');
+  });
+  
+  eventSource.onerror = (error) => {
+    console.error('❌ Test SSE error:', {
+      readyState: eventSource.readyState,
+      error: error,
+      url: testUrl
+    });
+    
+    // Detailed readyState information
+    switch (eventSource.readyState) {
+      case EventSource.CONNECTING:
+        console.log('SSE State: CONNECTING (0)');
+        break;
+      case EventSource.OPEN:
+        console.log('SSE State: OPEN (1)');
+        break;
+      case EventSource.CLOSED:
+        console.log('SSE State: CLOSED (2)');
+        break;
+      default:
+        console.log('SSE State: Unknown', eventSource.readyState);
+    }
+    
+    eventSource.close();
+  };
+  
+  // Auto-close after 15 seconds if still open
+  setTimeout(() => {
+    if (eventSource.readyState !== EventSource.CLOSED) {
+      console.log('🕐 Test SSE timeout - closing connection');
+      eventSource.close();
+    }
+  }, 15000);
+}
 }

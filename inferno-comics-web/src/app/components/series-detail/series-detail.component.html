@@ -26,9 +26,16 @@
       </div>
       <div class="description" *ngIf="series.description">
         @if (series.generatedDescription) {
-        <p class="generated-description">Generated Description</p>
+          <p class="generated-description">Generated Description</p>
         }
-        {{ series.description }}
+        {{ limitedDescription }}
+
+        <button 
+          *ngIf="series.description.length > DESCRIPTION_LIMIT" 
+          (click)="toggleDescription()" 
+          class="show-more-btn">
+          {{ showFullDescription ? 'Show less' : 'Show more' }}
+        </button>
       </div>
       <div class="value-info">
         <div class="value-card">
@@ -78,6 +85,10 @@
 
           <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
             Add Comic By Image
+          </button>
+
+          <button mat-stroked-button color="primary" matTooltip="Test" (click)="testSSE()">
+            Test
           </button>
 
           <!-- Grid View (Default) -->

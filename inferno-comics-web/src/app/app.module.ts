@@ -9,13 +9,13 @@ import { MaterialModule } from './material.module';
 import { EnvironmentService } from './services/environment.service';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { CodeEditorModule, provideCodeEditor } from '@ngstack/code-editor';
-import { AgGridAngular } from 'ag-grid-angular';
+import { AgGridAngular, AgGridModule } from 'ag-grid-angular';
 import { AuthInterceptor } from './services/auth/auth-interceptor.service';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { SeriesFormComponent } from './components/series-form/series-form.component';
 import { SeriesListComponent } from './components/series-list/series-list.component';
 import { ThemeService } from './services/theme.service';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 export function init_app(environmentService: EnvironmentService) {
   return () => {
@@ -38,7 +38,6 @@ export function init_app(environmentService: EnvironmentService) {
 @NgModule({
   declarations: [
     AppComponent,
-    SeriesListComponent,
     SeriesFormComponent,
     DashboardComponent
   ],
@@ -50,8 +49,7 @@ export function init_app(environmentService: EnvironmentService) {
     FormsModule,
     MaterialModule,
     CommonModule,
-    CodeEditorModule,
-    AgGridAngular,
+    AgGridModule,
   ],
   providers: [
     EnvironmentService,
@@ -65,11 +63,7 @@ export function init_app(environmentService: EnvironmentService) {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,
       multi: true
-    },
-    provideCodeEditor({
-      editorVersion: '0.44.0',
-      baseUrl: '/assets/monaco-editor/min'
-    })
+    }
   ],
   bootstrap: [AppComponent]
 })
