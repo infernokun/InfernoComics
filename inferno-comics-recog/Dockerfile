@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
-COPY --link src/requirements.txt /app/requirements.txt
+COPY --link requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Runtime
