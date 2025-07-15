@@ -7,7 +7,7 @@ from config.Config import Config
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 from routes.health.Health import health_bp
 from routes.image_matcher.ImageMatcher import image_matcher_bp
-from routes.evaluate.Evaluation import evaluation_bp
+from routes.evaluation.Evaluation import evaluation_bp
 
 # Configure logging
 logging.basicConfig(
