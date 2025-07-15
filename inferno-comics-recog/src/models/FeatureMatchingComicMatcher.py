@@ -1,15 +1,18 @@
 import os
 import cv2
-import numpy as np
-import requests
-import hashlib
+import json
 import time
 import sqlite3
 import pickle
-import json
+import requests
+import hashlib
+import numpy as np
 from datetime import datetime
+from util.Logger import get_logger
 from typing import Dict, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = get_logger(__name__)
 
 # Set OpenCV to headless mode BEFORE importing cv2
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -26,7 +29,7 @@ def safe_progress_callback(callback, current_item, message=""):
         try:
             callback(current_item, message)
         except Exception as e:
-            print(f"Progress callback error: {e}")
+            logger.warning(f"⚠️ Progress callback error: {e}")
             pass  # Continue execution even if progress fails
 
 class FeatureMatchingComicMatcher:
@@ -35,8 +38,14 @@ class FeatureMatchingComicMatcher:
         self.db_path = db_path
         self.max_workers = max_workers
         
+        logger.info(f" Initializing FeatureMatchingComicMatcher")
+        logger.debug(f" Cache directory: {cache_dir}")
+        logger.debug(f"️ Database path: {db_path}")
+        logger.debug(f" Max workers: {max_workers}")
+        
         # Create directories
         os.makedirs(cache_dir, exist_ok=True)
+        logger.debug(f" Ensured cache directory exists: {cache_dir}")
         
         # Initialize database
         self._init_database()
@@ -44,16 +53,19 @@ class FeatureMatchingComicMatcher:
         # Initialize feature detectors
         self.sift = cv2.SIFT_create(nfeatures=1000)
         self.orb = cv2.ORB_create(nfeatures=1000)
+        logger.debug(" Initialized SIFT and ORB feature detectors")
         
         # Matchers
         self.bf_matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
         self.orb_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+        logger.debug(" Initialized feature matchers")
         
         # Session for downloads
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
+        logger.debug(" Initialized HTTP session for downloads")
         
         # Cache statistics
         self.cache_stats = {
@@ -63,9 +75,13 @@ class FeatureMatchingComicMatcher:
             'feature_cache_misses': 0,
             'processing_time_saved': 0.0
         }
+        
+        logger.success("✅ FeatureMatchingComicMatcher initialization complete")
     
     def _init_database(self):
         """Initialize SQLite database with proper schema"""
+        logger.debug("️ Initializing SQLite database...")
+        
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -121,6 +137,8 @@ class FeatureMatchingComicMatcher:
         
         conn.commit()
         conn.close()
+        
+        logger.success("✅ Database initialization complete")
     
     def _get_url_hash(self, url: str) -> str:
         """Generate consistent hash for URL"""
@@ -182,9 +200,11 @@ class FeatureMatchingComicMatcher:
             # Update last accessed time
             self._update_access_time('cached_images', url_hash)
             self.cache_stats['image_cache_hits'] += 1
+            logger.debug(f" Cache hit for image: {url[:50]}...")
             return cv2.imread(result[0])
         
         self.cache_stats['image_cache_misses'] += 1
+        logger.debug(f"❌ Cache miss for image: {url[:50]}...")
         return None
     
     def _cache_image(self, url: str, image: np.ndarray) -> str:
@@ -209,6 +229,7 @@ class FeatureMatchingComicMatcher:
         conn.commit()
         conn.close()
         
+        logger.debug(f" Cached image: {file_size} bytes at {file_path}")
         return file_path
     
     def _get_cached_features(self, url: str) -> Optional[Dict]:
@@ -234,6 +255,8 @@ class FeatureMatchingComicMatcher:
             self.cache_stats['feature_cache_hits'] += 1
             self.cache_stats['processing_time_saved'] += result[6]  # processing_time
             
+            logger.debug(f" Feature cache hit: {url[:50]}... (saved {result[6]:.2f}s)")
+            
             # Deserialize features
             sift_kp = self._deserialize_keypoints(result[0])
             sift_desc = pickle.loads(result[1]) if result[1] else None
@@ -257,6 +280,7 @@ class FeatureMatchingComicMatcher:
             }
         
         self.cache_stats['feature_cache_misses'] += 1
+        logger.debug(f"❌ Feature cache miss: {url[:50]}...")
         return None
     
     def _cache_features(self, url: str, features: Dict, processing_time: float, 
@@ -287,6 +311,8 @@ class FeatureMatchingComicMatcher:
         
         conn.commit()
         conn.close()
+        
+        logger.debug(f" Cached features: SIFT={features['sift']['count']}, ORB={features['orb']['count']} ({processing_time:.2f}s)")
     
     def _update_access_time(self, table: str, url_hash: str):
         """Update last accessed time for cache entry"""
@@ -311,6 +337,7 @@ class FeatureMatchingComicMatcher:
         
         # Download if not cached
         try:
+            logger.debug(f"⬇️ Downloading image: {url[:50]}...")
             response = self.session.get(url, timeout=timeout)
             response.raise_for_status()
             
@@ -320,11 +347,14 @@ class FeatureMatchingComicMatcher:
             if image is not None:
                 # Cache the downloaded image
                 self._cache_image(url, image)
+                logger.success(f"✅ Downloaded and cached: {url[:50]}...")
+            else:
+                logger.warning(f"⚠️ Failed to decode image: {url[:50]}...")
             
             return image
             
         except Exception as e:
-            print(f"Download error for {url}: {e}")
+            logger.error(f"❌ Download error for {url[:50]}...: {e}")
             return None
     
     def detect_comic_area(self, image):
@@ -334,6 +364,8 @@ class FeatureMatchingComicMatcher:
             
         original = image.copy()
         h, w = image.shape[:2]
+        
+        logger.debug(f" Detecting comic area in image: {w}x{h}")
         
         # Convert to grayscale for edge detection
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -355,6 +387,7 @@ class FeatureMatchingComicMatcher:
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
+            logger.debug(" No contours found for comic detection")
             return original, False
         
         # Find the best rectangular contour
@@ -391,10 +424,10 @@ class FeatureMatchingComicMatcher:
             ch = min(h - y, ch + 2 * pad)
             
             cropped = image[y:y+ch, x:x+cw]
-            print(f"✅ Comic detected and cropped: {original.shape} -> {cropped.shape}")
+            logger.success(f"✅ Comic detected and cropped: {original.shape} -> {cropped.shape}")
             return cropped, True
         
-        print(f"❌ No reliable comic detection, using full image")
+        logger.debug(f" No reliable comic detection, using full image")
         return original, False
     
     def preprocess_image(self, image):
@@ -408,6 +441,7 @@ class FeatureMatchingComicMatcher:
             scale = 800 / max(h, w)
             new_w, new_h = int(w * scale), int(h * scale)
             image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            logger.debug(f" Resized image from {w}x{h} to {new_w}x{new_h}")
         
         # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
@@ -440,8 +474,9 @@ class FeatureMatchingComicMatcher:
                 'descriptors': sift_desc,
                 'count': len(sift_kp) if sift_kp else 0
             }
+            logger.debug(f" SIFT features extracted: {features['sift']['count']}")
         except Exception as e:
-            print(f"SIFT feature extraction failed: {e}")
+            logger.warning(f"⚠️ SIFT feature extraction failed: {e}")
             features['sift'] = {'keypoints': [], 'descriptors': None, 'count': 0}
         
         try:
@@ -452,8 +487,9 @@ class FeatureMatchingComicMatcher:
                 'descriptors': orb_desc,
                 'count': len(orb_kp) if orb_kp else 0
             }
+            logger.debug(f" ORB features extracted: {features['orb']['count']}")
         except Exception as e:
-            print(f"ORB feature extraction failed: {e}")
+            logger.warning(f"⚠️ ORB feature extraction failed: {e}")
             features['orb'] = {'keypoints': [], 'descriptors': None, 'count': 0}
         
         return features
@@ -475,6 +511,8 @@ class FeatureMatchingComicMatcher:
         cropped_image, was_cropped = self.detect_comic_area(image)
         features = self.extract_features(cropped_image)
         processing_time = time.time() - start_time
+        
+        logger.debug(f" Feature extraction took {processing_time:.2f}s")
         
         if features is not None:
             # Cache the features
@@ -522,8 +560,10 @@ class FeatureMatchingComicMatcher:
                     'similarity': sift_similarity
                 }
                 
+                logger.debug(f" SIFT matching: {len(good_matches)}/{len(matches)} good matches, similarity: {sift_similarity:.3f}")
+                
             except Exception as e:
-                print(f"SIFT matching error: {e}")
+                logger.warning(f"⚠️ SIFT matching error: {e}")
                 match_results['sift'] = {'total_matches': 0, 'good_matches': 0, 'similarity': 0.0}
         
         # ORB matching
@@ -557,31 +597,37 @@ class FeatureMatchingComicMatcher:
                     'similarity': orb_similarity
                 }
                 
+                logger.debug(f" ORB matching: {len(good_matches)}/{len(matches)} good matches, similarity: {orb_similarity:.3f}")
+                
             except Exception as e:
-                print(f"ORB matching error: {e}")
+                logger.warning(f"⚠️ ORB matching error: {e}")
                 match_results['orb'] = {'total_matches': 0, 'good_matches': 0, 'similarity': 0.0}
         
         # Combine similarities
         if sift_similarity > 0 and orb_similarity > 0:
             overall_similarity = 0.7 * sift_similarity + 0.3 * orb_similarity
+            logger.debug(f" Combined similarity: {overall_similarity:.3f} (SIFT: {sift_similarity:.3f}, ORB: {orb_similarity:.3f})")
         elif sift_similarity > 0:
             overall_similarity = sift_similarity
+            logger.debug(f" SIFT-only similarity: {overall_similarity:.3f}")
         elif orb_similarity > 0:
             overall_similarity = orb_similarity
+            logger.debug(f" ORB-only similarity: {overall_similarity:.3f}")
         else:
             overall_similarity = 0.0
+            logger.debug(" No valid similarity found")
         
         return overall_similarity, match_results
     
     def find_matches_img(self, query_image, candidate_urls, threshold=0.1, progress_callback=None):
         """Main matching function with caching support and progress callback"""
-        print("🚀 Starting Cached Feature Matching Comic Search...")
+        logger.info(" Starting Cached Feature Matching Comic Search...")
         start_time = time.time()
         
         if query_image is None:
             raise ValueError("Query image data is None")
         
-        print(f"📷 Received query image: {query_image.shape}")
+        logger.info(f" Received query image: {query_image.shape}")
         
         # Process query image (not cached since it's user input)
         # Use safe progress callback for initial processing
@@ -593,13 +639,13 @@ class FeatureMatchingComicMatcher:
         if not query_features:
             raise ValueError("Could not extract features from query image")
         
-        print(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
+        logger.success(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
         
         # Use safe progress callback for feature extraction completion
         safe_progress_callback(progress_callback, 1, f"Query features extracted - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
         
         # Process candidates with caching
-        print(f"⬇️ Processing {len(candidate_urls)} candidate images (with caching)...")
+        logger.info(f"⬇️ Processing {len(candidate_urls)} candidate images (with caching)...")
         
         # Use safe progress callback for starting candidate analysis
         safe_progress_callback(progress_callback, 2, f"Starting analysis of {len(candidate_urls)} candidates...")
@@ -608,13 +654,17 @@ class FeatureMatchingComicMatcher:
         total_candidates = len(candidate_urls)
         
         if total_candidates == 0:
+            logger.warning("⚠️ No candidate URLs provided")
             return results, query_features
         
         # Determine batch size for progress updates
         batch_size = max(1, total_candidates // 20)  # Max 20 progress updates
+        logger.debug(f" Progress batch size: {batch_size}")
         
         # Use ThreadPoolExecutor for parallel processing with progress tracking
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            logger.debug(f" Using {self.max_workers} worker threads")
+            
             # Submit all jobs
             future_to_url = {}
             for i, url in enumerate(candidate_urls):
@@ -631,6 +681,8 @@ class FeatureMatchingComicMatcher:
                     result = future.result()
                     if result:
                         results.append(result)
+                        if result.get('similarity', 0) >= threshold:
+                            logger.debug(f" Good match found: {url[:50]}... (similarity: {result['similarity']:.3f})")
                     
                     # Send progress update every batch_size completions or for the last few
                     if completed % batch_size == 0 or completed >= total_candidates - 5:
@@ -642,7 +694,7 @@ class FeatureMatchingComicMatcher:
                         safe_progress_callback(progress_callback, completed + 3, message)
                         
                 except Exception as e:
-                    print(f"Error processing candidate {url}: {e}")
+                    logger.error(f"❌ Error processing candidate {url[:50]}...: {e}")
                     # Still add a failed result
                     results.append({
                         'url': url,
@@ -663,8 +715,12 @@ class FeatureMatchingComicMatcher:
         # Add 3 to account for initial processing steps
         safe_progress_callback(progress_callback, total_candidates + 3, f"Completed analysis - found {len(good_matches)} matches above threshold")
         
-        print(f"✨ Cached feature matching completed in {time.time() - start_time:.2f}s")
-        print(f"🎯 Found {len(good_matches)} matches above threshold ({threshold})")
+        total_time = time.time() - start_time
+        logger.success(f"✨ Cached feature matching completed in {total_time:.2f}s")
+        logger.info(f" Found {len(good_matches)} matches above threshold ({threshold})")
+        
+        if good_matches:
+            logger.info(f" Top match: {good_matches[0]['url'][:50]}... (similarity: {good_matches[0]['similarity']:.3f})")
         
         return results, query_features
 
@@ -675,6 +731,7 @@ class FeatureMatchingComicMatcher:
             candidate_features = self.extract_features_cached(candidate_url)
             
             if not candidate_features:
+                logger.debug(f"❌ Failed to extract features for: {candidate_url[:50]}...")
                 return {
                     'url': candidate_url,
                     'similarity': 0.0,
@@ -698,6 +755,7 @@ class FeatureMatchingComicMatcher:
             }
             
         except Exception as e:
+            logger.error(f"❌ Processing failed for {candidate_url[:50]}...: {e}")
             return {
                 'url': candidate_url,
                 'similarity': 0.0,
@@ -750,25 +808,27 @@ class FeatureMatchingComicMatcher:
         """Print cache statistics in a nice format"""
         stats = self.get_cache_stats()
         
-        print("\n" + "="*50)
-        print("📊 CACHE PERFORMANCE STATISTICS")
-        print("="*50)
-        print(f"💾 Cached Images: {stats['cached_images_count']}")
-        print(f"🔍 Cached Features: {stats['cached_features_count']}")
-        print(f"💿 Disk Usage: {stats['total_disk_usage_mb']:.1f} MB")
-        print(f"⏱️ Processing Time Saved: {stats['total_processing_time_saved']:.2f} seconds")
-        print(f"📈 Image Cache Hit Rate: {stats['image_cache_hit_rate']:.1f}%")
-        print(f"🎯 Feature Cache Hit Rate: {stats['feature_cache_hit_rate']:.1f}%")
-        print(f"✅ Image Cache Hits: {stats['image_cache_hits']}")
-        print(f"❌ Image Cache Misses: {stats['image_cache_misses']}")
-        print(f"✅ Feature Cache Hits: {stats['feature_cache_hits']}")
-        print(f"❌ Feature Cache Misses: {stats['feature_cache_misses']}")
+        logger.info("\n" + "="*50)
+        logger.info(" CACHE PERFORMANCE STATISTICS")
+        logger.info("="*50)
+        logger.info(f" Cached Images: {stats['cached_images_count']}")
+        logger.info(f" Cached Features: {stats['cached_features_count']}")
+        logger.info(f" Disk Usage: {stats['total_disk_usage_mb']:.1f} MB")
+        logger.info(f"⏱️ Processing Time Saved: {stats['total_processing_time_saved']:.2f} seconds")
+        logger.info(f" Image Cache Hit Rate: {stats['image_cache_hit_rate']:.1f}%")
+        logger.info(f" Feature Cache Hit Rate: {stats['feature_cache_hit_rate']:.1f}%")
+        logger.info(f"✅ Image Cache Hits: {stats['image_cache_hits']}")
+        logger.info(f"❌ Image Cache Misses: {stats['image_cache_misses']}")
+        logger.info(f"✅ Feature Cache Hits: {stats['feature_cache_hits']}")
+        logger.info(f"❌ Feature Cache Misses: {stats['feature_cache_misses']}")
         
         if stats['total_processing_time_saved'] > 0:
-            print(f"🚀 Efficiency Gained: {stats['total_processing_time_saved']:.1f}s saved!")
+            logger.success(f" Efficiency Gained: {stats['total_processing_time_saved']:.1f}s saved!")
     
     def cleanup_old_cache(self, days_old: int = 30):
         """Remove cache entries older than specified days"""
+        logger.info(f"粒 Starting cache cleanup for entries older than {days_old} days...")
+        
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -781,14 +841,20 @@ class FeatureMatchingComicMatcher:
         old_entries = cursor.fetchall()
         
         # Delete old files and database entries
+        cleaned_count = 0
         for url_hash, file_path in old_entries:
             if os.path.exists(file_path):
                 os.remove(file_path)
+                logger.debug(f"️ Removed file: {file_path}")
             
             cursor.execute('DELETE FROM cached_features WHERE url_hash = ?', (url_hash,))
             cursor.execute('DELETE FROM cached_images WHERE url_hash = ?', (url_hash,))
+            cleaned_count += 1
         
         conn.commit()
         conn.close()
         
-        print(f"🧹 Cleaned up {len(old_entries)} old cache entries")
+        if cleaned_count > 0:
+            logger.success(f"粒 Cleaned up {cleaned_count} old cache entries")
+        else:
+            logger.info("粒 No old cache entries found to clean")

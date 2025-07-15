@@ -2,9 +2,9 @@ import os
 import requests
 from time import time
 from flask import current_app
+from util.Logger import get_logger
 
-# Configuration for Java progress service integration
-
+logger = get_logger(__name__)
 
 # Timeout settings for Java communication
 JAVA_REQUEST_TIMEOUT = int(os.getenv('JAVA_REQUEST_TIMEOUT', '5'))  # seconds
@@ -14,7 +14,6 @@ JAVA_PROGRESS_TIMEOUT = int(os.getenv('JAVA_PROGRESS_TIMEOUT', '2'))  # seconds
 PROGRESS_BATCH_SIZE = int(os.getenv('PROGRESS_BATCH_SIZE', '5'))  # Update every N candidates
 MAX_PROGRESS_UPDATES = int(os.getenv('MAX_PROGRESS_UPDATES', '20'))  # Max updates during matching
 
-# Enhanced JavaProgressReporter with configuration
 class JavaProgressReporter:
     """Enhanced class to report progress back to Java's progress service"""
     
@@ -23,23 +22,27 @@ class JavaProgressReporter:
         self.last_progress_time = 0
         self.min_progress_interval = 0.5  # Minimum seconds between progress updates
         
-        # Initialize health check on startup
         self.rest_api_url = current_app.config.get('REST_API')
 
-        print(f"🔗 Java Progress Service URL: {self.rest_api_url}")
+        logger.info(f" Java Progress Service URL: {self.rest_api_url}")
         
         if self.check_java_service_health():
-            print("✅ Java progress service is available")
+            logger.success("✅ Java progress service is available")
         else:
-            print("⚠️ Java progress service is not available - progress updates will be logged only")
+            logger.warning("⚠️ Java progress service is not available - progress updates will be logged only")
         
     def check_java_service_health(self):
         """Check if Java progress service is available"""
         try:
             response = requests.get(f"{self.rest_api_url}/health", timeout=2)
-            return response.status_code == 200
+            is_healthy = response.status_code == 200
+            if is_healthy:
+                logger.debug(" Java service health check passed")
+            else:
+                logger.warning(f"⚠️ Java service health check failed: status {response.status_code}")
+            return is_healthy
         except Exception as e:
-            print(f"Health check failed: {e}")
+            logger.warning(f"⚠️ Health check failed: {e}")
             return False
 
         
@@ -49,6 +52,7 @@ class JavaProgressReporter:
         # Rate limit progress updates to avoid overwhelming Java
         current_time = time()
         if current_time - self.last_progress_time < self.min_progress_interval:
+            logger.debug(f" Rate-limited progress update: {stage} {progress}%")
             return
         
         try:
@@ -58,6 +62,8 @@ class JavaProgressReporter:
                 'progress': min(100, max(0, progress)),  # Clamp between 0-100
                 'message': message[:200] if message else ""  # Limit message length
             }
+            
+            logger.debug(f" Sending progress to Java: {stage} {progress}% - {message[:50]}...")
             
             # Send to Java progress service
             response = requests.post(
@@ -69,16 +75,16 @@ class JavaProgressReporter:
             
             if response.status_code == 200:
                 self.last_progress_time = current_time
-                print(f"📊 Sent progress to Java: {stage} {progress}% - {message}")
+                logger.success(f" Sent progress to Java: {stage} {progress}% - {message}")
             else:
-                print(f"⚠️ Java progress update failed: {response.status_code} - {response.text}")
+                logger.warning(f"⚠️ Java progress update failed: {response.status_code} - {response.text}")
                 
         except requests.exceptions.Timeout:
-            print(f"⏱️ Java progress update timed out for session {self.session_id}")
+            logger.warning(f"⏱️ Java progress update timed out for session {self.session_id}")
         except requests.exceptions.ConnectionError:
-            print(f"🔌 Java progress service unavailable for session {self.session_id}")
+            logger.warning(f" Java progress service unavailable for session {self.session_id}")
         except Exception as e:
-            print(f"❌ Error sending progress to Java for session {self.session_id}: {e}")
+            logger.error(f"❌ Error sending progress to Java for session {self.session_id}: {e}")
     
     def send_complete(self, result):
         """Send completion to Java progress service"""
@@ -91,6 +97,8 @@ class JavaProgressReporter:
                 'result': sanitized_result
             }
             
+            logger.debug(f" Sending completion to Java for session {self.session_id}")
+            
             response = requests.post(
                 f"{self.rest_api_url}/progress/complete",
                 json=payload,
@@ -99,12 +107,12 @@ class JavaProgressReporter:
             )
             
             if response.status_code == 200:
-                print(f"✅ Sent completion to Java for session {self.session_id}")
+                logger.success(f"✅ Sent completion to Java for session {self.session_id}")
             else:
-                print(f"⚠️ Java completion notification failed: {response.status_code}")
+                logger.warning(f"⚠️ Java completion notification failed: {response.status_code}")
                 
         except Exception as e:
-            print(f"❌ Error sending completion to Java for session {self.session_id}: {e}")
+            logger.error(f"❌ Error sending completion to Java for session {self.session_id}: {e}")
     
     def send_error(self, error_message):
         """Send error to Java progress service"""
@@ -114,6 +122,8 @@ class JavaProgressReporter:
                 'error': str(error_message)[:500]  # Limit error message length
             }
             
+            logger.debug(f" Sending error to Java for session {self.session_id}")
+            
             response = requests.post(
                 f"{self.rest_api_url}/progress/error",
                 json=payload,
@@ -122,12 +132,12 @@ class JavaProgressReporter:
             )
             
             if response.status_code == 200:
-                print(f"❌ Sent error to Java for session {self.session_id}")
+                logger.error(f"❌ Sent error to Java for session {self.session_id}")
             else:
-                print(f"⚠️ Java error notification failed: {response.status_code}")
+                logger.warning(f"⚠️ Java error notification failed: {response.status_code}")
                 
         except Exception as e:
-            print(f"❌ Error sending error to Java for session {self.session_id}: {e}")
+            logger.error(f"❌ Error sending error to Java for session {self.session_id}: {e}")
     
     def _sanitize_result(self, result):
         """Sanitize result object for JSON serialization"""
@@ -145,4 +155,3 @@ class JavaProgressReporter:
             return [self._sanitize_result(item) for item in result]
         else:
             return result
-

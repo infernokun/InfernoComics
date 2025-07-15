@@ -1,16 +1,17 @@
-# Enhanced Evaluation System - Flask Blueprint with Result Persistence
-# Add these imports to the top of your Flask app file
-from flask import Blueprint, render_template, request, jsonify, Response, current_app
 import os
 import re
-import requests
-import base64
 import json
 import time
+import uuid
+import base64
+import requests
 import threading
 from queue import Queue
-import uuid
 from datetime import datetime
+from util.Logger import get_logger
+from flask import Blueprint, render_template, request, jsonify, Response, current_app
+
+logger = get_logger(__name__)
 
 evaluation_bp = Blueprint('evaluation', __name__)
 
@@ -27,6 +28,7 @@ def ensure_results_directory():
     results_dir = './results'
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
+        logger.debug(f" Created results directory: {results_dir}")
     return results_dir
 
 def save_evaluation_result(session_id, evaluation_state):
@@ -86,11 +88,11 @@ def save_evaluation_result(session_id, evaluation_state):
         with open(result_file, 'w') as f:
             json.dump(result_data, f, indent=2)
         
-        print(f"Saved evaluation result to {result_file}")
+        logger.info(f" Saved evaluation result to {result_file}")
         return result_file
         
     except Exception as e:
-        print(f"Error saving evaluation result: {e}")
+        logger.error(f"❌ Error saving evaluation result: {e}")
         return None
 
 def load_evaluation_result(session_id):
@@ -100,19 +102,22 @@ def load_evaluation_result(session_id):
         result_file = os.path.join(results_dir, f"{session_id}.json")
         
         if not os.path.exists(result_file):
+            logger.warning(f" Evaluation result file not found: {result_file}")
             return None
             
         with open(result_file, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            logger.debug(f" Loaded evaluation result from {result_file}")
+            return data
             
     except Exception as e:
-        print(f"Error loading evaluation result: {e}")
+        logger.error(f"❌ Error loading evaluation result: {e}")
         return None
 
 def extract_name_and_year(folder_path):
     """Extract series name and year from folder name like 'Green Lanterns (2016)'"""
     folder_name = os.path.basename(folder_path.rstrip('/\\'))
-    print(f"DEBUG: Folder name extracted: '{folder_name}'")
+    logger.debug(f" Extracting from folder name: '{folder_name}'")
     
     # Extract year from parentheses
     year_match = re.search(r'\((\d{4})\)', folder_name)
@@ -121,7 +126,7 @@ def extract_name_and_year(folder_path):
     # Extract name by removing year and parentheses
     name = re.sub(r'\s*\(\d{4}\)\s*', '', folder_name).strip()
     
-    print(f"DEBUG: Extracted name: '{name}', year: {year}")
+    logger.info(f" Extracted series: '{name}' ({year})")
     return name, year
 
 def get_image_files(folder_path):
@@ -133,6 +138,7 @@ def get_image_files(folder_path):
         if any(file.lower().endswith(ext) for ext in image_extensions):
             image_files.append(os.path.join(folder_path, file))
     
+    logger.debug(f"️ Found {len(image_files)} image files in {folder_path}")
     return sorted(image_files)
 
 def image_to_base64(image_path):
@@ -149,9 +155,10 @@ def image_to_base64(image_path):
                 '.bmp': 'image/bmp',
                 '.webp': 'image/webp'
             }.get(ext, 'image/jpeg')
+            logger.debug(f" Converted {os.path.basename(image_path)} to base64")
             return f"data:{mime_type};base64,{encoded}"
     except Exception as e:
-        print(f"Error converting image to base64: {e}")
+        logger.error(f"❌ Error converting image to base64: {e}")
         return None
 
 def check_match_success(response_data, threshold=SIMILARITY_THRESHOLD):
@@ -165,7 +172,9 @@ def check_match_success(response_data, threshold=SIMILARITY_THRESHOLD):
         if similarity > best_similarity:
             best_similarity = similarity
     
-    return best_similarity >= threshold, best_similarity
+    meets_threshold = best_similarity >= threshold
+    logger.debug(f" Match check: best={best_similarity:.3f}, threshold={threshold}, meets={meets_threshold}")
+    return meets_threshold, best_similarity
 
 def upload_comic_image(series_id, image_path, name, year):
     """Upload a single comic image to the API"""
@@ -179,15 +188,16 @@ def upload_comic_image(series_id, image_path, name, year):
                 'year': str(year) if year else ''
             }
             
-            print(f"DEBUG: Uploading {os.path.basename(image_path)} to {url}")
+            image_name = os.path.basename(image_path)
+            logger.debug(f" Uploading {image_name} to API...")
             response = requests.post(url, files=files, data=data)
-            print(f"DEBUG: Response status: {response.status_code}")
+            logger.debug(f" API response status: {response.status_code}")
             
             # Try to parse JSON response
             response_data = None
             try:
                 raw_response = response.json()
-                print(f"DEBUG: Successfully parsed JSON response")
+                logger.debug(f"✅ Successfully parsed JSON response")
                 
                 # Handle the case where server returns an array directly
                 if isinstance(raw_response, list):
@@ -196,17 +206,17 @@ def upload_comic_image(series_id, image_path, name, year):
                         'top_matches': raw_response,
                         'total_matches': len(raw_response)
                     }
-                    print(f"DEBUG: Converted array response to dict format - {len(raw_response)} matches")
+                    logger.debug(f" Converted array response to dict format - {len(raw_response)} matches")
                 elif isinstance(raw_response, dict):
                     # Server already returns expected format
                     response_data = raw_response
-                    print(f"DEBUG: Response already in dict format")
+                    logger.debug(f"✅ Response already in dict format")
                 else:
-                    print(f"DEBUG: Unexpected response type: {type(raw_response)}")
+                    logger.warning(f"⚠️ Unexpected response type: {type(raw_response)}")
                     
             except ValueError as json_error:
-                print(f"DEBUG: Failed to parse JSON: {json_error}")
-                print(f"DEBUG: Raw response text: {response.text[:500]}...")
+                logger.warning(f"⚠️ Failed to parse JSON: {json_error}")
+                logger.debug(f" Raw response: {response.text[:500]}...")
             
             # Check if this constitutes a successful match based on similarity threshold
             api_success = response.status_code == 200
@@ -215,6 +225,15 @@ def upload_comic_image(series_id, image_path, name, year):
             
             if api_success and response_data:
                 match_success, best_similarity = check_match_success(response_data)
+            
+            # Log result
+            if api_success:
+                if match_success:
+                    logger.success(f"✅ {image_name}: Match found (similarity: {best_similarity:.3f})")
+                else:
+                    logger.warning(f"⚠️ {image_name}: No match (best: {best_similarity:.3f})")
+            else:
+                logger.error(f"❌ {image_name}: API failed (status: {response.status_code})")
             
             return {
                 'status_code': response.status_code,
@@ -227,7 +246,7 @@ def upload_comic_image(series_id, image_path, name, year):
             }
     
     except requests.exceptions.RequestException as e:
-        print(f"DEBUG: Request exception: {e}")
+        logger.error(f" Request exception for {os.path.basename(image_path)}: {e}")
         return {
             'status_code': None,
             'api_success': False,
@@ -238,7 +257,7 @@ def upload_comic_image(series_id, image_path, name, year):
             'error': str(e)
         }
     except Exception as e:
-        print(f"DEBUG: Unexpected exception: {e}")
+        logger.error(f" Unexpected exception for {os.path.basename(image_path)}: {e}")
         return {
             'status_code': None,
             'api_success': False,
@@ -252,7 +271,7 @@ def upload_comic_image(series_id, image_path, name, year):
 def run_evaluation(folder_path, session_id, series_id):
     """Run the evaluation process with progress updates"""
 
-    print(f"Starting evaluation for session {session_id} with folder {folder_path}")
+    logger.info(f" Starting evaluation for session {session_id} with folder {folder_path}")
 
     # Initialize progress queue for this session if it doesn't exist
     if session_id not in progress_queues:
@@ -289,8 +308,8 @@ def run_evaluation(folder_path, session_id, series_id):
             'session_id': session_id
         })
 
-        print(f"Checking folder path: {folder_path}")
-        print(f"Folder exists: {os.path.exists(folder_path)}")
+        logger.debug(f" Checking folder path: {folder_path}")
+        logger.debug(f" Folder exists: {os.path.exists(folder_path)}")
 
         # Check if folder exists
         if not os.path.exists(folder_path):
@@ -298,7 +317,7 @@ def run_evaluation(folder_path, session_id, series_id):
             base_dir = os.path.dirname(folder_path)
             folder_name = os.path.basename(folder_path)
 
-            print(f"Folder not found, searching in: {base_dir}")
+            logger.warning(f"⚠️ Folder not found, searching in: {base_dir}")
 
             if os.path.exists(base_dir):
                 available_folders = []
@@ -308,18 +327,22 @@ def run_evaluation(folder_path, session_id, series_id):
                         available_folders.append(item)
                         if folder_name.lower() in item.lower():
                             folder_path = item_path
-                            print(f"Found matching folder: {folder_path}")
+                            logger.info(f" Found matching folder: {folder_path}")
                             break
                 else:
+                    error_msg = f'Folder not found: {folder_name}. Available folders: {", ".join(available_folders[:5])}'
+                    logger.error(f"❌ {error_msg}")
                     progress_queue.put({
                         'type': 'error',
-                        'message': f'Folder not found: {folder_name}. Available folders: {", ".join(available_folders[:5])}'
+                        'message': error_msg
                     })
                     return
             else:
+                error_msg = f'Images directory not found: {base_dir}'
+                logger.error(f"❌ {error_msg}")
                 progress_queue.put({
                     'type': 'error',
-                    'message': f'Images directory not found: {base_dir}'
+                    'message': error_msg
                 })
                 return
 
@@ -328,12 +351,12 @@ def run_evaluation(folder_path, session_id, series_id):
         evaluation_state['series_name'] = series_name
         evaluation_state['year'] = year
 
-        print(f"Extracted series: {series_name} ({year})")
-
         if not series_name or not year:
+            error_msg = 'Could not extract series name and year from folder name. Expected format: "Series Name (YYYY)"'
+            logger.error(f"❌ {error_msg}")
             progress_queue.put({
                 'type': 'error',
-                'message': 'Could not extract series name and year from folder name. Expected format: "Series Name (YYYY)"'
+                'message': error_msg
             })
             return
 
@@ -345,16 +368,18 @@ def run_evaluation(folder_path, session_id, series_id):
 
         # Get image files
         image_files = get_image_files(folder_path)
-        print(f"Found {len(image_files)} image files")
 
         if not image_files:
+            error_msg = 'No image files found in the folder!'
+            logger.error(f"❌ {error_msg}")
             progress_queue.put({
                 'type': 'error',
-                'message': 'No image files found in the folder!'
+                'message': error_msg
             })
             return
 
         evaluation_state['total_images'] = len(image_files)
+        logger.info(f" Found {len(image_files)} images to process")
 
         progress_queue.put({
             'type': 'status',
@@ -367,13 +392,13 @@ def run_evaluation(folder_path, session_id, series_id):
         for i, image_path in enumerate(image_files):
             # Check if evaluation was stopped
             if evaluation_state.get('status') == 'stopped':
-                print(f"Evaluation stopped for session {session_id}")
+                logger.warning(f" Evaluation stopped for session {session_id}")
                 break
 
             image_name = os.path.basename(image_path)
             evaluation_state['current_image'] = image_name
 
-            print(f"Processing image {i+1}/{len(image_files)}: {image_name}")
+            logger.info(f" Processing image {i+1}/{len(image_files)}: {image_name}")
 
             # Send processing update with image preview
             image_base64 = image_to_base64(image_path)
@@ -462,7 +487,8 @@ def run_evaluation(folder_path, session_id, series_id):
         # Save the complete evaluation result to file
         save_evaluation_result(session_id, evaluation_state)
 
-        print(f"Evaluation completed for session {session_id}")
+        logger.success(f"✅ Evaluation completed for session {session_id}")
+        logger.info(f" Final stats: {evaluation_state['successful_matches']} successes, {evaluation_state['no_matches']} no matches, {evaluation_state['failed_uploads']} failures")
 
         progress_queue.put({
             'type': 'complete',
@@ -480,7 +506,7 @@ def run_evaluation(folder_path, session_id, series_id):
         })
 
     except Exception as e:
-        print(f"Evaluation error for session {session_id}: {e}")
+        logger.error(f"❌ Evaluation error for session {session_id}: {e}")
         import traceback
         traceback.print_exc()
         progress_queue.put({
@@ -494,6 +520,7 @@ def run_evaluation(folder_path, session_id, series_id):
 @evaluation_bp.route('/evaluation', methods=['GET', 'POST'])
 def evaluation():
     if request.method == 'GET':
+        logger.debug(" GET request for evaluation page")
         # Pass configuration to template
         config = {
             'flask_host': current_app.config.get('FLASK_HOST'),
@@ -503,6 +530,7 @@ def evaluation():
         return render_template('evaluation.html', config=config)
     
     elif request.method == 'POST':
+        logger.debug(" POST request to start evaluation")
         folder = None
         series_id = None
         if request.is_json:
@@ -513,13 +541,17 @@ def evaluation():
             series_id = request.form.get('seriesId')
             
         if not folder:
+            logger.warning("⚠️ Missing folder parameter in evaluation request")
             return jsonify({'error': 'Folder parameter is required'}), 400
         
         if not series_id:
+            logger.warning("⚠️ Missing series ID parameter in evaluation request")
             return jsonify({'error': 'Series ID parameter is required'}), 400
         
         session_id = str(uuid.uuid4())
         folder_path = os.path.join("./images", folder)
+        
+        logger.info(f" Starting evaluation thread for session {session_id} with folder: {folder}")
         
         evaluation_thread = threading.Thread(target=run_evaluation, args=(folder_path, session_id, series_id))
         evaluation_thread.daemon = True
@@ -534,14 +566,18 @@ def evaluation():
 @evaluation_bp.route('/evaluation/<session_id>')
 def view_evaluation_result(session_id):
     """View a completed evaluation result"""
+    logger.info(f" Viewing evaluation result for session: {session_id}")
+    
     result_data = load_evaluation_result(session_id)
     
     if not result_data:
+        logger.warning(f"⚠️ Evaluation result not found for session: {session_id}")
         return render_template('evaluation_error.html', 
                              error_message=f"Evaluation result not found for session: {session_id}",
                              config={'flask_host': current_app.config.get('FLASK_HOST'), 'flask_port': current_app.config.get('FLASK_PORT'),
                                    'api_url_prefix': current_app.config.get('API_URL_PREFIX'),})
     
+    logger.success(f"✅ Successfully loaded evaluation result for session: {session_id}")
     config = {
         'flask_host': current_app.config.get('FLASK_HOST'),
         'flask_port': current_app.config.get('FLASK_PORT'),
@@ -552,16 +588,22 @@ def view_evaluation_result(session_id):
 @evaluation_bp.route('/evaluation/<session_id>/data')
 def get_evaluation_data(session_id):
     """Get evaluation result data as JSON"""
+    logger.debug(f" API request for evaluation data: {session_id}")
+    
     result_data = load_evaluation_result(session_id)
     
     if not result_data:
+        logger.warning(f"⚠️ Evaluation data not found for session: {session_id}")
         return jsonify({'error': 'Evaluation result not found'}), 404
     
+    logger.debug(f"✅ Successfully returned evaluation data for session: {session_id}")
     return jsonify(result_data)
 
 @evaluation_bp.route('/evaluation/list')
 def list_evaluations():
     """List all available evaluation results"""
+    logger.info(" Listing all evaluation results")
+    
     try:
         results_dir = ensure_results_directory()
         evaluations = []
@@ -583,10 +625,12 @@ def list_evaluations():
                             'status': result_data.get('status', 'unknown')
                         })
                 except Exception as e:
-                    print(f"Error loading evaluation {session_id}: {e}")
+                    logger.warning(f"⚠️ Error loading evaluation {session_id}: {e}")
         
         # Sort by timestamp, newest first
         evaluations.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        logger.info(f" Found {len(evaluations)} evaluation results")
         
         config = {
             'flask_host': current_app.config.get('FLASK_HOST'),
@@ -596,6 +640,7 @@ def list_evaluations():
         return render_template('evaluation_list.html', evaluations=evaluations, config=config)
         
     except Exception as e:
+        logger.error(f"❌ Error loading evaluation list: {e}")
         config = {
             'flask_host': current_app.config.get('FLASK_HOST'),
             'flask_port': current_app.config.get('FLASK_PORT'),
@@ -612,7 +657,10 @@ def evaluation_progress():
         session_id = request.args.get('session_id')
         
         if not session_id:
+            logger.warning("⚠️ Missing session ID in progress request")
             return jsonify({'error': 'Session ID is required'}), 400
+        
+        logger.info(f" Client connecting to evaluation progress stream for session: {session_id}")
         
         if session_id not in progress_queues:
             progress_queues[session_id] = Queue()
@@ -632,6 +680,7 @@ def evaluation_progress():
                         yield f"data: {json.dumps(progress_data)}\n\n"
                         
                         if progress_data.get('type') in ['complete', 'error', 'stopped']:
+                            logger.debug(f" SSE stream ending for evaluation session {session_id}: {progress_data.get('type')}")
                             break
                             
                     except:
@@ -644,9 +693,10 @@ def evaluation_progress():
                                 break
             
             except Exception as e:
-                print(f"Error in SSE generator: {e}")
+                logger.error(f"❌ Error in SSE generator for evaluation: {e}")
             
             finally:
+                logger.debug(f" Cleaning up SSE session: {session_id}")
                 if session_id in progress_queues:
                     del progress_queues[session_id]
                 if session_id in active_evaluations:
@@ -659,7 +709,7 @@ def evaluation_progress():
         return response
         
     except Exception as e:
-        print(f"Error in evaluation_progress route: {e}")
+        logger.error(f"❌ Error in evaluation_progress route: {e}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @evaluation_bp.route('/evaluation/status')
@@ -669,11 +719,13 @@ def evaluation_status():
         session_id = request.args.get('session_id')
         
         if session_id and session_id in active_evaluations:
+            logger.debug(f" Status check for active evaluation: {session_id}")
             return jsonify(active_evaluations[session_id])
         else:
+            logger.debug(" No active evaluation found")
             return jsonify({'status': 'idle', 'message': 'No active evaluation'})
     except Exception as e:
-        print(f"Error in evaluation_status route: {e}")
+        logger.error(f"❌ Error in evaluation_status route: {e}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @evaluation_bp.route('/evaluation/stop', methods=['POST'])
@@ -687,6 +739,7 @@ def stop_evaluation():
             session_id = request.form.get('session_id')
         
         if session_id and session_id in active_evaluations:
+            logger.warning(f" Stopping evaluation for session: {session_id}")
             active_evaluations[session_id]['status'] = 'stopped'
             if session_id in progress_queues:
                 progress_queues[session_id].put({
@@ -695,14 +748,17 @@ def stop_evaluation():
                 })
             return jsonify({'status': 'stopped'})
         else:
+            logger.warning(f"⚠️ No active evaluation found to stop for session: {session_id}")
             return jsonify({'error': 'No active evaluation found'}), 404
     except Exception as e:
-        print(f"Error in stop_evaluation route: {e}")
+        logger.error(f"❌ Error in stop_evaluation route: {e}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @evaluation_bp.route('/evaluation/<folder_name>/<id>')
 def evaluation_with_folder(folder_name, id):
     """Alternative endpoint using URL parameter"""
+    logger.info(f" Starting evaluation via URL parameters - folder: {folder_name}, id: {id}")
+    
     session_id = str(uuid.uuid4())
     folder_path = os.path.join("./images", folder_name)
     

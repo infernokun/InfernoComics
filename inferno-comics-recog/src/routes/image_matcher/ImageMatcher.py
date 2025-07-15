@@ -1,19 +1,21 @@
-import cv2
-import json
-import numpy as np
-import uuid
-import time
-import threading
 import os
-import traceback
-import base64
-from datetime import datetime, timedelta
-from flask import Blueprint, jsonify, request, Response, current_app, render_template
-from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
-from concurrent.futures import ThreadPoolExecutor
+import cv2
+import time
+import json
+import uuid
 import queue
-
+import base64
+import traceback
+import threading
+import numpy as np
+from util.Logger import get_logger
+from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
 from models.JavaProgressReporter import JavaProgressReporter
+from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
+from flask import Blueprint, jsonify, request, Response, current_app, render_template
+
+logger = get_logger(__name__)
 
 image_matcher_bp = Blueprint('imager-matcher', __name__)
 
@@ -33,6 +35,7 @@ def ensure_results_directory():
     results_dir = './results'
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
+        logger.debug(f"Created results directory: {results_dir}")
     return results_dir
 
 def save_image_matcher_result(session_id, result_data, query_filename=None, query_image_base64=None):
@@ -104,11 +107,11 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
         with open(result_file, 'w') as f:
             json.dump(evaluation_result, f, indent=2)
         
-        print(f"Saved image matcher result to {result_file}")
+        logger.info(f" Saved image matcher result to {result_file}")
         return result_file
         
     except Exception as e:
-        print(f"Error saving image matcher result: {e}")
+        logger.error(f"❌ Error saving image matcher result: {e}")
         return None
 
 def load_image_matcher_result(session_id):
@@ -118,13 +121,16 @@ def load_image_matcher_result(session_id):
         result_file = os.path.join(results_dir, f"{session_id}.json")
         
         if not os.path.exists(result_file):
+            logger.warning(f" Result file not found: {result_file}")
             return None
             
         with open(result_file, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            logger.debug(f" Loaded image matcher result from {result_file}")
+            return data
             
     except Exception as e:
-        print(f"Error loading image matcher result: {e}")
+        logger.error(f"❌ Error loading image matcher result: {e}")
         return None
 
 class SSEProgressTracker:
@@ -134,6 +140,7 @@ class SSEProgressTracker:
         self.session_id = session_id
         self.progress_queue = queue.Queue()
         self.is_active = True
+        logger.debug(f" Created SSE progress tracker for session {session_id}")
         
     def send_progress(self, stage, progress, message):
         """Send progress update"""
@@ -151,8 +158,9 @@ class SSEProgressTracker:
         
         try:
             self.progress_queue.put(progress_event, timeout=1.0)
+            logger.debug(f" Progress {progress}%: {message}")
         except queue.Full:
-            print(f"Progress queue full for session {self.session_id}")
+            logger.warning(f"⚠️ Progress queue full for session {self.session_id}")
     
     def send_complete(self, result):
         """Send completion event with results"""
@@ -171,8 +179,9 @@ class SSEProgressTracker:
         
         try:
             self.progress_queue.put(complete_event, timeout=1.0)
+            logger.success(f"✅ Processing completed for session {self.session_id}")
         except queue.Full:
-            print(f"Progress queue full for session {self.session_id}")
+            logger.warning(f"⚠️ Progress queue full for session {self.session_id}")
     
     def send_error(self, error_message):
         """Send error event"""
@@ -188,12 +197,14 @@ class SSEProgressTracker:
         
         try:
             self.progress_queue.put(error_event, timeout=1.0)
+            logger.error(f"❌ Error sent to session {self.session_id}: {error_message}")
         except queue.Full:
-            print(f"Progress queue full for session {self.session_id}")
+            logger.warning(f"⚠️ Progress queue full for session {self.session_id}")
     
     def close(self):
         """Close the progress tracker"""
         self.is_active = False
+        logger.debug(f" Closed progress tracker for session {self.session_id}")
 
 def safe_progress_callback(callback, current_item, message=""):
     """Safely call progress callback, handling None case"""
@@ -201,7 +212,7 @@ def safe_progress_callback(callback, current_item, message=""):
         try:
             callback(current_item, message)
         except Exception as e:
-            print(f"Progress callback error: {e}")
+            logger.warning(f"⚠️ Progress callback error: {e}")
             pass  # Continue execution even if progress fails
 
 def image_to_base64(image_array):
@@ -211,9 +222,10 @@ def image_to_base64(image_array):
         _, buffer = cv2.imencode('.jpg', image_array)
         # Convert to base64
         image_base64 = base64.b64encode(buffer).decode('utf-8')
+        logger.debug("️ Successfully converted image to base64")
         return f"data:image/jpeg;base64,{image_base64}"
     except Exception as e:
-        print(f"Error converting image to base64: {e}")
+        logger.error(f"❌ Error converting image to base64: {e}")
         return None
 
 def process_image_with_centralized_progress(session_id, query_image, candidate_covers, query_filename=None):
@@ -221,6 +233,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
     
     # Create Java progress reporter - this is the SINGLE source of truth
     java_reporter = JavaProgressReporter(session_id)
+    logger.info(f" Starting centralized image processing for session: {session_id}")
     
     # Convert query image to base64 for storage
     query_image_base64 = image_to_base64(query_image)
@@ -264,6 +277,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
                     }
         
         java_reporter.update_progress('processing_data', 20, f'Prepared {len(candidate_urls)} candidate images for comparison')
+        logger.info(f" Prepared {len(candidate_urls)} candidate URLs from {len(candidate_covers)} covers")
         
         if not candidate_urls:
             raise ValueError("No valid URLs found in candidate covers")
@@ -273,6 +287,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         
         # Initialize matcher
         matcher = FeatureMatchingComicMatcher(max_workers=6)
+        logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers")
         
         # Create a safe progress callback wrapper for the matcher
         def safe_matcher_progress(current_item, message=""):
@@ -286,15 +301,17 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
                     java_reporter.update_progress('comparing_images', int(actual_progress), 
                                                 f"Processing candidate {current_item}/{len(candidate_urls)}... {message}")
             except Exception as e:
-                print(f"Progress callback error: {e}")
+                logger.warning(f"⚠️ Progress callback error: {e}")
         
         java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready')
         
         # Stage 3: Feature extraction from query image (25% -> 35%)
         java_reporter.update_progress('extracting_features', 30, 'Extracting features from uploaded image...')
+        logger.debug(" Extracting features from query image...")
         
         # Stage 4: Heavy image comparison work (35% -> 85%)
         java_reporter.update_progress('comparing_images', 35, 'Starting image feature comparison...')
+        logger.info(" Starting intensive image comparison process...")
         
         # Run matching with progress callback - this is the time-consuming part
         results, query_elements = matcher.find_matches_img(
@@ -304,6 +321,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         )
         
         java_reporter.update_progress('comparing_images', 85, 'Image comparison complete')
+        logger.success("✅ Image comparison completed successfully")
         
         # Stage 5: Processing and ranking results (85% -> 95%)
         java_reporter.update_progress('processing_results', 90, 'Processing and ranking match results...')
@@ -337,9 +355,9 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         top_matches = enhanced_results[:5]
         
         # Log top matches for debugging
-        print(f"✅ Top {len(top_matches)} matches for session {session_id}:")
+        logger.info(f" Top {len(top_matches)} matches for session {session_id}:")
         for i, match in enumerate(top_matches[:3], 1):
-            print(f"   {i}. {match['comic_name']} #{match['issue_number']} - Similarity: {match['similarity']:.3f}")
+            logger.info(f"   {i}. {match['comic_name']} #{match['issue_number']} - Similarity: {match['similarity']:.3f}")
             
         matcher.print_cache_stats()
         
@@ -356,7 +374,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         
         # Send completion at 100% to Java
         java_reporter.send_complete(result)
-        print(f"✅ Centralized image processing completed and saved for session: {session_id}")
+        logger.success(f"✅ Centralized image processing completed and saved for session: {session_id}")
         
         return result
         
@@ -364,7 +382,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         traceback.print_exc()
         error_msg = f'Image matching failed: {str(e)}'
         java_reporter.send_error(error_msg)
-        print(f"❌ Error in centralized image processing for session {session_id}: {error_msg}")
+        logger.error(f"❌ Error in centralized image processing for session {session_id}: {error_msg}")
         
         # Save error state as well
         error_result = {
@@ -384,8 +402,11 @@ def process_image_with_progress(session_id, query_image, candidate_covers, query
     
     with session_lock:
         if session_id not in sse_sessions:
+            logger.warning(f"⚠️ Session {session_id} not found in SSE sessions")
             return
         tracker = sse_sessions[session_id]['tracker']
+    
+    logger.info(f" Starting SSE image processing for session: {session_id}")
     
     try:
         # Use the centralized processing but also send to SSE tracker
@@ -393,6 +414,7 @@ def process_image_with_progress(session_id, query_image, candidate_covers, query
         tracker.send_complete(result)
         
     except Exception as e:
+        logger.error(f"❌ SSE processing failed for session {session_id}: {e}")
         tracker.send_error(str(e))
 
 def cleanup_old_sessions():
@@ -413,22 +435,27 @@ def cleanup_old_sessions():
                 del progress_data[session_id]
         
         if sessions_to_remove:
-            print(f"Cleaned up {len(sessions_to_remove)} old sessions")
+            logger.info(f"粒 Cleaned up {len(sessions_to_remove)} old sessions")
 
 @image_matcher_bp.route('/image-matcher', methods=['POST'])
 def image_matcher_operation():
     """Enhanced image matching API that handles both regular and SSE progress reporting"""
     
+    logger.debug(" Received image matcher request")
+    
     # Check for image file in request
     if 'image' not in request.files:
+        logger.warning("⚠️ No image file in request")
         return jsonify({'error': 'Missing image file in request'}), 400
     
     file = request.files['image']
     if file.filename == '':
+        logger.warning("⚠️ Empty filename in request")
         return jsonify({'error': 'No selected file'}), 400
     
     # Get query filename for better result identification
     query_filename = file.filename
+    logger.info(f" Processing image: {query_filename}")
     
     # Check if this is an SSE-enabled request (sent from Java with session_id)
     session_id = request.form.get('session_id')
@@ -440,7 +467,9 @@ def image_matcher_operation():
         query_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         if query_image is None:
             raise ValueError("Image decoding failed")
+        logger.debug(f"️ Successfully decoded image: {query_image.shape}")
     except Exception as e:
+        logger.error(f"❌ Failed to process uploaded image: {e}")
         return jsonify({'error': f'Failed to process uploaded image: {str(e)}'}), 400
 
     # Parse candidate covers
@@ -453,15 +482,16 @@ def image_matcher_operation():
         if not isinstance(candidate_covers, list):
             raise ValueError("candidate_covers must be a list")
         
-        print(f"Received {len(candidate_covers)} candidate covers")
+        logger.info(f" Received {len(candidate_covers)} candidate covers")
             
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"❌ Invalid candidate covers: {e}")
         return jsonify({'error': f'Invalid candidate covers: {str(e)}'}), 400
 
     # If session_id is provided, this is a CENTRALIZED progress request from Java
     if session_id:
-        print(f"🚀 Processing CENTRALIZED progress request for session: {session_id}")
+        logger.info(f" Processing CENTRALIZED progress request for session: {session_id}")
         
         try:
             # Process with centralized progress reporting to Java AND save to JSON
@@ -472,13 +502,14 @@ def image_matcher_operation():
             
         except Exception as e:
             error_msg = f'Processing failed: {str(e)}'
+            logger.error(f"❌ Centralized processing failed: {error_msg}")
             # Send error to Java
             java_reporter = JavaProgressReporter(session_id)
             java_reporter.send_error(error_msg)
             return jsonify({'error': error_msg}), 500
     
     # Regular (non-SSE) processing - original behavior but now also saves to JSON
-    print(f"Processing regular (non-SSE) request")
+    logger.info(" Processing regular (non-SSE) request")
     
     # Generate session ID for regular requests too, so we can save results
     session_id = str(uuid.uuid4())
@@ -517,13 +548,15 @@ def image_matcher_operation():
                     'parent_comic_vine_id': parent_comic_vine_id
                 }
     
-    print(f"Extracted {len(candidate_urls)} URLs from covers")
+    logger.info(f" Extracted {len(candidate_urls)} URLs from covers")
     
     if not candidate_urls:
+        logger.warning("⚠️ No valid URLs found in candidate covers")
         return jsonify({'error': 'No valid URLs found in candidate covers'}), 400
 
     # Initialize matcher
     matcher = FeatureMatchingComicMatcher(max_workers=6)
+    logger.debug(" Initialized matcher for regular processing")
 
     try:
         # Run matching with the extracted URLs (no progress callback for regular requests)
@@ -555,9 +588,9 @@ def image_matcher_operation():
         top_matches = enhanced_results[:5]
         
         # Log top matches for debugging
-        print(f"Top {len(top_matches)} matches for session {session_id}:")
+        logger.info(f" Top {len(top_matches)} matches for session {session_id}:")
         for i, match in enumerate(top_matches[:3], 1):
-            print(f"   {i}. {match['comic_name']} - Similarity: {match['similarity']:.3f}")
+            logger.info(f"   {i}. {match['comic_name']} - Similarity: {match['similarity']:.3f}")
             
         matcher.print_cache_stats()
         
@@ -571,12 +604,13 @@ def image_matcher_operation():
         
         # SAVE RESULT TO JSON FILE for regular requests too!
         save_image_matcher_result(session_id, result, query_filename, query_image_base64)
-        print(f"✅ Regular image processing completed and saved for session: {session_id}")
+        logger.success(f"✅ Regular image processing completed and saved for session: {session_id}")
         
         return jsonify(result)
         
     except Exception as e:
         traceback.print_exc()
+        logger.error(f"❌ Regular processing failed: {e}")
         
         # Save error state
         error_result = {
@@ -597,16 +631,21 @@ def image_matcher_operation():
 def start_image_processing():
     """Start image processing and return session ID for SSE tracking"""
     
+    logger.debug(" Received SSE start request")
+    
     # Check for image file in request
     if 'image' not in request.files:
+        logger.warning("⚠️ No image file in SSE start request")
         return jsonify({'error': 'Missing image file in request'}), 400
     
     file = request.files['image']
     if file.filename == '':
+        logger.warning("⚠️ Empty filename in SSE start request")
         return jsonify({'error': 'No selected file'}), 400
     
     # Get query filename
     query_filename = file.filename
+    logger.info(f" Starting SSE processing for image: {query_filename}")
     
     try:
         # Read image data as numpy array
@@ -615,7 +654,9 @@ def start_image_processing():
         query_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         if query_image is None:
             raise ValueError("Image decoding failed")
+        logger.debug(f"️ Successfully decoded SSE image: {query_image.shape}")
     except Exception as e:
+        logger.error(f"❌ Failed to process SSE uploaded image: {e}")
         return jsonify({'error': f'Failed to process uploaded image: {str(e)}'}), 400
 
     # Parse candidate covers
@@ -628,9 +669,10 @@ def start_image_processing():
         if not isinstance(candidate_covers, list):
             raise ValueError("candidate_covers must be a list")
         
-        print(f"Received {len(candidate_covers)} candidate covers for SSE processing")
+        logger.info(f" Received {len(candidate_covers)} candidate covers for SSE processing")
             
     except Exception as e:
+        logger.error(f"❌ Invalid candidate covers in SSE request: {e}")
         return jsonify({'error': f'Invalid candidate covers: {str(e)}'}), 400
 
     # Generate session ID and set up tracking
@@ -651,7 +693,7 @@ def start_image_processing():
     # Start async processing
     executor.submit(process_image_with_progress, session_id, query_image, candidate_covers, query_filename)
     
-    print(f"🚀 Started SSE image processing session: {session_id}")
+    logger.info(f" Started SSE image processing session: {session_id}")
     
     return jsonify({'sessionId': session_id})
 
@@ -661,9 +703,10 @@ def get_image_processing_progress():
     
     session_id = request.args.get('sessionId')
     if not session_id:
+        logger.warning("⚠️ Missing sessionId in progress request")
         return jsonify({'error': 'Missing sessionId parameter'}), 400
     
-    print(f"Client connecting to SSE progress stream for session: {session_id}")
+    logger.info(f" Client connecting to SSE progress stream for session: {session_id}")
     
     def generate():
         # Check if session exists
@@ -675,6 +718,7 @@ def get_image_processing_progress():
                     'error': 'Session not found',
                     'timestamp': int(time.time() * 1000)
                 }
+                logger.warning(f"⚠️ SSE session not found: {session_id}")
                 yield f"data: {json.dumps(error_event)}\n\n"
                 return
             
@@ -689,6 +733,7 @@ def get_image_processing_progress():
             'message': 'Connected to progress stream',
             'timestamp': int(time.time() * 1000)
         }
+        logger.debug(f" SSE stream initialized for session: {session_id}")
         yield f"data: {json.dumps(initial_event)}\n\n"
         
         # Stream progress events
@@ -700,6 +745,7 @@ def get_image_processing_progress():
                 
                 # Exit if complete or error
                 if event['type'] in ['complete', 'error']:
+                    logger.debug(f" SSE stream ending for session {session_id}: {event['type']}")
                     break
                     
             except queue.Empty:
@@ -712,10 +758,10 @@ def get_image_processing_progress():
                 yield f"data: {json.dumps(heartbeat)}\n\n"
                 continue
             except Exception as e:
-                print(f"Error in SSE stream for session {session_id}: {e}")
+                logger.error(f"❌ Error in SSE stream for session {session_id}: {e}")
                 break
         
-        print(f"SSE stream closed for session: {session_id}")
+        logger.debug(f" SSE stream closed for session: {session_id}")
     
     response = Response(generate(), mimetype='text/event-stream')
     response.headers['Cache-Control'] = 'no-cache'
@@ -729,10 +775,14 @@ def get_image_processing_status():
     
     session_id = request.args.get('sessionId')
     if not session_id:
+        logger.warning("⚠️ Missing sessionId in status request")
         return jsonify({'error': 'Missing sessionId parameter'}), 400
+    
+    logger.debug(f" Status check for session: {session_id}")
     
     with session_lock:
         if session_id not in sse_sessions:
+            logger.warning(f"⚠️ Session not found for status check: {session_id}")
             return jsonify({
                 'sessionId': session_id,
                 'status': 'not_found',
@@ -760,15 +810,19 @@ def get_image_processing_status():
 def view_image_matcher_result(session_id):
     """View a completed image matcher result using the existing evaluation template"""
     
+    logger.info(f" Viewing result for session: {session_id}")
+    
     result_data = load_image_matcher_result(session_id)
     
     if not result_data:
+        logger.warning(f"⚠️ Result not found for session: {session_id}")
         return render_template('evaluation_error.html', 
                              error_message=f"Image matcher result not found for session: {session_id}",
                              config={'flask_host': current_app.config.get('FLASK_HOST'),
                                    'flask_port': current_app.config.get('FLASK_PORT'),
                                    'api_url_prefix': current_app.config.get('API_URL_PREFIX')})
     
+    logger.success(f"✅ Successfully loaded result for session: {session_id}")
     config = {
         'flask_host': current_app.config.get('FLASK_HOST'),
         'flask_port': current_app.config.get('FLASK_PORT'),
@@ -779,23 +833,29 @@ def view_image_matcher_result(session_id):
 @image_matcher_bp.route('/image-matcher/<session_id>/data')
 def get_image_matcher_data(session_id):
     """Get image matcher result data as JSON"""
+    logger.debug(f" API request for session data: {session_id}")
+    
     result_data = load_image_matcher_result(session_id)
     
     if not result_data:
+        logger.warning(f"⚠️ API data not found for session: {session_id}")
         return jsonify({'error': 'Image matcher result not found'}), 404
     
+    logger.debug(f"✅ Successfully returned API data for session: {session_id}")
     return jsonify(result_data)
 
 # Cleanup task - run this periodically (could be implemented with a scheduler)
 def run_cleanup():
     """Run cleanup periodically"""
     def cleanup_task():
+        logger.info("粒 Starting cleanup task thread")
         while True:
             time.sleep(30 * 60)  # 30 minutes
             cleanup_old_sessions()
     
     cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
     cleanup_thread.start()
+    logger.info("粒 Cleanup task initialized")
 
 # Initialize cleanup when module loads
 run_cleanup()

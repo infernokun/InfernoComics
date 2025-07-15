@@ -4,3 +4,4 @@ image_cache/
 comic_*.html
 results/
 venv/
+logs/
