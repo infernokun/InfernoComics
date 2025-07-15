@@ -5,6 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enhanced Comic Series Evaluation</title>
     <style>
+        :root {
+            /* Dark mode colors (default) */
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #3a3a3a;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #888888;
+            --border-color: #404040;
+            --accent-primary: #667eea;
+            --accent-secondary: #764ba2;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --error-color: #dc3545;
+            --card-bg: #252525;
+            --input-bg: #333333;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        [data-theme="light"] {
+            /* Light mode colors */
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #f8f9fa;
+            --text-primary: #333333;
+            --text-secondary: #555555;
+            --text-muted: #666666;
+            --border-color: #e0e0e0;
+            --accent-primary: #667eea;
+            --accent-secondary: #764ba2;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --error-color: #dc3545;
+            --card-bg: #ffffff;
+            --input-bg: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -13,9 +51,14 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-primary);
             min-height: 100vh;
-            color: #333;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        [data-theme="light"] body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
         .container {
@@ -26,7 +69,7 @@
 
         .header {
             text-align: center;
-            color: white;
+            color: var(--text-primary);
             margin-bottom: 30px;
             animation: fadeInDown 1s ease-out;
         }
@@ -34,16 +77,65 @@
         .header h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 2px 2px 4px var(--shadow);
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--shadow);
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 50px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px var(--shadow);
         }
 
         .evaluation-card {
-            background: white;
+            background: var(--card-bg);
             border-radius: 15px;
             padding: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            box-shadow: 0 15px 35px var(--shadow);
             animation: fadeInUp 1s ease-out;
             margin-bottom: 30px;
+            border: 1px solid var(--border-color);
         }
 
         .form-group {
@@ -54,26 +146,28 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: #555;
+            color: var(--text-secondary);
         }
 
         .form-group input {
             width: 100%;
             padding: 12px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--border-color);
             border-radius: 8px;
             font-size: 16px;
             transition: all 0.3s ease;
+            background: var(--input-bg);
+            color: var(--text-primary);
         }
 
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--accent-primary);
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
             color: white;
             border: none;
             padding: 15px 30px;
@@ -110,7 +204,7 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            color: white;
+            color: var(--text-primary);
         }
 
         .progress-title {
@@ -128,25 +222,28 @@
             padding: 5px 12px;
             border-radius: 15px;
             font-weight: 600;
-            background: rgba(255,255,255,0.9);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
         }
 
-        .stat.success { color: #155724; }
-        .stat.warning { color: #856404; }
-        .stat.error { color: #721c24; }
+        .stat.success { color: var(--success-color); }
+        .stat.warning { color: var(--warning-color); }
+        .stat.error { color: var(--error-color); }
 
         .progress-bar-container {
-            background: rgba(255,255,255,0.2);
+            background: var(--bg-tertiary);
             border-radius: 10px;
             height: 20px;
             margin-bottom: 20px;
             overflow: hidden;
             position: relative;
+            border: 1px solid var(--border-color);
         }
 
         .progress-bar {
             height: 100%;
-            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(90deg, var(--success-color) 0%, #20c997 100%);
             border-radius: 10px;
             transition: width 0.5s ease;
             position: relative;
@@ -159,17 +256,18 @@
             transform: translate(-50%, -50%);
             font-size: 0.9em;
             font-weight: 600;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            color: var(--text-primary);
+            text-shadow: 1px 1px 2px var(--shadow);
         }
 
         .current-processing {
-            background: white;
+            background: var(--card-bg);
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 25px var(--shadow);
             display: none;
+            border: 1px solid var(--border-color);
         }
 
         .processing-header {
@@ -180,7 +278,7 @@
         .processing-title {
             font-size: 1.3em;
             font-weight: 600;
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 10px;
         }
 
@@ -188,19 +286,19 @@
             display: flex;
             align-items: center;
             gap: 20px;
-            background: #f8f9fa;
+            background: var(--bg-tertiary);
             border-radius: 10px;
             padding: 20px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid var(--accent-primary);
         }
 
         .current-image-preview {
             width: 120px;
             height: 160px;
             border-radius: 8px;
-            border: 2px solid #ddd;
+            border: 2px solid var(--border-color);
             object-fit: cover;
-            background: #f0f0f0;
+            background: var(--bg-tertiary);
         }
 
         .current-image-info {
@@ -210,12 +308,12 @@
         .current-image-name {
             font-size: 1.1em;
             font-weight: 600;
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 10px;
         }
 
         .current-status {
-            color: #667eea;
+            color: var(--accent-primary);
             font-weight: 500;
             margin-bottom: 5px;
         }
@@ -224,55 +322,53 @@
             display: inline-block;
             width: 16px;
             height: 16px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-right: 8px;
         }
 
         .detailed-results {
-            background: white;
+            background: var(--card-bg);
             border-radius: 15px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 25px var(--shadow);
             max-height: 80vh;
             overflow-y: auto;
+            border: 1px solid var(--border-color);
         }
 
         .detailed-results h3 {
             margin-bottom: 20px;
-            color: #333;
+            color: var(--text-primary);
         }
 
         .result-item {
             display: flex;
             margin-bottom: 30px;
             padding: 20px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             border-radius: 10px;
-            background: #fafafa;
+            background: var(--bg-tertiary);
             animation: slideInLeft 0.5s ease-out;
         }
 
         .result-item.match-success {
-            border-left: 5px solid #28a745;
-            background: #f8fff9;
+            border-left: 5px solid var(--success-color);
         }
 
         .result-item.no-match {
-            border-left: 5px solid #ffc107;
-            background: #fffcf0;
+            border-left: 5px solid var(--warning-color);
         }
 
         .result-item.error {
-            border-left: 5px solid #dc3545;
-            background: #fff5f5;
+            border-left: 5px solid var(--error-color);
         }
 
         .result-item:hover {
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px var(--shadow);
             transform: translateY(-2px);
             transition: all 0.3s ease;
         }
@@ -287,14 +383,14 @@
             height: 280px;
             object-fit: cover;
             border-radius: 8px;
-            border: 2px solid #ddd;
+            border: 2px solid var(--border-color);
         }
 
         .image-info {
             text-align: center;
             margin-top: 10px;
             font-size: 0.9em;
-            color: #666;
+            color: var(--text-muted);
             font-weight: 600;
         }
 
@@ -313,42 +409,43 @@
         }
 
         .match-found {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: rgba(40, 167, 69, 0.2);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
         }
 
         .no-match-found {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
+            background: rgba(255, 193, 7, 0.2);
+            color: var(--warning-color);
+            border: 1px solid var(--warning-color);
         }
 
         .api-failure {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: rgba(220, 53, 69, 0.2);
+            color: var(--error-color);
+            border: 1px solid var(--error-color);
         }
 
         .similarity-highlight {
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid var(--accent-primary);
             border-radius: 5px;
             padding: 8px;
             margin: 10px 0;
             font-weight: bold;
+            color: var(--text-primary);
         }
 
         .similarity-highlight.good {
-            background: #d4edda;
-            border-color: #c3e6cb;
-            color: #155724;
+            background: rgba(40, 167, 69, 0.1);
+            border-color: var(--success-color);
+            color: var(--success-color);
         }
 
         .similarity-highlight.poor {
-            background: #fff3cd;
-            border-color: #ffeaa7;
-            color: #856404;
+            background: rgba(255, 193, 7, 0.1);
+            border-color: var(--warning-color);
+            color: var(--warning-color);
         }
 
         .matches-grid {
@@ -361,20 +458,20 @@
         .match-item {
             text-align: center;
             padding: 10px;
-            background: white;
+            background: var(--card-bg);
             border-radius: 8px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             transition: all 0.3s ease;
         }
 
         .match-item:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px var(--shadow);
         }
 
         .match-item.threshold-met {
-            border: 2px solid #28a745;
-            background: #f8fff9;
+            border: 2px solid var(--success-color);
+            background: rgba(40, 167, 69, 0.1);
         }
 
         .match-item img {
@@ -388,62 +485,65 @@
         .similarity-score {
             font-weight: bold;
             margin-bottom: 5px;
+            color: var(--text-primary);
         }
 
         .match-status {
             font-size: 0.8em;
-            color: #666;
-            background: #f0f0f0;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
             padding: 2px 6px;
             border-radius: 4px;
         }
 
         .match-status.success {
-            background: #d4edda;
-            color: #155724;
+            background: rgba(40, 167, 69, 0.2);
+            color: var(--success-color);
         }
 
         .error-message {
-            color: #721c24;
-            background: #f8d7da;
+            color: var(--error-color);
+            background: rgba(220, 53, 69, 0.1);
             padding: 10px;
             border-radius: 5px;
             margin-top: 10px;
+            border: 1px solid var(--error-color);
         }
 
         .no-matches {
             text-align: center;
-            color: #666;
+            color: var(--text-muted);
             font-style: italic;
             padding: 20px;
         }
 
         .debug-info {
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid var(--accent-primary);
             border-radius: 5px;
             padding: 10px;
             margin-top: 10px;
             font-size: 0.9em;
-            color: #0066cc;
+            color: var(--accent-primary);
         }
 
         .completion-summary {
             display: none;
-            background: white;
+            background: var(--card-bg);
             border-radius: 15px;
             padding: 30px;
             margin-top: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            box-shadow: 0 15px 35px var(--shadow);
             animation: fadeInUp 1s ease-out;
+            border: 1px solid var(--border-color);
         }
 
         .completion-summary.success {
-            border-left: 5px solid #28a745;
+            border-left: 5px solid var(--success-color);
         }
 
         .completion-summary.failure {
-            border-left: 5px solid #dc3545;
+            border-left: 5px solid var(--error-color);
         }
 
         .completion-header {
@@ -460,10 +560,11 @@
             font-size: 2em;
             font-weight: 600;
             margin-bottom: 10px;
+            color: var(--text-primary);
         }
 
         .completion-subtitle {
-            color: #666;
+            color: var(--text-muted);
             font-size: 1.1em;
         }
 
@@ -475,17 +576,17 @@
         }
 
         .detailed-stat-card {
-            background: #f8f9fa;
+            background: var(--bg-tertiary);
             padding: 20px;
             border-radius: 10px;
             text-align: center;
-            border: 1px solid #e9ecef;
+            border: 1px solid var(--border-color);
             transition: all 0.3s ease;
         }
 
         .detailed-stat-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px var(--shadow);
         }
 
         .detailed-stat-value {
@@ -494,33 +595,33 @@
             margin-bottom: 8px;
         }
 
-        .detailed-stat-value.success { color: #28a745; }
-        .detailed-stat-value.warning { color: #ffc107; }
-        .detailed-stat-value.danger { color: #dc3545; }
-        .detailed-stat-value.info { color: #667eea; }
+        .detailed-stat-value.success { color: var(--success-color); }
+        .detailed-stat-value.warning { color: var(--warning-color); }
+        .detailed-stat-value.danger { color: var(--error-color); }
+        .detailed-stat-value.info { color: var(--accent-primary); }
 
         .detailed-stat-label {
-            color: #666;
+            color: var(--text-muted);
             font-size: 0.9em;
             font-weight: 500;
         }
 
         .threshold-info {
-            background: #e7f3ff;
-            border: 1px solid #b3d9ff;
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid var(--accent-primary);
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
             text-align: center;
-            color: #0066cc;
+            color: var(--accent-primary);
         }
 
         .loading-spinner {
             display: inline-block;
             width: 20px;
             height: 20px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent-primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin-right: 10px;
@@ -528,7 +629,7 @@
 
         .scrollbar-custom {
             scrollbar-width: thin;
-            scrollbar-color: #667eea #f0f0f0;
+            scrollbar-color: var(--accent-primary) var(--bg-tertiary);
         }
 
         .scrollbar-custom::-webkit-scrollbar {
@@ -536,17 +637,55 @@
         }
 
         .scrollbar-custom::-webkit-scrollbar-track {
-            background: #f0f0f0;
+            background: var(--bg-tertiary);
             border-radius: 4px;
         }
 
         .scrollbar-custom::-webkit-scrollbar-thumb {
-            background: #667eea;
+            background: var(--accent-primary);
             border-radius: 4px;
         }
 
         .scrollbar-custom::-webkit-scrollbar-thumb:hover {
             background: #5a67d8;
+        }
+
+        .result-link-section {
+            background: rgba(102, 126, 234, 0.1);
+            border: 1px solid var(--accent-primary);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .result-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--accent-primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .result-link:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .session-id-display {
+            font-family: monospace;
+            background: var(--card-bg);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--text-primary);
+            margin-top: 10px;
+            border: 1px solid var(--border-color);
         }
 
         @keyframes fadeInDown {
@@ -571,10 +710,20 @@
     </style>
 </head>
 <body>
+    <div class="theme-toggle" onclick="toggleTheme()">
+        <span id="themeIcon">☀️</span>
+        <span id="themeText">Light</span>
+    </div>
+
     <div class="container">
         <div class="header">
-            <h1> Enhanced Comic Series Evaluation</h1>
+            <h1>🦸 Enhanced Comic Series Evaluation</h1>
             <p>Real-time image matching with detailed visualization</p>
+            
+            <div class="nav-buttons">
+                <a href="#" class="nav-btn" id="viewAllResultsBtn">📋 View All Results</a>
+                <a href="#" class="nav-btn" onclick="window.location.reload()">🔄 New Evaluation</a>
+            </div>
         </div>
 
         <div class="evaluation-card">
@@ -583,6 +732,9 @@
                     <label for="folderInput">Series Folder Name:</label>
                     <input type="text" id="folderInput" name="folder" 
                            placeholder="e.g., Green Lanterns (2016)" required>
+                    <label for="seriesId">Series Id:</label>
+                    <input type="number" id="idInput" name="seriesId" 
+                           placeholder="1" required>
                 </div>
                 
                 <div class="form-actions">
@@ -611,6 +763,10 @@
                 <div class="progress-bar" id="progressBar" style="width: 0%"></div>
                 <div class="progress-text" id="progressText">0%</div>
             </div>
+            
+            <div class="session-id-display" id="sessionIdDisplay" style="display: none;">
+                Session ID: <span id="sessionIdValue"></span>
+            </div>
         </div>
 
         <div class="current-processing" id="currentProcessing">
@@ -636,7 +792,7 @@
 
         <div class="detailed-results scrollbar-custom" id="detailedResults">
             <h3>Detailed Results with Match Visualization</h3>
-            <div id="detailedResultsContent" style="text-align: center; color: #666; font-style: italic; padding: 20px;">
+            <div id="detailedResultsContent" style="text-align: center; color: var(--text-muted); font-style: italic; padding: 20px;">
                 Detailed results will appear here as images are processed...
             </div>
         </div>
@@ -678,10 +834,74 @@
                     <div class="detailed-stat-label">Overall Success</div>
                 </div>
             </div>
+
+            <div class="result-link-section" id="resultLinkSection" style="display: none;">
+                <h3>🎉 Evaluation Saved Successfully!</h3>
+                <p>Your evaluation results have been saved and can be accessed anytime:</p>
+                <div style="margin: 15px 0;">
+                    <a href="#" class="result-link" id="viewResultLink" target="_blank">
+                        📊 View Detailed Results
+                    </a>
+                    <a href="#" class="result-link" id="downloadResultLink" target="_blank">
+                        💾 Download JSON Data
+                    </a>
+                </div>
+                <p style="margin-top: 15px; font-size: 0.9em; color: var(--text-muted);">
+                    Bookmark the link above to access this evaluation result later!
+                </p>
+            </div>
         </div>
     </div>
 
     <script>
+        // Theme management
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            updateThemeToggle(newTheme);
+        }
+
+        function updateThemeToggle(theme) {
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            
+            if (theme === 'light') {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+            } else {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+            }
+        }
+
+        // Initialize theme
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateThemeToggle(savedTheme);
+        }
+
+        // Configuration passed from Flask backend
+        const CONFIG = {
+            FLASK_HOST: '{{ config.flask_host }}',
+            FLASK_PORT: '{{ config.flask_port }}',
+            API_URL_PREFIX: '{{ config.api_url_prefix }}'
+        };
+        
+        // Helper function to build API URLs
+        function getApiUrl(endpoint) {
+            const protocol = window.location.protocol;
+            // Only add port if it's defined and not the default ports
+            const portPart = CONFIG.FLASK_PORT && CONFIG.FLASK_PORT !== '80' && CONFIG.FLASK_PORT !== '443' 
+                ? `:${CONFIG.FLASK_PORT}` 
+                : '';
+            return `${protocol}//${CONFIG.FLASK_HOST}${portPart}/${CONFIG.API_URL_PREFIX}${endpoint}`;
+        }
+        
         let eventSource = null;
         let isEvaluating = false;
         let currentSessionId = null;
@@ -705,6 +925,11 @@
         const successCount = document.getElementById('successCount');
         const warningCount = document.getElementById('warningCount');
         const errorCount = document.getElementById('errorCount');
+        const sessionIdDisplay = document.getElementById('sessionIdDisplay');
+        const sessionIdValue = document.getElementById('sessionIdValue');
+        const resultLinkSection = document.getElementById('resultLinkSection');
+        const viewResultLink = document.getElementById('viewResultLink');
+        const downloadResultLink = document.getElementById('downloadResultLink');
 
         let stats = {
             success: 0,
@@ -728,6 +953,12 @@
                 return;
             }
 
+            const seriesId = document.getElementById('idInput').value.trim();
+            if (!seriesId || isNaN(seriesId)) {
+                alert('Please enter a valid series ID');
+                return;
+            }
+
             isEvaluating = true;
             startBtn.disabled = true;
             loadingSpinner.style.display = 'inline-block';
@@ -739,14 +970,15 @@
             progressContainer.style.display = 'block';
             currentProcessing.style.display = 'block';
             completionSummary.style.display = 'none';
+            resultLinkSection.style.display = 'none';
             
             // Start evaluation
-            fetch('/inferno-comics-recognition/api/v1/evaluation', {
+            fetch(getApiUrl('/evaluation'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ folder: folder })
+                body: JSON.stringify({ folder: folder, seriesId: seriesId }),
             })
             .then(response => response.json())
             .then(data => {
@@ -756,6 +988,10 @@
                 
                 currentSessionId = data.session_id;
                 console.log('Evaluation started with session ID:', currentSessionId);
+                
+                // Display session ID
+                sessionIdValue.textContent = currentSessionId;
+                sessionIdDisplay.style.display = 'block';
                 
                 startProgressListener();
             })
@@ -772,7 +1008,7 @@
                 return;
             }
             
-            eventSource = new EventSource(`/inferno-comics-recognition/api/v1/evaluation/progress?session_id=${currentSessionId}`);
+            eventSource = new EventSource(getApiUrl(`/evaluation/progress?session_id=${currentSessionId}`));
             
             eventSource.onmessage = function(event) {
                 const data = JSON.parse(event.data);
@@ -826,20 +1062,37 @@
                     updateCurrentStatus('Evaluation completed!');
                     updateProgress(100);
                     showCompletionSummary(data);
+                    
+                    // Hide processing sections
                     currentProcessing.style.display = 'none';
+                    progressContainer.style.display = 'none';
+                    
+                    // Show result links
+                    if (currentSessionId) {
+                        showResultLinks();
+                    }
+                    
                     resetEvaluationState();
                     break;
                     
                 case 'error':
                     updateCurrentStatus(`Error: ${data.message}`);
                     alert('Evaluation failed: ' + data.message);
+                    
+                    // Hide processing sections
                     currentProcessing.style.display = 'none';
+                    progressContainer.style.display = 'none';
+                    
                     resetEvaluationState();
                     break;
                     
                 case 'stopped':
                     updateCurrentStatus('Evaluation stopped by user');
+                    
+                    // Hide processing sections
                     currentProcessing.style.display = 'none';
+                    progressContainer.style.display = 'none';
+                    
                     resetEvaluationState();
                     break;
                     
@@ -928,9 +1181,9 @@
                 `;
                 
                 detailedResult.matches.forEach((match, index) => {
-                    const scoreColor = match.similarity >= 0.25 ? '#28a745' : 
-                                     match.similarity >= 0.10 ? '#ffc107' : 
-                                     match.similarity >= 0.05 ? '#fd7e14' : '#dc3545';
+                    const scoreColor = match.similarity >= 0.25 ? 'var(--success-color)' : 
+                                     match.similarity >= 0.10 ? 'var(--warning-color)' : 
+                                     match.similarity >= 0.05 ? '#fd7e14' : 'var(--error-color)';
                     
                     const matchClass = match.meets_threshold ? "threshold-met" : "";
                     const statusClass = match.meets_threshold ? "success" : "";
@@ -994,7 +1247,7 @@
             completionSummary.style.display = 'block';
             
             // Update completion header
-            document.getElementById('completionIcon').textContent = isSuccess ? '' : '❌';
+            document.getElementById('completionIcon').textContent = isSuccess ? '🎉' : '❌';
             document.getElementById('completionTitle').textContent = isSuccess ? 'OVERALL SUCCESS' : 'NO MATCHES FOUND';
             document.getElementById('completionSubtitle').textContent = isSuccess 
                 ? `At least one image was successfully matched for ${data.series_name} (${data.year})!`
@@ -1015,10 +1268,21 @@
             completionSummary.scrollIntoView({ behavior: 'smooth' });
         }
 
+        function showResultLinks() {
+            if (!currentSessionId) return;
+            
+            // Set up the result links
+            viewResultLink.href = getApiUrl(`/evaluation/${currentSessionId}`);
+            downloadResultLink.href = getApiUrl(`/evaluation/${currentSessionId}/data`);
+            
+            // Show the result link section
+            resultLinkSection.style.display = 'block';
+        }
+
         function stopEvaluation() {
             if (!isEvaluating || !currentSessionId) return;
             
-            fetch('/inferno-comics-recognition/api/v1/evaluation/stop', {
+            fetch(getApiUrl('/evaluation/stop'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1038,7 +1302,6 @@
 
         function resetEvaluationState() {
             isEvaluating = false;
-            currentSessionId = null;
             startBtn.disabled = false;
             startBtn.innerHTML = 'Start Evaluation';
             loadingSpinner.style.display = 'none';
@@ -1066,8 +1329,11 @@
             currentImageProgress.textContent = 'Image 0 of 0';
             currentImagePreview.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDEyMCAxNjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTYwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjYwIiB5PSI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY2NiIgZm9udC1zaXplPSIxMiI+UHJvY2Vzc2luZy4uLjwvdGV4dD4KPC9zdmc+";
             
+            sessionIdDisplay.style.display = 'none';
+            sessionIdValue.textContent = '';
+            
             detailedResultsContent.innerHTML = `
-                <div style="text-align: center; color: #666; font-style: italic; padding: 20px;">
+                <div style="text-align: center; color: var(--text-muted); font-style: italic; padding: 20px;">
                     Detailed results will appear here as images are processed...
                 </div>
             `;
@@ -1091,6 +1357,40 @@
         // Add smooth scrolling for better UX
         document.addEventListener('DOMContentLoaded', function() {
             document.documentElement.style.scrollBehavior = 'smooth';
+            
+            // Initialize theme
+            initializeTheme();
+            
+            // Set up navigation button URLs
+            document.getElementById('viewAllResultsBtn').href = getApiUrl('/evaluation/list');
+        });
+
+        // Check for session ID in URL parameters (for direct access to results)
+        window.addEventListener('load', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionParam = urlParams.get('session');
+            if (sessionParam) {
+                // If there's a session parameter, show a message about viewing results
+                const existingResult = document.createElement('div');
+                existingResult.className = 'evaluation-card';
+                existingResult.innerHTML = `
+                    <h3>🔍 Looking for evaluation results?</h3>
+                    <p>It looks like you're trying to view a specific evaluation result.</p>
+                    <div style="margin-top: 15px;">
+                        <a href="#" class="btn" id="viewSpecificResultBtn">
+                            📊 View Evaluation Result
+                        </a>
+                        <a href="#" class="btn" id="browseAllResultsBtn" style="margin-left: 10px; background: #6c757d;">
+                            📋 Browse All Results
+                        </a>
+                    </div>
+                `;
+                document.querySelector('.container').insertBefore(existingResult, document.querySelector('.evaluation-card'));
+                
+                // Set up the dynamic URLs
+                document.getElementById('viewSpecificResultBtn').href = getApiUrl(`/evaluation/${sessionParam}`);
+                document.getElementById('browseAllResultsBtn').href = getApiUrl('/evaluation/list');
+            }
         });
     </script>
 </body>

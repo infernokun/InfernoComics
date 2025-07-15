@@ -1,6 +1,6 @@
-# Enhanced Evaluation System - Flask Blueprint
+# Enhanced Evaluation System - Flask Blueprint with Result Persistence
 # Add these imports to the top of your Flask app file
-from flask import Blueprint, render_template, request, jsonify, Response
+from flask import Blueprint, render_template, request, jsonify, Response, current_app
 import os
 import re
 import requests
@@ -20,7 +20,94 @@ active_evaluations = {}  # Dictionary to store active evaluations by session
 
 # Your existing constants
 SIMILARITY_THRESHOLD = 0.25
-SERIES_ID = 1 # You might want to make this configurable
+SERIES_ID = 3 # You might want to make this configurable
+
+def ensure_results_directory():
+    """Ensure the results directory exists"""
+    results_dir = './results'
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+    return results_dir
+
+def save_evaluation_result(session_id, evaluation_state):
+    """Save complete evaluation result to JSON file"""
+    try:
+        results_dir = ensure_results_directory()
+        result_file = os.path.join(results_dir, f"{session_id}.json")
+        
+        # Create complete result structure
+        result_data = {
+            'session_id': session_id,
+            'timestamp': datetime.now().isoformat(),
+            'status': evaluation_state.get('status', 'unknown'),
+            'series_name': evaluation_state.get('series_name'),
+            'year': evaluation_state.get('year'),
+            'total_images': evaluation_state.get('total_images', 0),
+            'processed': evaluation_state.get('processed', 0),
+            'successful_matches': evaluation_state.get('successful_matches', 0),
+            'failed_uploads': evaluation_state.get('failed_uploads', 0),
+            'no_matches': evaluation_state.get('no_matches', 0),
+            'overall_success': evaluation_state.get('overall_success', False),
+            'best_similarity': evaluation_state.get('best_similarity', 0.0),
+            'similarity_threshold': SIMILARITY_THRESHOLD,
+            'results': []
+        }
+        
+        # Process each result with full details
+        for result in evaluation_state.get('results', []):
+            image_name = os.path.basename(result.get('image_path', ''))
+            
+            result_item = {
+                'image_name': image_name,
+                'image_base64': result.get('image_base64'),
+                'api_success': result.get('api_success', False),
+                'match_success': result.get('match_success', False),
+                'best_similarity': result.get('best_similarity', 0.0),
+                'status_code': result.get('status_code'),
+                'error': result.get('error'),
+                'matches': [],
+                'total_matches': 0
+            }
+            
+            # Include match details if available
+            if result.get('api_success') and result.get('response_data') and 'top_matches' in result['response_data']:
+                top_matches = result['response_data']['top_matches']
+                for match in top_matches:
+                    result_item['matches'].append({
+                        'similarity': match.get('similarity', 0),
+                        'url': match.get('url', ''),
+                        'meets_threshold': match.get('similarity', 0) >= SIMILARITY_THRESHOLD
+                    })
+                result_item['total_matches'] = result['response_data'].get('total_matches', 0)
+            
+            result_data['results'].append(result_item)
+        
+        # Save to JSON file
+        with open(result_file, 'w') as f:
+            json.dump(result_data, f, indent=2)
+        
+        print(f"Saved evaluation result to {result_file}")
+        return result_file
+        
+    except Exception as e:
+        print(f"Error saving evaluation result: {e}")
+        return None
+
+def load_evaluation_result(session_id):
+    """Load evaluation result from JSON file"""
+    try:
+        results_dir = ensure_results_directory()
+        result_file = os.path.join(results_dir, f"{session_id}.json")
+        
+        if not os.path.exists(result_file):
+            return None
+            
+        with open(result_file, 'r') as f:
+            return json.load(f)
+            
+    except Exception as e:
+        print(f"Error loading evaluation result: {e}")
+        return None
 
 def extract_name_and_year(folder_path):
     """Extract series name and year from folder name like 'Green Lanterns (2016)'"""
@@ -162,7 +249,7 @@ def upload_comic_image(series_id, image_path, name, year):
             'error': f"Unexpected error: {str(e)}"
         }
 
-def run_evaluation(folder_path, session_id):
+def run_evaluation(folder_path, session_id, series_id):
     """Run the evaluation process with progress updates"""
 
     print(f"Starting evaluation for session {session_id} with folder {folder_path}")
@@ -302,7 +389,7 @@ def run_evaluation(folder_path, session_id):
             })
 
             # Upload image
-            result = upload_comic_image(SERIES_ID, image_path, series_name, year)
+            result = upload_comic_image(series_id, image_path, series_name, year)
             result['image_path'] = image_path
             result['image_base64'] = image_base64  # Store base64 for later use
             evaluation_state['results'].append(result)
@@ -372,6 +459,9 @@ def run_evaluation(folder_path, session_id):
         evaluation_state['overall_success'] = evaluation_state['successful_matches'] > 0
         evaluation_state['status'] = 'completed'
 
+        # Save the complete evaluation result to file
+        save_evaluation_result(session_id, evaluation_state)
+
         print(f"Evaluation completed for session {session_id}")
 
         progress_queue.put({
@@ -398,26 +488,40 @@ def run_evaluation(folder_path, session_id):
             'message': f'Evaluation failed: {str(e)}'
         })
         evaluation_state['status'] = 'error'
+        # Save error state as well
+        save_evaluation_result(session_id, evaluation_state)
 
 @evaluation_bp.route('/evaluation', methods=['GET', 'POST'])
 def evaluation():
     if request.method == 'GET':
-        return render_template('evaluation.html')
+        # Pass configuration to template
+        config = {
+            'flask_host': current_app.config.get('FLASK_HOST'),
+            'flask_port': current_app.config.get('FLASK_PORT'),
+            'api_url_prefix': current_app.config.get('API_URL_PREFIX')
+        }
+        return render_template('evaluation.html', config=config)
     
     elif request.method == 'POST':
         folder = None
+        series_id = None
         if request.is_json:
             folder = request.json.get('folder')
+            series_id = request.json.get('seriesId')
         else:
             folder = request.form.get('folder')
+            series_id = request.form.get('seriesId')
             
         if not folder:
             return jsonify({'error': 'Folder parameter is required'}), 400
         
+        if not series_id:
+            return jsonify({'error': 'Series ID parameter is required'}), 400
+        
         session_id = str(uuid.uuid4())
         folder_path = os.path.join("./images", folder)
         
-        evaluation_thread = threading.Thread(target=run_evaluation, args=(folder_path, session_id))
+        evaluation_thread = threading.Thread(target=run_evaluation, args=(folder_path, session_id, series_id))
         evaluation_thread.daemon = True
         evaluation_thread.start()
         
@@ -426,6 +530,80 @@ def evaluation():
             'message': 'Evaluation started',
             'session_id': session_id
         })
+
+@evaluation_bp.route('/evaluation/<session_id>')
+def view_evaluation_result(session_id):
+    """View a completed evaluation result"""
+    result_data = load_evaluation_result(session_id)
+    
+    if not result_data:
+        return render_template('evaluation_error.html', 
+                             error_message=f"Evaluation result not found for session: {session_id}",
+                             config={'flask_host': current_app.config.get('FLASK_HOST'), 'flask_port': current_app.config.get('FLASK_PORT'),
+                                   'api_url_prefix': current_app.config.get('API_URL_PREFIX'),})
+    
+    config = {
+        'flask_host': current_app.config.get('FLASK_HOST'),
+        'flask_port': current_app.config.get('FLASK_PORT'),
+        'api_url_prefix': current_app.config.get('API_URL_PREFIX'),
+    }
+    return render_template('evaluation_result.html', result=result_data, config=config)
+
+@evaluation_bp.route('/evaluation/<session_id>/data')
+def get_evaluation_data(session_id):
+    """Get evaluation result data as JSON"""
+    result_data = load_evaluation_result(session_id)
+    
+    if not result_data:
+        return jsonify({'error': 'Evaluation result not found'}), 404
+    
+    return jsonify(result_data)
+
+@evaluation_bp.route('/evaluation/list')
+def list_evaluations():
+    """List all available evaluation results"""
+    try:
+        results_dir = ensure_results_directory()
+        evaluations = []
+        
+        for filename in os.listdir(results_dir):
+            if filename.endswith('.json'):
+                session_id = filename[:-5]  # Remove .json extension
+                try:
+                    result_data = load_evaluation_result(session_id)
+                    if result_data:
+                        evaluations.append({
+                            'session_id': session_id,
+                            'timestamp': result_data.get('timestamp'),
+                            'series_name': result_data.get('series_name'),
+                            'year': result_data.get('year'),
+                            'total_images': result_data.get('total_images', 0),
+                            'successful_matches': result_data.get('successful_matches', 0),
+                            'overall_success': result_data.get('overall_success', False),
+                            'status': result_data.get('status', 'unknown')
+                        })
+                except Exception as e:
+                    print(f"Error loading evaluation {session_id}: {e}")
+        
+        # Sort by timestamp, newest first
+        evaluations.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        config = {
+            'flask_host': current_app.config.get('FLASK_HOST'),
+            'flask_port': current_app.config.get('FLASK_PORT'),
+            'api_url_prefix': current_app.config.get('API_URL_PREFIX'),
+        }
+        return render_template('evaluation_list.html', evaluations=evaluations, config=config)
+        
+    except Exception as e:
+        config = {
+            'flask_host': current_app.config.get('FLASK_HOST'),
+            'flask_port': current_app.config.get('FLASK_PORT'),
+            'api_url_prefix': current_app.config.get('API_URL_PREFIX'),
+        }
+        return render_template('evaluation_error.html', 
+                             error_message=f"Error loading evaluation list: {str(e)}",
+                             config=config)
 
 @evaluation_bp.route('/evaluation/progress')
 def evaluation_progress():
@@ -522,13 +700,13 @@ def stop_evaluation():
         print(f"Error in stop_evaluation route: {e}")
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
-@evaluation_bp.route('/evaluation/<folder_name>')
-def evaluation_with_folder(folder_name):
+@evaluation_bp.route('/evaluation/<folder_name>/<id>')
+def evaluation_with_folder(folder_name, id):
     """Alternative endpoint using URL parameter"""
     session_id = str(uuid.uuid4())
     folder_path = os.path.join("./images", folder_name)
     
-    evaluation_thread = threading.Thread(target=run_evaluation, args=(folder_path, session_id))
+    evaluation_thread = threading.Thread(target=run_evaluation, args=(folder_path, session_id, id))
     evaluation_thread.daemon = True
     evaluation_thread.start()
     

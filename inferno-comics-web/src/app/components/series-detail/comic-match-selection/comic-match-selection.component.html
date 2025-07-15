@@ -1,58 +1,129 @@
 <div class="dialog-container">
-    <h2 mat-dialog-title>Select Comic Match</h2>
-
-    <div mat-dialog-content class="matches-container">
-        <p class="instruction-text">
-            Select the comic that best matches your uploaded image. Higher
-            similarity scores indicate better matches.
-        </p>
-
-        <div class="matches-grid">
-            <div *ngFor="let match of sortedMatches; let i = index" class="match-card" [class.best-match]="i === 0"
-                (click)="selectMatch(match)">
-                <div class="match-header">
-                    <span class="similarity-badge" [class.high-similarity]="match.similarity >= 0.25">
-                        {{ (match.similarity * 100).toFixed(1) }}% match
-                    </span>
-                    <span *ngIf="i === 0" class="best-match-label">Best Match</span>
-                </div>
-
-                <div class="image-container">
-                    <img [src]="match.url" [alt]="match.comic_name" (error)="onImageError($event)" loading="lazy" />
-                </div>
-
-                <div class="match-info">
-                    <h3 class="comic-title">{{ match.comic_name }}</h3>
-                    <p class="issue-number">Issue #{{ match.issue_number }}</p>
-
-                    <div class="match-details">
-                        <div class="detail-row">
-                            <span class="detail-label">ORB:</span>
-                            <span class="detail-value">{{ match.match_details.orb.good_matches }}/{{
-                                match.match_details.orb.total_matches
-                                }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">SIFT:</span>
-                            <span class="detail-value">{{ match.match_details.sift.good_matches }}/{{
-                                match.match_details.sift.total_matches
-                                }}</span>
-                        </div>
-
-                        <div class="detail-row">
-                            <span class="detail-label">Comic Vine Id:</span>
-                            <span class="detail-value">{{ match.comic_vine_id ? match.comic_vine_id : 'N/A' }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+  <!-- Header -->
+  <div class="dialog-header">
+    <div class="header-content">
+      <mat-icon class="header-icon">image_search</mat-icon>
+      <div>
+        <h2 mat-dialog-title>Comic Match Results</h2>
+        <p class="session-info">Session: <span class="session-id">{{sessionId}}</span></p>
+      </div>
+    </div>
+    <div class="results-summary">
+      <div class="summary-item">
+        <span class="summary-number">{{sortedMatches.length}}</span>
+        <span class="summary-label">Matches</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-number">{{getBestMatchPercentage()}}%</span>
+        <span class="summary-label">Best</span>
+      </div>
+    </div>
+  </div>
+  
+  <div mat-dialog-content class="content">
+    <!-- Original Image -->
+    <div class="original-section" *ngIf="data.originalImage">
+      <h3><mat-icon>upload</mat-icon> Your Image</h3>
+      <div class="original-card">
+        <img [src]="getImagePreview()" alt="Your image" class="original-image" />
+        <div class="original-info">
+          <p class="filename">{{ data.originalImage.name }}</p>
+          <p class="filesize">{{ formatFileSize(data.originalImage.size) }}</p>
         </div>
+      </div>
     </div>
 
-    <div mat-dialog-actions class="dialog-actions">
-        <button mat-button (click)="onCancel()">Cancel</button>
-        <button mat-button color="primary" (click)="onNoMatch()">
-            None of these match
-        </button>
+    <!-- Instructions -->
+    <div class="instructions">
+      <mat-icon>info</mat-icon>
+      <span>Select the comic that best matches your image. Higher percentages indicate better matches.</span>
     </div>
+
+    <!-- Matches -->
+    <div class="matches-grid">
+      <div *ngFor="let match of sortedMatches; let i = index" 
+           class="match-card" 
+           [class.best]="i === 0"
+           (click)="selectMatch(match)">
+        
+        <div class="match-header">
+          <div class="rank" [class.gold]="i === 0">#{{i + 1}}</div>
+          <div class="similarity">{{ (match.similarity * 100).toFixed(1) }}%</div>
+          <span *ngIf="i === 0" class="best-badge">
+            <mat-icon>star</mat-icon>Best
+          </span>
+        </div>
+        
+        <div class="image-container">
+          <img [src]="match.url" 
+               [alt]="match.comic_name" 
+               (error)="onImageError($event)" 
+               loading="lazy" />
+        </div>
+        
+        <div class="info">
+          <h3>{{ match.comic_name }}</h3>
+          <p>Issue #{{ match.issue_number }}</p>
+          
+          <div class="features">
+            <div class="feature">
+              <span class="label">ORB:</span>
+              <span class="value">{{ match.match_details.orb.good_matches }}/{{ match.match_details.orb.total_matches }}</span>
+              <div class="bar">
+                <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.orb)"></div>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="label">SIFT:</span>
+              <span class="value">{{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}</span>
+              <div class="bar">
+                <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.sift)"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Confidence Bar -->
+          <div class="confidence">
+            <div class="confidence-bar">
+              <div class="confidence-fill" 
+                   [style.width.%]="match.similarity * 100"
+                   [class.high]="match.similarity >= 0.25"
+                   [class.medium]="match.similarity >= 0.15 && match.similarity < 0.25"
+                   [class.low]="match.similarity < 0.15">
+              </div>
+            </div>
+            <span class="confidence-text">{{ getConfidenceText(match.similarity) }}</span>
+          </div>
+          
+          <div class="metadata" *ngIf="match.comic_vine_id">
+            <mat-icon>link</mat-icon>
+            <span>ID: {{ match.comic_vine_id }}</span>
+          </div>
+        </div>
+        
+        <button mat-raised-button 
+                [color]="i === 0 ? 'primary' : 'accent'"
+                class="select-btn"
+                (click)="selectMatch(match); $event.stopPropagation()">
+          <mat-icon>check</mat-icon>
+          Select
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div mat-dialog-actions class="actions">
+    <button mat-button (click)="onCancel()">
+      <mat-icon>close</mat-icon>Cancel
+    </button>
+    <button mat-button (click)="onNoMatch()">
+      <mat-icon>block</mat-icon>None Match
+    </button>
+    <button mat-raised-button color="primary" 
+            *ngIf="sortedMatches.length > 0"
+            (click)="selectMatch(sortedMatches[0])">
+      <mat-icon>star</mat-icon>Select Best
+    </button>
+  </div>
 </div>

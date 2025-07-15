@@ -1,4 +1,3 @@
-// image-processing-dialog.component.ts
 import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
@@ -27,16 +26,28 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   hasError = false;
   errorMessage = '';
   canRetry = false;
+  startTime = new Date();
   
   // Expose Math for template
   Math = Math;
 
+  // Stage mapping for better progress tracking
+  private stageMapping: { [key: string]: number } = {
+    'processing_data': 0,
+    'initializing_matcher': 1,
+    'extracting_features': 1,
+    'comparing_images': 2,
+    'processing_results': 3,
+    'finalizing': 4,
+    'complete': 4
+  };
+
   processingStages = [
-    { name: 'Uploading image', key: 'upload' },
-    { name: 'Extracting features', key: 'features' },
-    { name: 'Comparing with database', key: 'compare' },
-    { name: 'Analyzing matches', key: 'analyze' },
-    { name: 'Finalizing results', key: 'finalize' }
+    { name: 'Processing data', key: 'processing_data' },
+    { name: 'Extracting features', key: 'extracting_features' },
+    { name: 'Comparing images', key: 'comparing_images' },
+    { name: 'Processing results', key: 'processing_results' },
+    { name: 'Finalizing', key: 'finalizing' }
   ];
 
   statusMessages: Array<{
@@ -58,6 +69,9 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     if (!this.data.onProgress) {
       this.simulateProcessing();
     }
+
+    // Scroll to top
+    setTimeout(() => this.scrollToTop(), 0);
   }
 
   ngOnDestroy() {
@@ -72,20 +86,43 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateProgress(stage: string, progressPercent: number, message?: string) {
-    this.currentStage = stage;
-    this.progress = Math.min(100, Math.max(0, progressPercent));
-    
-    // Update current stage index based on stage name
-    const stageIndex = this.processingStages.findIndex(s => 
-      stage.toLowerCase().includes(s.key.toLowerCase())
-    );
-    if (stageIndex >= 0) {
-      this.currentStageIndex = stageIndex;
-    }
+  getCurrentTime(): string {
+    return this.startTime.toLocaleTimeString();
+  }
 
-    if (message) {
-      this.addStatusMessage(message, 'info');
+  getElapsedTime(): string {
+    const elapsed = Date.now() - this.startTime.getTime();
+    return `${Math.round(elapsed / 1000)}s`;
+  }
+
+  updateProgress(stage: string, progressPercent: number, message?: string) {
+    // Ensure progress only moves forward to prevent jumping
+    const newProgress = Math.min(100, Math.max(this.progress, progressPercent));
+    
+    // Only update if progress actually increased or stage changed
+    if (newProgress > this.progress || stage !== this.currentStage) {
+      this.progress = newProgress;
+      this.currentStage = stage;
+      
+      // Map stage to index more reliably
+      const mappedIndex = this.stageMapping[stage];
+      if (mappedIndex !== undefined) {
+        // Only advance stage index, never go backwards
+        this.currentStageIndex = Math.max(this.currentStageIndex, mappedIndex);
+      } else {
+        // Fallback: try to match by stage name
+        const stageIndex = this.processingStages.findIndex(s => 
+          stage.toLowerCase().includes(s.key.toLowerCase()) ||
+          s.name.toLowerCase().includes(stage.toLowerCase())
+        );
+        if (stageIndex >= 0) {
+          this.currentStageIndex = Math.max(this.currentStageIndex, stageIndex);
+        }
+      }
+
+      if (message) {
+        this.addStatusMessage(message, 'info');
+      }
     }
   }
 
@@ -100,9 +137,9 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   setComplete(result?: any) {
     this.isProcessing = false;
     this.progress = 100;
-    this.currentStage = 'Complete!';
+    this.currentStage = 'Analysis Complete!';
     this.currentStageIndex = this.processingStages.length - 1;
-    this.addStatusMessage('Image analysis completed successfully!', 'success');
+    this.addStatusMessage(`Analysis completed successfully in ${this.getElapsedTime()}!`, 'success');
     
     if (this.data.onComplete) {
       this.data.onComplete(result);
@@ -111,7 +148,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     // Auto-close after a short delay
     setTimeout(() => {
       this.dialogRef.close(result);
-    }, 1500);
+    }, 2000);
   }
 
   addStatusMessage(text: string, type: 'info' | 'success' | 'warning' | 'error') {
@@ -121,10 +158,18 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
       timestamp: new Date()
     });
 
-    // Limit to last 10 messages
-    if (this.statusMessages.length > 10) {
-      this.statusMessages = this.statusMessages.slice(-10);
+    // Limit to last 15 messages
+    if (this.statusMessages.length > 15) {
+      this.statusMessages = this.statusMessages.slice(-15);
     }
+
+    // Auto-scroll to bottom
+    setTimeout(() => {
+      const messages = document.querySelector('.status-messages');
+      if (messages) {
+        messages.scrollTop = messages.scrollHeight;
+      }
+    }, 50);
   }
 
   getMessageIcon(type: string): string {
@@ -153,6 +198,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     this.currentStage = 'Retrying...';
     this.canRetry = false;
     this.statusMessages = [];
+    this.startTime = new Date();
     this.addStatusMessage('Retrying image analysis...', 'info');
     
     // Call parent's retry logic or simulate again
@@ -162,18 +208,33 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   private simulateProcessing() {
     // This is a fallback simulation - replace with actual processing logic
     let currentProgress = 0;
+    let stageIndex = 0;
+    
     const interval = setInterval(() => {
-      currentProgress += Math.random() * 15;
+      // More controlled progress increments
+      const increment = Math.random() * 8 + 2; // 2-10% increments
+      currentProgress = Math.min(100, currentProgress + increment);
+      
+      // Update stage index based on progress ranges
+      const newStageIndex = Math.floor((currentProgress / 100) * this.processingStages.length);
+      if (newStageIndex > stageIndex && newStageIndex < this.processingStages.length) {
+        stageIndex = newStageIndex;
+        this.addStatusMessage(`Starting: ${this.processingStages[stageIndex].name}`, 'info');
+      }
       
       if (currentProgress >= 100) {
-        currentProgress = 100;
         this.setComplete();
         clearInterval(interval);
       } else {
-        const stageIndex = Math.floor((currentProgress / 100) * this.processingStages.length);
         const stageName = this.processingStages[stageIndex]?.name || 'Processing...';
-        this.updateProgress(stageName, currentProgress);
+        const stageKey = this.processingStages[stageIndex]?.key || 'processing';
+        this.updateProgress(stageKey, currentProgress);
       }
-    }, 500);
+    }, 400); // Slower updates to reduce jumping
+  }
+
+  private scrollToTop(): void {
+    const content = document.querySelector('.dialog-content');
+    if (content) content.scrollTop = 0;
   }
 }

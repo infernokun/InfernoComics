@@ -12,7 +12,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/progress")
+@RequestMapping("/api/progress")
 public class ProgressController {
 
     private final ImageProcessingProgressService progressService;

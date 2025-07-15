@@ -4,8 +4,11 @@ import numpy as np
 import uuid
 import time
 import threading
+import os
+import traceback
+import base64
 from datetime import datetime, timedelta
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response, current_app, render_template
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 from concurrent.futures import ThreadPoolExecutor
 import queue
@@ -21,6 +24,108 @@ session_lock = threading.Lock()
 
 # Thread pool for async processing
 executor = ThreadPoolExecutor(max_workers=3)
+
+# Constants
+SIMILARITY_THRESHOLD = 0.25
+
+def ensure_results_directory():
+    """Ensure the results directory exists (same as evaluation system)"""
+    results_dir = './results'
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+    return results_dir
+
+def save_image_matcher_result(session_id, result_data, query_filename=None, query_image_base64=None):
+    """Save image matcher result to JSON file in same format as evaluation system"""
+    try:
+        results_dir = ensure_results_directory()
+        result_file = os.path.join(results_dir, f"{session_id}.json")
+        
+        # Convert image matcher result to evaluation-compatible format
+        total_matches = len(result_data.get('top_matches', []))
+        successful_matches = sum(1 for match in result_data.get('top_matches', []) 
+                               if match.get('similarity', 0) >= SIMILARITY_THRESHOLD)
+        
+        # Create evaluation-compatible result structure
+        evaluation_result = {
+            'session_id': session_id,
+            'timestamp': datetime.now().isoformat(),
+            'status': 'completed',
+            'series_name': query_filename or 'Image Search Query',
+            'year': None,  # Not applicable for image search
+            'total_images': 1,  # Single query image
+            'processed': 1,
+            'successful_matches': successful_matches,
+            'failed_uploads': 0,
+            'no_matches': total_matches - successful_matches,
+            'overall_success': successful_matches > 0,
+            'best_similarity': max((match.get('similarity', 0) for match in result_data.get('top_matches', [])), default=0.0),
+            'similarity_threshold': SIMILARITY_THRESHOLD,
+            'total_covers_processed': result_data.get('total_covers_processed', 0),
+            'total_urls_processed': result_data.get('total_urls_processed', 0),
+            'query_type': 'image_search',  # Distinguish from folder evaluation
+            'query_image_base64': query_image_base64,  # Store the query image
+            'results': []
+        }
+        
+        # Create a single result item representing the query image and its matches
+        query_result_item = {
+            'image_name': query_filename or 'Uploaded Query Image',
+            'image_base64': query_image_base64,  # Use the query image base64
+            'api_success': True,
+            'match_success': successful_matches > 0,
+            'best_similarity': evaluation_result['best_similarity'],
+            'status_code': 200,
+            'error': result_data.get('error'),
+            'matches': [],
+            'total_matches': total_matches,
+            # Additional image matcher specific data
+            'query_type': 'image_search'
+        }
+        
+        # Add all matches to the single result item
+        for match in result_data.get('top_matches', []):
+            match_item = {
+                'similarity': match.get('similarity', 0),
+                'url': match.get('url', ''),
+                'meets_threshold': match.get('similarity', 0) >= SIMILARITY_THRESHOLD,
+                'comic_name': match.get('comic_name', 'Unknown'),
+                'issue_number': match.get('issue_number', 'Unknown'),
+                'comic_vine_id': match.get('comic_vine_id'),
+                'parent_comic_vine_id': match.get('parent_comic_vine_id'),
+                'match_details': match.get('match_details', {}),
+                'candidate_features': match.get('candidate_features', {})
+            }
+            query_result_item['matches'].append(match_item)
+        
+        evaluation_result['results'].append(query_result_item)
+        
+        # Save to JSON file
+        with open(result_file, 'w') as f:
+            json.dump(evaluation_result, f, indent=2)
+        
+        print(f"Saved image matcher result to {result_file}")
+        return result_file
+        
+    except Exception as e:
+        print(f"Error saving image matcher result: {e}")
+        return None
+
+def load_image_matcher_result(session_id):
+    """Load image matcher result from JSON file (reuse evaluation loader)"""
+    try:
+        results_dir = ensure_results_directory()
+        result_file = os.path.join(results_dir, f"{session_id}.json")
+        
+        if not os.path.exists(result_file):
+            return None
+            
+        with open(result_file, 'r') as f:
+            return json.load(f)
+            
+    except Exception as e:
+        print(f"Error loading image matcher result: {e}")
+        return None
 
 class SSEProgressTracker:
     """Class to track and send progress updates via SSE (for fallback when no session_id)"""
@@ -90,27 +195,35 @@ class SSEProgressTracker:
         """Close the progress tracker"""
         self.is_active = False
 
-def create_progress_callback(java_reporter, start_progress, end_progress, total_items):
-    """Create a progress callback for the matcher that maps to the correct range"""
-    def progress_callback(current_item, message=""):
-        if total_items == 0:
-            return
-        
-        # Map current_item (0 to total_items) to progress range (start_progress to end_progress)
-        progress_range = end_progress - start_progress
-        item_progress = (current_item / total_items) * progress_range
-        actual_progress = start_progress + item_progress
-        
-        java_reporter.update_progress('comparing_images', int(actual_progress), 
-                                    f"Processing candidate {current_item}/{total_items}... {message}")
-    
-    return progress_callback
+def safe_progress_callback(callback, current_item, message=""):
+    """Safely call progress callback, handling None case"""
+    if callback is not None:
+        try:
+            callback(current_item, message)
+        except Exception as e:
+            print(f"Progress callback error: {e}")
+            pass  # Continue execution even if progress fails
 
-def process_image_with_centralized_progress(session_id, query_image, candidate_covers):
+def image_to_base64(image_array):
+    """Convert OpenCV image array to base64 data URL"""
+    try:
+        # Encode image as JPEG
+        _, buffer = cv2.imencode('.jpg', image_array)
+        # Convert to base64
+        image_base64 = base64.b64encode(buffer).decode('utf-8')
+        return f"data:image/jpeg;base64,{image_base64}"
+    except Exception as e:
+        print(f"Error converting image to base64: {e}")
+        return None
+
+def process_image_with_centralized_progress(session_id, query_image, candidate_covers, query_filename=None):
     """Process image matching with CENTRALIZED progress reporting to Java"""
     
     # Create Java progress reporter - this is the SINGLE source of truth
     java_reporter = JavaProgressReporter(session_id)
+    
+    # Convert query image to base64 for storage
+    query_image_base64 = image_to_base64(query_image)
     
     try:
         # Continue from where Java left off (10%)
@@ -161,6 +274,20 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         # Initialize matcher
         matcher = FeatureMatchingComicMatcher(max_workers=6)
         
+        # Create a safe progress callback wrapper for the matcher
+        def safe_matcher_progress(current_item, message=""):
+            # Remove the undefined progress_callback check
+            try:
+                # Map the matcher's progress (0 to total_items) to our range (35 to 85)
+                progress_range = 85 - 35
+                if len(candidate_urls) > 0:
+                    item_progress = (current_item / len(candidate_urls)) * progress_range
+                    actual_progress = 35 + item_progress
+                    java_reporter.update_progress('comparing_images', int(actual_progress), 
+                                                f"Processing candidate {current_item}/{len(candidate_urls)}... {message}")
+            except Exception as e:
+                print(f"Progress callback error: {e}")
+        
         java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready')
         
         # Stage 3: Feature extraction from query image (25% -> 35%)
@@ -169,14 +296,11 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         # Stage 4: Heavy image comparison work (35% -> 85%)
         java_reporter.update_progress('comparing_images', 35, 'Starting image feature comparison...')
         
-        # Create progress callback for the matcher
-        progress_callback = create_progress_callback(java_reporter, 35, 85, len(candidate_urls))
-        
         # Run matching with progress callback - this is the time-consuming part
         results, query_elements = matcher.find_matches_img(
             query_image, 
             candidate_urls, 
-            progress_callback=progress_callback
+            progress_callback=safe_matcher_progress  # Use our safe wrapper
         )
         
         java_reporter.update_progress('comparing_images', 85, 'Image comparison complete')
@@ -223,24 +347,39 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
             'top_matches': top_matches,
             'total_matches': len(enhanced_results),
             'total_covers_processed': len(candidate_covers),
-            'total_urls_processed': len(candidate_urls)
+            'total_urls_processed': len(candidate_urls),
+            'session_id': session_id
         }
+        
+        # SAVE RESULT TO JSON FILE - this is the key addition!
+        save_image_matcher_result(session_id, result, query_filename, query_image_base64)
         
         # Send completion at 100% to Java
         java_reporter.send_complete(result)
-        print(f"✅ Centralized image processing completed for session: {session_id}")
+        print(f"✅ Centralized image processing completed and saved for session: {session_id}")
         
         return result
         
     except Exception as e:
-        import traceback
         traceback.print_exc()
         error_msg = f'Image matching failed: {str(e)}'
         java_reporter.send_error(error_msg)
         print(f"❌ Error in centralized image processing for session {session_id}: {error_msg}")
+        
+        # Save error state as well
+        error_result = {
+            'top_matches': [],
+            'total_matches': 0,
+            'total_covers_processed': len(candidate_covers) if candidate_covers else 0,
+            'total_urls_processed': 0,
+            'session_id': session_id,
+            'error': error_msg
+        }
+        save_image_matcher_result(session_id, error_result, query_filename, query_image_base64)
+        
         raise
 
-def process_image_with_progress(session_id, query_image, candidate_covers):
+def process_image_with_progress(session_id, query_image, candidate_covers, query_filename=None):
     """Process image matching with progress updates via SSE (fallback for /start endpoint)"""
     
     with session_lock:
@@ -250,7 +389,7 @@ def process_image_with_progress(session_id, query_image, candidate_covers):
     
     try:
         # Use the centralized processing but also send to SSE tracker
-        result = process_image_with_centralized_progress(session_id, query_image, candidate_covers)
+        result = process_image_with_centralized_progress(session_id, query_image, candidate_covers, query_filename)
         tracker.send_complete(result)
         
     except Exception as e:
@@ -288,6 +427,9 @@ def image_matcher_operation():
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
     
+    # Get query filename for better result identification
+    query_filename = file.filename
+    
     # Check if this is an SSE-enabled request (sent from Java with session_id)
     session_id = request.form.get('session_id')
     
@@ -314,7 +456,6 @@ def image_matcher_operation():
         print(f"Received {len(candidate_covers)} candidate covers")
             
     except Exception as e:
-        import traceback
         traceback.print_exc()
         return jsonify({'error': f'Invalid candidate covers: {str(e)}'}), 400
 
@@ -323,8 +464,8 @@ def image_matcher_operation():
         print(f"🚀 Processing CENTRALIZED progress request for session: {session_id}")
         
         try:
-            # Process with centralized progress reporting to Java
-            result = process_image_with_centralized_progress(session_id, query_image, candidate_covers)
+            # Process with centralized progress reporting to Java AND save to JSON
+            result = process_image_with_centralized_progress(session_id, query_image, candidate_covers, query_filename)
             
             # Return result immediately - Java handles the SSE side
             return jsonify(result)
@@ -336,8 +477,14 @@ def image_matcher_operation():
             java_reporter.send_error(error_msg)
             return jsonify({'error': error_msg}), 500
     
-    # Regular (non-SSE) processing - original behavior
+    # Regular (non-SSE) processing - original behavior but now also saves to JSON
     print(f"Processing regular (non-SSE) request")
+    
+    # Generate session ID for regular requests too, so we can save results
+    session_id = str(uuid.uuid4())
+    
+    # Convert query image to base64 for storage
+    query_image_base64 = image_to_base64(query_image)
     
     # Extract URLs and create a mapping from URL to cover info
     candidate_urls = []
@@ -399,7 +546,8 @@ def image_matcher_operation():
                 'issue_number': cover_info.get('issue_number', 'Unknown'),
                 'comic_vine_id': cover_info.get('comic_vine_id', None),
                 'cover_error': cover_info.get('error', ''),
-                'parent_comic_vine_id': cover_info.get('parent_comic_vine_id', None)
+                'parent_comic_vine_id': cover_info.get('parent_comic_vine_id', None),
+                'session_id': session_id
             }
             enhanced_results.append(enhanced_result)
         
@@ -407,23 +555,41 @@ def image_matcher_operation():
         top_matches = enhanced_results[:5]
         
         # Log top matches for debugging
-        print(f"Top {len(top_matches)} matches:")
+        print(f"Top {len(top_matches)} matches for session {session_id}:")
         for i, match in enumerate(top_matches[:3], 1):
             print(f"   {i}. {match['comic_name']} - Similarity: {match['similarity']:.3f}")
             
         matcher.print_cache_stats()
         
-        return jsonify({
+        result = {
             'top_matches': top_matches,
             'total_matches': len(enhanced_results),
             'total_covers_processed': len(candidate_covers),
-            'total_urls_processed': len(candidate_urls)
-        })
+            'total_urls_processed': len(candidate_urls),
+            'session_id': session_id  # Include session_id in response
+        }
+        
+        # SAVE RESULT TO JSON FILE for regular requests too!
+        save_image_matcher_result(session_id, result, query_filename, query_image_base64)
+        print(f"✅ Regular image processing completed and saved for session: {session_id}")
+        
+        return jsonify(result)
         
     except Exception as e:
-        import traceback
         traceback.print_exc()
-        return jsonify({'error': f'Matching failed: {str(e)}'}), 500
+        
+        # Save error state
+        error_result = {
+            'top_matches': [],
+            'total_matches': 0,
+            'total_covers_processed': len(candidate_covers),
+            'total_urls_processed': len(candidate_urls),
+            'session_id': session_id,
+            'error': str(e)
+        }
+        save_image_matcher_result(session_id, error_result, query_filename, query_image_base64)
+        
+        return jsonify({'error': f'Matching failed: {str(e)}'}, {'session_id': session_id}), 500
 
 # SSE ENDPOINTS (for backward compatibility)
 
@@ -438,6 +604,9 @@ def start_image_processing():
     file = request.files['image']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
+    
+    # Get query filename
+    query_filename = file.filename
     
     try:
         # Read image data as numpy array
@@ -480,7 +649,7 @@ def start_image_processing():
         }
     
     # Start async processing
-    executor.submit(process_image_with_progress, session_id, query_image, candidate_covers)
+    executor.submit(process_image_with_progress, session_id, query_image, candidate_covers, query_filename)
     
     print(f"🚀 Started SSE image processing session: {session_id}")
     
@@ -585,10 +754,41 @@ def get_image_processing_status():
     
     return jsonify(status)
 
+# NEW ENDPOINTS FOR RESULT VIEWING (compatible with evaluation system)
+
+@image_matcher_bp.route('/image-matcher/<session_id>')
+def view_image_matcher_result(session_id):
+    """View a completed image matcher result using the existing evaluation template"""
+    
+    result_data = load_image_matcher_result(session_id)
+    
+    if not result_data:
+        return render_template('evaluation_error.html', 
+                             error_message=f"Image matcher result not found for session: {session_id}",
+                             config={'flask_host': current_app.config.get('FLASK_HOST'),
+                                   'flask_port': current_app.config.get('FLASK_PORT'),
+                                   'api_url_prefix': current_app.config.get('API_URL_PREFIX')})
+    
+    config = {
+        'flask_host': current_app.config.get('FLASK_HOST'),
+        'flask_port': current_app.config.get('FLASK_PORT'),
+        'api_url_prefix': current_app.config.get('API_URL_PREFIX')
+    }
+    return render_template('evaluation_result.html', result=result_data, config=config)
+
+@image_matcher_bp.route('/image-matcher/<session_id>/data')
+def get_image_matcher_data(session_id):
+    """Get image matcher result data as JSON"""
+    result_data = load_image_matcher_result(session_id)
+    
+    if not result_data:
+        return jsonify({'error': 'Image matcher result not found'}), 404
+    
+    return jsonify(result_data)
+
 # Cleanup task - run this periodically (could be implemented with a scheduler)
 def run_cleanup():
     """Run cleanup periodically"""
-    import threading
     def cleanup_task():
         while True:
             time.sleep(30 * 60)  # 30 minutes

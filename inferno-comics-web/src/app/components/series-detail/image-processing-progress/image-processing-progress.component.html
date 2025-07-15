@@ -1,87 +1,184 @@
 <div class="image-processing-dialog">
-    <div class="dialog-header">
-        <h2 mat-dialog-title>
-            <mat-icon class="processing-icon">image_search</mat-icon>
-            Analyzing Comic Image
-        </h2>
-        <button mat-icon-button mat-dialog-close class="close-button" [disabled]="isProcessing">
-            <mat-icon>close</mat-icon>
-        </button>
+  <!-- Header with gradient -->
+  <div class="dialog-header">
+    <div class="header-content">
+      <div class="icon-container">
+        <mat-icon class="processing-icon">image_search</mat-icon>
+        <div class="pulse-ring" *ngIf="isProcessing"></div>
+      </div>
+      <div class="header-text">
+        <h2 mat-dialog-title>Analyzing Comic Image</h2>
+        <p class="subtitle">Finding the best matches for your comic</p>
+      </div>
+    </div>
+    <button mat-icon-button mat-dialog-close class="close-button" [disabled]="isProcessing">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <!-- Image Preview Card -->
+    <div class="image-preview-card">
+      <div class="card-header">
+        <div class="upload-badge">
+          <mat-icon>cloud_upload</mat-icon>
+          <span>Uploaded Image</span>
+        </div>
+        <div class="processing-status" *ngIf="isProcessing">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>Processing...</span>
+        </div>
+      </div>
+      
+      <div class="image-showcase">
+        <div class="image-frame">
+          <img [src]="imagePreview" alt="Uploaded comic image" class="uploaded-image">
+          <!-- Animated border instead of overlay -->
+          <div class="scanning-line" *ngIf="isProcessing"></div>
+        </div>
+        
+        <div class="image-details">
+          <div class="detail-item">
+            <mat-icon>description</mat-icon>
+            <div class="detail-content">
+              <span class="detail-label">Filename</span>
+              <span class="detail-value">{{ data.file.name }}</span>
+            </div>
+          </div>
+          
+          <div class="detail-item">
+            <mat-icon>storage</mat-icon>
+            <div class="detail-content">
+              <span class="detail-label">Size</span>
+              <span class="detail-value">{{ formatFileSize(data.file.size) }}</span>
+            </div>
+          </div>
+          
+          <div class="detail-item">
+            <mat-icon>schedule</mat-icon>
+            <div class="detail-content">
+              <span class="detail-label">Started</span>
+              <span class="detail-value">{{ getCurrentTime() }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <mat-dialog-content class="dialog-content">
-        <!-- Image Preview -->
-        <div class="image-preview-section">
-            <div class="image-container">
-                <img [src]="imagePreview" alt="Uploaded comic image" class="uploaded-image">
-                <div class="processing-overlay" *ngIf="isProcessing">
-                    <div class="processing-indicator">
-                        <mat-spinner diameter="40"></mat-spinner>
-                    </div>
-                </div>
-            </div>
-            <div class="image-info">
-                <h3>{{ data.file.name }}</h3>
-                <p>{{ formatFileSize(data.file.size) }}</p>
-            </div>
+    <!-- Progress Section -->
+    <div class="progress-section">
+      <div class="progress-header">
+        <h3>{{ currentStage }}</h3>
+        <div class="progress-info">
+          <span class="progress-percentage">{{ Math.round(progress) }}%</span>
+          <div class="completion-indicator" [class.completed]="progress === 100">
+            <mat-icon *ngIf="progress === 100">check_circle</mat-icon>
+            <mat-icon *ngIf="progress < 100">pending</mat-icon>
+          </div>
         </div>
+      </div>
 
-        <!-- Progress Section -->
-        <div class="progress-section">
-            <div class="progress-header">
-                <h3>{{ currentStage }}</h3>
-                <span class="progress-percentage">{{ Math.round(progress) }}%</span>
-            </div>
+      <!-- Enhanced Progress Bar -->
+      <div class="progress-bar-container">
+        <mat-progress-bar [value]="progress" mode="determinate" class="progress-bar"></mat-progress-bar>
+        <div class="progress-glow" [style.width.%]="progress"></div>
+      </div>
 
-            <div class="progress-bar-container">
-                <mat-progress-bar [value]="progress" mode="determinate" class="progress-bar">
-                </mat-progress-bar>
-            </div>
-
-            <div class="progress-details">
-                <div class="stage-indicator" *ngFor="let stage of processingStages; let i = index"
-                    [class.completed]="i < currentStageIndex" [class.active]="i === currentStageIndex"
-                    [class.pending]="i > currentStageIndex">
-                    <div class="stage-icon">
-                        <mat-icon *ngIf="i < currentStageIndex">check_circle</mat-icon>
-                        <mat-icon *ngIf="i === currentStageIndex && isProcessing">radio_button_checked</mat-icon>
-                        <mat-icon *ngIf="i > currentStageIndex">radio_button_unchecked</mat-icon>
-                    </div>
-                    <span class="stage-name">{{ stage.name }}</span>
-                </div>
-            </div>
+      <!-- Stage Timeline -->
+      <div class="stage-timeline">
+        <div *ngFor="let stage of processingStages; let i = index"
+             class="stage-step"
+             [class.completed]="i < currentStageIndex"
+             [class.active]="i === currentStageIndex"
+             [class.pending]="i > currentStageIndex">
+          
+          <div class="step-connector" *ngIf="i < processingStages.length - 1"></div>
+          
+          <div class="step-circle">
+            <mat-icon *ngIf="i < currentStageIndex">check</mat-icon>
+            <span *ngIf="i === currentStageIndex && isProcessing" class="step-number">{{ i + 1 }}</span>
+            <span *ngIf="i > currentStageIndex" class="step-number">{{ i + 1 }}</span>
+          </div>
+          
+          <div class="step-content">
+            <span class="step-name">{{ stage.name }}</span>
+            <span class="step-status" *ngIf="i === currentStageIndex">In Progress</span>
+            <span class="step-status" *ngIf="i < currentStageIndex">Completed</span>
+          </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Status Messages -->
-        <div class="status-section" *ngIf="statusMessages.length > 0">
-            <h4>Processing Log</h4>
-            <div class="status-messages">
-                <div *ngFor="let message of statusMessages; let i = index" class="status-message"
-                    [class.success]="message.type === 'success'" [class.warning]="message.type === 'warning'"
-                    [class.error]="message.type === 'error'" [class.info]="message.type === 'info'">
-                    <mat-icon class="message-icon">{{ getMessageIcon(message.type) }}</mat-icon>
-                    <span class="message-text">{{ message.text }}</span>
-                    <span class="message-time">{{ message.timestamp | date:'HH:mm:ss' }}</span>
-                </div>
-            </div>
+    <!-- Live Status Feed -->
+    <div class="status-feed" *ngIf="statusMessages.length > 0">
+      <div class="feed-header">
+        <mat-icon>feed</mat-icon>
+        <h4>Processing Log</h4>
+        <span class="message-count">{{ statusMessages.length }}</span>
+      </div>
+      
+      <div class="status-messages">
+        <div *ngFor="let message of statusMessages; let i = index" 
+             class="status-message"
+             [class.success]="message.type === 'success'"
+             [class.warning]="message.type === 'warning'"
+             [class.error]="message.type === 'error'"
+             [class.info]="message.type === 'info'"
+             [style.animation-delay.ms]="i * 50">
+          
+          <div class="message-indicator">
+            <mat-icon class="message-icon">{{ getMessageIcon(message.type) }}</mat-icon>
+          </div>
+          
+          <div class="message-content">
+            <span class="message-text">{{ message.text }}</span>
+            <span class="message-time">{{ message.timestamp | date:'HH:mm:ss.SSS' }}</span>
+          </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Error Section -->
-        <div class="error-section" *ngIf="hasError">
-            <mat-icon class="error-icon">error</mat-icon>
-            <h3>Processing Failed</h3>
-            <p>{{ errorMessage }}</p>
-        </div>
-    </mat-dialog-content>
-
-    <mat-dialog-actions class="dialog-actions">
-        <button mat-button mat-dialog-close [disabled]="isProcessing">
-            {{ isProcessing ? 'Cancel' : 'Close' }}
-        </button>
-        <button mat-raised-button color="primary" *ngIf="!isProcessing && !hasError" (click)="retryProcessing()"
-            [disabled]="!canRetry">
+    <!-- Error Section (Enhanced) -->
+    <div class="error-section" *ngIf="hasError">
+      <div class="error-icon-container">
+        <mat-icon class="error-icon">error_outline</mat-icon>
+      </div>
+      <div class="error-content">
+        <h3>Processing Failed</h3>
+        <p>{{ errorMessage }}</p>
+        <div class="error-actions">
+          <button mat-raised-button color="primary" (click)="retryProcessing()" [disabled]="!canRetry">
             <mat-icon>refresh</mat-icon>
-            Retry
-        </button>
-    </mat-dialog-actions>
+            Try Again
+          </button>
+        </div>
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <!-- Enhanced Actions -->
+  <mat-dialog-actions class="dialog-actions">
+    <div class="actions-left">
+      <button mat-button mat-dialog-close [disabled]="isProcessing" class="cancel-btn">
+        <mat-icon>close</mat-icon>
+        {{ isProcessing ? 'Cancel' : 'Close' }}
+      </button>
+    </div>
+    
+    <div class="actions-right">
+      <div class="processing-indicator" *ngIf="isProcessing">
+        <mat-spinner diameter="16"></mat-spinner>
+        <span>Processing...</span>
+      </div>
+      
+      <button mat-raised-button 
+              color="primary" 
+              *ngIf="!isProcessing && !hasError && canRetry" 
+              (click)="retryProcessing()"
+              class="retry-btn">
+        <mat-icon>refresh</mat-icon>
+        Retry
+      </button>
+    </div>
+  </mat-dialog-actions>
 </div>

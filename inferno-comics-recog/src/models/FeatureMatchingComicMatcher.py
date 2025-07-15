@@ -10,7 +10,6 @@ import json
 from datetime import datetime
 from typing import Dict, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from tqdm import tqdm
 
 # Set OpenCV to headless mode BEFORE importing cv2
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
@@ -20,6 +19,15 @@ cv2.setNumThreads(1)
 
 DB_PATH = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
 DB_IMAGE_CACHE = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
+
+def safe_progress_callback(callback, current_item, message=""):
+    """Safely call progress callback, handling None case"""
+    if callback is not None:
+        try:
+            callback(current_item, message)
+        except Exception as e:
+            print(f"Progress callback error: {e}")
+            pass  # Continue execution even if progress fails
 
 class FeatureMatchingComicMatcher:
     def __init__(self, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH, max_workers=4):
@@ -576,8 +584,8 @@ class FeatureMatchingComicMatcher:
         print(f"📷 Received query image: {query_image.shape}")
         
         # Process query image (not cached since it's user input)
-        if progress_callback:
-            progress_callback(0, "Processing query image...")
+        # Use safe progress callback for initial processing
+        safe_progress_callback(progress_callback, 0, "Processing query image...")
         
         query_image, was_cropped = self.detect_comic_area(query_image)
         query_features = self.extract_features(query_image)
@@ -587,17 +595,20 @@ class FeatureMatchingComicMatcher:
         
         print(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
         
-        if progress_callback:
-            progress_callback(1, f"Query features extracted - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
+        # Use safe progress callback for feature extraction completion
+        safe_progress_callback(progress_callback, 1, f"Query features extracted - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
         
         # Process candidates with caching
         print(f"⬇️ Processing {len(candidate_urls)} candidate images (with caching)...")
         
-        if progress_callback:
-            progress_callback(2, f"Starting analysis of {len(candidate_urls)} candidates...")
+        # Use safe progress callback for starting candidate analysis
+        safe_progress_callback(progress_callback, 2, f"Starting analysis of {len(candidate_urls)} candidates...")
         
         results = []
         total_candidates = len(candidate_urls)
+        
+        if total_candidates == 0:
+            return results, query_features
         
         # Determine batch size for progress updates
         batch_size = max(1, total_candidates // 20)  # Max 20 progress updates
@@ -622,11 +633,13 @@ class FeatureMatchingComicMatcher:
                         results.append(result)
                     
                     # Send progress update every batch_size completions or for the last few
-                    if progress_callback and (completed % batch_size == 0 or completed >= total_candidates - 5):
+                    if completed % batch_size == 0 or completed >= total_candidates - 5:
                         message = f"Analyzed {completed}/{total_candidates} candidates"
                         if result and 'similarity' in result:
                             message += f" (latest: {result['similarity']:.3f})"
-                        progress_callback(completed + 2, message)  # +2 to account for initial processing
+                        # Use safe progress callback - map completed items to progress
+                        # Add 3 to account for initial processing steps (0, 1, 2)
+                        safe_progress_callback(progress_callback, completed + 3, message)
                         
                 except Exception as e:
                     print(f"Error processing candidate {url}: {e}")
@@ -646,8 +659,9 @@ class FeatureMatchingComicMatcher:
         # Filter by threshold
         good_matches = [r for r in results if r['similarity'] >= threshold]
         
-        if progress_callback:
-            progress_callback(total_candidates + 2, f"Completed analysis - found {len(good_matches)} matches above threshold")
+        # Final progress update
+        # Add 3 to account for initial processing steps
+        safe_progress_callback(progress_callback, total_candidates + 3, f"Completed analysis - found {len(good_matches)} matches above threshold")
         
         print(f"✨ Cached feature matching completed in {time.time() - start_time:.2f}s")
         print(f"🎯 Found {len(good_matches)} matches above threshold ({threshold})")

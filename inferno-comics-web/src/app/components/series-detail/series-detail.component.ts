@@ -432,7 +432,7 @@ export class SeriesDetailComponent implements OnInit {
     // Start SSE-based processing
     this.seriesService.addComicByImageWithSSE(seriesId, file).subscribe({
       next: (progressData: SSEProgressData) => {
-        this.handleSSEProgress(seriesId, progressData, dialogComponent);
+        this.handleSSEProgress(seriesId, progressData, dialogComponent, file);
       },
       error: (error) => {
         console.error('SSE Error:', error);
@@ -445,7 +445,7 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  private handleSSEProgress(seriesId: number, data: SSEProgressData, dialogComponent: ImageProcessingDialogComponent): void {
+  private handleSSEProgress(seriesId: number, data: SSEProgressData, dialogComponent: ImageProcessingDialogComponent, originalImage: File): void {
     switch (data.type) {
       case 'progress':
         const stageName = this.getStageDisplayName(data.stage || '');
@@ -471,7 +471,7 @@ export class SeriesDetailComponent implements OnInit {
             console.log('Top matches found:', imageMatcherResponse.top_matches.length);
             
             // Use the same method as fallback processing
-            this.openMatchSelectionDialog(imageMatcherResponse.top_matches, seriesId);
+            this.openMatchSelectionDialog(imageMatcherResponse.top_matches, seriesId, originalImage, imageMatcherResponse.session_id);
           } else {
             console.log('No matches found in SSE result:', imageMatcherResponse);
             this.snackBar.open('No matching comics found', 'Close', {
@@ -561,16 +561,15 @@ export class SeriesDetailComponent implements OnInit {
     return 'Failed to analyze image';
   }
 
-  private openMatchSelectionDialog(
-    matches: ComicMatch[],
-    seriesId: number
-  ): void {
+  private openMatchSelectionDialog(matches: ComicMatch[], seriesId: number, originalImage?: File, sessionId?: string,): void {
     const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
       width: '900px',
       maxWidth: '95vw',
       data: {
         matches: matches,
         seriesId: seriesId,
+        sessionId: sessionId || '',
+        originalImage: originalImage
       },
       disableClose: false,
     });

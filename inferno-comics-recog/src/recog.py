@@ -25,10 +25,9 @@ def create_app():
     CORS(app)
     
     # Register blueprints
-    URL_PREFIX = Config.API_URL_PREFIX
-    app.register_blueprint(health_bp, url_prefix=URL_PREFIX)
-    app.register_blueprint(image_matcher_bp, url_prefix=URL_PREFIX)
-    app.register_blueprint(evaluation_bp, url_prefix=URL_PREFIX)
+    app.register_blueprint(health_bp, url_prefix=app.config['API_URL_PREFIX'])
+    app.register_blueprint(image_matcher_bp, url_prefix=app.config['API_URL_PREFIX'])
+    app.register_blueprint(evaluation_bp, url_prefix=app.config['API_URL_PREFIX'])
     
     return app
 
@@ -36,12 +35,13 @@ def main():
     app = create_app()
     
     # Get configuration from environment variables
-    host = os.getenv('FLASK_HOST', '0.0.0.0')
-    port = int(os.getenv('FLASK_PORT', 5000))
-    threads = int(os.getenv('FLASK_THREADS', 4))
+    host = app.config.get('FLASK_HOST')
+    port = app.config.get('FLASK_PORT')
+    threads = app.config.get('FLASK_THREADS')
+    url_prefix = app.config.get('API_URL_PREFIX')
     
     # Production environment check
-    if os.getenv('FLASK_ENV') == 'production':
+    if app.config.get('FLASK_ENV') == 'production':
         logger.info(f"Starting production server on {host}:{port} with {threads} threads")
         serve(
             app,
@@ -53,7 +53,7 @@ def main():
             channel_timeout=120
         )
     else:
-        logger.warning(f"Running in development mode on: http://localhost:{port}/{Config.API_URL_PREFIX}")
+        logger.warning(f"Running in development mode on: http://localhost:{port}/{url_prefix}")
         app.run(host=host, port=port, debug=True)
 
      

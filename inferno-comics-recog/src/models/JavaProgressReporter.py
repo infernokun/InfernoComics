@@ -1,13 +1,10 @@
 import os
-from config.Config import Config
 import requests
 from time import time
+from flask import current_app
 
 # Configuration for Java progress service integration
-JAVA_PROGRESS_SERVICE_URL = os.getenv(
-    'JAVA_PROGRESS_SERVICE_URL', 
-    'http://localhost:8080/inferno-comics-rest/api/v1/progress'
-)
+
 
 # Timeout settings for Java communication
 JAVA_REQUEST_TIMEOUT = int(os.getenv('JAVA_REQUEST_TIMEOUT', '5'))  # seconds
@@ -25,6 +22,26 @@ class JavaProgressReporter:
         self.session_id = session_id
         self.last_progress_time = 0
         self.min_progress_interval = 0.5  # Minimum seconds between progress updates
+        
+        # Initialize health check on startup
+        self.rest_api_url = current_app.config.get('REST_API')
+
+        print(f"🔗 Java Progress Service URL: {self.rest_api_url}")
+        
+        if self.check_java_service_health():
+            print("✅ Java progress service is available")
+        else:
+            print("⚠️ Java progress service is not available - progress updates will be logged only")
+        
+    def check_java_service_health(self):
+        """Check if Java progress service is available"""
+        try:
+            response = requests.get(f"{self.rest_api_url}/health", timeout=2)
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Health check failed: {e}")
+            return False
+
         
     def update_progress(self, stage, progress, message):
         """Send progress update to Java progress service with rate limiting"""
@@ -44,7 +61,7 @@ class JavaProgressReporter:
             
             # Send to Java progress service
             response = requests.post(
-                f"{JAVA_PROGRESS_SERVICE_URL}/update",
+                f"{self.rest_api_url}/progress/update",
                 json=payload,
                 timeout=JAVA_PROGRESS_TIMEOUT,
                 headers={'Content-Type': 'application/json'}
@@ -75,7 +92,7 @@ class JavaProgressReporter:
             }
             
             response = requests.post(
-                f"{JAVA_PROGRESS_SERVICE_URL}/complete",
+                f"{self.rest_api_url}/progress/complete",
                 json=payload,
                 timeout=JAVA_REQUEST_TIMEOUT,
                 headers={'Content-Type': 'application/json'}
@@ -98,7 +115,7 @@ class JavaProgressReporter:
             }
             
             response = requests.post(
-                f"{JAVA_PROGRESS_SERVICE_URL}/error",
+                f"{self.rest_api_url}/progress/error",
                 json=payload,
                 timeout=JAVA_REQUEST_TIMEOUT,
                 headers={'Content-Type': 'application/json'}
@@ -129,21 +146,3 @@ class JavaProgressReporter:
         else:
             return result
 
-# Health check function
-def check_java_service_health():
-    """Check if Java progress service is available"""
-    try:
-        response = requests.get(
-            f"{JAVA_PROGRESS_SERVICE_URL}/health",
-            timeout=2
-        )
-        return response.status_code == 200
-    except:
-        return False
-
-# Initialize health check on startup
-print(f"🔗 Java Progress Service URL: {JAVA_PROGRESS_SERVICE_URL}")
-if check_java_service_health():
-    print("✅ Java progress service is available")
-else:
-    print("⚠️ Java progress service is not available - progress updates will be logged only")
