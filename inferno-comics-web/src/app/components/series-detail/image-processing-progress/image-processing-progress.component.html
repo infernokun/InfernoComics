@@ -3,12 +3,16 @@
   <div class="dialog-header">
     <div class="header-content">
       <div class="icon-container">
-        <mat-icon class="processing-icon">image_search</mat-icon>
+        <mat-icon class="processing-icon">{{ isMultipleMode ? 'photo_library' : 'image_search' }}</mat-icon>
         <div class="pulse-ring" *ngIf="isProcessing"></div>
       </div>
       <div class="header-text">
-        <h2 mat-dialog-title>Analyzing Comic Image</h2>
-        <p class="subtitle">Finding the best matches for your comic</p>
+        <h2 mat-dialog-title>
+          {{ isMultipleMode ? 'Analyzing Comic Images' : 'Analyzing Comic Image' }}
+        </h2>
+        <p class="subtitle">
+          {{ isMultipleMode ? 'Finding the best matches for your comics' : 'Finding the best matches for your comic' }}
+        </p>
       </div>
     </div>
     <button mat-icon-button mat-dialog-close class="close-button" [disabled]="isProcessing">
@@ -17,48 +21,96 @@
   </div>
 
   <mat-dialog-content class="dialog-content">
-    <!-- Image Preview Card -->
+    <!-- Image Preview Card - Updated for Multiple Images -->
     <div class="image-preview-card">
       <div class="card-header">
         <div class="upload-badge">
-          <mat-icon>cloud_upload</mat-icon>
-          <span>Uploaded Image</span>
+          <mat-icon>{{ isMultipleMode ? 'photo_library' : 'cloud_upload' }}</mat-icon>
+          <span>{{ isMultipleMode ? 'Multiple Images' : 'Uploaded Image' }}</span>
         </div>
         <div class="processing-status" *ngIf="isProcessing">
           <mat-spinner diameter="20"></mat-spinner>
-          <span>Processing...</span>
+          <span>{{ getProgressSummary() || 'Processing...' }}</span>
         </div>
       </div>
       
       <div class="image-showcase">
-        <div class="image-frame">
-          <img [src]="imagePreview" alt="Uploaded comic image" class="uploaded-image">
-          <!-- Animated border instead of overlay -->
-          <div class="scanning-line" *ngIf="isProcessing"></div>
+        <!-- Multiple Images Grid View -->
+        <div class="images-grid" *ngIf="isMultipleMode && imagePreviews.length > 1">
+          <div class="grid-main-image">
+            <div class="image-frame">
+              <img [src]="imagePreviews[currentImageIndex]" 
+                   [alt]="'Current processing image: ' + currentImageName" 
+                   class="uploaded-image main-image">
+              <div class="scanning-line" *ngIf="isProcessing"></div>
+              <div class="image-overlay" *ngIf="isProcessing">
+                <div class="processing-indicator">
+                  <mat-icon>play_circle</mat-icon>
+                  <span>Processing</span>
+                </div>
+              </div>
+            </div>
+            <div class="main-image-info">
+              <span class="current-image-name">{{ currentImageName }}</span>
+              <span class="image-counter">{{ currentImageIndex + 1 }} of {{ totalImages }}</span>
+            </div>
+          </div>
+          
+          <div class="grid-thumbnails">
+            <div *ngFor="let preview of imagePreviews; let i = index" 
+                 class="thumbnail-item"
+                 [class.active]="i === currentImageIndex"
+                 [class.processed]="i < processedImages"
+                 [class.current]="i === currentImageIndex">
+              <img [src]="preview" [alt]="'Image ' + (i + 1)" class="thumbnail-image">
+              <div class="thumbnail-status">
+                <mat-icon *ngIf="i < processedImages - 1" class="status-icon success">check_circle</mat-icon>
+                <mat-icon *ngIf="i === currentImageIndex && isProcessing" class="status-icon processing">sync</mat-icon>
+                <span *ngIf="i > currentImageIndex" class="status-icon pending">{{ i + 1 }}</span>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <div class="image-details">
-          <div class="detail-item">
-            <mat-icon>description</mat-icon>
-            <div class="detail-content">
-              <span class="detail-label">Filename</span>
-              <span class="detail-value">{{ data.file.name }}</span>
-            </div>
+
+        <!-- Single Image View (existing) -->
+        <div class="single-image-view" *ngIf="!isMultipleMode || imagePreviews.length === 1">
+          <div class="image-frame">
+            <img [src]="getMainImagePreview()" alt="Uploaded comic image" class="uploaded-image">
+            <div class="scanning-line" *ngIf="isProcessing"></div>
           </div>
           
-          <div class="detail-item">
-            <mat-icon>storage</mat-icon>
-            <div class="detail-content">
-              <span class="detail-label">Size</span>
-              <span class="detail-value">{{ formatFileSize(data.file.size) }}</span>
+          <div class="image-details">
+            <div class="detail-item">
+              <mat-icon>description</mat-icon>
+              <div class="detail-content">
+                <span class="detail-label">{{ isMultipleMode ? 'Images' : 'Filename' }}</span>
+                <span class="detail-value">{{ getDisplayFilename() }}</span>
+              </div>
             </div>
-          </div>
-          
-          <div class="detail-item">
-            <mat-icon>schedule</mat-icon>
-            <div class="detail-content">
-              <span class="detail-label">Started</span>
-              <span class="detail-value">{{ getCurrentTime() }}</span>
+            
+            <div class="detail-item">
+              <mat-icon>storage</mat-icon>
+              <div class="detail-content">
+                <span class="detail-label">{{ isMultipleMode ? 'Total Size' : 'Size' }}</span>
+                <span class="detail-value">{{ formatFileSize(getTotalFileSize()) }}</span>
+              </div>
+            </div>
+            
+            <div class="detail-item">
+              <mat-icon>schedule</mat-icon>
+              <div class="detail-content">
+                <span class="detail-label">Started</span>
+                <span class="detail-value">{{ getCurrentTime() }}</span>
+              </div>
+            </div>
+
+            <!-- Multiple Images Progress Detail -->
+            <div class="detail-item" *ngIf="isMultipleMode && isProcessing">
+              <mat-icon>timeline</mat-icon>
+              <div class="detail-content">
+                <span class="detail-label">Current Progress</span>
+                <span class="detail-value">{{ getCurrentImageProgress() }} images</span>
+              </div>
             </div>
           </div>
         </div>
@@ -82,6 +134,28 @@
       <div class="progress-bar-container">
         <mat-progress-bar [value]="progress" mode="determinate" class="progress-bar"></mat-progress-bar>
         <div class="progress-glow" [style.width.%]="progress"></div>
+      </div>
+
+      <!-- Multiple Images Progress Summary -->
+      <div class="progress-summary" *ngIf="isMultipleMode">
+        <div class="summary-stats">
+          <div class="stat-item">
+            <span class="stat-number">{{ processedImages }}</span>
+            <span class="stat-label">Processed</span>
+          </div>
+          <div class="stat-item" *ngIf="successfulImages > 0">
+            <span class="stat-number success">{{ successfulImages }}</span>
+            <span class="stat-label">Successful</span>
+          </div>
+          <div class="stat-item" *ngIf="failedImages > 0">
+            <span class="stat-number error">{{ failedImages }}</span>
+            <span class="stat-label">Failed</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-number">{{ totalImages - processedImages }}</span>
+            <span class="stat-label">Remaining</span>
+          </div>
+        </div>
       </div>
 
       <!-- Stage Timeline -->
@@ -168,7 +242,7 @@
     <div class="actions-right">
       <div class="processing-indicator" *ngIf="isProcessing">
         <mat-spinner diameter="16"></mat-spinner>
-        <span>Processing...</span>
+        <span>{{ isMultipleMode ? 'Processing images...' : 'Processing...' }}</span>
       </div>
       
       <button mat-raised-button 

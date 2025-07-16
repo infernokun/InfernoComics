@@ -2,33 +2,74 @@
   <!-- Header -->
   <div class="dialog-header">
     <div class="header-content">
-      <mat-icon class="header-icon">image_search</mat-icon>
+      <mat-icon class="header-icon">{{ isMultipleMode ? 'photo_library' : 'image_search' }}</mat-icon>
       <div>
-        <h2 mat-dialog-title>Comic Match Results</h2>
-        <p class="session-info">Session: <span class="session-id">{{sessionId}}</span></p>
+        <h2 mat-dialog-title>{{ getHeaderTitle() }}</h2>
+        <p class="session-info">{{ getHeaderSubtitle() }}</p>
       </div>
     </div>
     <div class="results-summary">
       <div class="summary-item">
-        <span class="summary-number">{{sortedMatches.length}}</span>
-        <span class="summary-label">Matches</span>
+        <span class="summary-number">{{ sortedMatches.length }}</span>
+        <span class="summary-label">{{ isMultipleMode ? 'Total' : 'Matches' }}</span>
       </div>
       <div class="summary-item">
-        <span class="summary-number">{{getBestMatchPercentage()}}%</span>
+        <span class="summary-number">{{ getBestMatchPercentage() }}%</span>
         <span class="summary-label">Best</span>
+      </div>
+      <div class="summary-item" *ngIf="isMultipleMode">
+        <span class="summary-number">{{ totalImagesProcessed }}</span>
+        <span class="summary-label">Images</span>
       </div>
     </div>
   </div>
   
   <div mat-dialog-content class="content">
-    <!-- Original Image -->
-    <div class="original-section" *ngIf="data.originalImage">
-      <h3><mat-icon>upload</mat-icon> Your Image</h3>
+    <!-- Multiple Images Navigation -->
+    <div class="image-navigation" *ngIf="isMultipleMode && imageGroups.length > 1">
+      <h3><mat-icon>collections</mat-icon> Select Image to View</h3>
+      
+      <div class="navigation-tabs">
+        <button mat-button 
+                class="nav-tab"
+                [class.active]="showAllMatches"
+                (click)="showAllMatchesView()">
+          <mat-icon>view_module</mat-icon>
+          All Matches ({{ totalMatchesFound }})
+        </button>
+        
+        <button *ngFor="let group of imageGroups; let i = index"
+                mat-button 
+                class="nav-tab image-tab"
+                [class.active]="!showAllMatches && selectedImageGroup === i"
+                (click)="selectImageGroup(i)">
+          <div class="tab-image" *ngIf="group.previewUrl">
+            <img [src]="group.previewUrl" [alt]="group.name" class="tab-thumbnail">
+          </div>
+          <div class="tab-info">
+            <span class="tab-name">{{ group.name }}</span>
+            <span class="tab-stats">{{ getImageGroupStats(group) }}</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Original Image Section -->
+    <div class="original-section" *ngIf="getCurrentImagePreview()">
+      <h3>
+        <mat-icon>upload</mat-icon> 
+        {{ isMultipleMode ? 'Current Image' : 'Your Image' }}
+      </h3>
       <div class="original-card">
-        <img [src]="getImagePreview()" alt="Your image" class="original-image" />
+        <img [src]="getCurrentImagePreview()" 
+             [alt]="getDisplayFileName()" 
+             class="original-image" />
         <div class="original-info">
-          <p class="filename">{{ data.originalImage.name }}</p>
-          <p class="filesize">{{ formatFileSize(data.originalImage.size) }}</p>
+          <p class="filename">{{ getDisplayFileName() }}</p>
+          <p class="filesize">{{ formatFileSize(getDisplayFileSize()) }}</p>
+          <p class="match-context" *ngIf="isMultipleMode && !showAllMatches">
+            Showing matches for this image only
+          </p>
         </div>
       </div>
     </div>
@@ -36,22 +77,39 @@
     <!-- Instructions -->
     <div class="instructions">
       <mat-icon>info</mat-icon>
-      <span>Select the comic that best matches your image. Higher percentages indicate better matches.</span>
+      <span>
+        {{ isMultipleMode && showAllMatches 
+           ? 'Select any comic from all processed images. Use the tabs above to view matches by individual image.' 
+           : 'Select the comic that best matches your image. Higher percentages indicate better matches.' }}
+      </span>
     </div>
 
-    <!-- Matches -->
-    <div class="matches-grid">
+    <!-- No Matches Message -->
+    <div class="no-matches" *ngIf="sortedMatches.length === 0">
+      <mat-icon>search_off</mat-icon>
+      <h3>No Matches Found</h3>
+      <p>{{ isMultipleMode ? 'No matches were found for the selected image.' : 'No matches were found for your image.' }}</p>
+    </div>
+
+    <!-- Matches Grid -->
+    <div class="matches-grid" *ngIf="sortedMatches.length > 0">
       <div *ngFor="let match of sortedMatches; let i = index" 
            class="match-card" 
            [class.best]="i === 0"
            (click)="selectMatch(match)">
         
         <div class="match-header">
-          <div class="rank" [class.gold]="i === 0">#{{i + 1}}</div>
+          <div class="rank" [class.gold]="i === 0">#{{ i + 1 }}</div>
           <div class="similarity">{{ (match.similarity * 100).toFixed(1) }}%</div>
           <span *ngIf="i === 0" class="best-badge">
             <mat-icon>star</mat-icon>Best
           </span>
+        </div>
+        
+        <!-- Source Image Indicator for Multiple Images -->
+        <div class="source-indicator" *ngIf="getSourceImageIndicator(match)">
+          <mat-icon>image</mat-icon>
+          <span>{{ getSourceImageIndicator(match) }}</span>
         </div>
         
         <div class="image-container">
@@ -118,7 +176,8 @@
       <mat-icon>close</mat-icon>Cancel
     </button>
     <button mat-button (click)="onNoMatch()">
-      <mat-icon>block</mat-icon>None Match
+      <mat-icon>block</mat-icon>
+      {{ isMultipleMode && !showAllMatches ? 'No Match for This Image' : 'None Match' }}
     </button>
     <button mat-raised-button color="primary" 
             *ngIf="sortedMatches.length > 0"

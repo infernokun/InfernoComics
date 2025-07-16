@@ -77,7 +77,7 @@ public class SeriesService {
                 .exchangeStrategies(ExchangeStrategies.builder()
                         .codecs(configurer -> configurer
                                 .defaultCodecs()
-                                .maxInMemorySize(1024 * 1024))
+                                .maxInMemorySize(500 * 1024 * 1024))
                         .build())
                 .build();
     }
@@ -631,6 +631,222 @@ public class SeriesService {
             throw new RuntimeException("Failed to send image to matcher service", e);
         }
     }
+
+    @Async("imageProcessingExecutor")
+    public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId, Long seriesId, List<SeriesController.ImageData> imageDataList, String name, int year) {
+        log.info("🚀 Starting SSE multiple images processing session: {} for series ID: {} with {} images",
+                sessionId, seriesId, imageDataList.size());
+
+        try {
+            // Initialize progress tracking
+            progressService.initializeSession(sessionId);
+
+            int timeoutSeconds = 20;
+            int intervalMs = 2000;
+            int waited = 0;
+
+            while (!progressService.emitterIsPresent(sessionId)) {
+                log.warn("Session {} has no emitter yet!", sessionId);
+                if (waited >= timeoutSeconds * 1000) {
+                    throw new RuntimeException("Timeout: Emitter for sessionId " + sessionId + " not found after " + timeoutSeconds + " seconds.");
+                }
+
+                Thread.sleep(intervalMs);
+                waited += intervalMs;
+            }
+
+            // Stage 1: Series validation (quick)
+            progressService.updateProgress(sessionId, "preparing", 2,
+                    String.format("Validating series and %d images...", imageDataList.size()));
+
+            Optional<Series> series = seriesRepository.findById(seriesId);
+            if (series.isEmpty()) {
+                progressService.sendError(sessionId, "Series not found with id: " + seriesId);
+                return CompletableFuture.completedFuture(null);
+            }
+
+            Series seriesEntity = series.get();
+            log.info("📚 Processing series: '{}' ({}) with {} images",
+                    seriesEntity.getName(), seriesEntity.getStartYear(), imageDataList.size());
+
+            List<GCDCover> candidateCovers;
+
+            if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty() && seriesEntity.getLastCachedCovers() != null) {
+                log.info("Using cached images for session: {}", sessionId);
+                progressService.updateProgress(sessionId, "preparing", 8, "Using cached cover data...");
+                candidateCovers = seriesEntity.getCachedCoverUrls();
+            } else {
+                // Stage 2: ComicVine search (medium effort)
+                progressService.updateProgress(sessionId, "preparing", 5, "Searching ComicVine database...");
+
+                log.info("🦸 Starting ComicVine search for series: {} (session: {})", seriesId, sessionId);
+                List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
+
+                progressService.updateProgress(sessionId, "preparing", 8,
+                        String.format("Found %d ComicVine issues for %d input images",
+                                results.size(), imageDataList.size()));
+                log.info("🦸 ComicVine completed: Found {} issues (session: {})", results.size(), sessionId);
+
+                candidateCovers = results.stream()
+                        .flatMap(issue -> {
+                            List<GCDCover> covers = new ArrayList<>();
+
+                            // Main cover from the issue
+                            GCDCover mainCover = new GCDCover();
+                            mainCover.setName(issue.getName());
+                            mainCover.setIssueNumber(issue.getIssueNumber());
+                            mainCover.setComicVineId(issue.getId());
+                            mainCover.setUrls(Collections.singletonList(issue.getImageUrl()));
+                            covers.add(mainCover);
+
+                            // Variant covers from the issue
+                            issue.getVariants().forEach(i -> {
+                                GCDCover variantCover = new GCDCover();
+                                variantCover.setName(issue.getName());
+                                variantCover.setIssueNumber(issue.getIssueNumber());
+                                variantCover.setComicVineId(i.getId());
+                                variantCover.setUrls(Collections.singletonList(i.getOriginalUrl()));
+                                variantCover.setParentComicVineId(issue.getId());
+                                covers.add(variantCover);
+                            });
+
+                            return covers.stream();
+                        })
+                        .collect(Collectors.toList());
+
+                log.info("Comic vine has {} GCDCovers (session: {})", candidateCovers.size(), sessionId);
+
+                // Cache the covers
+                seriesEntity.setCachedCoverUrls(candidateCovers);
+                seriesRepository.save(seriesEntity);
+            }
+
+            // Stage 3: Hand off to Python for the heavy work (10% -> 100%)
+            progressService.updateProgress(sessionId, "preparing", 10,
+                    String.format("Sending %d images with %d candidates to image matcher...",
+                            imageDataList.size(), candidateCovers.size()));
+
+            // Let Python handle ALL remaining progress from 10% -> 100%
+            JsonNode result = sendMultipleImagesToMatcherWithProgress(sessionId, imageDataList, candidateCovers, seriesEntity);
+
+            log.info("✅ SSE multiple images processing completed for session: {}", sessionId);
+
+            // FIXED: Don't send completion here - Python already sent it via SSE
+            // Just log that we received the result
+            if (result != null) {
+                log.info("📋 Received result from Python for session: {}, Python controls completion timing", sessionId);
+
+                // Log the result structure for debugging
+                log.info("🔍 Result structure for session {}: has results={}, has top_matches={}, has summary={}",
+                        sessionId,
+                        result.has("results"),
+                        result.has("top_matches"),
+                        result.has("summary"));
+
+                if (result.has("results")) {
+                    JsonNode resultsArray = result.get("results");
+                    log.info("🔍 Results array size for session {}: {}", sessionId, resultsArray.size());
+
+                    // Log first few results for debugging
+                    for (int i = 0; i < Math.min(3, resultsArray.size()); i++) {
+                        JsonNode imageResult = resultsArray.get(i);
+                        log.info("🔍 Image result {}: name={}, matches={}",
+                                i,
+                                imageResult.has("image_name") ? imageResult.get("image_name").asText() : "unknown",
+                                imageResult.has("top_matches") ? imageResult.get("top_matches").size() : 0);
+                    }
+                }
+
+                progressService.sendComplete(sessionId, result);
+
+            } else {
+                log.warn("⚠️ No result received from Python for session: {}", sessionId);
+                progressService.sendError(sessionId, "No results returned from Python image processing");
+            }
+
+        } catch (Exception e) {
+            log.error("❌ Error in SSE multiple images processing for session {}: {}", sessionId, e.getMessage(), e);
+            progressService.sendError(sessionId, "Error processing images: " + e.getMessage());
+        } finally {
+            log.info("🔚 Multiple images processing method completed for session: {}", sessionId);
+        }
+
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private JsonNode sendMultipleImagesToMatcherWithProgress(String sessionId, List<SeriesController.ImageData> imageDataList,
+                                                             List<GCDCover> candidateCovers, Series seriesEntity) {
+        try {
+            log.info("📤 Preparing Flask SSE multiple images matcher request for session: {}...", sessionId);
+            log.info("    Images: {} files", imageDataList.size());
+            log.info("    ✅ Candidate covers: {}", candidateCovers.size());
+
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
+
+            // Add all images with indexed names
+            for (int i = 0; i < imageDataList.size(); i++) {
+                SeriesController.ImageData imageData = imageDataList.get(i);
+                builder.part("images[" + i + "]", new ByteArrayResource(imageData.getBytes()) {
+                    @Override
+                    public String getFilename() {
+                        return imageData.getOriginalFilename();
+                    }
+                }).contentType(MediaType.valueOf(imageData.getContentType() != null ? imageData.getContentType() : "image/jpeg"));
+            }
+
+            // Convert GCDCover objects to JSON and send as candidate_covers
+            ObjectMapper mapper = new ObjectMapper();
+            try {
+                String candidateCoversJson = mapper.writeValueAsString(candidateCovers);
+                builder.part("candidate_covers", candidateCoversJson);
+                log.info("📤 Sending {} candidate covers as JSON (session: {})", candidateCovers.size(), sessionId);
+            } catch (JsonProcessingException e) {
+                log.error("❌ Failed to serialize candidate covers to JSON: {}", e.getMessage());
+                throw new RuntimeException("Failed to serialize candidate covers", e);
+            }
+
+            // Add session ID so Python can report progress directly
+            builder.part("session_id", sessionId);
+
+            // Add metadata for better debugging
+            builder.part("series_name", seriesEntity.getName());
+            builder.part("series_start_year", seriesEntity.getStartYear().toString());
+            builder.part("total_candidates", String.valueOf(candidateCovers.size()));
+            builder.part("total_images", String.valueOf(imageDataList.size()));
+            builder.part("urls_scraped", "true");
+
+            log.info("📤 Sending request to multiple images matcher service (session: {})...", sessionId);
+            long startTime = System.currentTimeMillis();
+
+            // Use different endpoint for multiple images
+            String response = webClient.post()
+                    .uri("/image-matcher-multiple") // Different endpoint for multiple images
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(BodyInserters.fromMultipartData(builder.build()))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("📥 Multiple images matcher response received in {}ms (session: {})", duration, sessionId);
+
+            JsonNode root = mapper.readTree(response);
+            JsonNode results = root.get("results"); // Expecting array of results for each image
+
+            if (results != null && results.isArray()) {
+                log.info("🎯 Multiple images matcher found results for {} images (session: {})", results.size(), sessionId);
+            } else {
+                log.warn("⚠️ No results found in multiple images response (session: {})", sessionId);
+            }
+
+            return root;
+
+        } catch (Exception e) {
+            log.error("❌ Failed to send images to matcher service (session: {}): {}", sessionId, e.getMessage(), e);
+            throw new RuntimeException("Failed to send images to matcher service", e);
+        }
+    }
+
     // Base request interface
     public interface SeriesRequest {
         String getName();

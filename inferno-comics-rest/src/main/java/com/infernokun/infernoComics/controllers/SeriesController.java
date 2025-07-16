@@ -8,6 +8,7 @@ import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
 import com.infernokun.infernoComics.services.ImageProcessingProgressService;
 import jakarta.validation.Valid;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @RestController
@@ -205,11 +203,6 @@ public class SeriesController {
         }
     }
 
-    // NEW SSE-BASED ENDPOINTS
-
-    /**
-     * Start image processing and return session ID
-     */
     @PostMapping("{seriesId}/add-comic-by-image/start")
     public ResponseEntity<Map<String, String>> startImageProcessing(
             @PathVariable Long seriesId,
@@ -253,60 +246,6 @@ public class SeriesController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error starting image processing: " + e.getMessage()));
         }
-    }
-
-    /**
-     * Test SSE endpoint to verify SSE is working
-     */
-    @CrossOrigin(origins = "*", allowCredentials = "false")
-    @GetMapping(value = "test-sse", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter testSSE() {
-        log.info("Test SSE endpoint called");
-
-        SseEmitter emitter = new SseEmitter(10000L); // 10 second timeout
-
-        try {
-            // Send a simple test message immediately
-            emitter.send(SseEmitter.event()
-                    .name("test")
-                    .data("Hello from SSE!"));
-
-            log.info("Initial test message sent");
-
-            // Send a JSON message
-            emitter.send(SseEmitter.event()
-                    .name("progress")
-                    .data("{\"message\":\"SSE connection working!\",\"timestamp\":" + System.currentTimeMillis() + "}"));
-
-            log.info("JSON test message sent");
-
-            // Complete the connection after sending the messages
-            new Thread(() -> {
-                try {
-                    Thread.sleep(2000);
-
-                    emitter.send(SseEmitter.event()
-                            .name("complete")
-                            .data("{\"message\":\"Test complete\",\"success\":true}"));
-
-                    log.info("Completion message sent");
-
-                    Thread.sleep(500);
-                    emitter.complete();
-                    log.info("Test SSE completed");
-
-                } catch (Exception e) {
-                    log.error("Error in test SSE: {}", e.getMessage(), e);
-                    emitter.completeWithError(e);
-                }
-            }).start();
-
-        } catch (Exception e) {
-            log.error("Failed to send test SSE message: {}", e.getMessage(), e);
-            emitter.completeWithError(e);
-        }
-
-        return emitter;
     }
 
     /**
@@ -356,6 +295,93 @@ public class SeriesController {
             log.error("Error getting session status: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error getting session status"));
+        }
+    }
+
+    @PostMapping("{seriesId}/add-comics-by-images/start")
+    public ResponseEntity<Map<String, String>> startImagesProcessing(
+            @PathVariable Long seriesId,
+            @RequestParam("images") MultipartFile[] imageFiles,
+            @RequestParam(value = "name", required = false, defaultValue = "") String name,
+            @RequestParam(value = "year", required = false, defaultValue = "0") Integer year) {
+
+        try {
+            // Validate images
+            if (imageFiles == null || imageFiles.length == 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "No image files provided."));
+            }
+
+            // Check for empty files
+            for (MultipartFile file : imageFiles) {
+                if (file.isEmpty()) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "One or more image files are empty."));
+                }
+            }
+
+            // IMPORTANT: Read all image bytes immediately before async processing
+            List<ImageData> imageDataList = new ArrayList<>();
+            try {
+                for (MultipartFile file : imageFiles) {
+                    byte[] imageBytes = file.getBytes();
+                    imageDataList.add(new ImageData(
+                            imageBytes,
+                            file.getOriginalFilename(),
+                            file.getContentType()
+                    ));
+                    log.info("Read {} bytes from uploaded file: {}", imageBytes.length, file.getOriginalFilename());
+                }
+            } catch (IOException e) {
+                log.error("Failed to read image bytes: {}", e.getMessage());
+                return ResponseEntity.badRequest().body(Map.of("error", "Failed to read image files."));
+            }
+
+            // Generate unique session ID
+            String sessionId = UUID.randomUUID().toString();
+
+            log.info("Starting multiple images processing session: {} for series: {} with {} images",
+                    sessionId, seriesId, imageDataList.size());
+
+            // IMPORTANT: Initialize the session in progress service BEFORE starting async processing
+            progressService.initializeSession(sessionId);
+
+            // Start async processing with image data list
+            seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, name, year);
+
+            return ResponseEntity.ok(Map.of("sessionId", sessionId));
+
+        } catch (Exception e) {
+            log.error("Error starting multiple images processing: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error starting images processing: " + e.getMessage()));
+        }
+    }
+
+    @CrossOrigin(origins = "*", allowCredentials = "false")
+    @GetMapping(value = "{seriesId}/add-comics-by-images/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getMultipleImagesProcessingProgress(
+            @PathVariable Long seriesId,
+            @RequestParam String sessionId) {
+
+        log.info("Client connecting to SSE progress stream for multiple images session: {} (series: {})", sessionId, seriesId);
+
+        try {
+            SseEmitter emitter = progressService.createProgressEmitter(sessionId);
+            log.info("SSE emitter created successfully for multiple images session: {}", sessionId);
+            return emitter;
+        } catch (Exception e) {
+            log.error("Failed to create SSE emitter for session {}: {}", sessionId, e.getMessage(), e);
+
+            // Return a failed emitter
+            SseEmitter errorEmitter = new SseEmitter(1000L);
+            try {
+                errorEmitter.send(SseEmitter.event()
+                        .name("error")
+                        .data("{\"error\":\"Failed to create progress stream\"}"));
+                errorEmitter.complete();
+            } catch (Exception sendError) {
+                log.error("Failed to send error via SSE: {}", sendError.getMessage());
+            }
+            return errorEmitter;
         }
     }
 
@@ -437,5 +463,18 @@ public class SeriesController {
         private List<String> comicVineIds;
         private int issueCount;
         private String comicVineId;
+    }
+
+    @Data
+    public static class ImageData {
+        private final byte[] bytes;
+        private final String originalFilename;
+        private final String contentType;
+
+        public ImageData(byte[] bytes, String originalFilename, String contentType) {
+            this.bytes = bytes;
+            this.originalFilename = originalFilename;
+            this.contentType = contentType;
+        }
     }
 }

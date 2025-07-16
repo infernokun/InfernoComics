@@ -37,7 +37,7 @@ public class InfernoComicsRestController extends BaseController {
             summary = "Health Check",
             description = "Returns the current health status of the service, including uptime and status code."
     )
-    @GetMapping("/health")
+    @GetMapping("api/health")
     public ResponseEntity<Map<String, Object>> health() {
         Duration uptime = Duration.between(startTime, Instant.now());
 

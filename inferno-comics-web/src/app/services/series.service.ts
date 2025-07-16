@@ -70,7 +70,10 @@ export class SeriesService {
   }
 
   // ORIGINAL METHOD - Keep for backward compatibility
-  addComicByImage(seriesId: number, imageFile: File): Observable<ImageMatcherResponse> {
+  addComicByImage(
+    seriesId: number,
+    imageFile: File
+  ): Observable<ImageMatcherResponse> {
     const formData = new FormData();
     formData.append('image', imageFile);
     return this.http.post<ImageMatcherResponse>(
@@ -79,31 +82,76 @@ export class SeriesService {
     );
   }
 
+  addComicsByImagesWithSSE(
+    seriesId: number,
+    imageFiles: File[]
+  ): Observable<SSEProgressData> {
+    const progressSubject = new Subject<SSEProgressData>();
+
+    const formData = new FormData();
+
+    // FIXED: Use 'images' as the field name to match Java @RequestParam
+    imageFiles.forEach((file) => {
+      formData.append('images', file); // Changed from images[${index}] to just 'images'
+    });
+
+    this.http
+      .post<{ sessionId: string }>(
+        `${this.apiUrl}/${seriesId}/add-comics-by-images/start`,
+        formData
+      )
+      .subscribe({
+        next: (response) => {
+          setTimeout(() => {
+            this.connectToSSEProgress(
+              seriesId,
+              response.sessionId,
+              progressSubject,
+              'add-comics-by-images'
+            );
+          }, 500); // 500ms delay to ensure backend is ready
+        },
+        error: (error) => {
+          console.error('Error starting multiple images analysis:', error);
+          progressSubject.error(error);
+        },
+      });
+
+    return progressSubject.asObservable();
+  }
+
   // NEW SSE-BASED METHOD - Enhanced with real-time progress
-  addComicByImageWithSSE(seriesId: number, file: File): Observable<SSEProgressData> {
+  addComicByImageWithSSE(
+    seriesId: number,
+    file: File
+  ): Observable<SSEProgressData> {
     const progressSubject = new Subject<SSEProgressData>();
 
     // Step 1: Start the process and get session ID
     const formData = new FormData();
     formData.append('image', file);
 
-    this.http.post<{ sessionId: string }>(
-      `${this.apiUrl}/${seriesId}/add-comic-by-image/start`,
-      formData
-    ).subscribe({
-      next: (response) => {
-        console.log('Received session ID:', response.sessionId);
-
-        // Step 2: Wait a moment for the backend to initialize, then connect to SSE stream
-        setTimeout(() => {
-          this.connectToSSEProgress(seriesId, response.sessionId, progressSubject);
-        }, 500); // 500ms delay to ensure backend is ready
-      },
-      error: (error) => {
-        console.error('Error starting image analysis:', error);
-        progressSubject.error(error);
-      }
-    });
+    this.http
+      .post<{ sessionId: string }>(
+        `${this.apiUrl}/${seriesId}/add-comic-by-image/start`,
+        formData
+      )
+      .subscribe({
+        next: (response) => {
+          // Step 2: Wait a moment for the backend to initialize, then connect to SSE stream
+          setTimeout(() => {
+            this.connectToSSEProgress(
+              seriesId,
+              response.sessionId,
+              progressSubject
+            );
+          }, 500); // 500ms delay to ensure backend is ready
+        },
+        error: (error) => {
+          console.error('Error starting image analysis:', error);
+          progressSubject.error(error);
+        },
+      });
 
     return progressSubject.asObservable();
   }
@@ -111,10 +159,10 @@ export class SeriesService {
   private connectToSSEProgress(
     seriesId: number,
     sessionId: string,
-    progressSubject: Subject<SSEProgressData>
+    progressSubject: Subject<SSEProgressData>,
+    endpoint: string = 'add-comic-by-image'
   ): void {
-
-    const sseUrl = `${this.apiUrl}/${seriesId}/add-comic-by-image/progress?sessionId=${sessionId}`;
+    const sseUrl = `${this.apiUrl}/${seriesId}/${endpoint}/progress?sessionId=${sessionId}`;
     console.log('Connecting to SSE URL:', sseUrl);
 
     const eventSource = new EventSource(sseUrl);
@@ -144,17 +192,31 @@ export class SeriesService {
 
         // Close connection when complete or error
         if (data.type === 'complete' || data.type === 'error') {
-          console.log('SSE stream ending for session:', sessionId, 'type:', data.type);
+          console.log(
+            'SSE stream ending for session:',
+            sessionId,
+            'type:',
+            data.type
+          );
           console.log('SSE result data:', data.result);
           eventSource.close();
           progressSubject.complete();
         }
       } catch (error) {
-        console.error('Error parsing SSE progress data:', error, 'Raw data:', event.data);
+        console.error(
+          'Error parsing SSE progress data:',
+          error,
+          'Raw data:',
+          event.data
+        );
 
         // Check if it's a large JSON that might be truncated
         if (typeof event.data === 'string' && event.data.length > 10000) {
-          console.warn('Very large SSE message received (', event.data.length, 'chars), might be truncated');
+          console.warn(
+            'Very large SSE message received (',
+            event.data.length,
+            'chars), might be truncated'
+          );
         }
 
         eventSource.close();
@@ -174,7 +236,7 @@ export class SeriesService {
         url: sseUrl,
         error: error,
         target: error.target,
-        type: error.type
+        type: error.type,
       });
 
       // Check if this is just a natural connection close after completion
@@ -198,7 +260,9 @@ export class SeriesService {
       }
 
       eventSource.close();
-      progressSubject.error(new Error('Connection to server lost during image analysis'));
+      progressSubject.error(
+        new Error('Connection to server lost during image analysis')
+      );
     };
 
     // Add timeout handling

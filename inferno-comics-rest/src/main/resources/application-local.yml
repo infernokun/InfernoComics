@@ -28,7 +28,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB
-      max-request-size: 10MB
+      max-request-size: 250MB
   datasource:
     url: jdbc:postgresql://${DB_IP:localhost}:${DB_PORT:5432}/${DB_NAME:inferno-comics}
     username: ${DB_USER:inferno-comics}
@@ -58,6 +58,8 @@ server:
     contextPath: /inferno-comics-rest
   shutdown: graceful
   tomcat:
+    max-swallow-size: 250MB
+    max-http-post-size: 250MB
     internal-proxies:
       protocol-header: "X-Forwarded-Proto"
       remote-ip-header: "X-FORWARDED-FOR"

@@ -5,9 +5,9 @@ from flask_cors import CORS
 from config.Config import Config
 from util.Logger import initialize_logger, set_global_log_config
 
-set_global_log_config(log_file="./logs/app.log", level=logging.DEBUG)
+set_global_log_config(log_file="./logs/app.log", level=logging.INFO)
 
-logger = initialize_logger(name=__name__, level=logging.DEBUG, log_file="./logs/app.log", use_colors=True)
+logger = initialize_logger(name=__name__, level=logging.INFO, log_file="./logs/app.log", use_colors=True)
 
 def create_app():
     """Application factory pattern for better testing and deployment"""

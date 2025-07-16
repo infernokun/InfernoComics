@@ -4,8 +4,10 @@ import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../../material.module';
 
 export interface ImageProcessingData {
-  file: File;
+  file?: File;  // Single file (optional for backward compatibility)
+  files?: File[];  // Multiple files
   seriesId: number;
+  isMultiple?: boolean;  // Flag to indicate multiple images mode
   onProgress?: (stage: string, progress: number) => void;
   onComplete?: (result: any) => void;
   onError?: (error: any) => void;
@@ -18,7 +20,7 @@ export interface ImageProcessingData {
   imports: [CommonModule, MaterialModule]
 })
 export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
-  imagePreview: string | null = null;
+  imagePreviews: string[] = [];
   progress = 0;
   currentStage = 'Preparing...';
   currentStageIndex = 0;
@@ -28,12 +30,27 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   canRetry = false;
   startTime = new Date();
   
+  // Multiple images specific properties
+  isMultipleMode = false;
+  totalImages = 0;
+  currentImageIndex = 0;
+  currentImageName = '';
+  processedImages = 0;
+  successfulImages = 0;
+  failedImages = 0;
+  
+  // Debouncing properties
+  private lastUpdateTime = 0;
+  private lastProgressValue = 0;
+  private readonly UPDATE_DEBOUNCE_MS = 150; // Prevent rapid updates
+  
   // Expose Math for template
   Math = Math;
 
   // Stage mapping for better progress tracking
   private stageMapping: { [key: string]: number } = {
     'processing_data': 0,
+    'preparing': 0,
     'initializing_matcher': 1,
     'extracting_features': 1,
     'comparing_images': 2,
@@ -62,8 +79,9 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.createImagePreview();
-    this.addStatusMessage('Starting image analysis...', 'info');
+    this.setupImageProcessing();
+    this.createImagePreviews();
+    this.addInitialStatusMessage();
     
     // Simulate the processing stages if not provided by parent
     if (!this.data.onProgress) {
@@ -75,14 +93,45 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    if (this.imagePreview) {
-      URL.revokeObjectURL(this.imagePreview);
+    // Clean up all image previews
+    this.imagePreviews.forEach(preview => {
+      if (preview) {
+        URL.revokeObjectURL(preview);
+      }
+    });
+  }
+
+  private setupImageProcessing() {
+    // Determine if this is multiple images mode
+    this.isMultipleMode = this.data.isMultiple || (this.data.files! && this.data.files.length > 1);
+    
+    if (this.isMultipleMode && this.data.files) {
+      this.totalImages = this.data.files.length;
+      this.currentImageIndex = 0;
+      this.currentImageName = this.data.files[0]?.name || '';
+      this.processedImages = 0; // Start at 0, will increment as we process
+    } else {
+      this.totalImages = 1;
+      this.currentImageName = this.data.file?.name || '';
+      this.processedImages = 0;
     }
   }
 
-  private createImagePreview() {
-    if (this.data.file) {
-      this.imagePreview = URL.createObjectURL(this.data.file);
+  private createImagePreviews() {
+    if (this.isMultipleMode && this.data.files) {
+      // Create previews for all images
+      this.imagePreviews = this.data.files.map(file => URL.createObjectURL(file));
+    } else if (this.data.file) {
+      // Single image preview
+      this.imagePreviews = [URL.createObjectURL(this.data.file)];
+    }
+  }
+
+  private addInitialStatusMessage() {
+    if (this.isMultipleMode) {
+      this.addStatusMessage(`Starting analysis of ${this.totalImages} images...`, 'info');
+    } else {
+      this.addStatusMessage('Starting image analysis...', 'info');
     }
   }
 
@@ -95,12 +144,52 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     return `${Math.round(elapsed / 1000)}s`;
   }
 
+  // Get the main display image (first image or current processing image)
+  getMainImagePreview(): string | null {
+    if (this.isMultipleMode && this.currentImageIndex < this.imagePreviews.length) {
+      return this.imagePreviews[this.currentImageIndex] || this.imagePreviews[0];
+    }
+    return this.imagePreviews[0] || null;
+  }
+
+  // Get total file size for multiple images
+  getTotalFileSize(): number {
+    if (this.isMultipleMode && this.data.files) {
+      return this.data.files.reduce((total, file) => total + file.size, 0);
+    }
+    return this.data.file?.size || 0;
+  }
+
+  // Get display filename
+  getDisplayFilename(): string {
+    if (this.isMultipleMode) {
+      if (this.currentImageName) {
+        return `${this.currentImageName} (${this.processedImages + 1}/${this.totalImages})`;
+      }
+      return `${this.totalImages} images selected`;
+    }
+    return this.data.file?.name || 'Unknown file';
+  }
+
   updateProgress(stage: string, progressPercent: number, message?: string) {
+    const now = Date.now();
+    
+    // Debounce rapid updates that don't significantly change progress
+    if (now - this.lastUpdateTime < this.UPDATE_DEBOUNCE_MS && 
+        Math.abs(progressPercent - this.lastProgressValue) < 1) {
+      return; // Skip minor updates that happen too quickly
+    }
+    
     // Ensure progress only moves forward to prevent jumping
     const newProgress = Math.min(100, Math.max(this.progress, progressPercent));
     
-    // Only update if progress actually increased or stage changed
-    if (newProgress > this.progress || stage !== this.currentStage) {
+    // Only update if progress actually increased OR stage changed OR significant time passed
+    if (newProgress > this.progress || 
+        stage !== this.currentStage || 
+        now - this.lastUpdateTime > 1000) { // Force update every second
+      
+      this.lastUpdateTime = now;
+      this.lastProgressValue = newProgress;
       this.progress = newProgress;
       this.currentStage = stage;
       
@@ -120,9 +209,82 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
         }
       }
 
+      // Parse image-specific progress from message BEFORE adding status message
+      if (message && this.isMultipleMode) {
+        this.parseImageProgress(message);
+      }
+
       if (message) {
         this.addStatusMessage(message, 'info');
       }
+    }
+  }
+
+  private parseImageProgress(message: string) {
+    console.log('Parsing progress message:', message); // Debug log
+    
+    // Parse messages like "Processing image 2/5: filename.jpg" or "Image 1/3: Processing candidate 15/50"
+    const imageMatch = message.match(/(?:image|Image)\s+(\d+)(?:\/(\d+))?/i);
+    if (imageMatch) {
+      const currentImageNum = parseInt(imageMatch[1]);
+      const totalImages = imageMatch[2] ? parseInt(imageMatch[2]) : this.totalImages;
+      
+      // Convert to 0-based index and ensure we don't go backwards
+      const newImageIndex = currentImageNum - 1;
+      if (newImageIndex >= this.currentImageIndex && newImageIndex < this.totalImages) {
+        this.currentImageIndex = newImageIndex;
+        
+        // Update processed count more carefully
+        if (currentImageNum > this.processedImages) {
+          this.processedImages = currentImageNum;
+        }
+      }
+      
+      console.log(`Parsed: currentImageNum=${currentImageNum}, newImageIndex=${newImageIndex}, processedImages=${this.processedImages}`);
+    }
+
+    // Parse image name from various message patterns
+    let parsedImageName = null;
+    
+    // Pattern 1: "Processing image 1/3: filename.jpg"
+    const nameMatch1 = message.match(/:\s*([^:]+\.(jpg|jpeg|png|gif|bmp|webp))/i);
+    if (nameMatch1) {
+      parsedImageName = nameMatch1[1].trim();
+    }
+    
+    // Pattern 2: "Processing filename.jpg..."
+    if (!parsedImageName) {
+      const nameMatch2 = message.match(/processing\s+([^:\s]+\.(jpg|jpeg|png|gif|bmp|webp))/i);
+      if (nameMatch2) {
+        parsedImageName = nameMatch2[1].trim();
+      }
+    }
+    
+    // Pattern 3: Extract from parentheses "Image 1/3 (filename.jpg):"
+    if (!parsedImageName) {
+      const nameMatch3 = message.match(/\(([^)]+\.(jpg|jpeg|png|gif|bmp|webp))\)/i);
+      if (nameMatch3) {
+        parsedImageName = nameMatch3[1].trim();
+      }
+    }
+    
+    // Update current image name if we found one and it's valid
+    if (parsedImageName && parsedImageName !== this.currentImageName) {
+      this.currentImageName = parsedImageName;
+      console.log('Updated current image name to:', parsedImageName);
+    }
+    
+    // If we don't have a name from message, use the file at current index
+    if (!this.currentImageName && this.data.files && this.currentImageIndex < this.data.files.length) {
+      this.currentImageName = this.data.files[this.currentImageIndex].name;
+    }
+
+    // Update success/failure counters based on completion messages
+    if (message.includes('completed') && !message.includes('processing')) {
+      this.successfulImages = Math.max(this.successfulImages, this.processedImages);
+    }
+    if (message.includes('failed') || message.includes('error')) {
+      this.failedImages++;
     }
   }
 
@@ -137,9 +299,18 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   setComplete(result?: any) {
     this.isProcessing = false;
     this.progress = 100;
-    this.currentStage = 'Analysis Complete!';
     this.currentStageIndex = this.processingStages.length - 1;
-    this.addStatusMessage(`Analysis completed successfully in ${this.getElapsedTime()}!`, 'success');
+    
+    // Final update for multiple images
+    if (this.isMultipleMode) {
+      this.processedImages = this.totalImages;
+      this.successfulImages = Math.max(this.successfulImages, this.totalImages);
+      this.currentStage = `Analysis Complete! Processed ${this.totalImages} images`;
+      this.addStatusMessage(`Successfully analyzed ${this.totalImages} images in ${this.getElapsedTime()}!`, 'success');
+    } else {
+      this.currentStage = 'Analysis Complete!';
+      this.addStatusMessage(`Analysis completed successfully in ${this.getElapsedTime()}!`, 'success');
+    }
     
     if (this.data.onComplete) {
       this.data.onComplete(result);
@@ -195,11 +366,28 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     this.isProcessing = true;
     this.progress = 0;
     this.currentStageIndex = 0;
-    this.currentStage = 'Retrying...';
     this.canRetry = false;
     this.statusMessages = [];
     this.startTime = new Date();
-    this.addStatusMessage('Retrying image analysis...', 'info');
+    
+    // Reset multiple images counters
+    this.currentImageIndex = 0;
+    this.processedImages = 0;
+    this.successfulImages = 0;
+    this.failedImages = 0;
+    this.lastUpdateTime = 0;
+    this.lastProgressValue = 0;
+    
+    // Reset current image name
+    if (this.isMultipleMode && this.data.files && this.data.files.length > 0) {
+      this.currentImageName = this.data.files[0].name;
+      this.currentStage = 'Retrying multiple images...';
+      this.addStatusMessage(`Retrying analysis of ${this.totalImages} images...`, 'info');
+    } else {
+      this.currentImageName = this.data.file?.name || '';
+      this.currentStage = 'Retrying...';
+      this.addStatusMessage('Retrying image analysis...', 'info');
+    }
     
     // Call parent's retry logic or simulate again
     this.simulateProcessing();
@@ -222,6 +410,20 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
         this.addStatusMessage(`Starting: ${this.processingStages[stageIndex].name}`, 'info');
       }
       
+      // Simulate multiple images progress
+      if (this.isMultipleMode && currentProgress > 25 && currentProgress < 90) {
+        const imageProgress = Math.floor(((currentProgress - 25) / 65) * this.totalImages) + 1;
+        const newImageIndex = Math.min(imageProgress - 1, this.totalImages - 1);
+        
+        // Only update if moving forward
+        if (newImageIndex >= this.currentImageIndex) {
+          this.currentImageIndex = newImageIndex;
+          this.processedImages = imageProgress;
+          const fileName = this.data.files?.[this.currentImageIndex]?.name || `image_${this.currentImageIndex + 1}.jpg`;
+          this.currentImageName = fileName;
+        }
+      }
+      
       if (currentProgress >= 100) {
         this.setComplete();
         clearInterval(interval);
@@ -236,5 +438,27 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   private scrollToTop(): void {
     const content = document.querySelector('.dialog-content');
     if (content) content.scrollTop = 0;
+  }
+
+  // Helper methods for template
+  getCurrentImageProgress(): string {
+    if (!this.isMultipleMode) return '';
+    return `${Math.min(this.processedImages, this.totalImages)}/${this.totalImages}`;
+  }
+
+  getProgressSummary(): string {
+    if (!this.isMultipleMode) return '';
+    
+    if (this.isProcessing) {
+      if (this.currentImageName) {
+        return `Processing ${this.currentImageName} (${Math.min(this.processedImages, this.totalImages)}/${this.totalImages})`;
+      } else {
+        return `Processing image ${Math.min(this.processedImages, this.totalImages)}/${this.totalImages}`;
+      }
+    } else if (this.hasError) {
+      return `Failed: ${this.failedImages} of ${this.totalImages}`;
+    } else {
+      return `Completed: ${this.successfulImages} of ${this.totalImages}`;
+    }
   }
 }

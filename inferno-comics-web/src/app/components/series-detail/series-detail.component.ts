@@ -1,8 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import {
-  MatDialog,
-} from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SeriesService, SSEProgressData } from '../../services/series.service';
 import { IssueService } from '../../services/issue.service';
@@ -13,6 +11,7 @@ import { ComicVineIssue } from '../../models/comic-vine.model';
 import { RangeSelectionDialog } from './range-selection-dialog/range-selection-dialog';
 import {
   ComicMatch,
+  ComicMatchDialogData,
   ComicMatchSelectionComponent,
   ImageMatcherResponse,
 } from './comic-match-selection/comic-match-selection.component';
@@ -414,6 +413,282 @@ export class SeriesDetailComponent implements OnInit {
     input.click();
   }
 
+  addComicsByImage(seriesId: number): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true; // Enable multiple file selection
+    input.onchange = (event: any) => {
+      const files: FileList = event.target.files;
+      if (files && files.length > 0) {
+        // Convert FileList to Array for easier processing
+        const fileArray = Array.from(files);
+
+        // Check if SSE is supported and use enhanced version, otherwise fallback
+        if (this.seriesService.isSSESupported()) {
+          this.processMultipleImagesWithSSE(seriesId, fileArray);
+        } else {
+          this.processMultipleImagesFallback(seriesId, fileArray);
+        }
+      }
+    };
+    input.click();
+  }
+
+  private processMultipleImagesWithSSE(seriesId: number, files: File[]): void {
+    // Open the progress dialog
+    const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      disableClose: true,
+      data: {
+        files: files,
+        seriesId: seriesId,
+        isMultiple: true, // Add flag to indicate multiple files
+      },
+    });
+
+    const dialogComponent = progressDialogRef.componentInstance;
+
+    this.seriesService.addComicsByImagesWithSSE(seriesId, files).subscribe({
+      next: (progressData: SSEProgressData) => {
+        this.handleMultipleSSEProgress(
+          seriesId,
+          progressData,
+          dialogComponent,
+          files
+        );
+      },
+      error: (error) => {
+        console.error('SSE Error:', error);
+        const errorMessage = this.getErrorMessage(error);
+        dialogComponent.setError(errorMessage);
+      },
+      complete: () => {
+        console.log('SSE multiple images stream completed');
+      },
+    });
+  }
+
+  private handleMultipleSSEProgress(
+    seriesId: number,
+    data: SSEProgressData,
+    dialogComponent: ImageProcessingDialogComponent,
+    originalImages: File[]
+  ): void {
+    console.log('=== MULTIPLE SSE EVENT ===');
+    console.log('Event type:', data.type);
+    console.log('Event data:', data);
+
+    switch (data.type) {
+      case 'progress':
+        const stageName = this.getStageDisplayName(data.stage || '');
+        dialogComponent.updateProgress(
+          stageName,
+          data.progress || 0,
+          data.message
+        );
+        break;
+
+      case 'complete':
+        console.log(
+          '🎯 FRONTEND: Received COMPLETION EVENT for multiple images!'
+        );
+        console.log('Completion result:', data.result);
+
+        dialogComponent.setComplete(data.result);
+
+        // Handle the results after dialog auto-closes
+        setTimeout(() => {
+          const result = data.result as any;
+
+          console.log('🔍 Processing completion result:', result);
+          console.log('Result type:', typeof result);
+          console.log('Has results array:', !!(result && result.results));
+          console.log('Has top_matches:', !!(result && result.top_matches));
+
+          // FIXED: Handle multiple images result format
+          if (result && result.results && Array.isArray(result.results)) {
+            // Multiple images result format: { results: [...], summary: {...} }
+            console.log('✅ Processing multiple images result format');
+            console.log('Number of image results:', result.results.length);
+
+            // Flatten all matches from all images into a single array
+            const allMatches: ComicMatch[] = [];
+            result.results.forEach((imageResult: any, imageIndex: number) => {
+              console.log(
+                `Processing image result ${imageIndex}:`,
+                imageResult.image_name,
+                'matches:',
+                imageResult.top_matches?.length || 0
+              );
+
+              if (
+                imageResult.top_matches &&
+                Array.isArray(imageResult.top_matches)
+              ) {
+                imageResult.top_matches.forEach((match: any) => {
+                  // Add source tracking to each match
+                  match.sourceImageIndex =
+                    imageResult.image_index !== undefined
+                      ? imageResult.image_index
+                      : imageIndex;
+                  match.sourceImageName =
+                    imageResult.image_name ||
+                    originalImages[imageIndex]?.name ||
+                    `Image ${imageIndex + 1}`;
+                  allMatches.push(match);
+                });
+              }
+            });
+
+            console.log('📊 Total flattened matches:', allMatches.length);
+
+            if (allMatches.length > 0) {
+              console.log(
+                '🎉 Opening match selection dialog with',
+                allMatches.length,
+                'matches'
+              );
+              // Open match selection dialog with combined matches and multiple images support
+              this.openMatchSelectionDialog(
+                allMatches,
+                seriesId,
+                originalImages,
+                result.session_id
+              );
+            } else {
+              console.log('❌ No matches found in any images');
+              this.snackBar.open(
+                'No matching comics found in any images',
+                'Close',
+                {
+                  duration: 3000,
+                }
+              );
+            }
+          } else if (
+            result &&
+            result.top_matches &&
+            Array.isArray(result.top_matches)
+          ) {
+            // Single image result format (fallback for backward compatibility)
+            console.log('✅ Processing single image result format (fallback)');
+            this.openMatchSelectionDialog(
+              result.top_matches,
+              seriesId,
+              originalImages[0],
+              result.session_id
+            );
+          } else {
+            console.log('❌ Unexpected result format:', result);
+            this.snackBar.open('No matching comics found', 'Close', {
+              duration: 3000,
+            });
+          }
+        }, 1600); // Wait for dialog to close
+        break;
+
+      case 'error':
+        console.error('❌ SSE Error received:', data.error);
+        dialogComponent.setError(data.error || 'Unknown error occurred');
+        break;
+
+      default:
+        console.log('❓ Unknown SSE event type:', data.type);
+        break;
+    }
+  }
+
+  private processMultipleImagesFallback(seriesId: number, files: File[]): void {
+    this.snackBar.open(`Analyzing ${files.length} images...`, '', {
+      duration: 0,
+    });
+
+    const processPromises = files.map((file) =>
+      this.seriesService.addComicByImage(seriesId, file).toPromise()
+    );
+
+    Promise.allSettled(processPromises)
+      .then((results) => {
+        this.snackBar.dismiss();
+
+        const successfulResults = results
+          .filter((result) => result.status === 'fulfilled')
+          .map(
+            (result) =>
+              (result as PromiseFulfilledResult<ImageMatcherResponse>).value
+          );
+
+        const failedCount = results.filter(
+          (result) => result.status === 'rejected'
+        ).length;
+
+        if (successfulResults.length > 0) {
+          // FIXED: Pass the files parameter
+          this.handleMultipleImageResults(
+            successfulResults,
+            seriesId,
+            failedCount,
+            files // ADD THIS parameter
+          );
+        } else {
+          this.snackBar.open(
+            'No matching comics found in any images',
+            'Close',
+            {
+              duration: 3000,
+            }
+          );
+        }
+      })
+      .catch((error) => {
+        this.snackBar.dismiss();
+        console.error('Error analyzing images:', error);
+        this.snackBar.open('Error analyzing images', 'Close', {
+          duration: 3000,
+        });
+      });
+  }
+
+  private handleMultipleImageResults(
+    results: ImageMatcherResponse[],
+    seriesId: number,
+    failedCount: number,
+    originalImages?: File[] // ADD THIS parameter to method signature
+  ): void {
+    const allMatches: ComicMatch[] = [];
+
+    results.forEach((response, index) => {
+      if (response?.top_matches?.length > 0) {
+        response.top_matches.forEach((match) => {
+          (match as any).sourceImageIndex = index;
+          allMatches.push(match);
+        });
+      }
+    });
+
+    if (allMatches.length > 0) {
+      // FIXED: Add missing parameters
+      this.openMatchSelectionDialog(
+        allMatches,
+        seriesId,
+        originalImages, // ADD THIS
+        results[0]?.session_id // ADD THIS
+      );
+
+      let message = `Found matches in ${results.length} images`;
+      if (failedCount > 0) {
+        message += `, ${failedCount} failed to process`;
+      }
+      this.snackBar.open(message, 'Close', { duration: 5000 });
+    } else {
+      this.snackBar.open('No matching comics found in any images', 'Close', {
+        duration: 3000,
+      });
+    }
+  }
+
   // NEW SSE-BASED PROCESSING - Real-time progress updates
   private processImageWithSSE(seriesId: number, file: File): void {
     // Open the progress dialog
@@ -423,8 +698,8 @@ export class SeriesDetailComponent implements OnInit {
       disableClose: true,
       data: {
         file: file,
-        seriesId: seriesId
-      }
+        seriesId: seriesId,
+      },
     });
 
     const dialogComponent = progressDialogRef.componentInstance;
@@ -441,11 +716,16 @@ export class SeriesDetailComponent implements OnInit {
       },
       complete: () => {
         console.log('SSE stream completed');
-      }
+      },
     });
   }
 
-  private handleSSEProgress(seriesId: number, data: SSEProgressData, dialogComponent: ImageProcessingDialogComponent, originalImage: File): void {
+  private handleSSEProgress(
+    seriesId: number,
+    data: SSEProgressData,
+    dialogComponent: ImageProcessingDialogComponent,
+    originalImage: File
+  ): void {
     switch (data.type) {
       case 'progress':
         const stageName = this.getStageDisplayName(data.stage || '');
@@ -458,22 +738,37 @@ export class SeriesDetailComponent implements OnInit {
 
       case 'complete':
         dialogComponent.setComplete(data.result);
-        
+
         // Handle the results after dialog auto-closes
         setTimeout(() => {
           // Cast the result to ImageMatcherResponse for proper typing
           const imageMatcherResponse = data.result as ImageMatcherResponse;
-          
-          if (imageMatcherResponse && 
-              imageMatcherResponse.top_matches && 
-              imageMatcherResponse.top_matches.length > 0) {
-            console.log('SSE Processing completed successfully, opening match selection dialog');
-            console.log('Top matches found:', imageMatcherResponse.top_matches.length);
-            
+
+          if (
+            imageMatcherResponse &&
+            imageMatcherResponse.top_matches &&
+            imageMatcherResponse.top_matches.length > 0
+          ) {
+            console.log(
+              'SSE Processing completed successfully, opening match selection dialog'
+            );
+            console.log(
+              'Top matches found:',
+              imageMatcherResponse.top_matches.length
+            );
+
             // Use the same method as fallback processing
-            this.openMatchSelectionDialog(imageMatcherResponse.top_matches, seriesId, originalImage, imageMatcherResponse.session_id);
+            this.openMatchSelectionDialog(
+              imageMatcherResponse.top_matches,
+              seriesId,
+              originalImage,
+              imageMatcherResponse.session_id
+            );
           } else {
-            console.log('No matches found in SSE result:', imageMatcherResponse);
+            console.log(
+              'No matches found in SSE result:',
+              imageMatcherResponse
+            );
             this.snackBar.open('No matching comics found', 'Close', {
               duration: 3000,
             });
@@ -493,30 +788,31 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   private getStageDisplayName(stage: string): string {
-    const stageMap: {[key: string]: string} = {
-      'preparing': 'Preparing image analysis',
-      'initializing': 'Initializing image matcher',
-      'extracting_features': 'Extracting image features',
-      'preparing_comparison': 'Preparing comparison',
-      'comparing_images': 'Comparing with database',
-      'processing_results': 'Processing results',
-      'finalizing': 'Finalizing matches',
-      'complete': 'Analysis complete'
+    const stageMap: { [key: string]: string } = {
+      preparing: 'Preparing image analysis',
+      initializing: 'Initializing image matcher',
+      extracting_features: 'Extracting image features',
+      preparing_comparison: 'Preparing comparison',
+      comparing_images: 'Comparing with database',
+      processing_results: 'Processing results',
+      finalizing: 'Finalizing matches',
+      complete: 'Analysis complete',
     };
-    
-    return stageMap[stage] || stage.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    return (
+      stageMap[stage] ||
+      stage.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+    );
   }
 
   // FALLBACK PROCESSING - Original method with simulated progress (backward compatibility)
   private processImageFallback(seriesId: number, file: File): void {
-    // Show loading indicator (original behavior)
     this.snackBar.open('Analyzing image...', '', {
-      duration: 0, // Keep open until dismissed
+      duration: 0,
     });
 
     this.seriesService.addComicByImage(seriesId, file).subscribe({
       next: (response: ImageMatcherResponse) => {
-        // Dismiss loading indicator
         this.snackBar.dismiss();
 
         if (
@@ -524,8 +820,13 @@ export class SeriesDetailComponent implements OnInit {
           response.top_matches &&
           response.top_matches.length > 0
         ) {
-          // Open the match selection dialog with the top matches
-          this.openMatchSelectionDialog(response.top_matches, seriesId);
+          // FIXED: Add missing file and sessionId parameters
+          this.openMatchSelectionDialog(
+            response.top_matches,
+            seriesId,
+            file, // ADD THIS
+            response.session_id // ADD THIS
+          );
         } else {
           this.snackBar.open('No matching comics found', 'Close', {
             duration: 3000,
@@ -533,9 +834,7 @@ export class SeriesDetailComponent implements OnInit {
         }
       },
       error: (error) => {
-        // Dismiss loading indicator
         this.snackBar.dismiss();
-
         console.error('Error adding comic by image:', error);
         this.snackBar.open('Error analyzing image', 'Close', {
           duration: 3000,
@@ -561,41 +860,51 @@ export class SeriesDetailComponent implements OnInit {
     return 'Failed to analyze image';
   }
 
-  private openMatchSelectionDialog(matches: ComicMatch[], seriesId: number, originalImage?: File, sessionId?: string,): void {
+  // Fixed method signature to handle all the different ways it's called
+  private openMatchSelectionDialog(
+    matches: ComicMatch[],
+    seriesId: number,
+    originalImage?: File | File[],
+    sessionId?: string
+  ): void {
+    console.log('🎭 Opening match selection dialog');
+    console.log('Matches:', matches.length);
+    console.log(
+      'Original image type:',
+      Array.isArray(originalImage) ? 'multiple' : 'single'
+    );
+    console.log('Session ID:', sessionId);
+
+    const dialogData: ComicMatchDialogData = {
+      matches: matches,
+      seriesId: seriesId,
+      sessionId: sessionId || undefined,
+      isMultiple: Array.isArray(originalImage) && originalImage.length > 1,
+      originalImages: Array.isArray(originalImage) ? originalImage : undefined,
+      originalImage: Array.isArray(originalImage)
+        ? originalImage[0]
+        : originalImage,
+    };
+
+    console.log('📋 Dialog data:', dialogData);
+
     const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
-      width: '900px',
-      maxWidth: '95vw',
-      data: {
-        matches: matches,
-        seriesId: seriesId,
-        sessionId: sessionId || '',
-        originalImage: originalImage
-      },
+      width: '95vw',
+      maxWidth: '1200px',
+      maxHeight: '90vh',
+      data: dialogData,
       disableClose: false,
     });
 
-    console.log('Opening match selection dialog with matches:', matches);
-
     dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        switch (result.action) {
-          case 'select':
-            this.handleSelectedMatch(result.match, result.seriesId);
-            break;
-          case 'exists':
-            this.handleExistingIssue(
-              result.match,
-              result.existingIssue,
-              result.seriesId
-            );
-            break;
-          case 'no_match':
-            this.openManualAddDialog(result.seriesId);
-            break;
-          case 'cancel':
-            // User cancelled, do nothing
-            break;
-        }
+      if (result && result.action === 'select') {
+        console.log('✅ User selected match:', result.match);
+        this.handleSelectedMatch(result.match, seriesId);
+      } else if (result && result.action === 'no_match') {
+        console.log('❌ User selected no match');
+        this.openManualAddDialog(seriesId);
+      } else {
+        console.log('🚫 User cancelled match selection');
       }
     });
   }
@@ -666,12 +975,16 @@ export class SeriesDetailComponent implements OnInit {
 
     // Fetch full Comic Vine details for the matched issue
     this.comicVineService
-      .getIssueById(match.parent_comic_vine_id ? match.parent_comic_vine_id.toString() : match.comic_vine_id!.toString())
+      .getIssueById(
+        match.parent_comic_vine_id
+          ? match.parent_comic_vine_id.toString()
+          : match.comic_vine_id!.toString()
+      )
       .subscribe({
         next: (issue: Issue) => {
           // Dismiss loading indicator
           this.snackBar.dismiss();
-          
+
           if (match.parent_comic_vine_id) {
             issue.imageUrl = match.url;
             issue.variant = true;
@@ -682,14 +995,14 @@ export class SeriesDetailComponent implements OnInit {
               width: '600px',
               data: {
                 seriesId: seriesId,
-                comicVineIssue: issue
+                comicVineIssue: issue,
               },
             });
 
             dialogRef.afterClosed().subscribe((result) => {
               if (!result) return;
 
-              if (result != "") {
+              if (result != '') {
                 this.loadIssues(seriesId);
                 this.snackBar.open('Comic issue added successfully', 'Close', {
                   duration: 3000,
@@ -726,21 +1039,20 @@ export class SeriesDetailComponent implements OnInit {
     match: ComicMatch,
     seriesId: number
   ): void {
-
-      const issue = {
-        id: match.comic_vine_id || 0,
-        name: match.comic_name,
-        issueNumber: match.issue_number,
-        imageUrl: match.url,
-        thumbUrl: match.url,
-        originalUrl: match.url,
-      };
+    const issue = {
+      id: match.comic_vine_id || 0,
+      name: match.comic_name,
+      issueNumber: match.issue_number,
+      imageUrl: match.url,
+      thumbUrl: match.url,
+      originalUrl: match.url,
+    };
     // Fallback method when Comic Vine API fails - use just the match data
     const dialogRef = this.dialog.open(IssueFormComponent, {
       width: '600px',
       data: {
         seriesId: seriesId,
-        comicVineIssue: issue
+        comicVineIssue: issue,
       },
     });
 
@@ -770,11 +1082,12 @@ export class SeriesDetailComponent implements OnInit {
       }
     });
   }
-  
+
   get limitedDescription(): string {
     if (!this.series?.description) return '';
     if (this.showFullDescription) return this.series.description;
-    if (this.series.description.length <= this.DESCRIPTION_LIMIT) return this.series.description;
+    if (this.series.description.length <= this.DESCRIPTION_LIMIT)
+      return this.series.description;
 
     return this.series.description.substring(0, this.DESCRIPTION_LIMIT) + '...';
   }
@@ -782,82 +1095,4 @@ export class SeriesDetailComponent implements OnInit {
   toggleDescription(): void {
     this.showFullDescription = !this.showFullDescription;
   }
-
-// Add this method to your Angular component to test basic SSE
-
-testSSE(): void {
-  console.log('Testing basic SSE connection...');
-  
-  const testUrl = 'http://localhost:8080/inferno-comics-rest/api/series/test-sse';
-  console.log('Connecting to test SSE URL:', testUrl);
-  
-  const eventSource = new EventSource(testUrl);
-  
-  eventSource.onopen = (event) => {
-    console.log('✅ Test SSE connection opened successfully');
-    console.log('Event:', event);
-  };
-  
-  eventSource.onmessage = (event) => {
-    console.log('📨 Test SSE DEFAULT message received:', event.data);
-    console.log('Event details:', event);
-    try {
-      const data = JSON.parse(event.data);
-      console.log('📨 Parsed test SSE data:', data);
-    } catch (e) {
-      console.log('📨 Raw test SSE data (not JSON):', event.data);
-    }
-  };
-  
-  // Listen for specific event types
-  eventSource.addEventListener('test', (event: any) => {
-    console.log('🧪 Test SSE "test" event received:', event.data);
-    console.log('Test event details:', event);
-  });
-  
-  eventSource.addEventListener('progress', (event: any) => {
-    console.log('📈 Test SSE "progress" event received:', event.data);
-    console.log('Progress event details:', event);
-  });
-  
-  eventSource.addEventListener('complete', (event: any) => {
-    console.log('✅ Test SSE "complete" event received:', event.data);
-    console.log('Complete event details:', event);
-    eventSource.close();
-    console.log('Test SSE connection closed after complete event');
-  });
-  
-  eventSource.onerror = (error) => {
-    console.error('❌ Test SSE error:', {
-      readyState: eventSource.readyState,
-      error: error,
-      url: testUrl
-    });
-    
-    // Detailed readyState information
-    switch (eventSource.readyState) {
-      case EventSource.CONNECTING:
-        console.log('SSE State: CONNECTING (0)');
-        break;
-      case EventSource.OPEN:
-        console.log('SSE State: OPEN (1)');
-        break;
-      case EventSource.CLOSED:
-        console.log('SSE State: CLOSED (2)');
-        break;
-      default:
-        console.log('SSE State: Unknown', eventSource.readyState);
-    }
-    
-    eventSource.close();
-  };
-  
-  // Auto-close after 15 seconds if still open
-  setTimeout(() => {
-    if (eventSource.readyState !== EventSource.CLOSED) {
-      console.log('🕐 Test SSE timeout - closing connection');
-      eventSource.close();
-    }
-  }, 15000);
-}
 }

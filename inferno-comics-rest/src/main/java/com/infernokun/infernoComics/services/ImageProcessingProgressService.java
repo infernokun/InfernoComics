@@ -27,6 +27,10 @@ public class ImageProcessingProgressService {
     // SSE timeout: 30 minutes (should be enough for image processing)
     private static final long SSE_TIMEOUT = 30 * 60 * 1000L;
 
+    public boolean emitterIsPresent(String sessionId) {
+        return activeEmitters.containsKey(sessionId);
+    }
+
     /**
      * Create a new SSE emitter for the given session ID
      */

@@ -466,3 +466,353 @@
     }
   }
 }
+
+// Image Navigation Section
+.image-navigation {
+  margin-bottom: 20px;
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 16px 0;
+    color: #333;
+    font-size: 16px;
+
+    mat-icon {
+      color: #667eea;
+    }
+  }
+
+  .navigation-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 8px 0;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 16px;
+
+    &::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #cbd5e0;
+      border-radius: 3px;
+    }
+
+    .nav-tab {
+      flex-shrink: 0;
+      border-radius: 8px;
+      padding: 8px 16px;
+      border: 2px solid #e0e0e0;
+      background: white;
+      color: #666;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      min-height: 60px;
+      text-transform: none;
+
+      &:hover {
+        border-color: #667eea;
+        background: #f8f9fa;
+      }
+
+      &.active {
+        border-color: #667eea;
+        background: #667eea;
+        color: white;
+
+        .tab-stats {
+          color: rgba(255, 255, 255, 0.8);
+        }
+      }
+
+      mat-icon {
+        margin-right: 8px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      &.image-tab {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        max-width: 280px;
+
+        .tab-image {
+          flex-shrink: 0;
+
+          .tab-thumbnail {
+            width: 40px;
+            height: 53px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+          }
+        }
+
+        .tab-info {
+          flex: 1;
+          text-align: left;
+          min-width: 0;
+
+          .tab-name {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .tab-stats {
+            display: block;
+            font-size: 11px;
+            color: #888;
+            font-weight: 400;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Source Indicator for matches from multiple images
+.source-indicator {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 12px;
+  margin: 0 16px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border-left: 3px solid #1976d2;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+}
+
+// No matches message
+.no-matches {
+  text-align: center;
+  padding: 40px 20px;
+  color: #666;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #ccc;
+    margin-bottom: 16px;
+  }
+
+  h3 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}
+
+// Enhanced original card for multiple images context
+.original-card {
+  .match-context {
+    margin: 4px 0 0 0;
+    font-size: 11px;
+    color: #667eea;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+// Enhanced match cards for multiple images
+.match-card {
+  // Ensure consistent height even with source indicators
+  display: flex;
+  flex-direction: column;
+
+  .source-indicator {
+    order: 1; // Show after header
+  }
+
+  .match-header {
+    order: 0;
+  }
+
+  .image-container {
+    order: 2;
+  }
+
+  .info {
+    order: 3;
+    flex: 1; // Take remaining space
+  }
+
+  .select-btn {
+    order: 4;
+  }
+}
+
+// Responsive adjustments for multiple images
+@media (max-width: 768px) {
+  .image-navigation {
+    .navigation-tabs {
+      flex-direction: column;
+      gap: 8px;
+
+      .nav-tab {
+        width: 100%;
+        justify-content: flex-start;
+        min-height: 50px;
+
+        &.image-tab {
+          max-width: none;
+
+          .tab-image .tab-thumbnail {
+            width: 35px;
+            height: 47px;
+          }
+
+          .tab-info .tab-name {
+            font-size: 12px;
+          }
+
+          .tab-info .tab-stats {
+            font-size: 10px;
+          }
+        }
+      }
+    }
+  }
+
+  .source-indicator {
+    margin: 0 12px 8px;
+    padding: 4px 8px;
+    font-size: 10px;
+
+    mat-icon {
+      font-size: 12px;
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  .dialog-header {
+    .results-summary {
+      gap: 12px;
+
+      .summary-item {
+        .summary-number {
+          font-size: 20px;
+        }
+
+        .summary-label {
+          font-size: 9px;
+        }
+      }
+    }
+  }
+}
+
+// Dark mode support for new elements
+@media (prefers-color-scheme: dark) {
+  .image-navigation {
+    h3 {
+      color: #f7fafc;
+    }
+
+    .navigation-tabs {
+      border-bottom-color: #4a5568;
+
+      .nav-tab {
+        background: #2d3748;
+        border-color: #4a5568;
+        color: #e2e8f0;
+
+        &:hover {
+          background: #4a5568;
+          border-color: #667eea;
+        }
+
+        &.active {
+          background: #667eea;
+          color: white;
+        }
+
+        &.image-tab .tab-image .tab-thumbnail {
+          border-color: #4a5568;
+        }
+
+        &.image-tab .tab-info .tab-stats {
+          color: #a0aec0;
+        }
+      }
+    }
+  }
+
+  .source-indicator {
+    background: #2a4365;
+    color: #90cdf4;
+    border-left-color: #3182ce;
+  }
+
+  .no-matches {
+    color: #a0aec0;
+
+    mat-icon {
+      color: #4a5568;
+    }
+
+    h3 {
+      color: #e2e8f0;
+    }
+  }
+
+  .original-card .match-context {
+    color: #90cdf4;
+  }
+}
+
+// Animation for tab transitions
+.nav-tab {
+  &.image-tab {
+    .tab-thumbnail {
+      transition: transform 0.3s ease;
+    }
+
+    &:hover .tab-thumbnail {
+      transform: scale(1.05);
+    }
+
+    &.active .tab-thumbnail {
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+  }
+}
+
+// Improved layout for better spacing
+.content {
+  .image-navigation + .original-section {
+    margin-top: 0;
+  }
+
+  .original-section + .instructions {
+    margin-top: 16px;
+  }
+}
