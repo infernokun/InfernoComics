@@ -64,7 +64,7 @@
 
   .close-button {
     color: rgba(255, 255, 255, 0.8);
-    
+
     &:hover {
       color: white;
       background: rgba(255, 255, 255, 0.1);
@@ -495,37 +495,49 @@
 
       &.success {
         background: rgba(16, 185, 129, 0.02);
-        
+
         .message-indicator {
           background: #dcfce7;
-          .message-icon { color: #10b981; }
+
+          .message-icon {
+            color: #10b981;
+          }
         }
       }
 
       &.warning {
         background: rgba(245, 158, 11, 0.02);
-        
+
         .message-indicator {
           background: #fef3c7;
-          .message-icon { color: #f59e0b; }
+
+          .message-icon {
+            color: #f59e0b;
+          }
         }
       }
 
       &.error {
         background: rgba(239, 68, 68, 0.02);
-        
+
         .message-indicator {
           background: #fee2e2;
-          .message-icon { color: #ef4444; }
+
+          .message-icon {
+            color: #ef4444;
+          }
         }
       }
 
       &.info {
         background: rgba(102, 126, 234, 0.02);
-        
+
         .message-indicator {
           background: #dbeafe;
-          .message-icon { color: #667eea; }
+
+          .message-icon {
+            color: #667eea;
+          }
         }
       }
     }
@@ -630,10 +642,12 @@
     transform: scale(1);
     opacity: 1;
   }
+
   50% {
     transform: scale(1.2);
     opacity: 0.3;
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -644,15 +658,19 @@
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(100%);
   }
 }
 
 @keyframes pulse-step {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
   }
+
   50% {
     box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
   }
@@ -663,6 +681,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -670,9 +689,19 @@
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  25% {
+    transform: translateX(-5px);
+  }
+
+  75% {
+    transform: translateX(5px);
+  }
 }
 
 // Responsive Design
@@ -684,16 +713,16 @@
 
   .dialog-header {
     padding: 16px;
-    
+
     .header-content {
       gap: 12px;
-      
+
       .icon-container .processing-icon {
         font-size: 28px;
         width: 28px;
         height: 28px;
       }
-      
+
       .header-text h2 {
         font-size: 20px;
       }
@@ -706,17 +735,17 @@
 
   .image-preview-card {
     padding: 16px;
-    
+
     .image-showcase {
       flex-direction: column;
       gap: 16px;
       text-align: center;
-      
+
       .image-frame .uploaded-image {
         width: 120px;
         height: 160px;
       }
-      
+
       .image-details {
         gap: 12px;
       }
@@ -729,7 +758,7 @@
 
   .stage-timeline .stage-step {
     gap: 12px;
-    
+
     .step-circle {
       width: 36px;
       height: 36px;
@@ -740,7 +769,7 @@
     padding: 16px;
     flex-direction: column;
     gap: 12px;
-    
+
     .actions-left,
     .actions-right {
       width: 100%;
@@ -841,14 +870,15 @@
     }
   }
 
+  // Enhanced thumbnail styles
   .grid-thumbnails {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     justify-content: center;
     flex-wrap: wrap;
     max-width: 100%;
     overflow-x: auto;
-    padding: 8px;
+    padding: 12px;
 
     &::-webkit-scrollbar {
       height: 6px;
@@ -862,77 +892,325 @@
     .thumbnail-item {
       position: relative;
       flex-shrink: 0;
+      transition: all 0.3s ease;
 
       .thumbnail-image {
-        width: 60px;
-        height: 80px;
+        width: 64px;
+        height: 85px;
         object-fit: cover;
-        border-radius: 8px;
-        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        border: 3px solid #e2e8f0;
         background: #f7fafc;
-        transition: all 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       }
 
       .thumbnail-status {
         position: absolute;
-        top: -6px;
-        right: -6px;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: white;
-        border: 2px solid #e2e8f0;
-        font-size: 10px;
-        font-weight: 600;
+        top: -8px;
+        right: -8px;
+        z-index: 10;
 
-        .status-icon {
-          font-size: 16px;
-          width: 16px;
-          height: 16px;
+        .status-indicator {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: white;
+          border: 2px solid #e2e8f0;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+          transition: all 0.3s ease;
 
-          &.success {
-            color: #10b981;
+          .status-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+
+          .pending-number {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+          }
+
+          &.completed {
+            background: #dcfce7;
+            border-color: #10b981;
+            animation: completionPulse 0.6s ease-out;
+
+            .status-icon {
+              color: #10b981;
+            }
           }
 
           &.processing {
-            color: #667eea;
-            animation: spin 1s linear infinite;
+            background: #dbeafe;
+            border-color: #667eea;
+            animation: processingPulse 2s infinite;
+
+            .status-icon {
+              color: #667eea;
+
+              &.spinning {
+                animation: spin 1.5s linear infinite;
+              }
+            }
+          }
+
+          &.pending {
+            background: #f8fafc;
+            border-color: #cbd5e0;
+
+            .pending-number {
+              color: #94a3b8;
+            }
           }
         }
+      }
 
-        .pending {
-          color: #a0aec0;
-          font-size: 10px;
+      .progress-ring {
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        pointer-events: none;
+        opacity: 0.9;
+
+        .progress-ring-svg {
+          transform: rotate(-90deg);
+        }
+
+        .progress-ring-circle {
+          transition: stroke-dashoffset 0.3s ease;
+          filter: drop-shadow(0 0 3px rgba(102, 126, 234, 0.3));
+        }
+      }
+
+      // State-based thumbnail styling
+      &.completed {
+        .thumbnail-image {
+          border-color: #10b981;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+          opacity: 0.95;
+        }
+      }
+
+      &.processing {
+        .thumbnail-image {
+          border-color: #667eea;
+          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+          transform: scale(1.05);
+        }
+      }
+
+      &.pending {
+        .thumbnail-image {
+          opacity: 0.6;
+          border-color: #cbd5e0;
+          filter: grayscale(0.3);
         }
       }
 
       &.active {
         .thumbnail-image {
+          transform: scale(1.08);
           border-color: #667eea;
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
         }
+      }
 
-        .thumbnail-status {
+      // Hover effects
+      &:hover:not(.processing) {
+        .thumbnail-image {
+          transform: scale(1.02);
           border-color: #667eea;
         }
       }
 
-      &.processed {
+      // Failed state (for future use)
+      &.failed {
         .thumbnail-image {
+          border-color: #ef4444;
           opacity: 0.8;
         }
-      }
 
-      &.current {
-        .thumbnail-image {
-          border-color: #667eea;
-          transform: scale(1.1);
+        .status-indicator {
+          background: #fee2e2;
+          border-color: #ef4444;
+
+          .status-icon {
+            color: #ef4444;
+          }
         }
       }
+    }
+  }
+
+  // Enhanced animations
+  @keyframes completionPulse {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    50% {
+      transform: scale(1.1);
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+    }
+
+    100% {
+      transform: scale(1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+  }
+
+  @keyframes processingPulse {
+
+    0%,
+    100% {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 0 rgba(102, 126, 234, 0.4);
+    }
+
+    50% {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 0 0 0 8px rgba(102, 126, 234, 0);
+    }
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    .grid-thumbnails {
+      gap: 12px;
+      padding: 8px;
+
+      .thumbnail-item {
+        .thumbnail-image {
+          width: 56px;
+          height: 75px;
+        }
+
+        .thumbnail-status .status-indicator {
+          width: 24px;
+          height: 24px;
+
+          .status-icon {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+          }
+
+          .pending-number {
+            font-size: 10px;
+          }
+        }
+
+        .progress-ring {
+          top: -2px;
+          left: -2px;
+
+          .progress-ring-svg {
+            width: 60px;
+            height: 60px;
+          }
+        }
+      }
+    }
+  }
+
+  // Dark mode support
+  @media (prefers-color-scheme: dark) {
+    .grid-thumbnails .thumbnail-item {
+      .thumbnail-image {
+        background: #2d3748;
+        border-color: #4a5568;
+      }
+
+      .thumbnail-status .status-indicator {
+        background: #2d3748;
+        border-color: #4a5568;
+
+        &.pending .pending-number {
+          color: #a0aec0;
+        }
+      }
+
+      &.pending .thumbnail-image {
+        border-color: #4a5568;
+      }
+    }
+  }
+
+  // Loading skeleton for thumbnails (optional enhancement)
+  .thumbnail-loading {
+    .thumbnail-image {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: thumbnailLoading 1.5s infinite;
+    }
+  }
+
+  @keyframes thumbnailLoading {
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  // Enhanced visual feedback
+  .thumbnail-item {
+    // Add subtle entrance animation for thumbnails
+    animation: thumbnailFadeIn 0.3s ease-out;
+    animation-fill-mode: backwards;
+
+    @for $i from 1 through 10 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 0.05}s;
+      }
+    }
+  }
+
+  @keyframes thumbnailFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  // Enhanced pending state with subtle animation
+  .thumbnail-item.pending {
+    .status-indicator.pending {
+      animation: pendingPulse 3s infinite;
+    }
+  }
+
+  @keyframes pendingPulse {
+
+    0%,
+    100% {
+      opacity: 0.7;
+    }
+
+    50% {
+      opacity: 1;
     }
   }
 }
@@ -1007,6 +1285,7 @@
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -1120,6 +1399,7 @@
   0% {
     background-position: 200% 0;
   }
+
   100% {
     background-position: -200% 0;
   }

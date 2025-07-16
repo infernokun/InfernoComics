@@ -58,15 +58,41 @@
           
           <div class="grid-thumbnails">
             <div *ngFor="let preview of imagePreviews; let i = index" 
-                 class="thumbnail-item"
-                 [class.active]="i === currentImageIndex"
-                 [class.processed]="i < processedImages"
-                 [class.current]="i === currentImageIndex">
+                class="thumbnail-item"
+                [class.active]="i === currentImageIndex"
+                [class.completed]="isThumbnailCompleted(i)"
+                [class.processing]="isThumbnailProcessing(i)"
+                [class.pending]="isThumbnailPending(i)">
+              
               <img [src]="preview" [alt]="'Image ' + (i + 1)" class="thumbnail-image">
+              
               <div class="thumbnail-status">
-                <mat-icon *ngIf="i < processedImages - 1" class="status-icon success">check_circle</mat-icon>
-                <mat-icon *ngIf="i === currentImageIndex && isProcessing" class="status-icon processing">sync</mat-icon>
-                <span *ngIf="i > currentImageIndex" class="status-icon pending">{{ i + 1 }}</span>
+                <!-- Completed State -->
+                <div *ngIf="isThumbnailCompleted(i)" class="status-indicator completed">
+                  <mat-icon class="status-icon">check_circle</mat-icon>
+                </div>
+                
+                <!-- Currently Processing State -->
+                <div *ngIf="isThumbnailProcessing(i)" class="status-indicator processing">
+                  <mat-icon class="status-icon spinning">sync</mat-icon>
+                </div>
+                
+                <!-- Pending/Waiting State -->
+                <div *ngIf="isThumbnailPending(i)" class="status-indicator pending">
+                  <span class="pending-number">{{ i + 1 }}</span>
+                </div>
+              </div>
+              
+              <!-- Progress Ring for Current Image -->
+              <div *ngIf="isThumbnailProcessing(i)" class="progress-ring">
+                <svg class="progress-ring-svg" [attr.width]="isSmallScreen() ? 60 : 70" [attr.height]="isSmallScreen() ? 60 : 70">
+                  <circle class="progress-ring-circle-bg" [attr.cx]="isSmallScreen() ? 30 : 35" [attr.cy]="isSmallScreen() ? 30 : 35"
+                    [attr.r]="isSmallScreen() ? 26 : 30" fill="none" stroke="rgba(102, 126, 234, 0.2)" stroke-width="3" />
+                  <circle class="progress-ring-circle" [attr.cx]="isSmallScreen() ? 30 : 35" [attr.cy]="isSmallScreen() ? 30 : 35"
+                    [attr.r]="isSmallScreen() ? 26 : 30" fill="none" stroke="#667eea" stroke-width="3" stroke-linecap="round"
+                    [style.stroke-dasharray]="isSmallScreen() ? 163.4 : 188.4"
+                    [style.stroke-dashoffset]="(isSmallScreen() ? 163.4 : 188.4) - (progress / 100) * (isSmallScreen() ? 163.4 : 188.4)" />
+                </svg>
               </div>
             </div>
           </div>
