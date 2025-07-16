@@ -1,6 +1,6 @@
 package com.infernokun.infernoComics.controllers;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.infernokun.infernoComics.services.ImageProcessingProgressService;
+import com.infernokun.infernoComics.services.ProgressService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,7 +15,7 @@ import java.util.Map;
 @RequestMapping("/api/progress")
 public class ProgressController {
 
-    private final ImageProcessingProgressService progressService;
+    private final ProgressService progressService;
 
     /**
      * Health check endpoint for Python to verify Java service availability

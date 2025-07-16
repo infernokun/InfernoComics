@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
-import com.infernokun.infernoComics.services.ImageProcessingProgressService;
+import com.infernokun.infernoComics.services.ProgressService;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.Getter;
@@ -28,9 +28,9 @@ import java.util.*;
 public class SeriesController {
 
     private final SeriesService seriesService;
-    private final ImageProcessingProgressService progressService;
+    private final ProgressService progressService;
 
-    public SeriesController(SeriesService seriesService, ImageProcessingProgressService progressService) {
+    public SeriesController(SeriesService seriesService, ProgressService progressService) {
         this.seriesService = seriesService;
         this.progressService = progressService;
     }

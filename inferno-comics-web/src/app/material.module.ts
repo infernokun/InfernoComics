@@ -25,6 +25,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 
 @NgModule({
   imports: [
@@ -55,7 +56,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     MatTabsModule,
     MatChipsModule,
     MatAutocompleteModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatButtonToggleModule
   ],
   exports: [
     DragDropModule,
@@ -84,7 +86,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     MatTabsModule,
     MatChipsModule,
     MatAutocompleteModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatButtonToggleModule
   ],
   declarations: [],
   providers: [

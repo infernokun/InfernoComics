@@ -59,6 +59,10 @@ public class GCDatabaseService {
         return gcdSeriesRepository.findByNameContainingIgnoreCase(name);
     }
 
+    public Optional<GCDSeries> findGCDSeriesWithComicVineSeries(String name, int yearBegan, int issueCount) {
+        return gcdSeriesRepository.findGCDSeriesWithComicVineSeries(name, yearBegan, issueCount);
+    }
+
     public List<GCDSeries> findGCDSeriesByYearBeganAndNameContainingIgnoreCase(int year, String name) {
         return gcdSeriesRepository.findByYearBeganAndNameContainingIgnoreCase(year, name);
     }
@@ -66,6 +70,7 @@ public class GCDatabaseService {
     public List<GCDIssue> findGCDIssueBySeriesIds(List<Long> seriesIds) {
         return gcdIssueRepository.findBySeriesIdIn(seriesIds);
     }
+    
 
     public List<String> getVariantCovers(String seriesName, String publisher, String startYear, String issueNumber) {
         publisher = publisher.split(" ")[0];

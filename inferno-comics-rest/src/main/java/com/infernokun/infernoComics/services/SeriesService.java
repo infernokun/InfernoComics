@@ -8,7 +8,6 @@ import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
-import com.infernokun.infernoComics.models.gcd.GCDIssue;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDAPIService;
@@ -43,10 +42,9 @@ public class SeriesService {
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
     private final GCDCoverPageScraper gcdCoverPageScraper;
-    private final InfernoComicsConfig infernoComicsConfig;
     private final GCDAPIService gcdapiService;
     private final ModelMapper modelMapper;
-    private final ImageProcessingProgressService progressService;
+    private final ProgressService progressService;
 
     private final WebClient webClient;
 
@@ -57,17 +55,15 @@ public class SeriesService {
                          DescriptionGeneratorService descriptionGeneratorService,
                          GCDatabaseService gcDatabaseService,
                          GCDCoverPageScraper gcdCoverPageScraper,
-                         InfernoComicsConfig infernoComicsConfig1,
                          GCDAPIService gcdapiService,
                          ModelMapper modelMapper,
                          InfernoComicsConfig infernoComicsConfig,
-                         ImageProcessingProgressService progressService) {
+                         ProgressService progressService) {
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
         this.gcdCoverPageScraper = gcdCoverPageScraper;
-        this.infernoComicsConfig = infernoComicsConfig1;
         this.gcdapiService = gcdapiService;
         this.modelMapper = modelMapper;
         this.progressService = progressService;
@@ -133,28 +129,57 @@ public class SeriesService {
 
     // Create series and invalidate relevant caches
     @CacheEvict(value = {"all-series", "series-stats", "recent-series"}, allEntries = true)
+    @Transactional
     public Series createSeries(SeriesController.SeriesCreateRequestDto request) {
         log.info("Creating series: {}", request.getName());
 
         Series series = this.modelMapper.map(request, Series.class);
 
-        //mapRequestToSeries(request, series);
-
         // Generate description if not provided
         if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
-            DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
-                    request.getName(),
-                    "Series",
-                    request.getPublisher(),
-                    request.getStartYear() != null ? request.getStartYear().toString() : null,
-                    request.getDescription()
-            );
-            series.setDescription(generatedDescription.getDescription());
-            series.setGeneratedDescription(generatedDescription.isGenerated());
+            try {
+                DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
+                        request.getName(),
+                        "Series",
+                        request.getPublisher(),
+                        request.getStartYear() != null ? request.getStartYear().toString() : null,
+                        request.getDescription()
+                );
+                series.setDescription(generatedDescription.getDescription());
+                series.setGeneratedDescription(generatedDescription.isGenerated());
+            } catch (Exception e) {
+                log.warn("Failed to generate description for '{}': {}", request.getName(), e.getMessage());
+                series.setDescription("");
+                series.setGeneratedDescription(false);
+            }
         }
 
+        // Process Comic Vine IDs
+        List<String> gcdIds = new ArrayList<>();
+        if (request.getComicVineIds() != null) {
+            for (String comicVineId : request.getComicVineIds()) {
+                try {
+                    ComicVineService.ComicVineSeriesDto dto = comicVineService.getSeriesById(Long.valueOf(comicVineId));
+                    if (dto != null) {
+                        Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
+                                .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), dto.getIssueCount());
+                        if (gcdSeriesOptional.isPresent()) {
+                            gcdIds.add(String.valueOf(gcdSeriesOptional.get().getId()));
+                            log.debug("Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdSeriesOptional.get().getId());
+                        } else {
+                            log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                }
+            }
+        }
+
+        series.setGcdIds(gcdIds);
         Series savedSeries = seriesRepository.save(series);
-        log.info("Created series with ID: {}", savedSeries.getId());
+
+        log.info("Created series with ID: {} (mapped {} GCD IDs)", savedSeries.getId(), gcdIds.size());
         return savedSeries;
     }
 
@@ -731,38 +756,37 @@ public class SeriesService {
 
             log.info("✅ SSE multiple images processing completed for session: {}", sessionId);
 
-            // FIXED: Don't send completion here - Python already sent it via SSE
-            // Just log that we received the result
-            if (result != null) {
-                log.info("📋 Received result from Python for session: {}, Python controls completion timing", sessionId);
 
-                // Log the result structure for debugging
-                log.info("🔍 Result structure for session {}: has results={}, has top_matches={}, has summary={}",
-                        sessionId,
-                        result.has("results"),
-                        result.has("top_matches"),
-                        result.has("summary"));
-
-                if (result.has("results")) {
-                    JsonNode resultsArray = result.get("results");
-                    log.info("🔍 Results array size for session {}: {}", sessionId, resultsArray.size());
-
-                    // Log first few results for debugging
-                    for (int i = 0; i < Math.min(3, resultsArray.size()); i++) {
-                        JsonNode imageResult = resultsArray.get(i);
-                        log.info("🔍 Image result {}: name={}, matches={}",
-                                i,
-                                imageResult.has("image_name") ? imageResult.get("image_name").asText() : "unknown",
-                                imageResult.has("top_matches") ? imageResult.get("top_matches").size() : 0);
-                    }
-                }
-
-                progressService.sendComplete(sessionId, result);
-
-            } else {
+            if (result == null) {
                 log.warn("⚠️ No result received from Python for session: {}", sessionId);
                 progressService.sendError(sessionId, "No results returned from Python image processing");
             }
+            // FIXED: Don't send completion here - Python already sent it via SSE
+            // Just log that we received the result
+            log.info("📋 Received result from Python for session: {}, Python controls completion timing", sessionId);
+
+            // Log the result structure for debugging
+            log.info("🔍 Result structure for session {}: has results={}, has top_matches={}, has summary={}",
+                    sessionId,
+                    result.has("results"),
+                    result.has("top_matches"),
+                    result.has("summary"));
+
+            if (result.has("results")) {
+                JsonNode resultsArray = result.get("results");
+                log.info("🔍 Results array size for session {}: {}", sessionId, resultsArray.size());
+
+                // Log first few results for debugging
+                for (int i = 0; i < Math.min(3, resultsArray.size()); i++) {
+                    JsonNode imageResult = resultsArray.get(i);
+                    log.info("🔍 Image result {}: name={}, matches={}",
+                            i,
+                            imageResult.has("image_name") ? imageResult.get("image_name").asText() : "unknown",
+                            imageResult.has("top_matches") ? imageResult.get("top_matches").size() : 0);
+                }
+            }
+
+            progressService.sendComplete(sessionId, result);
 
         } catch (Exception e) {
             log.error("❌ Error in SSE multiple images processing for session {}: {}", sessionId, e.getMessage(), e);
@@ -802,7 +826,7 @@ public class SeriesService {
                 log.info("📤 Sending {} candidate covers as JSON (session: {})", candidateCovers.size(), sessionId);
             } catch (JsonProcessingException e) {
                 log.error("❌ Failed to serialize candidate covers to JSON: {}", e.getMessage());
-                throw new RuntimeException("Failed to serialize candidate covers", e);
+                return null;
             }
 
             // Add session ID so Python can report progress directly
@@ -843,7 +867,7 @@ public class SeriesService {
 
         } catch (Exception e) {
             log.error("❌ Failed to send images to matcher service (session: {}): {}", sessionId, e.getMessage(), e);
-            throw new RuntimeException("Failed to send images to matcher service", e);
+            return null;
         }
     }
 

@@ -438,7 +438,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
     
     # Create Java progress reporter - this is the SINGLE source of truth
     java_reporter = JavaProgressReporter(session_id)
-    logger.info(f"🚀 Starting centralized multiple images processing for session: {session_id} with {len(query_images_data)} images")
+    logger.info(f" Starting centralized multiple images processing for session: {session_id} with {len(query_images_data)} images")
     
     try:
         # Continue from where Java left off (10%)
@@ -479,7 +479,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
                     }
         
         java_reporter.update_progress('processing_data', 20, f'Prepared {len(candidate_urls)} candidate images for {len(query_images_data)} query images')
-        logger.info(f"📋 Prepared {len(candidate_urls)} candidate URLs from {len(candidate_covers)} covers for {len(query_images_data)} query images")
+        logger.info(f" Prepared {len(candidate_urls)} candidate URLs from {len(candidate_covers)} covers for {len(query_images_data)} query images")
         
         if not candidate_urls:
             raise ValueError("No valid URLs found in candidate covers")
@@ -489,7 +489,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         
         # Initialize matcher
         matcher = FeatureMatchingComicMatcher(max_workers=6)
-        logger.debug("🔧 Initialized FeatureMatchingComicMatcher with 6 workers for multiple images")
+        logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers for multiple images")
         
         java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready for multiple images')
         
@@ -507,23 +507,33 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
             end_progress = 25 + ((image_index + 1) * progress_per_image)
             current_image_num = image_index + 1  # 1-based for display
             
-            # FIXED: Consistent message format with image number and filename
+            # CONSISTENT: Clear start message
             java_reporter.update_progress('comparing_images', int(start_progress), 
                                         f'Processing image {current_image_num}/{len(query_images_data)}: {query_filename}')
             
-            logger.info(f"🖼️ Processing image {current_image_num}/{len(query_images_data)}: {query_filename}")
+            logger.info(f"️ Processing image {current_image_num}/{len(query_images_data)}: {query_filename}")
             
-            # Create a progress callback for this specific image with CONSISTENT formatting
+            # Create progress callback that maintains consistency
             def create_image_progress_callback(img_num, total_imgs, filename, start_prog, end_prog):
                 def image_progress_callback(current_item, message=""):
                     try:
-                        # Map the matcher's progress for this image to our allocated range
+                        # Calculate progress within this image's allocated range
                         if len(candidate_urls) > 0:
                             item_progress = (current_item / len(candidate_urls)) * (end_prog - start_prog)
                             actual_progress = start_prog + item_progress
                             
-                            # FIXED: Consistent message format - always show image number and filename
-                            progress_msg = f'Image {img_num}/{total_imgs} ({filename}): Candidate {current_item}/{len(candidate_urls)}'
+                            # CONSISTENT: Always show image number and filename with clear formatting
+                            if current_item == 0:
+                                # Starting this image
+                                progress_msg = f'Image {img_num}/{total_imgs} ({filename}): Starting analysis'
+                            elif current_item >= len(candidate_urls):
+                                # Completing this image
+                                progress_msg = f'Image {img_num}/{total_imgs} ({filename}): Finalizing results'
+                            else:
+                                # Processing candidates
+                                progress_msg = f'Image {img_num}/{total_imgs} ({filename}): Candidate {current_item}/{len(candidate_urls)}'
+                            
+                            # Add extra message if provided
                             if message:
                                 progress_msg += f' - {message}'
                                 
@@ -584,7 +594,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
                 
                 all_results.append(image_result)
                 
-                # FIXED: Completion message format with clear distinction from processing
+                # CONSISTENT: Completion message - clear and informative
                 completion_msg = f'Completed image {current_image_num}/{len(query_images_data)}: {query_filename} - {len(top_matches)} matches found'
                 java_reporter.update_progress('comparing_images', int(end_progress), completion_msg)
                 
@@ -592,15 +602,15 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
                 
                 # Log top matches for this image
                 if top_matches:
-                    logger.info(f"📊 Top matches for {query_filename}:")
+                    logger.info(f" Top matches for {query_filename}:")
                     for i, match in enumerate(top_matches[:3], 1):
                         logger.info(f"   {i}. {match['comic_name']} #{match['issue_number']} - Similarity: {match['similarity']:.3f}")
                 
             except Exception as image_error:
                 logger.error(f"❌ Error processing image {current_image_num} ({query_filename}): {image_error}")
                 
-                # FIXED: Error message format with consistent numbering
-                error_msg = f'Failed processing image {current_image_num}/{len(query_images_data)}: {query_filename} - {str(image_error)}'
+                # CONSISTENT: Error message format
+                error_msg = f'Failed image {current_image_num}/{len(query_images_data)}: {query_filename} - {str(image_error)}'
                 java_reporter.update_progress('comparing_images', int(end_progress), error_msg)
                 
                 # Create error result for this image
@@ -618,7 +628,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         # Stage 4: Finalizing results (90% -> 100%)
         java_reporter.update_progress('finalizing', 95, f'Finalizing results for {len(query_images_data)} images...')
         
-        # Combine all matches from all images for summary statistics
+        # Calculate final statistics
         total_matches_all_images = sum(result.get('total_matches', 0) for result in all_results)
         successful_images = sum(1 for result in all_results if result.get('total_matches', 0) > 0)
         
@@ -642,12 +652,15 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         # Print cache stats
         matcher.print_cache_stats()
         
-        # FIXED: Final completion message with clear success summary
-        successful_images_final = len([r for r in all_results if r.get('total_matches', 0) > 0])
-        final_msg = f'Analysis complete! Successfully processed {successful_images_final}/{len(query_images_data)} images with {total_matches_all_images} total matches'
+        # CONSISTENT: Final completion message
+        final_msg = f'Analysis complete! Successfully processed {successful_images}/{len(query_images_data)} images with {total_matches_all_images} total matches'
         
         # Send completion at 100% to Java
         java_reporter.update_progress('complete', 100, final_msg)
+        
+        # IMPORTANT: Send the complete result to Java
+        java_reporter.send_complete(final_result)
+        
         logger.success(f"✅ Centralized multiple images processing completed and saved for session: {session_id}")
         
         return final_result

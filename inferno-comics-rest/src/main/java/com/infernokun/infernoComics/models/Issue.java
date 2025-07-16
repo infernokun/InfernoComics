@@ -63,6 +63,9 @@ public class Issue {
     @Column(name = "comic_vine_id")
     private String comicVineId;
 
+    @Column(name = "gcd_ids")
+    private List<String> gcdIds = new ArrayList<>();
+
     @Column(name = "variant_covers", columnDefinition = "TEXT")
     @Convert(converter = VariantCoverListConverter.class)
     private List<VariantCover> variantCovers = new ArrayList<>();

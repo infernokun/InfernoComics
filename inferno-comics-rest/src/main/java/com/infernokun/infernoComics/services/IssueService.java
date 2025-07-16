@@ -3,8 +3,11 @@ package com.infernokun.infernoComics.services;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.gcd.GCDIssue;
+import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
+import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -26,15 +29,17 @@ public class IssueService {
     private final SeriesRepository seriesRepository;
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
+    private final GCDatabaseService gcDatabaseService;
 
     public IssueService(IssueRepository issueRepository,
                         SeriesRepository seriesRepository,
                         ComicVineService comicVineService,
-                        DescriptionGeneratorService descriptionGeneratorService) {
+                        DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService) {
         this.issueRepository = issueRepository;
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
+        this.gcDatabaseService = gcDatabaseService;
     }
 
     // Cache all issues with TTL
@@ -157,9 +162,11 @@ public class IssueService {
 
     // Create issue and invalidate relevant caches
     @CacheEvict(value = {"all-issues", "issues-by-series", "key-issues"}, allEntries = true)
+    @Transactional
     public Issue createIssue(IssueCreateRequest request) {
         log.info("Creating issue: {} #{}", request.getSeriesId(), request.getIssueNumber());
 
+        // Validate series exists
         Optional<Series> series = seriesRepository.findById(request.getSeriesId());
         if (series.isEmpty()) {
             throw new IllegalArgumentException("Series with ID " + request.getSeriesId() + " not found");
@@ -171,19 +178,70 @@ public class IssueService {
 
         // Generate description if not provided
         if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
-            DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
-                    series.get().getName(),
-                    request.getIssueNumber(),
-                    request.getTitle(),
-                    request.getCoverDate() != null ? request.getCoverDate().toString() : null,
-                    request.getDescription()
-            );
-            issue.setDescription(generatedDescription.getDescription());
-            issue.setGeneratedDescription(generatedDescription.isGenerated());
+            try {
+                DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
+                        series.get().getName(),
+                        request.getIssueNumber(),
+                        request.getTitle(),
+                        request.getCoverDate() != null ? request.getCoverDate().toString() : null,
+                        request.getDescription()
+                );
+                issue.setDescription(generatedDescription.getDescription());
+                issue.setGeneratedDescription(generatedDescription.isGenerated());
+            } catch (Exception e) {
+                log.warn("Failed to generate description for issue #{}: {}", request.getIssueNumber(), e.getMessage());
+                issue.setDescription("");
+                issue.setGeneratedDescription(false);
+            }
         }
 
+        // Process Comic Vine ID to find GCD mapping
+        List<String> gcdIds = new ArrayList<>();
+        if (request.getComicVineId() != null && !request.getComicVineId().trim().isEmpty()) {
+            log.info(" Processing Comic Vine ID: {}", request.getComicVineId());
+            try {
+                ComicVineService.ComicVineIssueDto dto = comicVineService.getIssueById(Long.valueOf(request.getComicVineId()));
+                log.info(" Comic Vine API response: dto={}", dto != null ? "found" : "null");
+
+                if (dto != null && series.get().getGcdIds() != null) {
+                    log.info(" Series has {} GCD IDs: {}", series.get().getGcdIds().size(), series.get().getGcdIds());
+
+                    List<Long> gcdSeriesIds = series.get().getGcdIds().stream()
+                            .map(Long::parseLong)
+                            .toList();
+                    log.info(" Converted GCD series IDs: {}", gcdSeriesIds);
+
+                    List<GCDIssue> allGcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);
+                    log.info(" Found {} total GCD issues for series IDs", allGcdIssues.size());
+
+                    List<GCDIssue> matchingGcdIssues = allGcdIssues.stream()
+                            .filter(gcdIssue -> Objects.equals(gcdIssue.getNumber(), issue.getIssueNumber()))
+                            .toList();
+                    log.info("✅ Found {} matching GCD issues after filtering", matchingGcdIssues.size());
+
+                    gcdIds = matchingGcdIssues.stream()
+                            .map(gcdIssue -> String.valueOf(gcdIssue.getId()))
+                            .toList();
+                    log.info(" Final GCD IDs: {}", gcdIds);
+                } else {
+                    if (dto == null) {
+                        log.error("❌ Comic Vine DTO is null");
+                    }
+                    if (series.get().getGcdIds() == null) {
+                        log.warn("❌ Series has no GCD IDs");
+                    }
+                }
+            } catch (Exception e) {
+                log.error(" Error processing Comic Vine ID {}: {}", request.getComicVineId(), e.getMessage(), e);
+            }
+        } else {
+            log.error("⏭️ Skipping Comic Vine processing - ID is null or empty");
+        }
+
+        issue.setGcdIds(gcdIds);
         Issue savedIssue = issueRepository.save(issue);
-        log.info("Created issue with ID: {}", savedIssue.getId());
+
+        log.info("Created issue with ID: {} (mapped {} GCD IDs)", savedIssue.getId(), gcdIds.size());
         return savedIssue;
     }
 

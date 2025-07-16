@@ -21,6 +21,11 @@ import { MaterialModule } from '../../material.module';
 import { ConfirmationDialogComponent } from '../common/dialog/confirmation-dialog/confirmation-dialog.component';
 import { Issue } from '../../models/issue.model';
 import { ImageProcessingDialogComponent } from './image-processing-progress/image-processing-progress.component';
+import {
+  BulkComicSelectionComponent,
+  BulkSelectionDialogData,
+  ProcessedImageResult,
+} from './bulk-comic-selection/bulk-comic-selection.component';
 
 @Component({
   selector: 'app-series-detail',
@@ -483,16 +488,26 @@ export class SeriesDetailComponent implements OnInit {
     switch (data.type) {
       case 'progress':
         const stageName = this.getStageDisplayName(data.stage || '');
+
+        // Better progress message handling for multi-image
+        let progressMessage = data.message;
+        if (progressMessage) {
+          progressMessage = progressMessage.replace(/^\w+:\s*/, '');
+          console.log(
+            ` Multi-image progress: ${data.progress}% - ${progressMessage}`
+          );
+        }
+
         dialogComponent.updateProgress(
           stageName,
           data.progress || 0,
-          data.message
+          progressMessage
         );
         break;
 
       case 'complete':
         console.log(
-          '🎯 FRONTEND: Received COMPLETION EVENT for multiple images!'
+          ' FRONTEND: Received COMPLETION EVENT for multiple images!'
         );
         console.log('Completion result:', data.result);
 
@@ -502,102 +517,239 @@ export class SeriesDetailComponent implements OnInit {
         setTimeout(() => {
           const result = data.result as any;
 
-          console.log('🔍 Processing completion result:', result);
-          console.log('Result type:', typeof result);
-          console.log('Has results array:', !!(result && result.results));
-          console.log('Has top_matches:', !!(result && result.top_matches));
+          console.log(' Processing completion result:', result);
 
-          // FIXED: Handle multiple images result format
+          // Handle multiple images result format
           if (result && result.results && Array.isArray(result.results)) {
-            // Multiple images result format: { results: [...], summary: {...} }
             console.log('✅ Processing multiple images result format');
             console.log('Number of image results:', result.results.length);
 
-            // Flatten all matches from all images into a single array
-            const allMatches: ComicMatch[] = [];
-            result.results.forEach((imageResult: any, imageIndex: number) => {
-              console.log(
-                `Processing image result ${imageIndex}:`,
-                imageResult.image_name,
-                'matches:',
-                imageResult.top_matches?.length || 0
-              );
-
-              if (
-                imageResult.top_matches &&
-                Array.isArray(imageResult.top_matches)
-              ) {
-                imageResult.top_matches.forEach((match: any) => {
-                  // Add source tracking to each match
-                  match.sourceImageIndex =
-                    imageResult.image_index !== undefined
-                      ? imageResult.image_index
-                      : imageIndex;
-                  match.sourceImageName =
-                    imageResult.image_name ||
-                    originalImages[imageIndex]?.name ||
-                    `Image ${imageIndex + 1}`;
-                  allMatches.push(match);
-                });
-              }
-            });
-
-            console.log('📊 Total flattened matches:', allMatches.length);
-
-            if (allMatches.length > 0) {
-              console.log(
-                '🎉 Opening match selection dialog with',
-                allMatches.length,
-                'matches'
-              );
-              // Open match selection dialog with combined matches and multiple images support
-              this.openMatchSelectionDialog(
-                allMatches,
-                seriesId,
-                originalImages,
-                result.session_id
-              );
-            } else {
-              console.log('❌ No matches found in any images');
-              this.snackBar.open(
-                'No matching comics found in any images',
-                'Close',
-                {
-                  duration: 3000,
-                }
-              );
-            }
+            // Use the new bulk selection dialog instead of flattening matches
+            this.openBulkSelectionDialog(result, seriesId, originalImages);
           } else if (
             result &&
             result.top_matches &&
             Array.isArray(result.top_matches)
           ) {
-            // Single image result format (fallback for backward compatibility)
+            // Single image result format (fallback)
             console.log('✅ Processing single image result format (fallback)');
             this.openMatchSelectionDialog(
               result.top_matches,
               seriesId,
-              originalImages[0],
+              originalImages.length > 0 ? originalImages[0] : undefined,
               result.session_id
             );
           } else {
             console.log('❌ Unexpected result format:', result);
-            this.snackBar.open('No matching comics found', 'Close', {
-              duration: 3000,
-            });
+            this.snackBar.open(
+              'Processing completed but no results found',
+              'Close',
+              { duration: 3000 }
+            );
           }
-        }, 1600); // Wait for dialog to close
+        }, 1600);
         break;
 
       case 'error':
         console.error('❌ SSE Error received:', data.error);
         dialogComponent.setError(data.error || 'Unknown error occurred');
+        this.snackBar.open(
+          `Error processing images: ${data.error || 'Unknown error'}`,
+          'Close',
+          { duration: 5000 }
+        );
         break;
 
       default:
         console.log('❓ Unknown SSE event type:', data.type);
         break;
     }
+  }
+
+  private openBulkSelectionDialog(
+    result: any,
+    seriesId: number,
+    originalImages: File[]
+  ): void {
+    console.log(' Opening bulk selection dialog');
+    console.log('Result:', result);
+
+    // Flatten all matches from all images with source tracking
+    const allMatches: ComicMatch[] = [];
+
+    result.results.forEach((imageResult: any, imageIndex: number) => {
+      console.log(
+        `Processing image result ${imageIndex}:`,
+        imageResult.image_name,
+        'matches:',
+        imageResult.top_matches?.length || 0
+      );
+
+      if (imageResult.top_matches && Array.isArray(imageResult.top_matches)) {
+        imageResult.top_matches.forEach((match: any) => {
+          // Add source tracking to each match
+          match.sourceImageIndex =
+            imageResult.image_index !== undefined
+              ? imageResult.image_index
+              : imageIndex;
+          match.sourceImageName =
+            imageResult.image_name ||
+            originalImages[imageIndex]?.name ||
+            `Image ${imageIndex + 1}`;
+          allMatches.push(match);
+        });
+      }
+    });
+
+    console.log(' Total matches for bulk selection:', allMatches.length);
+
+    if (allMatches.length === 0) {
+      console.log('❌ No matches found in any images');
+      const summary = result.summary;
+      if (summary && summary.total_images_processed > 0) {
+        this.snackBar.open(
+          `Processed ${summary.total_images_processed} images but found no matching comics`,
+          'Close',
+          { duration: 5000 }
+        );
+      } else {
+        this.snackBar.open('No matching comics found in any images', 'Close', {
+          duration: 3000,
+        });
+      }
+      return;
+    }
+
+    // Open the new bulk selection dialog
+    const dialogData: BulkSelectionDialogData = {
+      matches: allMatches,
+      seriesId: seriesId,
+      sessionId: result.session_id,
+      originalImages: originalImages,
+      isMultiple: true,
+      highConfidenceThreshold: 0.25,
+      mediumConfidenceThreshold: 0.15,
+      autoSelectHighConfidence: true,
+    };
+
+    const dialogRef = this.dialog.open(BulkComicSelectionComponent, {
+      width: '95vw',
+      maxWidth: '1200px',
+      maxHeight: '95vh',
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result && result.action === 'bulk_add') {
+        console.log('✅ Bulk add selected:', result.results.length, 'comics');
+        this.handleBulkAddResults(result.results, seriesId);
+      } else if (result && result.action === 'save') {
+        console.log(' Save selections:', result.results);
+        // Handle save logic if needed
+      } else {
+        console.log(' User cancelled bulk selection');
+      }
+    });
+  }
+
+  private handleBulkAddResults(
+    results: ProcessedImageResult[],
+    seriesId: number
+  ): void {
+    console.log(' Processing bulk add for', results.length, 'comics');
+
+    // Show loading indicator
+    this.snackBar.open(`Adding ${results.length} comics to collection...`, '', {
+      duration: 0,
+    });
+
+    // Process each accepted result
+    const addPromises = results.map(async (result) => {
+      if (result.userAction === 'accepted' && result.selectedMatch) {
+        const match = result.selectedMatch;
+
+        try {
+          // Fetch Comic Vine details for the match
+          const issue = await this.comicVineService
+            .getIssueById(
+              match.parent_comic_vine_id
+                ? match.parent_comic_vine_id.toString()
+                : match.comic_vine_id!.toString()
+            )
+            .toPromise();
+
+          if (issue) {
+            // Prepare issue data
+            if (match.parent_comic_vine_id) {
+              issue.imageUrl = match.url;
+              issue.variant = true;
+            }
+
+            // Create the issue
+            const issueData = {
+              seriesId: seriesId,
+              issueNumber: issue.issueNumber,
+              title: issue.title,
+              description: issue.description,
+              coverDate: issue.coverDate,
+              imageUrl: issue.imageUrl,
+              comicVineId: issue.id,
+              condition: 'VERY_FINE',
+              purchasePrice: 0,
+              currentValue: 0,
+              keyIssue: false,
+              generatedDescription: issue.generatedDescription || false,
+              variant: issue.variant || false,
+            };
+
+            return this.issueService.createIssue(issueData).toPromise();
+          }
+        } catch (error) {
+          console.error(
+            'Error processing match for',
+            result.imageName,
+            ':',
+            error
+          );
+          return Promise.reject(error);
+        }
+      }
+    });
+
+    Promise.allSettled(addPromises)
+      .then((results) => {
+        this.snackBar.dismiss();
+
+        const successful = results.filter(
+          (r) => r.status === 'fulfilled'
+        ).length;
+        const failed = results.filter((r) => r.status === 'rejected').length;
+
+        if (successful > 0) {
+          this.snackBar.open(
+            `Successfully added ${successful} comics to collection${
+              failed > 0 ? ` (${failed} failed)` : ''
+            }`,
+            'Close',
+            { duration: 5000 }
+          );
+
+          // Refresh the issues list
+          this.loadIssues(seriesId);
+        } else {
+          this.snackBar.open('Failed to add comics to collection', 'Close', {
+            duration: 3000,
+          });
+        }
+      })
+      .catch((error) => {
+        this.snackBar.dismiss();
+        console.error('Error in bulk add:', error);
+        this.snackBar.open('Error adding comics to collection', 'Close', {
+          duration: 3000,
+        });
+      });
   }
 
   private processMultipleImagesFallback(seriesId: number, files: File[]): void {
@@ -790,7 +942,9 @@ export class SeriesDetailComponent implements OnInit {
   private getStageDisplayName(stage: string): string {
     const stageMap: { [key: string]: string } = {
       preparing: 'Preparing image analysis',
+      processing_data: 'Processing image data',
       initializing: 'Initializing image matcher',
+      initializing_matcher: 'Initializing image matcher',
       extracting_features: 'Extracting image features',
       preparing_comparison: 'Preparing comparison',
       comparing_images: 'Comparing with database',

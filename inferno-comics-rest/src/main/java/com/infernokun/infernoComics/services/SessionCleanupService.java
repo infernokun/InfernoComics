@@ -12,10 +12,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class SessionCleanupService {
 
-    private final ImageProcessingProgressService progressService;
+    private final ProgressService progressService;
 
     @Autowired
-    public SessionCleanupService(ImageProcessingProgressService progressService) {
+    public SessionCleanupService(ProgressService progressService) {
         this.progressService = progressService;
     }
 

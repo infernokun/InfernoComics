@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { SeriesService } from '../../services/series.service';
 import { Series } from '../../models/series.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,7 +11,7 @@ import { FormsModule } from '@angular/forms';
   selector: 'app-series-list',
   templateUrl: './series-list.component.html',
   styleUrls: ['./series-list.component.scss'],
-  imports: [CommonModule, MaterialModule, FormsModule],
+  imports: [CommonModule, MaterialModule, FormsModule, RouterModule],
 })
 export class SeriesListComponent implements OnInit {
   series: Series[] = [];

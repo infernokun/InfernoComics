@@ -50,7 +50,10 @@ public class Series {
     private String comicVineId;
 
     @Column(name = "comic_vine_ids")
-    private List<String> comicVineIds;
+    private List<String> comicVineIds = new ArrayList<>();
+
+    @Column(name = "gcd_ids")
+    private List<String> gcdIds = new ArrayList<>();
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

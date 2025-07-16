@@ -3,7 +3,6 @@ package com.infernokun.infernoComics.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
-import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
 import lombok.*;
 import org.springframework.cache.annotation.Cacheable;
@@ -165,6 +164,41 @@ public class ComicVineService {
 
         } catch (Exception e) {
             log.error("Error fetching issue from Comic Vine API for ID: {}", comicVineId, e);
+            return null;
+        }
+    }
+
+    @Cacheable(value = "comic_vine_series", key = "#comicVineId", unless = "#result == null")
+    public ComicVineSeriesDto getSeriesById(Long comicVineId) {
+        // https://comicvine.gamespot.com/green-lanterns/4050-91285/
+
+        String apiKey = infernoComicsConfig.getComicVineAPIKey();
+        if (apiKey == null || apiKey.isEmpty()) {
+            log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
+            return null;
+        }
+
+        try {
+            String response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/volume/4050-" + comicVineId + "/")
+                            .queryParam("api_key", apiKey)
+                            .queryParam("format", "json")
+                            .build())
+                    .header("User-Agent", "ComicBookCollectionApp/1.0")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            if (response == null || response.isEmpty()) {
+                log.warn("Empty response from Comic Vine API for issue ID: {}", comicVineId);
+                return null;
+            }
+
+            return parseSingleSeriesResponse(response);
+
+        } catch (Exception e) {
+            log.error("Error fetching series from Comic Vine API for ID: {}", comicVineId, e);
             return null;
         }
     }
@@ -406,6 +440,34 @@ public class ComicVineService {
         return series;
     }
 
+    private ComicVineSeriesDto parseSingleSeriesResponse(String response) {
+        ComicVineSeriesDto dto = new ComicVineSeriesDto();
+        try {
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode result = root.path("results");
+
+            dto.setId(result.path("id").asText());
+            dto.setName(result.path("name").asText());
+            dto.setDescription(result.path("description").asText());
+            dto.setIssueCount(result.path("count_of_issues").asInt());
+
+            JsonNode publisher = result.path("publisher");
+            if (!publisher.isMissingNode()) {
+                dto.setPublisher(publisher.path("name").asText());
+            }
+
+            dto.setStartYear(result.path("start_year").asInt(0));
+
+            JsonNode image = result.path("image");
+            if (!image.isMissingNode()) {
+                dto.setImageUrl(image.path("medium_url").asText());
+            }
+        } catch (Exception e) {
+            log.error("Error parsing series response: {}", e.getMessage(), e);
+        }
+        return dto;
+    }
+
     private List<ComicVineIssueDto> parseIssuesResponse(String response) {
         List<ComicVineIssueDto> issues = new ArrayList<>();
         try {
@@ -502,6 +564,7 @@ public class ComicVineService {
         }
         return dto;
     }
+
     private int compareIssueNumbers(ComicVineIssueDto issue1, ComicVineIssueDto issue2) {
         try {
             String num1 = issue1.getIssueNumber();
