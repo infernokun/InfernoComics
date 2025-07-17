@@ -28,7 +28,7 @@ session_lock = threading.Lock()
 executor = ThreadPoolExecutor(max_workers=3)
 
 # Constants
-SIMILARITY_THRESHOLD = 0.25
+SIMILARITY_THRESHOLD = 0.55
 
 def ensure_results_directory():
     """Ensure the results directory exists (same as evaluation system)"""
@@ -38,8 +38,24 @@ def ensure_results_directory():
         logger.debug(f"Created results directory: {results_dir}")
     return results_dir
 
+def sanitize_for_json(data):
+    """Recursively sanitize data to ensure JSON serializability"""
+    if isinstance(data, dict):
+        return {key: sanitize_for_json(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_for_json(item) for item in data]
+    elif isinstance(data, (int, float, str, bool, type(None))):
+        return data
+    elif hasattr(data, 'item'):
+        return data.item()
+    elif hasattr(data, 'tolist'):
+        return data.tolist()
+    else:
+        # Convert unknown types to string
+        return str(data)
+    
 def save_image_matcher_result(session_id, result_data, query_filename=None, query_image_base64=None):
-    """Save image matcher result to JSON file in same format as evaluation system"""
+    """Save image matcher result to JSON file with improved serialization"""
     try:
         results_dir = ensure_results_directory()
         result_file = os.path.join(results_dir, f"{session_id}.json")
@@ -63,9 +79,9 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
             'no_matches': total_matches - successful_matches,
             'overall_success': successful_matches > 0,
             'best_similarity': max((match.get('similarity', 0) for match in result_data.get('top_matches', [])), default=0.0),
-            'similarity_threshold': SIMILARITY_THRESHOLD,
-            'total_covers_processed': result_data.get('total_covers_processed', 0),
-            'total_urls_processed': result_data.get('total_urls_processed', 0),
+            'similarity_threshold': float(SIMILARITY_THRESHOLD),
+            'total_covers_processed': int(result_data.get('total_covers_processed', 0)),
+            'total_urls_processed': int(result_data.get('total_urls_processed', 0)),
             'query_type': 'image_search',  # Distinguish from folder evaluation
             'query_image_base64': query_image_base64,  # Store the query image
             'results': []
@@ -77,7 +93,7 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
             'image_base64': query_image_base64,  # Use the query image base64
             'api_success': True,
             'match_success': successful_matches > 0,
-            'best_similarity': evaluation_result['best_similarity'],
+            'best_similarity': float(evaluation_result['best_similarity']),
             'status_code': 200,
             'error': result_data.get('error'),
             'matches': [],
@@ -86,26 +102,29 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
             'query_type': 'image_search'
         }
         
-        # Add all matches to the single result item
+        # Add all matches to the single result item with proper type conversion
         for match in result_data.get('top_matches', []):
             match_item = {
-                'similarity': match.get('similarity', 0),
-                'url': match.get('url', ''),
-                'meets_threshold': match.get('similarity', 0) >= SIMILARITY_THRESHOLD,
-                'comic_name': match.get('comic_name', 'Unknown'),
-                'issue_number': match.get('issue_number', 'Unknown'),
+                'similarity': float(match.get('similarity', 0)),
+                'url': str(match.get('url', '')),
+                'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD),
+                'comic_name': str(match.get('comic_name', 'Unknown')),
+                'issue_number': str(match.get('issue_number', 'Unknown')),
                 'comic_vine_id': match.get('comic_vine_id'),
                 'parent_comic_vine_id': match.get('parent_comic_vine_id'),
-                'match_details': match.get('match_details', {}),
-                'candidate_features': match.get('candidate_features', {})
+                'match_details': sanitize_for_json(match.get('match_details', {})),
+                'candidate_features': sanitize_for_json(match.get('candidate_features', {}))
             }
             query_result_item['matches'].append(match_item)
         
         evaluation_result['results'].append(query_result_item)
         
+        # Sanitize the entire structure
+        sanitized_result = sanitize_for_json(evaluation_result)
+        
         # Save to JSON file
-        with open(result_file, 'w') as f:
-            json.dump(evaluation_result, f, indent=2)
+        with open(result_file, 'w', encoding='utf-8') as f:
+            json.dump(sanitized_result, f, indent=2, ensure_ascii=False)
         
         logger.info(f" Saved image matcher result to {result_file}")
         return result_file
@@ -690,10 +709,10 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         raise
 
 def save_multiple_images_matcher_result(session_id, result_data, query_images_data):
-    """Save multiple images matcher result to JSON file"""
+    """Save multiple images matcher result to JSON file with improved serialization"""
     try:
         results_dir = ensure_results_directory()
-        result_file = os.path.join(results_dir, f"{session_id}_multiple.json")
+        result_file = os.path.join(results_dir, f"{session_id}.json")
         
         # Convert to evaluation-compatible format
         total_matches = result_data.get('summary', {}).get('total_matches_all_images', 0)
@@ -713,9 +732,9 @@ def save_multiple_images_matcher_result(session_id, result_data, query_images_da
             'no_matches': len(query_images_data) - successful_images,
             'overall_success': successful_images > 0,
             'best_similarity': 0.0,  # Will be calculated below
-            'similarity_threshold': SIMILARITY_THRESHOLD,
-            'total_covers_processed': result_data.get('summary', {}).get('total_covers_processed', 0),
-            'total_urls_processed': result_data.get('summary', {}).get('total_urls_processed', 0),
+            'similarity_threshold': float(SIMILARITY_THRESHOLD),
+            'total_covers_processed': int(result_data.get('summary', {}).get('total_covers_processed', 0)),
+            'total_urls_processed': int(result_data.get('summary', {}).get('total_urls_processed', 0)),
             'query_type': 'multiple_images_search',
             'results': []
         }
@@ -734,41 +753,44 @@ def save_multiple_images_matcher_result(session_id, result_data, query_images_da
                 'image_base64': image_result.get('image_base64'),
                 'api_success': 'error' not in image_result,
                 'match_success': len(image_result.get('top_matches', [])) > 0,
-                'best_similarity': best_similarity_this_image,
+                'best_similarity': float(best_similarity_this_image),
                 'status_code': 200 if 'error' not in image_result else 500,
-                'error': image_result.get('error'),
+                'error': str(image_result.get('error')) if image_result.get('error') else None,
                 'matches': [],
-                'total_matches': image_result.get('total_matches', 0),
+                'total_matches': int(image_result.get('total_matches', 0)),
                 'query_type': 'multiple_images_search',
-                'source_image_index': image_result.get('image_index', 0)
+                'source_image_index': int(image_result.get('image_index', 0))
             }
             
-            # Add matches for this image
+            # Add matches for this image with proper type conversion
             for match in image_result.get('top_matches', []):
                 match_item = {
-                    'similarity': match.get('similarity', 0),
-                    'url': match.get('url', ''),
-                    'meets_threshold': match.get('similarity', 0) >= SIMILARITY_THRESHOLD,
-                    'comic_name': match.get('comic_name', 'Unknown'),
-                    'issue_number': match.get('issue_number', 'Unknown'),
+                    'similarity': float(match.get('similarity', 0)),
+                    'url': str(match.get('url', '')),
+                    'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD),
+                    'comic_name': str(match.get('comic_name', 'Unknown')),
+                    'issue_number': str(match.get('issue_number', 'Unknown')),
                     'comic_vine_id': match.get('comic_vine_id'),
                     'parent_comic_vine_id': match.get('parent_comic_vine_id'),
-                    'match_details': match.get('match_details', {}),
-                    'candidate_features': match.get('candidate_features', {}),
-                    'source_image_index': match.get('source_image_index', 0),
-                    'source_image_name': match.get('source_image_name', '')
+                    'match_details': sanitize_for_json(match.get('match_details', {})),
+                    'candidate_features': sanitize_for_json(match.get('candidate_features', {})),
+                    'source_image_index': int(match.get('source_image_index', 0)),
+                    'source_image_name': str(match.get('source_image_name', ''))
                 }
                 result_item['matches'].append(match_item)
             
             evaluation_result['results'].append(result_item)
         
-        evaluation_result['best_similarity'] = best_similarity_overall
+        evaluation_result['best_similarity'] = float(best_similarity_overall)
+        
+        # Sanitize the entire structure
+        sanitized_result = sanitize_for_json(evaluation_result)
         
         # Save to JSON file
-        with open(result_file, 'w') as f:
-            json.dump(evaluation_result, f, indent=2)
+        with open(result_file, 'w', encoding='utf-8') as f:
+            json.dump(sanitized_result, f, indent=2, ensure_ascii=False)
         
-        logger.info(f"💾 Saved multiple images matcher result to {result_file}")
+        logger.info(f" Saved multiple images matcher result to {result_file}")
         return result_file
         
     except Exception as e:

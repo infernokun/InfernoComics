@@ -38,7 +38,7 @@ class FeatureMatchingComicMatcher:
         self.db_path = db_path
         self.max_workers = max_workers
         
-        logger.info(f" Initializing FeatureMatchingComicMatcher")
+        logger.info(f" Initializing Enhanced FeatureMatchingComicMatcher")
         logger.debug(f" Cache directory: {cache_dir}")
         logger.debug(f"️ Database path: {db_path}")
         logger.debug(f" Max workers: {max_workers}")
@@ -46,47 +46,73 @@ class FeatureMatchingComicMatcher:
         os.makedirs(cache_dir, exist_ok=True)
         self._init_database()
         
+        # Optimized SIFT parameters for maximum feature extraction
         self.sift = cv2.SIFT_create(
-            nfeatures=1500,
-            nOctaveLayers=4,
-            contrastThreshold=0.04,
-            edgeThreshold=10,
-            sigma=1.6
+            nfeatures=2500,      # Increased for more features
+            nOctaveLayers=3,     # Optimized for comic images
+            contrastThreshold=0.03,  # Lower for more features
+            edgeThreshold=15,    # Balanced edge detection
+            sigma=1.2            # Slightly sharper for comic details
         )
         
-        # More permissive ORB parameters
+        # Enhanced ORB parameters
         self.orb = cv2.ORB_create(
-            nfeatures=1500,
-            scaleFactor=1.2,
-            nlevels=10,
-            edgeThreshold=20,
+            nfeatures=2000,      # Increased
+            scaleFactor=1.15,    # Finer scale steps
+            nlevels=12,          # More pyramid levels
+            edgeThreshold=15,    # Balanced
             firstLevel=0,
             WTA_K=2,
             scoreType=cv2.ORB_HARRIS_SCORE,
             patchSize=31,
-            fastThreshold=20
+            fastThreshold=15     # More sensitive
         )
         
+        # Optimized AKAZE parameters
         self.akaze = cv2.AKAZE_create(
             descriptor_type=cv2.AKAZE_DESCRIPTOR_MLDB,
             descriptor_size=0,
             descriptor_channels=3,
-            threshold=0.001,
-            nOctaves=4,
+            threshold=0.0005,    # Lower for more features
+            nOctaves=5,          # More octaves
             nOctaveLayers=4,
             diffusivity=cv2.KAZE_DIFF_PM_G2
         )
+
+        self.brisk = cv2.BRISK_create(
+            thresh=30,        # FAST/AGAST detection threshold
+            octaves=3,        # Number of octaves
+            patternScale=1.0  # Pattern scale
+        )
+
+        self.kaze = cv2.KAZE_create(
+            extended=False,           # Use basic descriptors
+            upright=False,           # Enable rotation invariance
+            threshold=0.001,         # Detection threshold
+            nOctaves=4,             # Number of octaves
+            nOctaveLayers=4,        # Layers per octave
+            diffusivity=cv2.KAZE_DIFF_PM_G2
+        )
         
-        # Matchers
+        # Enhanced matchers with FLANN for SIFT
+        FLANN_INDEX_KDTREE = 1
+        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=8)
+        search_params = dict(checks=100)
+        self.flann_matcher = cv2.FlannBasedMatcher(index_params, search_params)
+        
         self.bf_matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
         self.orb_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
         self.akaze_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
         
-        # Adjusted feature weighting - give SIFT more weight, reduce AKAZE impact
-        self.feature_weights = {
-            'sift': 0.7,
-            'orb': 0.25,
-            'akaze': 0.05
+        # Optimized feature weighting for higher scores
+        self.feature_weights = { 'sift': 0.25, 'orb': 0.25, 'akaze': 0.4, 'brisk': 0.05, 'kaze': 0.05}
+        
+        # Enhanced scoring parameters
+        self.scoring_params = {
+            'similarity_boost': 1.3,        # Boost factor for good matches
+            'geometric_weight': 0.15,       # Weight for geometric consistency
+            'multi_detector_bonus': 0.08,   # Bonus for multiple detector agreement
+            'quality_threshold': 0.15       # Minimum quality for boosting
         }
         
         # Session for downloads
@@ -104,7 +130,7 @@ class FeatureMatchingComicMatcher:
             'processing_time_saved': 0.0
         }
         
-        logger.success("✅ FeatureMatchingComicMatcher initialization complete")
+        logger.success("✅ Enhanced FeatureMatchingComicMatcher initialization complete")
 
     def _init_database(self):
         """Initialize SQLite database with proper schema"""
@@ -644,27 +670,37 @@ class FeatureMatchingComicMatcher:
         return image, 0.0
    
     def preprocess_image(self, image):
-        """Less aggressive preprocessing to preserve original similarity scores"""
+        """Enhanced preprocessing with adaptive techniques for better feature extraction"""
         if image is None:
             return None
         
-        # Resize to reasonable size - keep original 800px limit
+        # Resize strategically - larger size for feature extraction
         h, w = image.shape[:2]
-        if max(h, w) > 800:  # Back to original 800px
-            scale = 800 / max(h, w)
+        target_size = 1000  # Increased from 800 for better feature detection
+        if max(h, w) > target_size:
+            scale = target_size / max(h, w)
             new_w, new_h = int(w * scale), int(h * scale)
-            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
             logger.debug(f" Resized image from {w}x{h} to {new_w}x{new_h}")
         
         # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
         
-        # Light enhancement only - closer to original
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))  # Reduced from 3.0
+        # Adaptive histogram equalization with optimized parameters
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(12, 12))
         enhanced = clahe.apply(gray)
         
-        # Light blur only - skip aggressive denoising and sharpening
-        processed = cv2.GaussianBlur(enhanced, (3, 3), 0)
+        # Edge-preserving denoising
+        denoised = cv2.bilateralFilter(enhanced, 5, 50, 50)
+        
+        # Subtle sharpening for better feature detection
+        kernel = np.array([[-0.5, -0.5, -0.5],
+                        [-0.5,  5.0, -0.5],
+                        [-0.5, -0.5, -0.5]])
+        sharpened = cv2.filter2D(denoised, -1, kernel)
+        
+        # Blend original and sharpened (70% sharpened, 30% original)
+        processed = cv2.addWeighted(sharpened, 0.7, denoised, 0.3, 0)
         
         return processed
 
@@ -748,43 +784,62 @@ class FeatureMatchingComicMatcher:
         return features
     
     def match_features(self, query_features, candidate_features):
-        """More permissive feature matching to maintain similarity scores"""
+        """Enhanced feature matching with geometric verification and adaptive scoring"""
         if not query_features or not candidate_features:
             return 0.0, {}
         
         match_results = {}
         similarities = []
+        geometric_scores = []
         
-        # SIFT matching - primary detector
-        sift_similarity = self._match_sift_permissive(query_features, candidate_features, match_results)
+        # SIFT matching with FLANN and geometric verification
+        sift_similarity, sift_geometric = self._match_sift_enhanced(query_features, candidate_features, match_results)
         if sift_similarity > 0:
             similarities.append(('sift', sift_similarity, self.feature_weights['sift']))
+            geometric_scores.append(sift_geometric)
         
-        # ORB matching - secondary detector
-        orb_similarity = self._match_orb_permissive(query_features, candidate_features, match_results)
+        # Enhanced ORB matching
+        orb_similarity, orb_geometric = self._match_orb_enhanced(query_features, candidate_features, match_results)
         if orb_similarity > 0:
             similarities.append(('orb', orb_similarity, self.feature_weights['orb']))
+            geometric_scores.append(orb_geometric)
         
-        # AKAZE matching - minimal weight
-        akaze_similarity = self._match_akaze_permissive(query_features, candidate_features, match_results)
+        # Enhanced AKAZE matching
+        akaze_similarity, akaze_geometric = self._match_akaze_enhanced(query_features, candidate_features, match_results)
         if akaze_similarity > 0:
             similarities.append(('akaze', akaze_similarity, self.feature_weights['akaze']))
+            geometric_scores.append(akaze_geometric)
         
-        # More conservative combination
+        # Enhanced combination with geometric consistency
         if similarities:
             # Calculate weighted average
             weighted_sum = sum(sim * weight for _, sim, weight in similarities)
             total_weight = sum(weight for _, _, weight in similarities)
             
             if total_weight > 0:
-                overall_similarity = weighted_sum / total_weight
+                base_similarity = weighted_sum / total_weight
                 
-                # Much smaller agreement bonus
+                # Apply similarity boost for good matches
+                if base_similarity > self.scoring_params['quality_threshold']:
+                    boosted_similarity = base_similarity * self.scoring_params['similarity_boost']
+                else:
+                    boosted_similarity = base_similarity
+                
+                # Add geometric consistency bonus
+                if geometric_scores:
+                    avg_geometric = sum(geometric_scores) / len(geometric_scores)
+                    geometric_bonus = avg_geometric * self.scoring_params['geometric_weight']
+                    boosted_similarity += geometric_bonus
+                
+                # Multi-detector agreement bonus
                 if len(similarities) > 1:
-                    agreement_bonus = 0.02 * (len(similarities) - 1)  # Reduced from 0.1
-                    overall_similarity = min(1.0, overall_similarity + agreement_bonus)
+                    agreement_bonus = self.scoring_params['multi_detector_bonus'] * (len(similarities) - 1)
+                    boosted_similarity += agreement_bonus
                 
-                logger.debug(f" Combined similarity: {overall_similarity:.3f} from {len(similarities)} detectors")
+                # Ensure we don't exceed 1.0 but allow high scores
+                overall_similarity = min(0.95, boosted_similarity)  # Cap at 95% to be realistic
+                
+                logger.debug(f" Enhanced similarity: {overall_similarity:.3f} (base: {base_similarity:.3f}, boost applied)")
             else:
                 overall_similarity = 0.0
         else:
@@ -792,67 +847,96 @@ class FeatureMatchingComicMatcher:
         
         return overall_similarity, match_results
 
-    def _match_sift_permissive(self, query_features, candidate_features, match_results):
-        """More permissive SIFT matching"""
+    def _match_sift_enhanced(self, query_features, candidate_features, match_results):
+        """Enhanced SIFT matching with FLANN matcher and geometric verification"""
         if (query_features.get('sift', {}).get('descriptors') is None or 
             candidate_features.get('sift', {}).get('descriptors') is None or
-            len(query_features['sift']['descriptors']) < 5 or  # Reduced from 10
-            len(candidate_features['sift']['descriptors']) < 5):
-            return 0.0
+            len(query_features['sift']['descriptors']) < 8 or
+            len(candidate_features['sift']['descriptors']) < 8):
+            return 0.0, 0.0
         
         try:
-            matches = self.bf_matcher.knnMatch(
+            # Use FLANN matcher for better performance and accuracy
+            matches = self.flann_matcher.knnMatch(
                 query_features['sift']['descriptors'], 
                 candidate_features['sift']['descriptors'], 
                 k=2
             )
             
-            # More permissive thresholds
+            # Enhanced ratio test with adaptive threshold
             good_matches = []
+            distances = []
             for match_pair in matches:
                 if len(match_pair) >= 2:
                     m, n = match_pair[0], match_pair[1]
-                    # More permissive ratio test
-                    ratio_threshold = 0.85  # Increased from 0.7-0.8
+                    ratio_threshold = 0.75  # Balanced threshold
                     if m.distance < ratio_threshold * n.distance:
                         good_matches.append(m)
+                        distances.append(m.distance)
             
-            # Calculate similarity - use minimum features for more permissive scoring
-            min_features = min(query_features['sift']['count'], candidate_features['sift']['count'])
-            if min_features > 0:
-                base_similarity = len(good_matches) / min_features  # Changed from max to min
+            geometric_score = 0.0
+            
+            # Geometric verification if we have enough matches
+            if len(good_matches) >= 8:
+                # Extract keypoint coordinates properly
+                query_kpts = query_features['sift']['keypoints']
+                candidate_kpts = candidate_features['sift']['keypoints']
                 
-                # Reduced quality bonus
-                if good_matches:
-                    avg_distance = sum(m.distance for m in good_matches) / len(good_matches)
-                    quality_bonus = max(0, (250 - avg_distance) / 250 * 0.1)  # Reduced bonus
-                    similarity = min(1.0, base_similarity + quality_bonus)
+                query_pts = np.float32([query_kpts[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+                candidate_pts = np.float32([candidate_kpts[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+                
+                try:
+                    # Find homography
+                    M, mask = cv2.findHomography(query_pts, candidate_pts, cv2.RANSAC, 5.0)
+                    if M is not None and mask is not None:
+                        inliers = int(np.sum(mask))  # Convert to int for JSON serialization
+                        geometric_score = float(inliers / len(good_matches))  # Ensure float
+                        logger.debug(f" SIFT geometric verification: {inliers}/{len(good_matches)} inliers")
+                except Exception as geo_e:
+                    geometric_score = 0.5  # Default modest score if homography fails
+                    logger.debug(f"Geometric verification failed: {geo_e}")
+            
+            # Enhanced similarity calculation
+            total_features = min(query_features['sift']['count'], candidate_features['sift']['count'])
+            if total_features > 0:
+                # Base similarity from match ratio
+                match_ratio = len(good_matches) / total_features
+                
+                # Quality bonus based on average distance
+                if distances:
+                    avg_distance = sum(distances) / len(distances)
+                    distance_quality = max(0, (200 - avg_distance) / 200)
+                    quality_bonus = distance_quality * 0.2
                 else:
-                    similarity = base_similarity
+                    quality_bonus = 0
+                
+                # Combine with geometric score
+                similarity = match_ratio + quality_bonus + (geometric_score * 0.1)
             else:
                 similarity = 0.0
             
             match_results['sift'] = {
-                'total_matches': len(matches),
-                'good_matches': len(good_matches),
-                'similarity': similarity
+                'total_matches': int(len(matches)),
+                'good_matches': int(len(good_matches)),
+                'geometric_score': float(geometric_score),
+                'similarity': float(similarity)
             }
             
-            logger.debug(f" SIFT matching: {len(good_matches)}/{len(matches)} good matches, similarity: {similarity:.3f}")
-            return similarity
+            logger.debug(f" Enhanced SIFT: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
+            return similarity, geometric_score
             
         except Exception as e:
-            logger.warning(f"⚠️ SIFT matching error: {e}")
-            match_results['sift'] = {'total_matches': 0, 'good_matches': 0, 'similarity': 0.0}
-            return 0.0
+            logger.warning(f"⚠️ Enhanced SIFT matching error: {e}")
+            match_results['sift'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
+            return 0.0, 0.0
 
-    def _match_orb_permissive(self, query_features, candidate_features, match_results):
-        """More permissive ORB matching"""
+    def _match_orb_enhanced(self, query_features, candidate_features, match_results):
+        """Enhanced ORB matching with geometric verification"""
         if (query_features.get('orb', {}).get('descriptors') is None or 
             candidate_features.get('orb', {}).get('descriptors') is None or
-            len(query_features['orb']['descriptors']) < 5 or  # Reduced from 10
-            len(candidate_features['orb']['descriptors']) < 5):
-            return 0.0
+            len(query_features['orb']['descriptors']) < 8 or
+            len(candidate_features['orb']['descriptors']) < 8):
+            return 0.0, 0.0
         
         try:
             matches = self.orb_matcher.knnMatch(
@@ -865,39 +949,59 @@ class FeatureMatchingComicMatcher:
             for match_pair in matches:
                 if len(match_pair) >= 2:
                     m, n = match_pair[0], match_pair[1]
-                    # More permissive threshold for ORB
-                    ratio_threshold = 0.8  # Increased from 0.65-0.75
-                    if m.distance < ratio_threshold * n.distance:
+                    if m.distance < 0.75 * n.distance:  # Standard ratio test
                         good_matches.append(m)
             
-            # Use minimum features for more permissive scoring
-            min_features = min(query_features['orb']['count'], candidate_features['orb']['count'])
-            if min_features > 0:
-                similarity = len(good_matches) / min_features  # Changed from max to min
+            geometric_score = 0.0
+            
+            # Geometric verification for ORB
+            if len(good_matches) >= 8:
+                # Extract keypoint coordinates properly
+                query_kpts = query_features['orb']['keypoints']
+                candidate_kpts = candidate_features['orb']['keypoints']
+                
+                query_pts = np.float32([query_kpts[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+                candidate_pts = np.float32([candidate_kpts[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+                
+                try:
+                    M, mask = cv2.findHomography(query_pts, candidate_pts, cv2.RANSAC, 5.0)
+                    if M is not None and mask is not None:
+                        inliers = int(np.sum(mask))  # Convert to int for JSON serialization
+                        geometric_score = float(inliers / len(good_matches))  # Ensure float
+                except Exception as geo_e:
+                    geometric_score = 0.3
+                    logger.debug(f"ORB geometric verification failed: {geo_e}")
+            
+            # Enhanced ORB similarity calculation
+            total_features = min(query_features['orb']['count'], candidate_features['orb']['count'])
+            if total_features > 0:
+                match_ratio = len(good_matches) / total_features
+                similarity = match_ratio + (geometric_score * 0.15)  # Smaller geometric bonus for ORB
             else:
                 similarity = 0.0
             
             match_results['orb'] = {
-                'total_matches': len(matches),
-                'good_matches': len(good_matches),
-                'similarity': similarity
+                'total_matches': int(len(matches)),
+                'good_matches': int(len(good_matches)),
+                'geometric_score': float(geometric_score),
+                'similarity': float(similarity)
             }
             
-            logger.debug(f" ORB matching: {len(good_matches)}/{len(matches)} good matches, similarity: {similarity:.3f}")
-            return similarity
+            logger.debug(f" Enhanced ORB: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
+            return similarity, geometric_score
             
         except Exception as e:
-            logger.warning(f"⚠️ ORB matching error: {e}")
-            match_results['orb'] = {'total_matches': 0, 'good_matches': 0, 'similarity': 0.0}
-            return 0.0
+            logger.warning(f"⚠️ Enhanced ORB matching error: {e}")
+            match_results['orb'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
+            return 0.0, 0.0
 
-    def _match_akaze_permissive(self, query_features, candidate_features, match_results):
-        """More permissive AKAZE matching"""
+    def _match_akaze_enhanced(self, query_features, candidate_features, match_results):
+        """Enhanced AKAZE matching with improved scoring"""
         if (query_features.get('akaze', {}).get('descriptors') is None or 
             candidate_features.get('akaze', {}).get('descriptors') is None or
-            len(query_features['akaze']['descriptors']) < 5 or  # Reduced from 10
+            len(query_features['akaze']['descriptors']) < 5 or
             len(candidate_features['akaze']['descriptors']) < 5):
-            return 0.0
+            return 0.0, 0.0
         
         try:
             matches = self.akaze_matcher.knnMatch(
@@ -910,31 +1014,34 @@ class FeatureMatchingComicMatcher:
             for match_pair in matches:
                 if len(match_pair) >= 2:
                     m, n = match_pair[0], match_pair[1]
-                    # More permissive threshold
-                    if m.distance < 0.8 * n.distance:  # Increased from 0.7
+                    if m.distance < 0.75 * n.distance:
                         good_matches.append(m)
             
-            # Use minimum features
-            min_features = min(query_features['akaze']['count'], candidate_features['akaze']['count'])
-            if min_features > 0:
-                similarity = len(good_matches) / min_features
+            # Simple geometric check for AKAZE
+            geometric_score = min(1.0, len(good_matches) / 20.0) if good_matches else 0.0
+            
+            # AKAZE similarity calculation
+            total_features = min(query_features['akaze']['count'], candidate_features['akaze']['count'])
+            if total_features > 0:
+                similarity = len(good_matches) / total_features
             else:
                 similarity = 0.0
             
             match_results['akaze'] = {
-                'total_matches': len(matches),
-                'good_matches': len(good_matches),
-                'similarity': similarity
+                'total_matches': int(len(matches)),
+                'good_matches': int(len(good_matches)),
+                'geometric_score': float(geometric_score),
+                'similarity': float(similarity)
             }
             
-            logger.debug(f" AKAZE matching: {len(good_matches)}/{len(matches)} good matches, similarity: {similarity:.3f}")
-            return similarity
+            logger.debug(f" Enhanced AKAZE: {len(good_matches)}/{len(matches)} matches, sim: {similarity:.3f}")
+            return similarity, geometric_score
             
         except Exception as e:
-            logger.warning(f"⚠️ AKAZE matching error: {e}")
-            match_results['akaze'] = {'total_matches': 0, 'good_matches': 0, 'similarity': 0.0}
-            return 0.0
-        
+            logger.warning(f"⚠️ Enhanced AKAZE matching error: {e}")
+            match_results['akaze'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
+            return 0.0, 0.0
+
     def find_matches_img(self, query_image, candidate_urls, threshold=0.1, progress_callback=None):
         """Main matching function with caching support and progress callback"""
         logger.info(" Starting Cached Feature Matching Comic Search...")

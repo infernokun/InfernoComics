@@ -20,7 +20,7 @@ progress_queues = {}  # Dictionary to store progress queues by session
 active_evaluations = {}  # Dictionary to store active evaluations by session
 
 # Your existing constants
-SIMILARITY_THRESHOLD = 0.25
+SIMILARITY_THRESHOLD = 0.55
 
 def ensure_results_directory():
     """Ensure the results directory exists"""
@@ -30,8 +30,24 @@ def ensure_results_directory():
         logger.debug(f" Created results directory: {results_dir}")
     return results_dir
 
+def sanitize_for_json(data):
+    """Recursively sanitize data to ensure JSON serializability"""
+    if isinstance(data, dict):
+        return {key: sanitize_for_json(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [sanitize_for_json(item) for item in data]
+    elif isinstance(data, (int, float, str, bool, type(None))):
+        return data
+    elif hasattr(data, 'item'):
+        return data.item()
+    elif hasattr(data, 'tolist'):
+        return data.tolist()
+    else:
+        # Convert unknown types to string
+        return str(data)
+    
 def save_evaluation_result(session_id, evaluation_state):
-    """Save complete evaluation result to JSON file"""
+    """Save complete evaluation result to JSON file with improved error handling"""
     try:
         results_dir = ensure_results_directory()
         result_file = os.path.join(results_dir, f"{session_id}.json")
@@ -43,29 +59,29 @@ def save_evaluation_result(session_id, evaluation_state):
             'status': evaluation_state.get('status', 'unknown'),
             'series_name': evaluation_state.get('series_name'),
             'year': evaluation_state.get('year'),
-            'total_images': evaluation_state.get('total_images', 0),
-            'processed': evaluation_state.get('processed', 0),
-            'successful_matches': evaluation_state.get('successful_matches', 0),
-            'failed_uploads': evaluation_state.get('failed_uploads', 0),
-            'no_matches': evaluation_state.get('no_matches', 0),
-            'overall_success': evaluation_state.get('overall_success', False),
-            'best_similarity': evaluation_state.get('best_similarity', 0.0),
-            'similarity_threshold': SIMILARITY_THRESHOLD,
+            'total_images': int(evaluation_state.get('total_images', 0)),
+            'processed': int(evaluation_state.get('processed', 0)),
+            'successful_matches': int(evaluation_state.get('successful_matches', 0)),
+            'failed_uploads': int(evaluation_state.get('failed_uploads', 0)),
+            'no_matches': int(evaluation_state.get('no_matches', 0)),
+            'overall_success': bool(evaluation_state.get('overall_success', False)),
+            'best_similarity': float(evaluation_state.get('best_similarity', 0.0)),
+            'similarity_threshold': float(SIMILARITY_THRESHOLD),
             'results': []
         }
         
-        # Process each result with full details
+        # Process each result with full details and sanitization
         for result in evaluation_state.get('results', []):
             image_name = os.path.basename(result.get('image_path', ''))
             
             result_item = {
                 'image_name': image_name,
                 'image_base64': result.get('image_base64'),
-                'api_success': result.get('api_success', False),
-                'match_success': result.get('match_success', False),
-                'best_similarity': result.get('best_similarity', 0.0),
-                'status_code': result.get('status_code'),
-                'error': result.get('error'),
+                'api_success': bool(result.get('api_success', False)),
+                'match_success': bool(result.get('match_success', False)),
+                'best_similarity': float(result.get('best_similarity', 0.0)),
+                'status_code': int(result.get('status_code', 0)) if result.get('status_code') is not None else None,
+                'error': str(result.get('error')) if result.get('error') is not None else None,
                 'matches': [],
                 'total_matches': 0
             }
@@ -74,41 +90,118 @@ def save_evaluation_result(session_id, evaluation_state):
             if result.get('api_success') and result.get('response_data') and 'top_matches' in result['response_data']:
                 top_matches = result['response_data']['top_matches']
                 for match in top_matches:
-                    result_item['matches'].append({
-                        'similarity': match.get('similarity', 0),
-                        'url': match.get('url', ''),
-                        'meets_threshold': match.get('similarity', 0) >= SIMILARITY_THRESHOLD
-                    })
-                result_item['total_matches'] = result['response_data'].get('total_matches', 0)
+                    match_item = {
+                        'similarity': float(match.get('similarity', 0)),
+                        'url': str(match.get('url', '')),
+                        'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD)
+                    }
+                    result_item['matches'].append(match_item)
+                result_item['total_matches'] = int(result['response_data'].get('total_matches', 0))
             
             result_data['results'].append(result_item)
         
-        # Save to JSON file
-        with open(result_file, 'w') as f:
-            json.dump(result_data, f, indent=2)
+        # Sanitize the entire structure to ensure JSON compatibility
+        sanitized_data = sanitize_for_json(result_data)
         
-        logger.info(f" Saved evaluation result to {result_file}")
-        return result_file
+        # Save to JSON file with error handling
+        try:
+            with open(result_file, 'w') as f:
+                json.dump(sanitized_data, f, indent=2, ensure_ascii=False)
+            logger.info(f" Saved evaluation result to {result_file}")
+            return result_file
+        except (TypeError, ValueError) as json_error:
+            logger.error(f"❌ JSON serialization error: {json_error}")
+            # Try to save without problematic data
+            minimal_data = {
+                'session_id': session_id,
+                'timestamp': datetime.now().isoformat(),
+                'status': 'error',
+                'series_name': evaluation_state.get('series_name', 'Unknown'),
+                'year': evaluation_state.get('year'),
+                'total_images': int(evaluation_state.get('total_images', 0)),
+                'error': f'JSON serialization failed: {str(json_error)}',
+                'results': []
+            }
+            with open(result_file, 'w') as f:
+                json.dump(minimal_data, f, indent=2)
+            logger.warning(f"⚠️ Saved minimal result due to serialization error")
+            return result_file
         
     except Exception as e:
         logger.error(f"❌ Error saving evaluation result: {e}")
         return None
 
 def load_evaluation_result(session_id):
-    """Load evaluation result from JSON file"""
+    """Load evaluation result from JSON file with improved error handling"""
     try:
         results_dir = ensure_results_directory()
         result_file = os.path.join(results_dir, f"{session_id}.json")
         
         if not os.path.exists(result_file):
-            logger.warning(f" Evaluation result file not found: {result_file}")
+            logger.warning(f"⚠️ Evaluation result file not found: {result_file}")
             return None
-            
-        with open(result_file, 'r') as f:
-            data = json.load(f)
-            logger.debug(f" Loaded evaluation result from {result_file}")
+        
+        # Try to load the JSON file
+        try:
+            with open(result_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            logger.debug(f"✅ Loaded evaluation result from {result_file}")
             return data
+        except json.JSONDecodeError as json_error:
+            logger.error(f"❌ JSON decode error in {result_file}: {json_error}")
             
+            # Try to repair the file by reading line by line and finding the corruption point
+            try:
+                with open(result_file, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # Look for common corruption patterns and try to fix them
+                # Remove any null bytes or other binary data
+                cleaned_content = content.replace('\x00', '').replace('\ufffd', '')
+                
+                # Try to parse the cleaned content
+                data = json.loads(cleaned_content)
+                logger.info(f"✅ Successfully repaired and loaded {result_file}")
+                
+                # Save the repaired version
+                backup_file = result_file.replace('.json', '_backup.json')
+                os.rename(result_file, backup_file)
+                with open(result_file, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                logger.info(f" Saved repaired file, backup at {backup_file}")
+                
+                return data
+                
+            except Exception as repair_error:
+                logger.error(f"❌ Could not repair {result_file}: {repair_error}")
+                
+                # Create a minimal error result
+                error_result = {
+                    'session_id': session_id,
+                    'timestamp': datetime.now().isoformat(),
+                    'status': 'corrupted',
+                    'series_name': 'Unknown (Corrupted Data)',
+                    'year': None,
+                    'total_images': 0,
+                    'processed': 0,
+                    'successful_matches': 0,
+                    'failed_uploads': 0,
+                    'no_matches': 0,
+                    'overall_success': False,
+                    'best_similarity': 0.0,
+                    'similarity_threshold': SIMILARITY_THRESHOLD,
+                    'error': f'Original file corrupted: {str(json_error)}',
+                    'results': []
+                }
+                
+                # Save the error result
+                error_file = result_file.replace('.json', '_error.json')
+                with open(error_file, 'w') as f:
+                    json.dump(error_result, f, indent=2)
+                
+                logger.info(f" Created error placeholder at {error_file}")
+                return error_result
+                
     except Exception as e:
         logger.error(f"❌ Error loading evaluation result: {e}")
         return None
