@@ -440,39 +440,39 @@ export class SeriesDetailComponent implements OnInit {
     input.click();
   }
 
-  private processMultipleImagesWithSSE(seriesId: number, files: File[]): void {
-    // Open the progress dialog
-    const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
-      width: '600px',
-      maxWidth: '90vw',
-      disableClose: true,
-      data: {
-        files: files,
-        seriesId: seriesId,
-        isMultiple: true, // Add flag to indicate multiple files
-      },
-    });
-
-    const dialogComponent = progressDialogRef.componentInstance;
-
-    this.seriesService.addComicsByImagesWithSSE(seriesId, files).subscribe({
-      next: (progressData: SSEProgressData) => {
-        this.handleMultipleSSEProgress(
-          seriesId,
-          progressData,
-          dialogComponent,
-          files
+  // Updated handleSSEProgress method in SeriesDetailComponent
+  private handleSSEProgress(
+    seriesId: number,
+    data: SSEProgressData,
+    dialogComponent: ImageProcessingDialogComponent,
+    originalImage: File
+  ): void {
+    switch (data.type) {
+      case 'progress':
+        const stageName = this.getStageDisplayName(data.stage || '');
+        dialogComponent.updateProgress(
+          stageName,
+          data.progress || 0,
+          data.message
         );
-      },
-      error: (error) => {
-        console.error('SSE Error:', error);
-        const errorMessage = this.getErrorMessage(error);
-        dialogComponent.setError(errorMessage);
-      },
-      complete: () => {
-        console.log('SSE multiple images stream completed');
-      },
-    });
+        break;
+
+      case 'complete':
+        dialogComponent.setComplete(data.result);
+
+        // Handle the dialog close result (don't auto-open matcher anymore)
+        // The user will click "Next" to proceed
+        break;
+
+      case 'error':
+        console.error('SSE Error received:', data.error);
+        dialogComponent.setError(data.error || 'Unknown error occurred');
+        break;
+
+      default:
+        console.log('Unknown SSE event type:', data.type);
+        break;
+    }
   }
 
   private handleMultipleSSEProgress(
@@ -494,7 +494,7 @@ export class SeriesDetailComponent implements OnInit {
         if (progressMessage) {
           progressMessage = progressMessage.replace(/^\w+:\s*/, '');
           console.log(
-            ` Multi-image progress: ${data.progress}% - ${progressMessage}`
+            ` Multi-image progress: ${data.progress}% - ${progressMessage}`
           );
         }
 
@@ -507,47 +507,13 @@ export class SeriesDetailComponent implements OnInit {
 
       case 'complete':
         console.log(
-          ' FRONTEND: Received COMPLETION EVENT for multiple images!'
+          ' FRONTEND: Received COMPLETION EVENT for multiple images!'
         );
         console.log('Completion result:', data.result);
 
         dialogComponent.setComplete(data.result);
 
-        // Handle the results after dialog auto-closes
-        setTimeout(() => {
-          const result = data.result as any;
-
-          console.log(' Processing completion result:', result);
-
-          // Handle multiple images result format
-          if (result && result.results && Array.isArray(result.results)) {
-            console.log('✅ Processing multiple images result format');
-            console.log('Number of image results:', result.results.length);
-
-            // Use the new bulk selection dialog instead of flattening matches
-            this.openBulkSelectionDialog(result, seriesId, originalImages);
-          } else if (
-            result &&
-            result.top_matches &&
-            Array.isArray(result.top_matches)
-          ) {
-            // Single image result format (fallback)
-            console.log('✅ Processing single image result format (fallback)');
-            this.openMatchSelectionDialog(
-              result.top_matches,
-              seriesId,
-              originalImages.length > 0 ? originalImages[0] : undefined,
-              result.session_id
-            );
-          } else {
-            console.log('❌ Unexpected result format:', result);
-            this.snackBar.open(
-              'Processing completed but no results found',
-              'Close',
-              { duration: 3000 }
-            );
-          }
-        }, 1600);
+        // Don't automatically open matcher - user will click "Next"
         break;
 
       case 'error':
@@ -564,6 +530,147 @@ export class SeriesDetailComponent implements OnInit {
         console.log('❓ Unknown SSE event type:', data.type);
         break;
     }
+  }
+
+  // Updated processImageWithSSE method to handle dialog result
+  private processImageWithSSE(seriesId: number, file: File): void {
+    // Open the progress dialog
+    const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      disableClose: true,
+      data: {
+        file: file,
+        seriesId: seriesId,
+      },
+    });
+
+    const dialogComponent = progressDialogRef.componentInstance;
+
+    // Handle dialog close
+    progressDialogRef.afterClosed().subscribe((dialogResult) => {
+      if (dialogResult && dialogResult.action === 'proceed_to_matcher') {
+        console.log(
+          '🎯 User clicked Next, opening matcher with result:',
+          dialogResult.result
+        );
+
+        // Cast the result to ImageMatcherResponse for proper typing
+        const imageMatcherResponse =
+          dialogResult.result as ImageMatcherResponse;
+
+        if (
+          imageMatcherResponse &&
+          imageMatcherResponse.top_matches &&
+          imageMatcherResponse.top_matches.length > 0
+        ) {
+          console.log('Opening match selection dialog');
+          this.openMatchSelectionDialog(
+            imageMatcherResponse.top_matches,
+            seriesId,
+            file,
+            imageMatcherResponse.session_id
+          );
+        } else {
+          console.log('No matches found in result');
+          this.snackBar.open('No matching comics found', 'Close', {
+            duration: 3000,
+          });
+        }
+      } else {
+        console.log('Dialog closed without proceeding to matcher');
+      }
+    });
+
+    // Start SSE-based processing
+    this.seriesService.addComicByImageWithSSE(seriesId, file).subscribe({
+      next: (progressData: SSEProgressData) => {
+        this.handleSSEProgress(seriesId, progressData, dialogComponent, file);
+      },
+      error: (error) => {
+        console.error('SSE Error:', error);
+        const errorMessage = this.getErrorMessage(error);
+        dialogComponent.setError(errorMessage);
+      },
+      complete: () => {
+        console.log('SSE stream completed');
+      },
+    });
+  }
+
+  // Updated processMultipleImagesWithSSE method to handle dialog result
+  private processMultipleImagesWithSSE(seriesId: number, files: File[]): void {
+    // Open the progress dialog
+    const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
+      width: '600px',
+      maxWidth: '90vw',
+      disableClose: true,
+      data: {
+        files: files,
+        seriesId: seriesId,
+        isMultiple: true,
+      },
+    });
+
+    const dialogComponent = progressDialogRef.componentInstance;
+
+    // Handle dialog close
+    progressDialogRef.afterClosed().subscribe((dialogResult) => {
+      if (dialogResult && dialogResult.action === 'proceed_to_matcher') {
+        console.log(
+          '🎯 User clicked Next for multiple images, opening bulk selector'
+        );
+
+        const result = dialogResult.result as any;
+
+        if (result && result.results && Array.isArray(result.results)) {
+          console.log('✅ Processing multiple images result format');
+          this.openBulkSelectionDialog(result, seriesId, files);
+        } else if (
+          result &&
+          result.top_matches &&
+          Array.isArray(result.top_matches)
+        ) {
+          // Single image result format (fallback)
+          console.log('✅ Processing single image result format (fallback)');
+          this.openMatchSelectionDialog(
+            result.top_matches,
+            seriesId,
+            files.length > 0 ? files[0] : undefined,
+            result.session_id
+          );
+        } else {
+          console.log('❌ No valid results to display');
+          this.snackBar.open(
+            'Processing completed but no results found',
+            'Close',
+            { duration: 3000 }
+          );
+        }
+      } else {
+        console.log('Dialog closed without proceeding to matcher');
+      }
+    });
+
+    // Start SSE-based processing
+    this.seriesService.addComicsByImagesWithSSE(seriesId, files).subscribe({
+      next: (progressData: SSEProgressData) => {
+        this.handleMultipleSSEProgress(
+          seriesId,
+          progressData,
+          dialogComponent,
+          files
+        );
+      },
+      error: (error) => {
+        console.error('SSE Error:', error);
+        const errorMessage = this.getErrorMessage(error);
+        dialogComponent.setError(errorMessage);
+      },
+      complete: () => {
+        console.log('SSE multiple images stream completed');
+      },
+    });
   }
 
   private openBulkSelectionDialog(
@@ -841,103 +948,6 @@ export class SeriesDetailComponent implements OnInit {
     }
   }
 
-  // NEW SSE-BASED PROCESSING - Real-time progress updates
-  private processImageWithSSE(seriesId: number, file: File): void {
-    // Open the progress dialog
-    const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
-      width: '600px',
-      maxWidth: '90vw',
-      disableClose: true,
-      data: {
-        file: file,
-        seriesId: seriesId,
-      },
-    });
-
-    const dialogComponent = progressDialogRef.componentInstance;
-
-    // Start SSE-based processing
-    this.seriesService.addComicByImageWithSSE(seriesId, file).subscribe({
-      next: (progressData: SSEProgressData) => {
-        this.handleSSEProgress(seriesId, progressData, dialogComponent, file);
-      },
-      error: (error) => {
-        console.error('SSE Error:', error);
-        const errorMessage = this.getErrorMessage(error);
-        dialogComponent.setError(errorMessage);
-      },
-      complete: () => {
-        console.log('SSE stream completed');
-      },
-    });
-  }
-
-  private handleSSEProgress(
-    seriesId: number,
-    data: SSEProgressData,
-    dialogComponent: ImageProcessingDialogComponent,
-    originalImage: File
-  ): void {
-    switch (data.type) {
-      case 'progress':
-        const stageName = this.getStageDisplayName(data.stage || '');
-        dialogComponent.updateProgress(
-          stageName,
-          data.progress || 0,
-          data.message
-        );
-        break;
-
-      case 'complete':
-        dialogComponent.setComplete(data.result);
-
-        // Handle the results after dialog auto-closes
-        setTimeout(() => {
-          // Cast the result to ImageMatcherResponse for proper typing
-          const imageMatcherResponse = data.result as ImageMatcherResponse;
-
-          if (
-            imageMatcherResponse &&
-            imageMatcherResponse.top_matches &&
-            imageMatcherResponse.top_matches.length > 0
-          ) {
-            console.log(
-              'SSE Processing completed successfully, opening match selection dialog'
-            );
-            console.log(
-              'Top matches found:',
-              imageMatcherResponse.top_matches.length
-            );
-
-            // Use the same method as fallback processing
-            this.openMatchSelectionDialog(
-              imageMatcherResponse.top_matches,
-              seriesId,
-              originalImage,
-              imageMatcherResponse.session_id
-            );
-          } else {
-            console.log(
-              'No matches found in SSE result:',
-              imageMatcherResponse
-            );
-            this.snackBar.open('No matching comics found', 'Close', {
-              duration: 3000,
-            });
-          }
-        }, 1600);
-        break;
-
-      case 'error':
-        console.error('SSE Error received:', data.error);
-        dialogComponent.setError(data.error || 'Unknown error occurred');
-        break;
-
-      default:
-        console.log('Unknown SSE event type:', data.type);
-        break;
-    }
-  }
 
   private getStageDisplayName(stage: string): string {
     const stageMap: { [key: string]: string } = {
