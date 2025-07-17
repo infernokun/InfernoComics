@@ -30,7 +30,7 @@ def safe_progress_callback(callback, current_item, message=""):
             callback(current_item, message)
         except Exception as e:
             logger.warning(f"⚠️ Progress callback error: {e}")
-            pass  # Continue execution even if progress fails
+            pass
 
 class FeatureMatchingComicMatcher:
     def __init__(self, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH, max_workers=4):
@@ -43,7 +43,6 @@ class FeatureMatchingComicMatcher:
         logger.debug(f"️ Database path: {db_path}")
         logger.debug(f" Max workers: {max_workers}")
         
-        # Create directories
         os.makedirs(cache_dir, exist_ok=True)
         logger.debug(f" Ensured cache directory exists: {cache_dir}")
         

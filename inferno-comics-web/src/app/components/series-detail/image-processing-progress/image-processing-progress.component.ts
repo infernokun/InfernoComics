@@ -309,15 +309,17 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   setComplete(result?: any) {
     this.isProcessing = false;
     this.progress = 100;
-    this.currentStageIndex = this.processingStages.length - 1;
-
+    // Fix: Set currentStageIndex to indicate ALL stages are complete
+    this.currentStageIndex = this.processingStages.length; // This ensures all stages show as completed
+    this.currentStage = 'Complete!'; // Update the current stage text
+  
     // Mark all remaining images as completed
     for (let i = 0; i < this.thumbnailStates.length; i++) {
       if (this.thumbnailStates[i] === 'processing' || this.thumbnailStates[i] === 'pending') {
         this.thumbnailStates[i] = 'completed';
       }
     }
-
+  
     if (this.isMultipleMode) {
       this.processedImages = this.totalImages;
       this.successfulImages = Math.max(this.successfulImages, this.totalImages);
@@ -333,20 +335,15 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
         'success'
       );
     }
-
+  
     if (this.data.onComplete) {
       this.data.onComplete(result);
     }
-
+  
     console.log('✅ Processing completed successfully');
-
+  
     // Store the result for the Next button
     this.processingResult = result;
-    
-    // Don't auto-close anymore - let user click Next button
-    // setTimeout(() => {
-    //   this.dialogRef.close(result);
-    // }, 2000);
   }
 
   addStatusMessage(text: string, type: 'info' | 'success' | 'warning' | 'error') {

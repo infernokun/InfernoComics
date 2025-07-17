@@ -764,18 +764,17 @@ export class SeriesDetailComponent implements OnInit {
     results: ProcessedImageResult[],
     seriesId: number
   ): void {
-    console.log(' Processing bulk add for', results.length, 'comics');
-
+    console.log(' Processing bulk add for', results.length, 'comics');
+    
     // Show loading indicator
     this.snackBar.open(`Adding ${results.length} comics to collection...`, '', {
       duration: 0,
     });
-
+  
     // Process each accepted result
     const addPromises = results.map(async (result) => {
-      if (result.userAction === 'accepted' && result.selectedMatch) {
+      if ((result.userAction === 'accepted' || result.userAction === 'manual_select') && result.selectedMatch) {
         const match = result.selectedMatch;
-
         try {
           // Fetch Comic Vine details for the match
           const issue = await this.comicVineService
@@ -785,14 +784,14 @@ export class SeriesDetailComponent implements OnInit {
                 : match.comic_vine_id!.toString()
             )
             .toPromise();
-
+  
           if (issue) {
             // Prepare issue data
             if (match.parent_comic_vine_id) {
               issue.imageUrl = match.url;
               issue.variant = true;
             }
-
+  
             // Create the issue
             const issueData = {
               seriesId: seriesId,
@@ -809,30 +808,28 @@ export class SeriesDetailComponent implements OnInit {
               generatedDescription: issue.generatedDescription || false,
               variant: issue.variant || false,
             };
-
+  
+            console.log('✅ Creating issue for:', result.imageName, 'with comic vine ID:', issue.id);
             return this.issueService.createIssue(issueData).toPromise();
           }
         } catch (error) {
-          console.error(
-            'Error processing match for',
-            result.imageName,
-            ':',
-            error
-          );
+          console.error('Error processing match for', result.imageName, ':', error);
           return Promise.reject(error);
         }
+      } else {
+        console.log('⚠️ Skipping result - userAction:', result.userAction, 'hasSelectedMatch:', !!result.selectedMatch);
+        return Promise.resolve(null); // Skip this result
       }
     });
-
+  
     Promise.allSettled(addPromises)
       .then((results) => {
         this.snackBar.dismiss();
-
         const successful = results.filter(
-          (r) => r.status === 'fulfilled'
+          (r) => r.status === 'fulfilled' && r.value !== null
         ).length;
         const failed = results.filter((r) => r.status === 'rejected').length;
-
+  
         if (successful > 0) {
           this.snackBar.open(
             `Successfully added ${successful} comics to collection${
@@ -841,7 +838,6 @@ export class SeriesDetailComponent implements OnInit {
             'Close',
             { duration: 5000 }
           );
-
           // Refresh the issues list
           this.loadIssues(seriesId);
         } else {
@@ -889,7 +885,7 @@ export class SeriesDetailComponent implements OnInit {
             successfulResults,
             seriesId,
             failedCount,
-            files // ADD THIS parameter
+            files
           );
         } else {
           this.snackBar.open(
@@ -914,7 +910,7 @@ export class SeriesDetailComponent implements OnInit {
     results: ImageMatcherResponse[],
     seriesId: number,
     failedCount: number,
-    originalImages?: File[] // ADD THIS parameter to method signature
+    originalImages?: File[]
   ): void {
     const allMatches: ComicMatch[] = [];
 

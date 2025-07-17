@@ -22,7 +22,7 @@ class JavaProgressReporter:
         self.last_progress_time = 0
         self.last_progress_value = -1
         self.last_stage = ""
-        self.min_progress_interval = 0.2  # REDUCED from 0.5 to 0.2 seconds
+        self.min_progress_interval = 0.2
         self.progress_update_count = 0
         self.stage_change_count = 0
         
@@ -55,7 +55,6 @@ class JavaProgressReporter:
         
         current_time = time()
         
-        # CRITICAL: Never rate-limit completion, error, or important events
         is_important_event = (
             stage == 'complete' or 
             'complete' in stage.lower() or 
@@ -69,13 +68,12 @@ class JavaProgressReporter:
         # CRITICAL: Never rate-limit stage changes
         is_stage_change = stage != self.last_stage
         
-        # IMPROVED: Allow more frequent updates for multi-image processing
+        # Allow more frequent updates for multi-image processing
         is_frequent_update_allowed = (
             current_time - self.last_progress_time >= self.min_progress_interval or
-            self.progress_update_count < 5  # Allow first 5 updates regardless of timing
+            self.progress_update_count < 5
         )
         
-        # IMPROVED: Special handling for image processing messages
         is_image_processing_update = (
             message and (
                 'Image ' in message or 
@@ -103,7 +101,7 @@ class JavaProgressReporter:
             payload = {
                 'sessionId': self.session_id,
                 'stage': stage,
-                'progress': min(100, max(0, progress)),  # Clamp between 0-100
+                'progress': min(100, max(0, progress)), 
                 'message': message[:300] if message else ""  # Increased message length for multi-image
             }
             
@@ -187,7 +185,7 @@ class JavaProgressReporter:
                     retry_response = requests.post(
                         f"{self.rest_api_url}/progress/complete",
                         json=payload,
-                        timeout=JAVA_REQUEST_TIMEOUT * 2,  # Double timeout for retry
+                        timeout=JAVA_REQUEST_TIMEOUT * 2,
                         headers={'Content-Type': 'application/json'}
                     )
                     if retry_response.status_code == 200:

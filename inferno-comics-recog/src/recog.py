@@ -81,7 +81,6 @@ def main():
         raise
 
 if __name__ == '__main__':
-    # Add some startup art
     logger.info("=" * 60)
     logger.success(" INFERNO COMICS RECOGNITION SERVICE ")
     logger.info("=" * 60)

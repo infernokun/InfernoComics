@@ -21,7 +21,6 @@ active_evaluations = {}  # Dictionary to store active evaluations by session
 
 # Your existing constants
 SIMILARITY_THRESHOLD = 0.25
-SERIES_ID = 3 # You might want to make this configurable
 
 def ensure_results_directory():
     """Ensure the results directory exists"""

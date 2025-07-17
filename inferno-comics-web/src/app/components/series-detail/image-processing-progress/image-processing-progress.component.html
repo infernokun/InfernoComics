@@ -186,21 +186,23 @@
       <!-- Stage Timeline -->
       <div class="stage-timeline">
         <div *ngFor="let stage of processingStages; let i = index" class="stage-step"
-          [class.completed]="i < currentStageIndex" [class.active]="i === currentStageIndex"
-          [class.pending]="i > currentStageIndex">
-
+          [class.completed]="i < currentStageIndex || (!isProcessing && progress >= 100)"
+          [class.active]="i === currentStageIndex && isProcessing"
+          [class.pending]="i > currentStageIndex && isProcessing">
+  
           <div class="step-connector" *ngIf="i < processingStages.length - 1"></div>
-
+  
           <div class="step-circle">
-            <mat-icon *ngIf="i < currentStageIndex">check</mat-icon>
+            <mat-icon *ngIf="i < currentStageIndex || (!isProcessing && progress >= 100)">check</mat-icon>
             <span *ngIf="i === currentStageIndex && isProcessing" class="step-number">{{ i + 1 }}</span>
-            <span *ngIf="i > currentStageIndex" class="step-number">{{ i + 1 }}</span>
+            <span *ngIf="i > currentStageIndex && isProcessing" class="step-number">{{ i + 1 }}</span>
           </div>
-
+  
           <div class="step-content">
             <span class="step-name">{{ stage.name }}</span>
-            <span class="step-status" *ngIf="i === currentStageIndex">In Progress</span>
-            <span class="step-status" *ngIf="i < currentStageIndex">Completed</span>
+            <span class="step-status" *ngIf="i === currentStageIndex && isProcessing">In Progress</span>
+            <span class="step-status" *ngIf="i < currentStageIndex || (!isProcessing && progress >= 100)">Completed</span>
+            <span class="step-status" *ngIf="i > currentStageIndex && isProcessing">Pending</span>
           </div>
         </div>
       </div>
