@@ -38,7 +38,7 @@ class FeatureMatchingComicMatcher:
         self.db_path = db_path
         self.max_workers = max_workers
         
-        logger.info(f" Initializing Enhanced FeatureMatchingComicMatcher")
+        logger.info(f" Initializing Enhanced 4-Detector FeatureMatchingComicMatcher")
         logger.debug(f" Cache directory: {cache_dir}")
         logger.debug(f"️ Database path: {db_path}")
         logger.debug(f" Max workers: {max_workers}")
@@ -79,12 +79,9 @@ class FeatureMatchingComicMatcher:
             diffusivity=cv2.KAZE_DIFF_PM_G2
         )
 
-        self.brisk = cv2.BRISK_create(
-            thresh=30,        # FAST/AGAST detection threshold
-            octaves=3,        # Number of octaves
-            patternScale=1.0  # Pattern scale
-        )
 
+
+        # KAZE parameters
         self.kaze = cv2.KAZE_create(
             extended=False,           # Use basic descriptors
             upright=False,           # Enable rotation invariance
@@ -103,9 +100,15 @@ class FeatureMatchingComicMatcher:
         self.bf_matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
         self.orb_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
         self.akaze_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+        self.kaze_matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
         
-        # Optimized feature weighting for higher scores
-        self.feature_weights = { 'sift': 0.25, 'orb': 0.25, 'akaze': 0.4, 'brisk': 0.05, 'kaze': 0.05}
+        # Optimized 4-detector feature weighting
+        self.feature_weights = { 
+            'sift': 0.25,    # Keep stable
+            'orb': 0.25,     # Keep stable
+            'akaze': 0.4,    # Keep dominant (proven performer)
+            'kaze': 0.1      # Increased from 5% - KAZE earned it!
+        }
         
         # Enhanced scoring parameters
         self.scoring_params = {
@@ -130,10 +133,10 @@ class FeatureMatchingComicMatcher:
             'processing_time_saved': 0.0
         }
         
-        logger.success("✅ Enhanced FeatureMatchingComicMatcher initialization complete")
+        logger.success("✅ Enhanced 4-Detector FeatureMatchingComicMatcher initialization complete")
 
     def _init_database(self):
-        """Initialize SQLite database with proper schema"""
+        """Initialize SQLite database with proper schema including KAZE"""
         logger.debug("️ Initializing SQLite database...")
         
         conn = sqlite3.connect(self.db_path)
@@ -151,7 +154,7 @@ class FeatureMatchingComicMatcher:
             )
         ''')
         
-        # Table for cached features
+        # Table for cached features (updated with KAZE)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS cached_features (
                 url_hash TEXT PRIMARY KEY,
@@ -165,6 +168,9 @@ class FeatureMatchingComicMatcher:
                 akaze_keypoints BLOB,
                 akaze_descriptors BLOB,
                 akaze_count INTEGER,
+                kaze_keypoints BLOB,
+                kaze_descriptors BLOB,
+                kaze_count INTEGER,
                 processing_time REAL,
                 image_shape TEXT,
                 was_cropped BOOLEAN,
@@ -174,12 +180,12 @@ class FeatureMatchingComicMatcher:
             )
         ''')
         
-        # Add AKAZE columns to existing table if they don't exist
+        # Add KAZE columns to existing table if they don't exist (backwards compatibility)
         try:
-            cursor.execute('ALTER TABLE cached_features ADD COLUMN akaze_keypoints BLOB')
-            cursor.execute('ALTER TABLE cached_features ADD COLUMN akaze_descriptors BLOB')
-            cursor.execute('ALTER TABLE cached_features ADD COLUMN akaze_count INTEGER')
-            logger.debug("✅ Added AKAZE columns to existing database")
+            cursor.execute('ALTER TABLE cached_features ADD COLUMN kaze_keypoints BLOB')
+            cursor.execute('ALTER TABLE cached_features ADD COLUMN kaze_descriptors BLOB')
+            cursor.execute('ALTER TABLE cached_features ADD COLUMN kaze_count INTEGER')
+            logger.debug("✅ Added KAZE columns to existing database")
         except sqlite3.OperationalError:
             # Columns already exist
             pass
@@ -206,7 +212,7 @@ class FeatureMatchingComicMatcher:
         conn.close()
         
         logger.success("✅ Database initialization complete")
-    
+
     def _get_url_hash(self, url: str) -> str:
         """Generate consistent hash for URL"""
         return hashlib.md5(url.encode()).hexdigest()
@@ -267,7 +273,7 @@ class FeatureMatchingComicMatcher:
             # Update last accessed time
             self._update_access_time('cached_images', url_hash)
             self.cache_stats['image_cache_hits'] += 1
-            logger.debug(f" Cache hit for image: {url[:50]}...")
+            logger.debug(f"✅ Cache hit for image: {url[:50]}...")
             return cv2.imread(result[0])
         
         self.cache_stats['image_cache_misses'] += 1
@@ -300,117 +306,127 @@ class FeatureMatchingComicMatcher:
         return file_path
     
     def _get_cached_features(self, url: str) -> Optional[Dict]:
-        """Get cached features from database"""
+        """Get cached features from database - handles all 4 detectors"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         url_hash = self._get_url_hash(url)
-        cursor.execute('''
-            SELECT sift_keypoints, sift_descriptors, sift_count,
-                orb_keypoints, orb_descriptors, orb_count,
-                akaze_keypoints, akaze_descriptors, akaze_count,
-                processing_time, image_shape, was_cropped
-            FROM cached_features 
-            WHERE url_hash = ?
-        ''', (url_hash,))
         
-        result = cursor.fetchone()
-        
-        # Fallback for databases without AKAZE columns
-        if result is None:
+        # Try to get full 4-detector features first
+        try:
             cursor.execute('''
                 SELECT sift_keypoints, sift_descriptors, sift_count,
                     orb_keypoints, orb_descriptors, orb_count,
+                    akaze_keypoints, akaze_descriptors, akaze_count,
+                    kaze_keypoints, kaze_descriptors, kaze_count,
                     processing_time, image_shape, was_cropped
                 FROM cached_features 
                 WHERE url_hash = ?
             ''', (url_hash,))
             
             result = cursor.fetchone()
-            if result:
-                # Add empty AKAZE data for compatibility
-                result = result + (b'', b'', 0)
-        
-        conn.close()
-        
-        if result:
-            # Update last accessed time
-            self._update_access_time('cached_features', url_hash)
-            self.cache_stats['feature_cache_hits'] += 1
             
-            # Handle different result lengths (with/without AKAZE)
-            if len(result) >= 12:  # Full result with AKAZE
-                self.cache_stats['processing_time_saved'] += result[9]  # processing_time
+            if result and len(result) >= 15:  # Full 4-detector result
+                self._update_access_time('cached_features', url_hash)
+                self.cache_stats['feature_cache_hits'] += 1
+                self.cache_stats['processing_time_saved'] += result[12]  # processing_time
                 
-                logger.debug(f" Feature cache hit: {url[:50]}... (saved {result[9]:.2f}s)")
+                logger.debug(f"✅ 4-detector cache hit: {url[:50]}... (saved {result[12]:.2f}s)")
                 
-                # Deserialize features
-                sift_kp = self._deserialize_keypoints(result[0])
-                sift_desc = pickle.loads(result[1]) if result[1] else None
-                orb_kp = self._deserialize_keypoints(result[3])
-                orb_desc = pickle.loads(result[4]) if result[4] else None
-                akaze_kp = self._deserialize_keypoints(result[6])
-                akaze_desc = pickle.loads(result[7]) if result[7] else None
-                
-                return {
+                # Deserialize all features
+                features = {
                     'sift': {
-                        'keypoints': sift_kp,
-                        'descriptors': sift_desc,
-                        'count': result[2]
+                        'keypoints': self._deserialize_keypoints(result[0]),
+                        'descriptors': pickle.loads(result[1]) if result[1] else None,
+                        'count': result[2] or 0
                     },
                     'orb': {
-                        'keypoints': orb_kp,
-                        'descriptors': orb_desc,
-                        'count': result[5]
+                        'keypoints': self._deserialize_keypoints(result[3]),
+                        'descriptors': pickle.loads(result[4]) if result[4] else None,
+                        'count': result[5] or 0
                     },
                     'akaze': {
-                        'keypoints': akaze_kp,
-                        'descriptors': akaze_desc,
-                        'count': result[8]
+                        'keypoints': self._deserialize_keypoints(result[6]),
+                        'descriptors': pickle.loads(result[7]) if result[7] else None,
+                        'count': result[8] or 0
+                    },
+                    'kaze': {
+                        'keypoints': self._deserialize_keypoints(result[9]),
+                        'descriptors': pickle.loads(result[10]) if result[10] else None,
+                        'count': result[11] or 0
+                    },
+                    'processing_time': result[12],
+                    'image_shape': json.loads(result[13]) if result[13] else None,
+                    'was_cropped': bool(result[14])
+                }
+                
+                conn.close()
+                return features
+                
+        except sqlite3.OperationalError:
+            # KAZE columns don't exist yet
+            pass
+        
+        # Fallback: try to get legacy 3-detector features
+        try:
+            cursor.execute('''
+                SELECT sift_keypoints, sift_descriptors, sift_count,
+                    orb_keypoints, orb_descriptors, orb_count,
+                    akaze_keypoints, akaze_descriptors, akaze_count,
+                    processing_time, image_shape, was_cropped
+                FROM cached_features 
+                WHERE url_hash = ?
+            ''', (url_hash,))
+            
+            result = cursor.fetchone()
+            
+            if result:
+                self._update_access_time('cached_features', url_hash)
+                self.cache_stats['feature_cache_hits'] += 1
+                self.cache_stats['processing_time_saved'] += result[9]  # processing_time
+                
+                logger.debug(f"✅ Legacy 3-detector cache hit: {url[:50]}... (saved {result[9]:.2f}s)")
+                
+                features = {
+                    'sift': {
+                        'keypoints': self._deserialize_keypoints(result[0]),
+                        'descriptors': pickle.loads(result[1]) if result[1] else None,
+                        'count': result[2] or 0
+                    },
+                    'orb': {
+                        'keypoints': self._deserialize_keypoints(result[3]),
+                        'descriptors': pickle.loads(result[4]) if result[4] else None,
+                        'count': result[5] or 0
+                    },
+                    'akaze': {
+                        'keypoints': self._deserialize_keypoints(result[6]),
+                        'descriptors': pickle.loads(result[7]) if result[7] else None,
+                        'count': result[8] or 0
+                    },
+                    'kaze': {
+                        'keypoints': [],
+                        'descriptors': None,
+                        'count': 0
                     },
                     'processing_time': result[9],
                     'image_shape': json.loads(result[10]) if result[10] else None,
                     'was_cropped': bool(result[11])
                 }
-            else:  # Legacy result without AKAZE
-                self.cache_stats['processing_time_saved'] += result[6]  # processing_time
                 
-                logger.debug(f" Feature cache hit (legacy): {url[:50]}... (saved {result[6]:.2f}s)")
+                conn.close()
+                return features
                 
-                # Deserialize features
-                sift_kp = self._deserialize_keypoints(result[0])
-                sift_desc = pickle.loads(result[1]) if result[1] else None
-                orb_kp = self._deserialize_keypoints(result[3])
-                orb_desc = pickle.loads(result[4]) if result[4] else None
-                
-                return {
-                    'sift': {
-                        'keypoints': sift_kp,
-                        'descriptors': sift_desc,
-                        'count': result[2]
-                    },
-                    'orb': {
-                        'keypoints': orb_kp,
-                        'descriptors': orb_desc,
-                        'count': result[5]
-                    },
-                    'akaze': {
-                        'keypoints': [],
-                        'descriptors': None,
-                        'count': 0
-                    },
-                    'processing_time': result[6],
-                    'image_shape': json.loads(result[7]) if result[7] else None,
-                    'was_cropped': bool(result[8])
-                }
+        except sqlite3.OperationalError:
+            pass
         
+        conn.close()
         self.cache_stats['feature_cache_misses'] += 1
         logger.debug(f"❌ Feature cache miss: {url[:50]}...")
         return None
 
     def _cache_features(self, url: str, features: Dict, processing_time: float, 
-                    image_shape: Tuple, was_cropped: bool):
-        """Cache features to database including AKAZE"""
+                       image_shape: Tuple, was_cropped: bool):
+        """Cache features to database including all 4 detectors"""
         url_hash = self._get_url_hash(url)
         
         # Serialize all features
@@ -420,6 +436,8 @@ class FeatureMatchingComicMatcher:
         orb_desc_data = pickle.dumps(features['orb']['descriptors']) if features['orb']['descriptors'] is not None else b''
         akaze_kp_data = self._serialize_keypoints(features['akaze']['keypoints'])
         akaze_desc_data = pickle.dumps(features['akaze']['descriptors']) if features['akaze']['descriptors'] is not None else b''
+        kaze_kp_data = self._serialize_keypoints(features['kaze']['keypoints'])
+        kaze_desc_data = pickle.dumps(features['kaze']['descriptors']) if features['kaze']['descriptors'] is not None else b''
         
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -429,12 +447,15 @@ class FeatureMatchingComicMatcher:
             (url_hash, url, sift_keypoints, sift_descriptors, sift_count,
             orb_keypoints, orb_descriptors, orb_count, 
             akaze_keypoints, akaze_descriptors, akaze_count,
+            kaze_keypoints, kaze_descriptors, kaze_count,
             processing_time, image_shape, was_cropped, created_at, last_accessed)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            url_hash, url, sift_kp_data, sift_desc_data, features['sift']['count'],
+            url_hash, url, 
+            sift_kp_data, sift_desc_data, features['sift']['count'],
             orb_kp_data, orb_desc_data, features['orb']['count'],
             akaze_kp_data, akaze_desc_data, features['akaze']['count'],
+            kaze_kp_data, kaze_desc_data, features['kaze']['count'],
             processing_time, json.dumps(image_shape), was_cropped, 
             datetime.now(), datetime.now()
         ))
@@ -442,7 +463,7 @@ class FeatureMatchingComicMatcher:
         conn.commit()
         conn.close()
         
-        logger.debug(f" Cached features: SIFT={features['sift']['count']}, ORB={features['orb']['count']}, AKAZE={features['akaze']['count']} ({processing_time:.2f}s)")
+        logger.debug(f" Cached 4-detector features: SIFT={features['sift']['count']}, ORB={features['orb']['count']}, AKAZE={features['akaze']['count']}, KAZE={features['kaze']['count']} ({processing_time:.2f}s)")
     
     def _update_access_time(self, table: str, url_hash: str):
         """Update last accessed time for cache entry"""
@@ -705,7 +726,7 @@ class FeatureMatchingComicMatcher:
         return processed
 
     def extract_features(self, image):
-        """Extract features using SIFT, ORB, and AKAZE"""
+        """Extract features using 4 detectors: SIFT, ORB, AKAZE, and KAZE"""
         if image is None:
             return None
         
@@ -723,7 +744,7 @@ class FeatureMatchingComicMatcher:
                 'descriptors': sift_desc,
                 'count': len(sift_kp) if sift_kp else 0
             }
-            logger.debug(f" SIFT features extracted: {features['sift']['count']}")
+            logger.debug(f" SIFT features extracted: {features['sift']['count']}")
         except Exception as e:
             logger.warning(f"⚠️ SIFT feature extraction failed: {e}")
             features['sift'] = {'keypoints': [], 'descriptors': None, 'count': 0}
@@ -736,7 +757,7 @@ class FeatureMatchingComicMatcher:
                 'descriptors': orb_desc,
                 'count': len(orb_kp) if orb_kp else 0
             }
-            logger.debug(f" ORB features extracted: {features['orb']['count']}")
+            logger.debug(f" ORB features extracted: {features['orb']['count']}")
         except Exception as e:
             logger.warning(f"⚠️ ORB feature extraction failed: {e}")
             features['orb'] = {'keypoints': [], 'descriptors': None, 'count': 0}
@@ -749,10 +770,23 @@ class FeatureMatchingComicMatcher:
                 'descriptors': akaze_desc,
                 'count': len(akaze_kp) if akaze_kp else 0
             }
-            logger.debug(f" AKAZE features extracted: {features['akaze']['count']}")
+            logger.debug(f" AKAZE features extracted: {features['akaze']['count']}")
         except Exception as e:
             logger.warning(f"⚠️ AKAZE feature extraction failed: {e}")
             features['akaze'] = {'keypoints': [], 'descriptors': None, 'count': 0}
+        
+        # KAZE features (Non-linear diffusion) - The new star performer!
+        try:
+            kaze_kp, kaze_desc = self.kaze.detectAndCompute(processed, None)
+            features['kaze'] = {
+                'keypoints': kaze_kp,
+                'descriptors': kaze_desc,
+                'count': len(kaze_kp) if kaze_kp else 0
+            }
+            logger.debug(f" KAZE features extracted: {features['kaze']['count']}")
+        except Exception as e:
+            logger.warning(f"⚠️ KAZE feature extraction failed: {e}")
+            features['kaze'] = {'keypoints': [], 'descriptors': None, 'count': 0}
         
         return features
     
@@ -774,7 +808,7 @@ class FeatureMatchingComicMatcher:
         features = self.extract_features(cropped_image)
         processing_time = time.time() - start_time
         
-        logger.debug(f" Feature extraction took {processing_time:.2f}s")
+        logger.debug(f"⏱️ Feature extraction took {processing_time:.2f}s")
         
         if features is not None:
             # Cache the features
@@ -784,7 +818,7 @@ class FeatureMatchingComicMatcher:
         return features
     
     def match_features(self, query_features, candidate_features):
-        """Enhanced feature matching with geometric verification and adaptive scoring"""
+        """Enhanced feature matching with 4 detectors and geometric verification"""
         if not query_features or not candidate_features:
             return 0.0, {}
         
@@ -809,6 +843,12 @@ class FeatureMatchingComicMatcher:
         if akaze_similarity > 0:
             similarities.append(('akaze', akaze_similarity, self.feature_weights['akaze']))
             geometric_scores.append(akaze_geometric)
+        
+        # KAZE matching - The new star performer!
+        kaze_similarity, kaze_geometric = self._match_kaze_enhanced(query_features, candidate_features, match_results)
+        if kaze_similarity > 0:
+            similarities.append(('kaze', kaze_similarity, self.feature_weights['kaze']))
+            geometric_scores.append(kaze_geometric)
         
         # Enhanced combination with geometric consistency
         if similarities:
@@ -839,7 +879,7 @@ class FeatureMatchingComicMatcher:
                 # Ensure we don't exceed 1.0 but allow high scores
                 overall_similarity = min(0.95, boosted_similarity)  # Cap at 95% to be realistic
                 
-                logger.debug(f" Enhanced similarity: {overall_similarity:.3f} (base: {base_similarity:.3f}, boost applied)")
+                logger.debug(f" Enhanced 4-detector similarity: {overall_similarity:.3f} (base: {base_similarity:.3f}, {len(similarities)} detectors)")
             else:
                 overall_similarity = 0.0
         else:
@@ -1041,16 +1081,93 @@ class FeatureMatchingComicMatcher:
             logger.warning(f"⚠️ Enhanced AKAZE matching error: {e}")
             match_results['akaze'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
             return 0.0, 0.0
+    
+    def _match_kaze_enhanced(self, query_features, candidate_features, match_results):
+        """Enhanced KAZE matching with geometric verification"""
+        if (query_features.get('kaze', {}).get('descriptors') is None or 
+            candidate_features.get('kaze', {}).get('descriptors') is None or
+            len(query_features['kaze']['descriptors']) < 8 or
+            len(candidate_features['kaze']['descriptors']) < 8):
+            return 0.0, 0.0
+        
+        try:
+            matches = self.kaze_matcher.knnMatch(
+                query_features['kaze']['descriptors'], 
+                candidate_features['kaze']['descriptors'], 
+                k=2
+            )
+            
+            good_matches = []
+            distances = []
+            for match_pair in matches:
+                if len(match_pair) >= 2:
+                    m, n = match_pair[0], match_pair[1]
+                    ratio_threshold = 0.75  # Standard threshold for KAZE
+                    if m.distance < ratio_threshold * n.distance:
+                        good_matches.append(m)
+                        distances.append(m.distance)
+            
+            geometric_score = 0.0
+            
+            # Geometric verification for KAZE
+            if len(good_matches) >= 8:
+                # Extract keypoint coordinates properly
+                query_kpts = query_features['kaze']['keypoints']
+                candidate_kpts = candidate_features['kaze']['keypoints']
+                
+                query_pts = np.float32([query_kpts[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+                candidate_pts = np.float32([candidate_kpts[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+                
+                try:
+                    M, mask = cv2.findHomography(query_pts, candidate_pts, cv2.RANSAC, 5.0)
+                    if M is not None and mask is not None:
+                        inliers = int(np.sum(mask))
+                        geometric_score = float(inliers / len(good_matches))
+                except Exception as geo_e:
+                    geometric_score = 0.4
+                    logger.debug(f"KAZE geometric verification failed: {geo_e}")
+            
+            # KAZE similarity calculation with quality bonus
+            total_features = min(query_features['kaze']['count'], candidate_features['kaze']['count'])
+            if total_features > 0:
+                match_ratio = len(good_matches) / total_features
+                
+                # Quality bonus based on average distance (similar to SIFT)
+                if distances:
+                    avg_distance = sum(distances) / len(distances)
+                    distance_quality = max(0, (150 - avg_distance) / 150)  # Adjusted for KAZE distances
+                    quality_bonus = distance_quality * 0.15
+                else:
+                    quality_bonus = 0
+                
+                similarity = match_ratio + quality_bonus + (geometric_score * 0.1)
+            else:
+                similarity = 0.0
+            
+            match_results['kaze'] = {
+                'total_matches': int(len(matches)),
+                'good_matches': int(len(good_matches)),
+                'geometric_score': float(geometric_score),
+                'similarity': float(similarity)
+            }
+            
+            logger.debug(f" Enhanced KAZE: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
+            return similarity, geometric_score
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Enhanced KAZE matching error: {e}")
+            match_results['kaze'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
+            return 0.0, 0.0
 
     def find_matches_img(self, query_image, candidate_urls, threshold=0.1, progress_callback=None):
         """Main matching function with caching support and progress callback"""
-        logger.info(" Starting Cached Feature Matching Comic Search...")
+        logger.info(" Starting Cached 4-Detector Feature Matching Comic Search...")
         start_time = time.time()
         
         if query_image is None:
             raise ValueError("Query image data is None")
         
-        logger.info(f" Received query image: {query_image.shape}")
+        logger.info(f"️ Received query image: {query_image.shape}")
         
         # Process query image (not cached since it's user input)
         # Use safe progress callback for initial processing
@@ -1062,10 +1179,10 @@ class FeatureMatchingComicMatcher:
         if not query_features:
             raise ValueError("Could not extract features from query image")
         
-        logger.success(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
+        logger.success(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}, AKAZE: {query_features['akaze']['count']}, KAZE: {query_features['kaze']['count']}")
         
         # Use safe progress callback for feature extraction completion
-        safe_progress_callback(progress_callback, 1, f"Query features extracted - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}")
+        safe_progress_callback(progress_callback, 1, f"Query features extracted - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}, AKAZE: {query_features['akaze']['count']}, KAZE: {query_features['kaze']['count']}")
         
         # Process candidates with caching
         logger.info(f"⬇️ Processing {len(candidate_urls)} candidate images (with caching)...")
@@ -1086,7 +1203,7 @@ class FeatureMatchingComicMatcher:
         
         # Use ThreadPoolExecutor for parallel processing with progress tracking
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            logger.debug(f" Using {self.max_workers} worker threads")
+            logger.debug(f" Using {self.max_workers} worker threads")
             
             # Submit all jobs
             future_to_url = {}
@@ -1105,7 +1222,7 @@ class FeatureMatchingComicMatcher:
                     if result:
                         results.append(result)
                         if result.get('similarity', 0) >= threshold:
-                            logger.debug(f" Good match found: {url[:50]}... (similarity: {result['similarity']:.3f})")
+                            logger.debug(f"✅ Good match found: {url[:50]}... (similarity: {result['similarity']:.3f})")
                     
                     # Send progress update every batch_size completions or for the last few
                     if completed % batch_size == 0 or completed >= total_candidates - 5:
@@ -1139,8 +1256,8 @@ class FeatureMatchingComicMatcher:
         safe_progress_callback(progress_callback, total_candidates + 3, f"Completed analysis - found {len(good_matches)} matches above threshold")
         
         total_time = time.time() - start_time
-        logger.success(f"✨ Cached feature matching completed in {total_time:.2f}s")
-        logger.info(f" Found {len(good_matches)} matches above threshold ({threshold})")
+        logger.success(f"✨ Cached 4-detector feature matching completed in {total_time:.2f}s")
+        logger.info(f" Found {len(good_matches)} matches above threshold ({threshold})")
         
         if good_matches:
             logger.info(f" Top match: {good_matches[0]['url'][:50]}... (similarity: {good_matches[0]['similarity']:.3f})")
@@ -1173,7 +1290,9 @@ class FeatureMatchingComicMatcher:
                 'match_details': match_details,
                 'candidate_features': {
                     'sift_count': candidate_features['sift']['count'],
-                    'orb_count': candidate_features['orb']['count']
+                    'orb_count': candidate_features['orb']['count'],
+                    'akaze_count': candidate_features['akaze']['count'],
+                    'kaze_count': candidate_features['kaze']['count']
                 }
             }
             
@@ -1188,7 +1307,7 @@ class FeatureMatchingComicMatcher:
             }
         
     def get_cache_stats(self) -> Dict:
-        """Get cache performance statistics including AKAZE"""
+        """Get cache performance statistics including all 4 detectors"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -1205,12 +1324,14 @@ class FeatureMatchingComicMatcher:
         cursor.execute('SELECT SUM(processing_time) FROM cached_features')
         total_processing_time = cursor.fetchone()[0] or 0
         
-        # Get AKAZE statistics
-        try:
-            cursor.execute('SELECT COUNT(*) FROM cached_features WHERE akaze_count > 0')
-            akaze_features_count = cursor.fetchone()[0]
-        except sqlite3.OperationalError:
-            akaze_features_count = 0
+        # Get detector-specific statistics
+        detector_stats = {}
+        for detector in ['akaze', 'kaze']:
+            try:
+                cursor.execute(f'SELECT COUNT(*) FROM cached_features WHERE {detector}_count > 0')
+                detector_stats[f'{detector}_features_count'] = cursor.fetchone()[0]
+            except sqlite3.OperationalError:
+                detector_stats[f'{detector}_features_count'] = 0
         
         conn.close()
         
@@ -1221,10 +1342,9 @@ class FeatureMatchingComicMatcher:
         image_hit_rate = (self.cache_stats['image_cache_hits'] / total_image_requests * 100) if total_image_requests > 0 else 0
         feature_hit_rate = (self.cache_stats['feature_cache_hits'] / total_feature_requests * 100) if total_feature_requests > 0 else 0
         
-        return {
+        stats = {
             'cached_images_count': cached_images_count,
             'cached_features_count': cached_features_count,
-            'akaze_features_count': akaze_features_count,
             'total_disk_usage_mb': total_disk_usage / (1024 * 1024),
             'total_processing_time_saved': self.cache_stats['processing_time_saved'],
             'image_cache_hit_rate': image_hit_rate,
@@ -1234,28 +1354,34 @@ class FeatureMatchingComicMatcher:
             'feature_cache_hits': self.cache_stats['feature_cache_hits'],
             'feature_cache_misses': self.cache_stats['feature_cache_misses']
         }
+        
+        # Add detector-specific stats
+        stats.update(detector_stats)
+        
+        return stats
     
     def print_cache_stats(self):
-        """Print cache statistics in a nice format including AKAZE"""
+        """Print cache statistics for all 4 detectors"""
         stats = self.get_cache_stats()
         
-        logger.info("\n" + "="*50)
-        logger.info(" ENHANCED CACHE PERFORMANCE STATISTICS")
-        logger.info("="*50)
-        logger.info(f" Cached Images: {stats['cached_images_count']}")
+        logger.info("\n" + "="*60)
+        logger.info(" 4-DETECTOR OPTIMIZED CACHE PERFORMANCE STATISTICS")
+        logger.info("="*60)
+        logger.info(f" Cached Images: {stats['cached_images_count']}")
         logger.info(f" Cached Features: {stats['cached_features_count']}")
-        logger.info(f"⚡ AKAZE Features: {stats['akaze_features_count']}")
+        logger.info(f"⚡ AKAZE Features: {stats.get('akaze_features_count', 0)}")
+        logger.info(f" KAZE Features: {stats.get('kaze_features_count', 0)}")
         logger.info(f" Disk Usage: {stats['total_disk_usage_mb']:.1f} MB")
         logger.info(f"⏱️ Processing Time Saved: {stats['total_processing_time_saved']:.2f} seconds")
-        logger.info(f" Image Cache Hit Rate: {stats['image_cache_hit_rate']:.1f}%")
-        logger.info(f" Feature Cache Hit Rate: {stats['feature_cache_hit_rate']:.1f}%")
+        logger.info(f" Image Cache Hit Rate: {stats['image_cache_hit_rate']:.1f}%")
+        logger.info(f" Feature Cache Hit Rate: {stats['feature_cache_hit_rate']:.1f}%")
         logger.info(f"✅ Image Cache Hits: {stats['image_cache_hits']}")
         logger.info(f"❌ Image Cache Misses: {stats['image_cache_misses']}")
         logger.info(f"✅ Feature Cache Hits: {stats['feature_cache_hits']}")
         logger.info(f"❌ Feature Cache Misses: {stats['feature_cache_misses']}")
         
         if stats['total_processing_time_saved'] > 0:
-            logger.success(f" Efficiency Gained: {stats['total_processing_time_saved']:.1f}s saved with enhanced features!")
+            logger.success(f" Efficiency Gained: {stats['total_processing_time_saved']:.1f}s saved with optimized 4-detector system!")
     
     def cleanup_old_cache(self, days_old: int = 30):
         """Remove cache entries older than specified days"""

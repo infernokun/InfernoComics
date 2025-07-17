@@ -14,6 +14,7 @@ export interface ComicMatch {
     orb: { good_matches: number; similarity: number; total_matches: number };
     sift: { good_matches: number; similarity: number; total_matches: number };
     akaze: { good_matches: number; similarity: number; total_matches: number; };
+    kaze: { good_matches: number; similarity: number; total_matches: number; };
   };
   candidate_features: { orb_count: number; sift_count: number };
   comic_name: string;
@@ -45,9 +46,9 @@ export interface BulkSelectionDialogData {
   originalImages: File[];
   isMultiple: boolean;
   // Thresholds for auto-selection
-  highConfidenceThreshold?: number; // Default: 0.25
-  mediumConfidenceThreshold?: number; // Default: 0.15
-  autoSelectHighConfidence?: boolean; // Default: true
+  highConfidenceThreshold?: number;
+  mediumConfidenceThreshold?: number;
+  autoSelectHighConfidence?: boolean;
 }
 
 @Component({
@@ -62,16 +63,16 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   currentFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match' = 'all';
 
   private imagePreviewUrls: string[] = [];
-  private highConfidenceThreshold = 0.25;
-  private mediumConfidenceThreshold = 0.15;
+  private highConfidenceThreshold: number = 0.70;
+  private mediumConfidenceThreshold: number = 0.55;
 
   constructor(
     public dialogRef: MatDialogRef<BulkComicSelectionComponent>,
     private dialog: MatDialog,
     @Inject(MAT_DIALOG_DATA) public data: BulkSelectionDialogData
   ) {
-    this.highConfidenceThreshold = data.highConfidenceThreshold || 0.25;
-    this.mediumConfidenceThreshold = data.mediumConfidenceThreshold || 0.15;
+    this.highConfidenceThreshold = data.highConfidenceThreshold || 0.70;
+    this.mediumConfidenceThreshold = data.mediumConfidenceThreshold || 0.55;
   }
 
   ngOnInit(): void {

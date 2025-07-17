@@ -734,8 +734,8 @@ export class SeriesDetailComponent implements OnInit {
       sessionId: result.session_id,
       originalImages: originalImages,
       isMultiple: true,
-      highConfidenceThreshold: 0.25,
-      mediumConfidenceThreshold: 0.15,
+      highConfidenceThreshold: 0.70,
+      mediumConfidenceThreshold: 0.55,
       autoSelectHighConfidence: true,
     };
 

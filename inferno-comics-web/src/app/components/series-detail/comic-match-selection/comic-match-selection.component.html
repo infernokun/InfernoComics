@@ -145,6 +145,13 @@
                 <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.akaze)"></div>
               </div>
             </div>
+            <div class="feature">
+              <span class="label">KAZE:</span>
+              <span class="value">{{ match.match_details.kaze.good_matches }}/{{ match.match_details.kaze.total_matches }}</span>
+              <div class="bar">
+                <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.kaze)"></div>
+              </div>
+            </div>
           </div>
 
           <!-- Confidence Bar -->

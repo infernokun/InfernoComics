@@ -13,6 +13,7 @@ export interface ComicMatch {
     orb: { good_matches: number; similarity: number; total_matches: number; };
     sift: { good_matches: number; similarity: number; total_matches: number; };
     akaze: { good_matches: number; similarity: number; total_matches: number; };
+    kaze: { good_matches: number; similarity: number; total_matches: number; };
   };
   candidate_features: { orb_count: number; sift_count: number; };
   comic_name: string;
