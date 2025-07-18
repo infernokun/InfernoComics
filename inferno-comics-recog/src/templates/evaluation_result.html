@@ -162,6 +162,21 @@
             border-radius: 4px;
             margin-bottom: 10px;
             border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+        }
+
+        .image-placeholder {
+            max-width: 100%;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-muted);
+            font-style: italic;
         }
 
         .image-name {
@@ -269,6 +284,46 @@
             margin-top: 30px;
             margin-bottom: 20px;
         }
+
+        .match-images {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .match-image {
+            text-align: center;
+        }
+
+        .match-image img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+        }
+
+        .match-image .similarity {
+            font-size: 12px;
+            margin-top: 4px;
+            color: var(--text-muted);
+        }
+
+        .match-image.threshold-met img {
+            border: 2px solid var(--success-color);
+        }
+
+        .query-type-badge {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--accent-primary);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -279,10 +334,13 @@
 
     <div class="container">
         <div class="header">
-            <h1 class="title">{{ result.series_name }} ({{ result.year }})</h1>
+            <h1 class="title">{{ result.series_name }}{% if result.year %} ({{ result.year }}){% endif %}</h1>
             <p class="subtitle">
                 Evaluation completed on {{ result.timestamp }}<br>
                 Session ID: {{ result.session_id }}
+                {% if result.query_type %}
+                <br><span class="query-type-badge">{{ result.query_type.replace('_', ' ').title() }}</span>
+                {% endif %}
             </p>
         </div>
 
@@ -312,20 +370,39 @@
                 <div class="stat-value">{{ "%.4f"|format(result.best_similarity) }}</div>
                 <div class="stat-label">Best Similarity</div>
             </div>
+            {% if result.total_covers_processed %}
+            <div class="stat-card">
+                <div class="stat-value">{{ result.total_covers_processed }}</div>
+                <div class="stat-label">Covers Processed</div>
+            </div>
+            {% endif %}
         </div>
 
         <div class="actions">
-            <a href="#" class="btn" id="newEvaluationBtn">🔄 New Evaluation</a>
-            <a href="#" class="btn btn-secondary" id="viewAllResultsBtn">📋 View All Results</a>
-            <a href="#" class="btn btn-secondary" id="downloadJsonBtn">💾 Download JSON</a>
+            <a href="#" class="btn" id="newEvaluationBtn"> New Evaluation</a>
+            <a href="#" class="btn btn-secondary" id="viewAllResultsBtn"> View All Results</a>
+            <a href="#" class="btn btn-secondary" id="downloadJsonBtn"> Download JSON</a>
         </div>
 
         <h2>Detailed Results</h2>
         <div class="results-grid">
             {% for item in result.results %}
             <div class="result-card {% if item.api_success %}{% if item.match_success %}success{% else %}warning{% endif %}{% else %}error{% endif %}">
-                {% if item.image_base64 %}
+                
+                <!-- Display stored image using image_url instead of image_base64 -->
+                {% if item.image_url %}
+                <img src="{{ item.image_url }}" alt="{{ item.image_name }}" class="image-preview" 
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="image-placeholder" style="display: none;">
+                    Image not available
+                </div>
+                {% elif item.image_base64 %}
+                <!-- Fallback for legacy base64 data -->
                 <img src="{{ item.image_base64 }}" alt="{{ item.image_name }}" class="image-preview">
+                {% else %}
+                <div class="image-placeholder">
+                    No image available
+                </div>
                 {% endif %}
                 
                 <div class="image-name">{{ item.image_name }}</div>
@@ -358,11 +435,33 @@
                 {% if item.matches %}
                 <div class="matches-section">
                     <strong>Top Matches ({{ item.total_matches }} total):</strong>
+                    
+                    <!-- Show visual match previews if local_url is available -->
+                    {% set visual_matches = item.matches|selectattr('local_url')|list %}
+                    {% if visual_matches %}
+                    <div class="match-images">
+                        {% for match in visual_matches[:6] %}
+                        <div class="match-image {% if match.meets_threshold %}threshold-met{% endif %}">
+                            <img src="{{ match.local_url }}" alt="Match {{ loop.index }}"
+                                 onerror="this.style.display='none';">
+                            <div class="similarity">{{ "%.3f"|format(match.similarity) }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- List all matches with URLs -->
                     {% for match in item.matches %}
                     <div class="match-item {% if match.meets_threshold %}threshold-met{% endif %}">
                         <span class="match-similarity">{{ "%.4f"|format(match.similarity) }}</span>
                         {% if match.url %}
-                        <a href="{{ match.url }}" target="_blank" class="match-url">{{ match.url }}</a>
+                        <a href="{{ match.url }}" target="_blank" class="match-url">
+                            {% if match.comic_name and match.issue_number %}
+                                {{ match.comic_name }} #{{ match.issue_number }}
+                            {% else %}
+                                {{ match.url }}
+                            {% endif %}
+                        </a>
                         {% else %}
                         <span class="match-url">No URL provided</span>
                         {% endif %}
@@ -392,7 +491,7 @@
             const themeText = document.getElementById('themeText');
             
             if (theme === 'light') {
-                themeIcon.textContent = '🌙';
+                themeIcon.textContent = '';
                 themeText.textContent = 'Dark';
             } else {
                 themeIcon.textContent = '☀️';
@@ -427,9 +526,18 @@
             // Initialize theme
             initializeTheme();
             
+            // Set navigation URLs based on query type
+            {% if result.query_type and 'image' in result.query_type %}
+            // For image search results, go to image matcher pages
+            document.getElementById('newEvaluationBtn').href = getApiUrl('/image-matcher');
+            document.getElementById('viewAllResultsBtn').href = getApiUrl('/evaluation/list'); // Still use evaluation list
+            document.getElementById('downloadJsonBtn').href = getApiUrl(`/image-matcher/${sessionId}/data`);
+            {% else %}
+            // For folder evaluation results, go to evaluation pages
             document.getElementById('newEvaluationBtn').href = getApiUrl('/evaluation');
             document.getElementById('viewAllResultsBtn').href = getApiUrl('/evaluation/list');
             document.getElementById('downloadJsonBtn').href = getApiUrl(`/evaluation/${sessionId}/data`);
+            {% endif %}
         });
     </script>
 </body>

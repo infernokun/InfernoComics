@@ -3,6 +3,10 @@ import cv2
 import time
 import json
 import uuid
+from urllib.parse import urljoin
+import requests
+import shutil
+import hashlib
 import queue
 import base64
 import traceback
@@ -13,7 +17,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from models.JavaProgressReporter import JavaProgressReporter
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
-from flask import Blueprint, jsonify, request, Response, current_app, render_template
+from flask import Blueprint, jsonify, request, Response, current_app, render_template, send_file, abort
 
 logger = get_logger(__name__)
 
@@ -29,6 +33,278 @@ executor = ThreadPoolExecutor(max_workers=3)
 
 # Constants
 SIMILARITY_THRESHOLD = 0.55
+
+def ensure_images_directory():
+    """Ensure the stored images directory exists"""
+    # Use absolute path or go up one directory from src/
+    import os
+
+    # Get the parent directory of the src folder
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    parent_dir = os.path.dirname(current_dir)
+    images_dir = os.path.join(parent_dir, 'stored_images')
+
+    if not os.path.exists(images_dir):
+        os.makedirs(images_dir)
+        logger.debug(f"Created stored images directory: {images_dir}")
+    return images_dir
+
+def get_image_hash(image_data):
+    """Generate a hash for the image data to avoid duplicates"""
+    if isinstance(image_data, np.ndarray):
+        # For numpy arrays, encode as PNG first
+        _, buffer = cv2.imencode('.png', image_data)
+        image_bytes = buffer.tobytes()
+    elif isinstance(image_data, str) and image_data.startswith('data:image'):
+        # Extract base64 data
+        header, base64_data = image_data.split(',', 1)
+        image_bytes = base64.b64decode(base64_data)
+    elif isinstance(image_data, str):
+        # Assume it's already base64 without header
+        image_bytes = base64.b64decode(image_data)
+    else:
+        # Raw bytes
+        image_bytes = image_data
+    
+    return hashlib.md5(image_bytes).hexdigest()
+
+def save_image_to_storage(image_data, session_id, image_name, image_type='query'):
+    """
+    Save image to server storage and return URL
+    
+    Args:
+        image_data: Raw image bytes, base64 string, or numpy array
+        session_id: Session identifier
+        image_name: Original image filename
+        image_type: 'query' for uploaded images, 'candidate' for matched images
+    
+    Returns:
+        str: URL path to access the stored image
+    """
+    try:
+        images_dir = ensure_images_directory()
+        
+        # Create session subdirectory
+        session_dir = os.path.join(images_dir, session_id)
+        if not os.path.exists(session_dir):
+            os.makedirs(session_dir)
+        
+        # Handle different input types
+        if isinstance(image_data, np.ndarray):
+            # OpenCV image array - encode as JPEG
+            _, buffer = cv2.imencode('.jpg', image_data, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            image_bytes = buffer.tobytes()
+        elif isinstance(image_data, str) and image_data.startswith('data:image'):
+            # Extract base64 data
+            header, base64_data = image_data.split(',', 1)
+            image_bytes = base64.b64decode(base64_data)
+        elif isinstance(image_data, str):
+            # Assume it's already base64 without header
+            image_bytes = base64.b64decode(image_data)
+        else:
+            # Raw bytes
+            image_bytes = image_data
+        
+        # Generate unique filename with hash to avoid duplicates
+        image_hash = get_image_hash(image_data)
+        file_extension = os.path.splitext(image_name)[1] or '.jpg'
+        stored_filename = f"{image_type}_{image_hash}{file_extension}"
+        stored_path = os.path.join(session_dir, stored_filename)
+        
+        # Save image if it doesn't already exist
+        if not os.path.exists(stored_path):
+            with open(stored_path, 'wb') as f:
+                f.write(image_bytes)
+            logger.debug(f"Saved image to {stored_path}")
+        else:
+            logger.debug(f"Image already exists at {stored_path}")
+        
+        # Return URL path (relative to the web server)
+        return f"/stored_images/{session_id}/{stored_filename}"
+        
+    except Exception as e:
+        logger.error(f"Error saving image to storage: {e}")
+        return None
+
+def copy_external_image_to_storage(image_url, session_id, comic_name, issue_number):
+    """
+    Download and store an external image (like ComicVine covers) locally
+    
+    Args:
+        image_url: URL of the external image
+        session_id: Session identifier  
+        comic_name: Name of the comic
+        issue_number: Issue number
+    
+    Returns:
+        str: Local URL path to the stored image, or original URL if failed
+    """
+    try:
+        # Create a safe filename
+        safe_comic_name = "".join(c for c in comic_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        safe_filename = f"candidate_{safe_comic_name}_{issue_number}"
+        
+        # Try to get file extension from URL
+        parsed_url = image_url.split('?')[0]  # Remove query parameters
+        file_extension = os.path.splitext(parsed_url)[1] or '.jpg'
+        
+        images_dir = ensure_images_directory()
+        session_dir = os.path.join(images_dir, session_id)
+        if not os.path.exists(session_dir):
+            os.makedirs(session_dir)
+        
+        stored_filename = f"{safe_filename}{file_extension}"
+        stored_path = os.path.join(session_dir, stored_filename)
+        
+        # Download and save image if it doesn't exist
+        if not os.path.exists(stored_path):
+            response = requests.get(image_url, timeout=10, stream=True)
+            response.raise_for_status()
+            
+            with open(stored_path, 'wb') as f:
+                shutil.copyfileobj(response.raw, f)
+            
+            logger.debug(f"Downloaded and saved external image to {stored_path}")
+        
+        return f"/stored_images/{session_id}/{stored_filename}"
+        
+    except Exception as e:
+        logger.warning(f"Failed to download external image {image_url}: {e}")
+        # Return original URL as fallback
+        return image_url
+
+def get_full_image_url(relative_url, request):
+    """Convert relative image URLs to full URLs for frontend"""
+    if not relative_url:
+        return None
+    
+    if relative_url.startswith('http'):
+        return relative_url  # Already a full URL
+    
+    # Build full URL using Flask request context
+    return urljoin(request.url_root, relative_url.lstrip('/'))
+
+def prepare_result_for_template(result_data, request):
+    """Prepare result data for template rendering with full image URLs"""
+    if not result_data:
+        return result_data
+    
+    # Create a copy to avoid modifying original
+    result_copy = json.loads(json.dumps(result_data))
+    
+    # Convert relative URLs to full URLs
+    for result in result_copy.get('results', []):
+        if result.get('image_url'):
+            result['image_url'] = get_full_image_url(result['image_url'], request)
+        
+        for match in result.get('matches', []):
+            if match.get('local_url'):
+                match['local_url'] = get_full_image_url(match['local_url'], request)
+    
+    return result_copy
+
+def cleanup_old_stored_images():
+    """Clean up stored images older than 7 days"""
+    try:
+        images_dir = ensure_images_directory()
+        current_time = datetime.now()
+        cutoff_time = current_time - timedelta(days=7)
+        
+        cleaned_count = 0
+        for session_dir in os.listdir(images_dir):
+            session_path = os.path.join(images_dir, session_dir)
+            if os.path.isdir(session_path):
+                # Check if directory is older than cutoff
+                dir_modified = datetime.fromtimestamp(os.path.getmtime(session_path))
+                if dir_modified < cutoff_time:
+                    try:
+                        shutil.rmtree(session_path)
+                        cleaned_count += 1
+                        logger.info(f"Cleaned up old image directory: {session_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to clean up {session_path}: {e}")
+        
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up {cleaned_count} old image directories")
+            
+    except Exception as e:
+        logger.error(f"Error during image cleanup: {e}")
+
+def migrate_existing_results_to_file_storage():
+    """Migrate existing JSON results from base64 to file storage"""
+    try:
+        results_dir = ensure_results_directory()
+        
+        for filename in os.listdir(results_dir):
+            if not filename.endswith('.json'):
+                continue
+                
+            session_id = filename[:-5]  # Remove .json extension
+            result_file = os.path.join(results_dir, filename)
+            
+            try:
+                with open(result_file, 'r') as f:
+                    data = json.load(f)
+                
+                # Check if this result needs migration (has base64 data)
+                needs_migration = False
+                
+                # Check for old base64 fields
+                if data.get('query_image_base64'):
+                    needs_migration = True
+                
+                for result in data.get('results', []):
+                    if result.get('image_base64'):
+                        needs_migration = True
+                        break
+                
+                if not needs_migration:
+                    continue
+                
+                logger.info(f" Migrating image matcher result {session_id} to file storage...")
+                
+                # Migrate query image if exists
+                if data.get('query_image_base64'):
+                    query_image_url = save_image_to_storage(
+                        data['query_image_base64'],
+                        session_id,
+                        'query_image.jpg',
+                        'query'
+                    )
+                    if query_image_url:
+                        data['query_image_url'] = query_image_url
+                        del data['query_image_base64']
+                
+                # Migrate result images
+                for result in data.get('results', []):
+                    if result.get('image_base64'):
+                        # Save base64 image to file storage
+                        image_url = save_image_to_storage(
+                            result['image_base64'],
+                            session_id,
+                            result.get('image_name', 'migrated_image.jpg'),
+                            'query'
+                        )
+                        
+                        if image_url:
+                            result['image_url'] = image_url
+                            # Remove base64 data
+                            del result['image_base64']
+                
+                # Save migrated data
+                with open(result_file, 'w') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                
+                logger.info(f"✅ Successfully migrated image matcher result {session_id}")
+                
+            except Exception as e:
+                logger.error(f"❌ Failed to migrate {session_id}: {e}")
+                continue
+        
+        logger.info("✅ Image matcher migration to file storage completed")
+        
+    except Exception as e:
+        logger.error(f"❌ Error during image matcher migration: {e}")
 
 def ensure_results_directory():
     """Ensure the results directory exists (same as evaluation system)"""
@@ -54,11 +330,21 @@ def sanitize_for_json(data):
         # Convert unknown types to string
         return str(data)
     
-def save_image_matcher_result(session_id, result_data, query_filename=None, query_image_base64=None):
-    """Save image matcher result to JSON file with improved serialization"""
+def save_image_matcher_result(session_id, result_data, query_filename=None, query_image_data=None):
+    """Save image matcher result to JSON file with file-based image storage"""
     try:
         results_dir = ensure_results_directory()
         result_file = os.path.join(results_dir, f"{session_id}.json")
+        
+        # Save query image to storage and get URL
+        query_image_url = None
+        if query_image_data is not None:
+            query_image_url = save_image_to_storage(
+                query_image_data,
+                session_id,
+                query_filename or 'query_image.jpg',
+                'query'
+            )
         
         # Convert image matcher result to evaluation-compatible format
         total_matches = len(result_data.get('top_matches', []))
@@ -83,14 +369,14 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
             'total_covers_processed': int(result_data.get('total_covers_processed', 0)),
             'total_urls_processed': int(result_data.get('total_urls_processed', 0)),
             'query_type': 'image_search',  # Distinguish from folder evaluation
-            'query_image_base64': query_image_base64,  # Store the query image
+            'query_image_url': query_image_url,  # Store URL instead of base64
             'results': []
         }
         
         # Create a single result item representing the query image and its matches
         query_result_item = {
             'image_name': query_filename or 'Uploaded Query Image',
-            'image_base64': query_image_base64,  # Use the query image base64
+            'image_url': query_image_url,  # Use URL instead of base64
             'api_success': True,
             'match_success': successful_matches > 0,
             'best_similarity': float(evaluation_result['best_similarity']),
@@ -102,11 +388,21 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
             'query_type': 'image_search'
         }
         
-        # Add all matches to the single result item with proper type conversion
+        # Add all matches to the single result item with proper type conversion and local storage
         for match in result_data.get('top_matches', []):
+            # Store candidate image locally for reliability
+            candidate_url = match.get('url', '')
+            local_candidate_url = copy_external_image_to_storage(
+                candidate_url,
+                session_id,
+                match.get('comic_name', 'Unknown'),
+                match.get('issue_number', 'Unknown')
+            )
+            
             match_item = {
                 'similarity': float(match.get('similarity', 0)),
-                'url': str(match.get('url', '')),
+                'url': candidate_url,  # Keep original URL
+                'local_url': local_candidate_url,  # Add local stored URL
                 'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD),
                 'comic_name': str(match.get('comic_name', 'Unknown')),
                 'issue_number': str(match.get('issue_number', 'Unknown')),
@@ -386,7 +682,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         }
         
         # Save result to JSON file
-        save_image_matcher_result(session_id, result, query_filename, query_image_base64)
+        save_image_matcher_result(session_id, result, query_filename, query_image)
         
         java_reporter.send_complete(result)
         logger.success(f"✅ Centralized image processing completed and saved for session: {session_id}")
@@ -408,7 +704,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
             'session_id': session_id,
             'error': error_msg
         }
-        save_image_matcher_result(session_id, error_result, query_filename, query_image_base64)
+        save_image_matcher_result(session_id, error_result, query_filename, query_image)
         
         raise
     
@@ -451,7 +747,7 @@ def cleanup_old_sessions():
         
         if sessions_to_remove:
             logger.info(f"粒 Cleaned up {len(sessions_to_remove)} old sessions")
-            
+      
 def process_multiple_images_with_centralized_progress(session_id, query_images_data, candidate_covers):
     """Process multiple images matching with CENTRALIZED progress reporting to Java"""
     
@@ -608,7 +904,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
                     'top_matches': top_matches,
                     'total_matches': len(enhanced_results),
                     'session_id': session_id,
-                    'image_base64': query_image_base64
+                    'image_data': query_image
                 }
                 
                 all_results.append(image_result)
@@ -640,7 +936,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
                     'total_matches': 0,
                     'session_id': session_id,
                     'error': str(image_error),
-                    'image_base64': query_image_base64
+                    'image_data': query_image
                 }
                 all_results.append(error_result)
         
@@ -709,7 +1005,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         raise
 
 def save_multiple_images_matcher_result(session_id, result_data, query_images_data):
-    """Save multiple images matcher result to JSON file with improved serialization"""
+    """Save multiple images matcher result to JSON file with file-based image storage"""
     try:
         results_dir = ensure_results_directory()
         result_file = os.path.join(results_dir, f"{session_id}.json")
@@ -747,10 +1043,22 @@ def save_multiple_images_matcher_result(session_id, result_data, query_images_da
                 best_similarity_this_image = max((match.get('similarity', 0) for match in image_result['top_matches']), default=0.0)
                 best_similarity_overall = max(best_similarity_overall, best_similarity_this_image)
             
+            # Save this image to storage and get URL
+            image_url = None
+            if 'image_data' in image_result:
+                image_url = save_image_to_storage(
+                    image_result['image_data'],
+                    session_id,
+                    image_result.get('image_name', f"Image {image_result.get('image_index', 0) + 1}"),
+                    'query'
+                )
+
+            del image_result['image_data']
+            
             # Create result item for this image
             result_item = {
                 'image_name': image_result.get('image_name', f"Image {image_result.get('image_index', 0) + 1}"),
-                'image_base64': image_result.get('image_base64'),
+                'image_url': image_url,  # Use URL instead of base64
                 'api_success': 'error' not in image_result,
                 'match_success': len(image_result.get('top_matches', [])) > 0,
                 'best_similarity': float(best_similarity_this_image),
@@ -762,11 +1070,21 @@ def save_multiple_images_matcher_result(session_id, result_data, query_images_da
                 'source_image_index': int(image_result.get('image_index', 0))
             }
             
-            # Add matches for this image with proper type conversion
+            # Add matches for this image with proper type conversion and local storage
             for match in image_result.get('top_matches', []):
+                # Store candidate image locally for reliability
+                candidate_url = match.get('url', '')
+                local_candidate_url = copy_external_image_to_storage(
+                    candidate_url,
+                    session_id,
+                    match.get('comic_name', 'Unknown'),
+                    match.get('issue_number', 'Unknown')
+                )
+                
                 match_item = {
                     'similarity': float(match.get('similarity', 0)),
-                    'url': str(match.get('url', '')),
+                    'url': candidate_url,  # Keep original URL
+                    'local_url': local_candidate_url,  # Add local stored URL
                     'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD),
                     'comic_name': str(match.get('comic_name', 'Unknown')),
                     'issue_number': str(match.get('issue_number', 'Unknown')),
@@ -963,7 +1281,7 @@ def image_matcher_operation():
         }
         
         # SAVE RESULT TO JSON FILE for regular requests too!
-        save_image_matcher_result(session_id, result, query_filename, query_image_base64)
+        save_image_matcher_result(session_id, result, query_filename, query_image)
         logger.success(f"✅ Regular image processing completed and saved for session: {session_id}")
         
         return jsonify(result)
@@ -1170,7 +1488,7 @@ def get_image_processing_status():
 def view_image_matcher_result(session_id):
     """View a completed image matcher result using the existing evaluation template"""
     
-    logger.info(f" Viewing result for session: {session_id}")
+    logger.info(f" Viewing result for session: {session_id}")
     
     result_data = load_image_matcher_result(session_id)
     
@@ -1182,13 +1500,16 @@ def view_image_matcher_result(session_id):
                                    'flask_port': current_app.config.get('FLASK_PORT'),
                                    'api_url_prefix': current_app.config.get('API_URL_PREFIX')})
     
+    # Prepare result data with full image URLs for template
+    result_with_urls = prepare_result_for_template(result_data, request)
+    
     logger.success(f"✅ Successfully loaded result for session: {session_id}")
     config = {
         'flask_host': current_app.config.get('FLASK_HOST'),
         'flask_port': current_app.config.get('FLASK_PORT'),
         'api_url_prefix': current_app.config.get('API_URL_PREFIX')
     }
-    return render_template('evaluation_result.html', result=result_data, config=config)
+    return render_template('evaluation_result.html', result=result_with_urls, config=config)
 
 @image_matcher_bp.route('/image-matcher/<session_id>/data')
 def get_image_matcher_data(session_id):
@@ -1312,6 +1633,60 @@ def image_matcher_multiple_operation():
         java_reporter.send_error(error_msg)
         return jsonify({'error': error_msg}), 500
 
+@image_matcher_bp.route('/stored_images/<session_id>/<filename>')
+def serve_stored_image(session_id, filename):
+    """Serve stored images from the server"""
+    try:
+        images_dir = ensure_images_directory()
+        image_path = os.path.join(images_dir, session_id, filename)
+        
+        if not os.path.exists(image_path):
+            logger.warning(f"Stored image not found: {image_path}")
+            abort(404)
+        
+        # Security check - ensure the path is within our images directory
+        if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
+            logger.warning(f"Security violation - path traversal attempt: {image_path}")
+            abort(403)
+        
+        return send_file(image_path)
+        
+    except Exception as e:
+        logger.error(f"Error serving stored image: {e}")
+        abort(500)
+
+@image_matcher_bp.route('/image-matcher/admin/cleanup', methods=['POST'])
+def admin_cleanup():
+    """Admin endpoint to trigger cleanup of old images and sessions"""
+    try:
+        cleanup_old_stored_images()
+        return jsonify({
+            'status': 'success',
+            'message': 'Cleanup completed successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error during admin cleanup: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Cleanup failed: {str(e)}'
+        }), 500
+
+@image_matcher_bp.route('/image-matcher/admin/migrate', methods=['POST'])
+def admin_migrate():
+    """Admin endpoint to migrate existing base64 results to file storage"""
+    try:
+        migrate_existing_results_to_file_storage()
+        return jsonify({
+            'status': 'success',
+            'message': 'Migration to file storage completed successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error during migration: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Migration failed: {str(e)}'
+        }), 500
+
 # Cleanup task - run this periodically (could be implemented with a scheduler)
 def run_cleanup():
     """Run cleanup periodically"""
@@ -1320,6 +1695,7 @@ def run_cleanup():
         while True:
             time.sleep(30 * 60)  # 30 minutes
             cleanup_old_sessions()
+            cleanup_old_stored_images()  # ADD THIS LINE
     
     cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
     cleanup_thread.start()

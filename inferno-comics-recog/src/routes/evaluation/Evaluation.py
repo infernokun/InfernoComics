@@ -4,12 +4,15 @@ import json
 import time
 import uuid
 import base64
+import hashlib
+import shutil
 import requests
 import threading
 from queue import Queue
-from datetime import datetime
+from datetime import datetime, timedelta
+from urllib.parse import urljoin
 from util.Logger import get_logger
-from flask import Blueprint, render_template, request, jsonify, Response, current_app
+from flask import Blueprint, render_template, request, jsonify, Response, current_app, send_file, abort
 
 logger = get_logger(__name__)
 
@@ -27,8 +30,121 @@ def ensure_results_directory():
     results_dir = './results'
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
-        logger.debug(f" Created results directory: {results_dir}")
+        logger.debug(f"Created results directory: {results_dir}")
     return results_dir
+
+def ensure_images_directory():
+    """Ensure the stored images directory exists"""
+    images_dir = './stored_images'
+    if not os.path.exists(images_dir):
+        os.makedirs(images_dir)
+        logger.debug(f"Created stored images directory: {images_dir}")
+    return images_dir
+
+def get_image_hash(image_data):
+    """Generate a hash for the image data to avoid duplicates"""
+    return hashlib.md5(image_data).hexdigest()
+
+def save_image_to_storage(image_data, session_id, image_name, image_type='query'):
+    """
+    Save image to server storage and return URL
+    
+    Args:
+        image_data: Raw image bytes or base64 string
+        session_id: Session identifier
+        image_name: Original image filename
+        image_type: 'query' for uploaded images, 'candidate' for matched images
+    
+    Returns:
+        str: URL path to access the stored image
+    """
+    try:
+        images_dir = ensure_images_directory()
+        
+        # Create session subdirectory
+        session_dir = os.path.join(images_dir, session_id)
+        if not os.path.exists(session_dir):
+            os.makedirs(session_dir)
+        
+        # Handle both raw bytes and base64 data
+        if isinstance(image_data, str) and image_data.startswith('data:image'):
+            # Extract base64 data
+            header, base64_data = image_data.split(',', 1)
+            image_bytes = base64.b64decode(base64_data)
+        elif isinstance(image_data, str):
+            # Assume it's already base64 without header
+            image_bytes = base64.b64decode(image_data)
+        else:
+            # Raw bytes
+            image_bytes = image_data
+        
+        # Generate unique filename with hash to avoid duplicates
+        image_hash = get_image_hash(image_bytes)
+        file_extension = os.path.splitext(image_name)[1] or '.jpg'
+        stored_filename = f"{image_type}_{image_hash}{file_extension}"
+        stored_path = os.path.join(session_dir, stored_filename)
+        
+        # Save image if it doesn't already exist
+        if not os.path.exists(stored_path):
+            with open(stored_path, 'wb') as f:
+                f.write(image_bytes)
+            logger.debug(f"Saved image to {stored_path}")
+        else:
+            logger.debug(f"Image already exists at {stored_path}")
+        
+        # Return URL path (relative to the web server)
+        return f"/stored_images/{session_id}/{stored_filename}"
+        
+    except Exception as e:
+        logger.error(f"Error saving image to storage: {e}")
+        return None
+
+def copy_external_image_to_storage(image_url, session_id, comic_name, issue_number):
+    """
+    Download and store an external image (like ComicVine covers) locally
+    
+    Args:
+        image_url: URL of the external image
+        session_id: Session identifier  
+        comic_name: Name of the comic
+        issue_number: Issue number
+    
+    Returns:
+        str: Local URL path to the stored image, or original URL if failed
+    """
+    try:
+        # Create a safe filename
+        safe_comic_name = "".join(c for c in comic_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+        safe_filename = f"candidate_{safe_comic_name}_{issue_number}"
+        
+        # Try to get file extension from URL
+        parsed_url = image_url.split('?')[0]  # Remove query parameters
+        file_extension = os.path.splitext(parsed_url)[1] or '.jpg'
+        
+        images_dir = ensure_images_directory()
+        session_dir = os.path.join(images_dir, session_id)
+        if not os.path.exists(session_dir):
+            os.makedirs(session_dir)
+        
+        stored_filename = f"{safe_filename}{file_extension}"
+        stored_path = os.path.join(session_dir, stored_filename)
+        
+        # Download and save image if it doesn't exist
+        if not os.path.exists(stored_path):
+            response = requests.get(image_url, timeout=10, stream=True)
+            response.raise_for_status()
+            
+            with open(stored_path, 'wb') as f:
+                shutil.copyfileobj(response.raw, f)
+            
+            logger.debug(f"Downloaded and saved external image to {stored_path}")
+        
+        return f"/stored_images/{session_id}/{stored_filename}"
+        
+    except Exception as e:
+        logger.warning(f"Failed to download external image {image_url}: {e}")
+        # Return original URL as fallback
+        return image_url
 
 def sanitize_for_json(data):
     """Recursively sanitize data to ensure JSON serializability"""
@@ -47,7 +163,7 @@ def sanitize_for_json(data):
         return str(data)
     
 def save_evaluation_result(session_id, evaluation_state):
-    """Save complete evaluation result to JSON file with improved error handling"""
+    """Save complete evaluation result to JSON file with image storage"""
     try:
         results_dir = ensure_results_directory()
         result_file = os.path.join(results_dir, f"{session_id}.json")
@@ -70,13 +186,16 @@ def save_evaluation_result(session_id, evaluation_state):
             'results': []
         }
         
-        # Process each result with full details and sanitization
+        # Process each result with file-based image storage
         for result in evaluation_state.get('results', []):
             image_name = os.path.basename(result.get('image_path', ''))
             
+            # Use stored image URL instead of base64
+            image_url = result.get('image_url')
+            
             result_item = {
                 'image_name': image_name,
-                'image_base64': result.get('image_base64'),
+                'image_url': image_url,  # URL instead of base64
                 'api_success': bool(result.get('api_success', False)),
                 'match_success': bool(result.get('match_success', False)),
                 'best_similarity': float(result.get('best_similarity', 0.0)),
@@ -86,13 +205,23 @@ def save_evaluation_result(session_id, evaluation_state):
                 'total_matches': 0
             }
             
-            # Include match details if available
+            # Include match details with stored candidate images
             if result.get('api_success') and result.get('response_data') and 'top_matches' in result['response_data']:
                 top_matches = result['response_data']['top_matches']
                 for match in top_matches:
+                    # Store candidate image locally for reliability
+                    candidate_url = match.get('url', '')
+                    local_candidate_url = copy_external_image_to_storage(
+                        candidate_url,
+                        session_id,
+                        match.get('comic_name', 'Unknown'),
+                        match.get('issue_number', 'Unknown')
+                    )
+                    
                     match_item = {
                         'similarity': float(match.get('similarity', 0)),
-                        'url': str(match.get('url', '')),
+                        'url': candidate_url,  # Keep original URL
+                        'local_url': local_candidate_url,  # Add local stored URL
                         'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD)
                     }
                     result_item['matches'].append(match_item)
@@ -107,7 +236,7 @@ def save_evaluation_result(session_id, evaluation_state):
         try:
             with open(result_file, 'w') as f:
                 json.dump(sanitized_data, f, indent=2, ensure_ascii=False)
-            logger.info(f" Saved evaluation result to {result_file}")
+            logger.info(f"Saved evaluation result to {result_file}")
             return result_file
         except (TypeError, ValueError) as json_error:
             logger.error(f"❌ JSON serialization error: {json_error}")
@@ -168,7 +297,7 @@ def load_evaluation_result(session_id):
                 os.rename(result_file, backup_file)
                 with open(result_file, 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
-                logger.info(f" Saved repaired file, backup at {backup_file}")
+                logger.info(f"Saved repaired file, backup at {backup_file}")
                 
                 return data
                 
@@ -199,17 +328,149 @@ def load_evaluation_result(session_id):
                 with open(error_file, 'w') as f:
                     json.dump(error_result, f, indent=2)
                 
-                logger.info(f" Created error placeholder at {error_file}")
+                logger.info(f"Created error placeholder at {error_file}")
                 return error_result
                 
     except Exception as e:
         logger.error(f"❌ Error loading evaluation result: {e}")
         return None
 
+def prepare_result_for_template(result_data, request):
+    """Prepare result data for template rendering with full image URLs"""
+    if not result_data:
+        return result_data
+    
+    # Create a copy to avoid modifying original
+    result_copy = json.loads(json.dumps(result_data))
+    
+    # Convert relative URLs to full URLs
+    if result_copy.get('query_image_url'):
+        result_copy['query_image_url'] = get_full_image_url(result_copy['query_image_url'], request)
+    
+    for result in result_copy.get('results', []):
+        if result.get('image_url'):
+            result['image_url'] = get_full_image_url(result['image_url'], request)
+        
+        for match in result.get('matches', []):
+            if match.get('local_url'):
+                match['local_url'] = get_full_image_url(match['local_url'], request)
+    
+    return result_copy
+
+def get_full_image_url(relative_url, request):
+    """Convert relative image URLs to full URLs for frontend"""
+    if not relative_url:
+        return None
+    
+    if relative_url.startswith('http'):
+        return relative_url  # Already a full URL
+    
+    # Build full URL using Flask request context
+    return urljoin(request.url_root, relative_url.lstrip('/'))
+
+def cleanup_old_stored_images():
+    """Clean up stored images older than 7 days"""
+    try:
+        images_dir = ensure_images_directory()
+        current_time = datetime.now()
+        cutoff_time = current_time - timedelta(days=7)
+        
+        cleaned_count = 0
+        for session_dir in os.listdir(images_dir):
+            session_path = os.path.join(images_dir, session_dir)
+            if os.path.isdir(session_path):
+                # Check if directory is older than cutoff
+                dir_modified = datetime.fromtimestamp(os.path.getmtime(session_path))
+                if dir_modified < cutoff_time:
+                    try:
+                        shutil.rmtree(session_path)
+                        cleaned_count += 1
+                        logger.info(f"Cleaned up old image directory: {session_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to clean up {session_path}: {e}")
+        
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up {cleaned_count} old image directories")
+            
+    except Exception as e:
+        logger.error(f"Error during image cleanup: {e}")
+
+def migrate_existing_results_to_file_storage():
+    """Migrate existing JSON results from base64 to file storage"""
+    try:
+        results_dir = ensure_results_directory()
+        
+        for filename in os.listdir(results_dir):
+            if not filename.endswith('.json'):
+                continue
+                
+            session_id = filename[:-5]  # Remove .json extension
+            result_file = os.path.join(results_dir, filename)
+            
+            try:
+                with open(result_file, 'r') as f:
+                    data = json.load(f)
+                
+                # Check if this result needs migration (has base64 data)
+                needs_migration = False
+                
+                for result in data.get('results', []):
+                    if result.get('image_base64'):
+                        needs_migration = True
+                        break
+                
+                if not needs_migration:
+                    continue
+                
+                logger.info(f"Migrating result {session_id} to file storage...")
+                
+                # Migrate query images
+                for result in data.get('results', []):
+                    if result.get('image_base64'):
+                        # Save base64 image to file storage
+                        image_url = save_image_to_storage(
+                            result['image_base64'],
+                            session_id,
+                            result.get('image_name', 'migrated_image.jpg'),
+                            'query'
+                        )
+                        
+                        if image_url:
+                            result['image_url'] = image_url
+                            # Remove base64 data
+                            del result['image_base64']
+                
+                # Update global query image if exists
+                if data.get('query_image_base64'):
+                    query_image_url = save_image_to_storage(
+                        data['query_image_base64'],
+                        session_id,
+                        'query_image.jpg',
+                        'query'
+                    )
+                    if query_image_url:
+                        data['query_image_url'] = query_image_url
+                        del data['query_image_base64']
+                
+                # Save migrated data
+                with open(result_file, 'w') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                
+                logger.info(f"Successfully migrated {session_id}")
+                
+            except Exception as e:
+                logger.error(f"Failed to migrate {session_id}: {e}")
+                continue
+        
+        logger.info("Migration to file storage completed")
+        
+    except Exception as e:
+        logger.error(f"Error during migration: {e}")
+
 def extract_name_and_year(folder_path):
     """Extract series name and year from folder name like 'Green Lanterns (2016)'"""
     folder_name = os.path.basename(folder_path.rstrip('/\\'))
-    logger.debug(f" Extracting from folder name: '{folder_name}'")
+    logger.debug(f"Extracting from folder name: '{folder_name}'")
     
     # Extract year from parentheses
     year_match = re.search(r'\((\d{4})\)', folder_name)
@@ -218,7 +479,7 @@ def extract_name_and_year(folder_path):
     # Extract name by removing year and parentheses
     name = re.sub(r'\s*\(\d{4}\)\s*', '', folder_name).strip()
     
-    logger.info(f" Extracted series: '{name}' ({year})")
+    logger.info(f"Extracted series: '{name}' ({year})")
     return name, year
 
 def get_image_files(folder_path):
@@ -230,7 +491,7 @@ def get_image_files(folder_path):
         if any(file.lower().endswith(ext) for ext in image_extensions):
             image_files.append(os.path.join(folder_path, file))
     
-    logger.debug(f"️ Found {len(image_files)} image files in {folder_path}")
+    logger.debug(f"Found {len(image_files)} image files in {folder_path}")
     return sorted(image_files)
 
 def image_to_base64(image_path):
@@ -247,7 +508,7 @@ def image_to_base64(image_path):
                 '.bmp': 'image/bmp',
                 '.webp': 'image/webp'
             }.get(ext, 'image/jpeg')
-            logger.debug(f" Converted {os.path.basename(image_path)} to base64")
+            logger.debug(f"Converted {os.path.basename(image_path)} to base64")
             return f"data:{mime_type};base64,{encoded}"
     except Exception as e:
         logger.error(f"❌ Error converting image to base64: {e}")
@@ -265,7 +526,7 @@ def check_match_success(response_data, threshold=SIMILARITY_THRESHOLD):
             best_similarity = similarity
     
     meets_threshold = best_similarity >= threshold
-    logger.debug(f" Match check: best={best_similarity:.3f}, threshold={threshold}, meets={meets_threshold}")
+    logger.debug(f"Match check: best={best_similarity:.3f}, threshold={threshold}, meets={meets_threshold}")
     return meets_threshold, best_similarity
 
 def upload_comic_image(series_id, image_path, name, year):
@@ -281,9 +542,9 @@ def upload_comic_image(series_id, image_path, name, year):
             }
             
             image_name = os.path.basename(image_path)
-            logger.debug(f" Uploading {image_name} to API...")
+            logger.debug(f"Uploading {image_name} to API...")
             response = requests.post(url, files=files, data=data)
-            logger.debug(f" API response status: {response.status_code}")
+            logger.debug(f"API response status: {response.status_code}")
             
             # Try to parse JSON response
             response_data = None
@@ -298,7 +559,7 @@ def upload_comic_image(series_id, image_path, name, year):
                         'top_matches': raw_response,
                         'total_matches': len(raw_response)
                     }
-                    logger.debug(f" Converted array response to dict format - {len(raw_response)} matches")
+                    logger.debug(f"Converted array response to dict format - {len(raw_response)} matches")
                 elif isinstance(raw_response, dict):
                     # Server already returns expected format
                     response_data = raw_response
@@ -308,7 +569,7 @@ def upload_comic_image(series_id, image_path, name, year):
                     
             except ValueError as json_error:
                 logger.warning(f"⚠️ Failed to parse JSON: {json_error}")
-                logger.debug(f" Raw response: {response.text[:500]}...")
+                logger.debug(f"Raw response: {response.text[:500]}...")
             
             # Check if this constitutes a successful match based on similarity threshold
             api_success = response.status_code == 200
@@ -338,7 +599,7 @@ def upload_comic_image(series_id, image_path, name, year):
             }
     
     except requests.exceptions.RequestException as e:
-        logger.error(f" Request exception for {os.path.basename(image_path)}: {e}")
+        logger.error(f"Request exception for {os.path.basename(image_path)}: {e}")
         return {
             'status_code': None,
             'api_success': False,
@@ -349,7 +610,7 @@ def upload_comic_image(series_id, image_path, name, year):
             'error': str(e)
         }
     except Exception as e:
-        logger.error(f" Unexpected exception for {os.path.basename(image_path)}: {e}")
+        logger.error(f"Unexpected exception for {os.path.basename(image_path)}: {e}")
         return {
             'status_code': None,
             'api_success': False,
@@ -361,9 +622,9 @@ def upload_comic_image(series_id, image_path, name, year):
         }
 
 def run_evaluation(folder_path, session_id, series_id):
-    """Run the evaluation process with progress updates"""
+    """Run the evaluation process with progress updates and image storage"""
 
-    logger.info(f" Starting evaluation for session {session_id} with folder {folder_path}")
+    logger.info(f"Starting evaluation for session {session_id} with folder {folder_path}")
 
     # Initialize progress queue for this session if it doesn't exist
     if session_id not in progress_queues:
@@ -400,8 +661,8 @@ def run_evaluation(folder_path, session_id, series_id):
             'session_id': session_id
         })
 
-        logger.debug(f" Checking folder path: {folder_path}")
-        logger.debug(f" Folder exists: {os.path.exists(folder_path)}")
+        logger.debug(f"Checking folder path: {folder_path}")
+        logger.debug(f"Folder exists: {os.path.exists(folder_path)}")
 
         # Check if folder exists
         if not os.path.exists(folder_path):
@@ -419,7 +680,7 @@ def run_evaluation(folder_path, session_id, series_id):
                         available_folders.append(item)
                         if folder_name.lower() in item.lower():
                             folder_path = item_path
-                            logger.info(f" Found matching folder: {folder_path}")
+                            logger.info(f"Found matching folder: {folder_path}")
                             break
                 else:
                     error_msg = f'Folder not found: {folder_name}. Available folders: {", ".join(available_folders[:5])}'
@@ -471,7 +732,7 @@ def run_evaluation(folder_path, session_id, series_id):
             return
 
         evaluation_state['total_images'] = len(image_files)
-        logger.info(f" Found {len(image_files)} images to process")
+        logger.info(f"Found {len(image_files)} images to process")
 
         progress_queue.put({
             'type': 'status',
@@ -484,23 +745,33 @@ def run_evaluation(folder_path, session_id, series_id):
         for i, image_path in enumerate(image_files):
             # Check if evaluation was stopped
             if evaluation_state.get('status') == 'stopped':
-                logger.warning(f" Evaluation stopped for session {session_id}")
+                logger.warning(f"Evaluation stopped for session {session_id}")
                 break
 
             image_name = os.path.basename(image_path)
             evaluation_state['current_image'] = image_name
 
-            logger.info(f" Processing image {i+1}/{len(image_files)}: {image_name}")
+            logger.info(f"Processing image {i+1}/{len(image_files)}: {image_name}")
 
-            # Send processing update with image preview
-            image_base64 = image_to_base64(image_path)
+            # Read image and save to storage
+            with open(image_path, 'rb') as f:
+                image_data = f.read()
             
+            # Save image to storage and get URL
+            image_url = save_image_to_storage(
+                image_data, 
+                session_id, 
+                image_name, 
+                'query'
+            )
+
+            # Send processing update with image URL
             progress_queue.put({
                 'type': 'processing',
                 'message': f'Processing {i+1}/{len(image_files)}: {image_name}',
                 'progress': 10 + (i * 80 / len(image_files)),
                 'current_image': image_name,
-                'current_image_preview': image_base64,
+                'current_image_url': image_url,  # Use URL instead of base64
                 'processed': i,
                 'total_images': len(image_files)
             })
@@ -508,7 +779,7 @@ def run_evaluation(folder_path, session_id, series_id):
             # Upload image
             result = upload_comic_image(series_id, image_path, series_name, year)
             result['image_path'] = image_path
-            result['image_base64'] = image_base64  # Store base64 for later use
+            result['image_url'] = image_url  # Store URL instead of base64
             evaluation_state['results'].append(result)
             evaluation_state['processed'] = i + 1
 
@@ -526,7 +797,7 @@ def run_evaluation(folder_path, session_id, series_id):
             # Prepare detailed result for UI
             detailed_result = {
                 'image_name': image_name,
-                'image_base64': image_base64,
+                'image_url': image_url,  # Use URL instead of base64
                 'api_success': result['api_success'],
                 'match_success': result['match_success'],
                 'best_similarity': result['best_similarity'],
@@ -534,13 +805,23 @@ def run_evaluation(folder_path, session_id, series_id):
                 'matches': []
             }
 
-            # Include match details if available
+            # Include match details with stored candidate images
             if result['api_success'] and result['response_data'] and 'top_matches' in result['response_data']:
                 top_matches = result['response_data']['top_matches'][:6]  # Top 6 matches
                 for match in top_matches:
+                    # Store candidate image locally
+                    original_url = match.get('url', '')
+                    local_candidate_url = copy_external_image_to_storage(
+                        original_url,
+                        session_id,
+                        match.get('comic_name', 'Unknown'),
+                        match.get('issue_number', 'Unknown')
+                    )
+                    
                     detailed_result['matches'].append({
                         'similarity': match.get('similarity', 0),
-                        'url': match.get('url', ''),
+                        'url': original_url,  # Keep original URL
+                        'local_url': local_candidate_url,  # Add local stored URL
                         'meets_threshold': match.get('similarity', 0) >= SIMILARITY_THRESHOLD
                     })
                 detailed_result['total_matches'] = result['response_data'].get('total_matches', 0)
@@ -576,11 +857,11 @@ def run_evaluation(folder_path, session_id, series_id):
         evaluation_state['overall_success'] = evaluation_state['successful_matches'] > 0
         evaluation_state['status'] = 'completed'
 
-        # Save the complete evaluation result to file
+        # Save the complete evaluation result to file with image storage
         save_evaluation_result(session_id, evaluation_state)
 
         logger.success(f"✅ Evaluation completed for session {session_id}")
-        logger.info(f" Final stats: {evaluation_state['successful_matches']} successes, {evaluation_state['no_matches']} no matches, {evaluation_state['failed_uploads']} failures")
+        logger.info(f"Final stats: {evaluation_state['successful_matches']} successes, {evaluation_state['no_matches']} no matches, {evaluation_state['failed_uploads']} failures")
 
         progress_queue.put({
             'type': 'complete',
@@ -612,7 +893,7 @@ def run_evaluation(folder_path, session_id, series_id):
 @evaluation_bp.route('/evaluation', methods=['GET', 'POST'])
 def evaluation():
     if request.method == 'GET':
-        logger.debug(" GET request for evaluation page")
+        logger.debug("GET request for evaluation page")
         # Pass configuration to template
         config = {
             'flask_host': current_app.config.get('FLASK_HOST'),
@@ -622,7 +903,7 @@ def evaluation():
         return render_template('evaluation.html', config=config)
     
     elif request.method == 'POST':
-        logger.debug(" POST request to start evaluation")
+        logger.debug("POST request to start evaluation")
         folder = None
         series_id = None
         if request.is_json:
@@ -643,7 +924,7 @@ def evaluation():
         session_id = str(uuid.uuid4())
         folder_path = os.path.join("./images", folder)
         
-        logger.info(f" Starting evaluation thread for session {session_id} with folder: {folder}")
+        logger.info(f"Starting evaluation thread for session {session_id} with folder: {folder}")
         
         evaluation_thread = threading.Thread(target=run_evaluation, args=(folder_path, session_id, series_id))
         evaluation_thread.daemon = True
@@ -657,8 +938,8 @@ def evaluation():
 
 @evaluation_bp.route('/evaluation/<session_id>')
 def view_evaluation_result(session_id):
-    """View a completed evaluation result"""
-    logger.info(f" Viewing evaluation result for session: {session_id}")
+    """View a completed evaluation result with image URLs"""
+    logger.info(f"Viewing evaluation result for session: {session_id}")
     
     result_data = load_evaluation_result(session_id)
     
@@ -666,21 +947,25 @@ def view_evaluation_result(session_id):
         logger.warning(f"⚠️ Evaluation result not found for session: {session_id}")
         return render_template('evaluation_error.html', 
                              error_message=f"Evaluation result not found for session: {session_id}",
-                             config={'flask_host': current_app.config.get('FLASK_HOST'), 'flask_port': current_app.config.get('FLASK_PORT'),
-                                   'api_url_prefix': current_app.config.get('API_URL_PREFIX'),})
+                             config={'flask_host': current_app.config.get('FLASK_HOST'), 
+                                   'flask_port': current_app.config.get('FLASK_PORT'),
+                                   'api_url_prefix': current_app.config.get('API_URL_PREFIX')})
+    
+    # Prepare result data with full image URLs for template
+    result_with_urls = prepare_result_for_template(result_data, request)
     
     logger.success(f"✅ Successfully loaded evaluation result for session: {session_id}")
     config = {
         'flask_host': current_app.config.get('FLASK_HOST'),
         'flask_port': current_app.config.get('FLASK_PORT'),
-        'api_url_prefix': current_app.config.get('API_URL_PREFIX'),
+        'api_url_prefix': current_app.config.get('API_URL_PREFIX')
     }
-    return render_template('evaluation_result.html', result=result_data, config=config)
+    return render_template('evaluation_result.html', result=result_with_urls, config=config)
 
 @evaluation_bp.route('/evaluation/<session_id>/data')
 def get_evaluation_data(session_id):
     """Get evaluation result data as JSON"""
-    logger.debug(f" API request for evaluation data: {session_id}")
+    logger.debug(f"API request for evaluation data: {session_id}")
     
     result_data = load_evaluation_result(session_id)
     
@@ -694,7 +979,7 @@ def get_evaluation_data(session_id):
 @evaluation_bp.route('/evaluation/list')
 def list_evaluations():
     """List all available evaluation results"""
-    logger.info(" Listing all evaluation results")
+    logger.info("Listing all evaluation results")
     
     try:
         results_dir = ensure_results_directory()
@@ -722,7 +1007,7 @@ def list_evaluations():
         # Sort by timestamp, newest first
         evaluations.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         
-        logger.info(f" Found {len(evaluations)} evaluation results")
+        logger.info(f"Found {len(evaluations)} evaluation results")
         
         config = {
             'flask_host': current_app.config.get('FLASK_HOST'),
@@ -752,7 +1037,7 @@ def evaluation_progress():
             logger.warning("⚠️ Missing session ID in progress request")
             return jsonify({'error': 'Session ID is required'}), 400
         
-        logger.info(f" Client connecting to evaluation progress stream for session: {session_id}")
+        logger.info(f"Client connecting to evaluation progress stream for session: {session_id}")
         
         if session_id not in progress_queues:
             progress_queues[session_id] = Queue()
@@ -772,7 +1057,7 @@ def evaluation_progress():
                         yield f"data: {json.dumps(progress_data)}\n\n"
                         
                         if progress_data.get('type') in ['complete', 'error', 'stopped']:
-                            logger.debug(f" SSE stream ending for evaluation session {session_id}: {progress_data.get('type')}")
+                            logger.debug(f"SSE stream ending for evaluation session {session_id}: {progress_data.get('type')}")
                             break
                             
                     except:
@@ -788,7 +1073,7 @@ def evaluation_progress():
                 logger.error(f"❌ Error in SSE generator for evaluation: {e}")
             
             finally:
-                logger.debug(f" Cleaning up SSE session: {session_id}")
+                logger.debug(f"Cleaning up SSE session: {session_id}")
                 if session_id in progress_queues:
                     del progress_queues[session_id]
                 if session_id in active_evaluations:
@@ -811,10 +1096,10 @@ def evaluation_status():
         session_id = request.args.get('session_id')
         
         if session_id and session_id in active_evaluations:
-            logger.debug(f" Status check for active evaluation: {session_id}")
+            logger.debug(f"Status check for active evaluation: {session_id}")
             return jsonify(active_evaluations[session_id])
         else:
-            logger.debug(" No active evaluation found")
+            logger.debug("No active evaluation found")
             return jsonify({'status': 'idle', 'message': 'No active evaluation'})
     except Exception as e:
         logger.error(f"❌ Error in evaluation_status route: {e}")
@@ -831,7 +1116,7 @@ def stop_evaluation():
             session_id = request.form.get('session_id')
         
         if session_id and session_id in active_evaluations:
-            logger.warning(f" Stopping evaluation for session: {session_id}")
+            logger.warning(f"Stopping evaluation for session: {session_id}")
             active_evaluations[session_id]['status'] = 'stopped'
             if session_id in progress_queues:
                 progress_queues[session_id].put({
@@ -849,7 +1134,7 @@ def stop_evaluation():
 @evaluation_bp.route('/evaluation/<folder_name>/<id>')
 def evaluation_with_folder(folder_name, id):
     """Alternative endpoint using URL parameter"""
-    logger.info(f" Starting evaluation via URL parameters - folder: {folder_name}, id: {id}")
+    logger.info(f"Starting evaluation via URL parameters - folder: {folder_name}, id: {id}")
     
     session_id = str(uuid.uuid4())
     folder_path = os.path.join("./images", folder_name)
@@ -863,3 +1148,70 @@ def evaluation_with_folder(folder_name, id):
         'message': f'Evaluation started for {folder_name}',
         'session_id': session_id
     })
+
+# Flask route to serve stored images
+@evaluation_bp.route('/stored_images/<session_id>/<filename>')
+def serve_stored_image(session_id, filename):
+    """Serve stored images from the server"""
+    try:
+        images_dir = ensure_images_directory()
+        image_path = os.path.join(images_dir, session_id, filename)
+        
+        if not os.path.exists(image_path):
+            logger.warning(f"Stored image not found: {image_path}")
+            abort(404)
+        
+        # Security check - ensure the path is within our images directory
+        if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
+            logger.warning(f"Security violation - path traversal attempt: {image_path}")
+            abort(403)
+        
+        return send_file(image_path)
+        
+    except Exception as e:
+        logger.error(f"Error serving stored image: {e}")
+        abort(500)
+
+# Admin endpoints for cleanup and migration
+@evaluation_bp.route('/evaluation/admin/cleanup', methods=['POST'])
+def admin_cleanup():
+    """Admin endpoint to trigger cleanup of old images and sessions"""
+    try:
+        # Check for admin authentication if needed
+        # ... add your admin auth logic here ...
+        
+        cleanup_old_stored_images()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Cleanup completed successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during admin cleanup: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Cleanup failed: {str(e)}'
+        }), 500
+
+@evaluation_bp.route('/evaluation/admin/migrate', methods=['POST'])
+def admin_migrate():
+    """Admin endpoint to migrate existing base64 results to file storage"""
+    try:
+        # Check for admin authentication if needed
+        # ... add your admin auth logic here ...
+        
+        migrate_existing_results_to_file_storage()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Migration to file storage completed successfully'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during migration: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Migration failed: {str(e)}'
+        }), 500
+    

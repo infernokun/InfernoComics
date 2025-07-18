@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enhanced Comic Series Evaluation</title>
     <style>
+        /* Same styles as before - no changes needed for CSS */
         :root {
             /* Dark mode colors (default) */
             --bg-primary: #1a1a1a;
@@ -717,12 +718,12 @@
 
     <div class="container">
         <div class="header">
-            <h1>🦸 Enhanced Comic Series Evaluation</h1>
+            <h1>隸 Enhanced Comic Series Evaluation</h1>
             <p>Real-time image matching with detailed visualization</p>
             
             <div class="nav-buttons">
-                <a href="#" class="nav-btn" id="viewAllResultsBtn">📋 View All Results</a>
-                <a href="#" class="nav-btn" onclick="window.location.reload()">🔄 New Evaluation</a>
+                <a href="#" class="nav-btn" id="viewAllResultsBtn"> View All Results</a>
+                <a href="#" class="nav-btn" onclick="window.location.reload()"> New Evaluation</a>
             </div>
         </div>
 
@@ -836,14 +837,14 @@
             </div>
 
             <div class="result-link-section" id="resultLinkSection" style="display: none;">
-                <h3>🎉 Evaluation Saved Successfully!</h3>
+                <h3> Evaluation Saved Successfully!</h3>
                 <p>Your evaluation results have been saved and can be accessed anytime:</p>
                 <div style="margin: 15px 0;">
                     <a href="#" class="result-link" id="viewResultLink" target="_blank">
-                        📊 View Detailed Results
+                         View Detailed Results
                     </a>
                     <a href="#" class="result-link" id="downloadResultLink" target="_blank">
-                        💾 Download JSON Data
+                         Download JSON Data
                     </a>
                 </div>
                 <p style="margin-top: 15px; font-size: 0.9em; color: var(--text-muted);">
@@ -870,7 +871,7 @@
             const themeText = document.getElementById('themeText');
             
             if (theme === 'light') {
-                themeIcon.textContent = '🌙';
+                themeIcon.textContent = '';
                 themeText.textContent = 'Dark';
             } else {
                 themeIcon.textContent = '☀️';
@@ -1043,8 +1044,9 @@
                 case 'processing':
                     updateCurrentStatus(data.message);
                     updateProgress(data.progress);
-                    if (data.current_image_preview) {
-                        updateCurrentImage(data.current_image, data.current_image_preview, data.processed, data.total_images);
+                    // Updated to use image URL instead of base64
+                    if (data.current_image_url) {
+                        updateCurrentImageWithUrl(data.current_image, data.current_image_url, data.processed, data.total_images);
                     }
                     stats.processed = data.processed;
                     stats.totalImages = data.total_images;
@@ -1110,12 +1112,16 @@
             progressText.textContent = `${Math.round(progress)}%`;
         }
 
-        function updateCurrentImage(imageName, imageBase64, processed, total) {
+        // Updated function to use image URL instead of base64
+        function updateCurrentImageWithUrl(imageName, imageUrl, processed, total) {
             currentImageName.textContent = imageName;
             currentImageProgress.textContent = `Image ${processed + 1} of ${total}`;
             
-            if (imageBase64) {
-                currentImagePreview.src = imageBase64;
+            if (imageUrl) {
+                currentImagePreview.src = imageUrl;
+                currentImagePreview.onerror = function() {
+                    this.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE2MCIgdmlld0JveD0iMCAwIDEyMCAxNjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTYwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjYwIiB5PSI4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY2NiIgZm9udC1zaXplPSIxMiI+SW1hZ2UgTm90IEZvdW5kPC90ZXh0Pjwvc3ZnPg==";
+                };
             }
         }
 
@@ -1137,6 +1143,7 @@
             errorCount.textContent = `❌ ${stats.error}`;
         }
 
+        // Updated function to handle image URLs instead of base64
         function addDetailedResultItem(detailedResult) {
             const resultItem = document.createElement('div');
             let resultClass = 'error';
@@ -1188,9 +1195,12 @@
                     const matchClass = match.meets_threshold ? "threshold-met" : "";
                     const statusClass = match.meets_threshold ? "success" : "";
                     
+                    // Use local_url if available, fallback to original url
+                    const imageUrl = match.local_url || match.url;
+                    
                     matchesHtml += `
                         <div class="match-item ${matchClass}">
-                            <img src="${match.url}" alt="Match ${index + 1}" 
+                            <img src="${imageUrl}" alt="Match ${index + 1}" 
                                  onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9Ijc1IiB5PSI3NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzY2NiIgZm9udC1zaXplPSIxMiI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPgo='">
                             <div class="similarity-score" style="color: ${scoreColor};">
                                 ${match.similarity.toFixed(4)}
@@ -1212,10 +1222,14 @@
                 errorHtml = `<div class="error-message"><strong>Error:</strong> ${detailedResult.error}</div>`;
             }
             
+            // Use image URL instead of base64
+            const imageUrl = detailedResult.image_url;
+            const fallbackImageSrc = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjI4MCIgdmlld0JveD0iMCAwIDIwMCAyODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjgwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjY2IiBmb250LXNpemU9IjE0Ij5JbWFnZSBub3QgZm91bmQ8L3RleHQ+Cjwvc3ZnPgo=";
+            
             resultItem.innerHTML = `
                 <div class="uploaded-image">
-                    <img src="${detailedResult.image_base64}" alt="${detailedResult.image_name}" 
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjI4MCIgdmlld0JveD0iMCAwIDIwMCAyODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjgwIiBmaWxsPSIjRjBGMEYwIi8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTQwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjY2IiBmb250LXNpemU9IjE0Ij5JbWFnZSBub3QgZm91bmQ8L3RleHQ+Cjwvc3ZnPgo='">
+                    <img src="${imageUrl || fallbackImageSrc}" alt="${detailedResult.image_name}" 
+                         onerror="this.src='${fallbackImageSrc}'">
                     <div class="image-info">
                         <strong>${detailedResult.image_name}</strong>
                     </div>
@@ -1247,7 +1261,7 @@
             completionSummary.style.display = 'block';
             
             // Update completion header
-            document.getElementById('completionIcon').textContent = isSuccess ? '🎉' : '❌';
+            document.getElementById('completionIcon').textContent = isSuccess ? '' : '❌';
             document.getElementById('completionTitle').textContent = isSuccess ? 'OVERALL SUCCESS' : 'NO MATCHES FOUND';
             document.getElementById('completionSubtitle').textContent = isSuccess 
                 ? `At least one image was successfully matched for ${data.series_name} (${data.year})!`
@@ -1374,14 +1388,14 @@
                 const existingResult = document.createElement('div');
                 existingResult.className = 'evaluation-card';
                 existingResult.innerHTML = `
-                    <h3>🔍 Looking for evaluation results?</h3>
+                    <h3> Looking for evaluation results?</h3>
                     <p>It looks like you're trying to view a specific evaluation result.</p>
                     <div style="margin-top: 15px;">
                         <a href="#" class="btn" id="viewSpecificResultBtn">
-                            📊 View Evaluation Result
+                             View Evaluation Result
                         </a>
                         <a href="#" class="btn" id="browseAllResultsBtn" style="margin-left: 10px; background: #6c757d;">
-                            📋 Browse All Results
+                             Browse All Results
                         </a>
                     </div>
                 `;
