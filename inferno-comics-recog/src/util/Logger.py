@@ -31,7 +31,18 @@ class ColorFormatter(logging.Formatter):
         self.use_colors = use_colors and self._supports_color()
     
     def _supports_color(self) -> bool:
-        """Check if the terminal supports colors"""
+        """Check if colors should be used"""
+        # Force colors if explicitly requested via environment variable
+        force_colors = os.getenv('FORCE_LOG_COLORS', '').lower() in ('true', '1', 'yes')
+        if force_colors:
+            return True
+            
+        # Check if we're in a Docker container
+        if os.path.exists('/.dockerenv'):
+            # In Docker, enable colors by default
+            return True
+            
+        # Standard terminal color support check
         return (
             hasattr(sys.stdout, "isatty") and 
             sys.stdout.isatty() and 
@@ -165,7 +176,7 @@ def initialize_logger(name: Optional[str] = None, level: int = logging.INFO,
             file_handler.setFormatter(file_formatter)
             logger.addHandler(file_handler)
             
-            logger.info(f" Log file initialized: {log_file}")
+            logger.info(f"📁 Log file initialized: {log_file}")
             
         except Exception as e:
             logger.error(f"❌ Failed to initialize log file {log_file}: {e}")
