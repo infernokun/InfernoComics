@@ -75,7 +75,7 @@ services:
       FLASK_THREADS: "${FLASK_THREADS:-4}"
       COMIC_CACHE_DB_PATH: "/var/tmp/inferno-comics/comic_cache.db"
       COMIC_CACHE_IMAGE_PATH: "/var/tmp/inferno-comics/image_cache"
-      REST_API: "http://inferno-comics-rest:8080/inferno-comics-rest/api/"
+      REST_API: "http://inferno-comics-rest:8080/inferno-comics-rest/api"
       FLASK_ENV: "production"
     volumes:
       - /var/tmp/inferno-comics:/var/tmp/inferno-comics
