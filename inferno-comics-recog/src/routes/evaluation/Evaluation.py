@@ -48,15 +48,7 @@ def get_image_hash(image_data):
 def save_image_to_storage(image_data, session_id, image_name, image_type='query'):
     """
     Save image to server storage and return URL
-    
-    Args:
-        image_data: Raw image bytes or base64 string
-        session_id: Session identifier
-        image_name: Original image filename
-        image_type: 'query' for uploaded images, 'candidate' for matched images
-    
-    Returns:
-        str: URL path to access the stored image
+    FIXED to match Flask app URL structure
     """
     try:
         images_dir = ensure_images_directory()
@@ -66,8 +58,12 @@ def save_image_to_storage(image_data, session_id, image_name, image_type='query'
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
         
-        # Handle both raw bytes and base64 data
-        if isinstance(image_data, str) and image_data.startswith('data:image'):
+        # Handle different input types
+        if isinstance(image_data, np.ndarray):
+            # OpenCV image array - encode as JPEG
+            _, buffer = cv2.imencode('.jpg', image_data, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            image_bytes = buffer.tobytes()
+        elif isinstance(image_data, str) and image_data.startswith('data:image'):
             # Extract base64 data
             header, base64_data = image_data.split(',', 1)
             image_bytes = base64.b64decode(base64_data)
@@ -79,7 +75,7 @@ def save_image_to_storage(image_data, session_id, image_name, image_type='query'
             image_bytes = image_data
         
         # Generate unique filename with hash to avoid duplicates
-        image_hash = get_image_hash(image_bytes)
+        image_hash = get_image_hash(image_data)
         file_extension = os.path.splitext(image_name)[1] or '.jpg'
         stored_filename = f"{image_type}_{image_hash}{file_extension}"
         stored_path = os.path.join(session_dir, stored_filename)
@@ -92,8 +88,9 @@ def save_image_to_storage(image_data, session_id, image_name, image_type='query'
         else:
             logger.debug(f"Image already exists at {stored_path}")
         
-        # Return URL path (relative to the web server)
-        return f"/stored_images/{session_id}/{stored_filename}"
+        # CORRECT: Return URL path that matches your Flask app structure
+        # Since all blueprints are registered with /inferno-comics-recognition/api/v1
+        return f"/inferno-comics-recognition/api/v1/stored_images/{session_id}/{stored_filename}"
         
     except Exception as e:
         logger.error(f"Error saving image to storage: {e}")
@@ -102,23 +99,55 @@ def save_image_to_storage(image_data, session_id, image_name, image_type='query'
 def copy_external_image_to_storage(image_url, session_id, comic_name, issue_number):
     """
     Download and store an external image (like ComicVine covers) locally
-    
-    Args:
-        image_url: URL of the external image
-        session_id: Session identifier  
-        comic_name: Name of the comic
-        issue_number: Issue number
-    
-    Returns:
-        str: Local URL path to the stored image, or original URL if failed
+    FIXED to match Flask app URL structure and avoid duplicate downloads
     """
     try:
-        # Create a safe filename
+        # Try to reuse from matcher cache first (if available)
+        try:
+            # Check if we can access the global matcher's cache
+            url_hash = hashlib.md5(image_url.encode()).hexdigest()
+            cache_dir = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
+            cache_file_path = os.path.join(cache_dir, f"{url_hash}.jpg")
+            
+            if os.path.exists(cache_file_path):
+                logger.debug(f"Found in cache: {cache_file_path}")
+                
+                # Copy from cache to session directory
+                images_dir = ensure_images_directory()
+                session_dir = os.path.join(images_dir, session_id)
+                if not os.path.exists(session_dir):
+                    os.makedirs(session_dir)
+                
+                # Create safe filename
+                safe_comic_name = "".join(c for c in comic_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                safe_filename = f"candidate_{safe_comic_name}_{issue_number}"
+                
+                # Get file extension
+                parsed_url = image_url.split('?')[0]
+                file_extension = os.path.splitext(parsed_url)[1] or '.jpg'
+                
+                stored_filename = f"{safe_filename}_{url_hash[:8]}{file_extension}"
+                session_file_path = os.path.join(session_dir, stored_filename)
+                
+                # Copy from cache to session if not already there
+                if not os.path.exists(session_file_path):
+                    import shutil
+                    shutil.copy2(cache_file_path, session_file_path)
+                    logger.debug(f"Copied from cache to session: {session_file_path}")
+                
+                # CORRECT: Return URL that matches Flask app structure
+                return f"/inferno-comics-recognition/api/v1/stored_images/{session_id}/{stored_filename}"
+                
+        except Exception as cache_error:
+            logger.debug(f"Cache check failed: {cache_error}")
+            # Continue with download fallback
+        
+        # Fallback: Download the image (if not in cache)
         safe_comic_name = "".join(c for c in comic_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
         safe_filename = f"candidate_{safe_comic_name}_{issue_number}"
         
         # Try to get file extension from URL
-        parsed_url = image_url.split('?')[0]  # Remove query parameters
+        parsed_url = image_url.split('?')[0]
         file_extension = os.path.splitext(parsed_url)[1] or '.jpg'
         
         images_dir = ensure_images_directory()
@@ -131,6 +160,8 @@ def copy_external_image_to_storage(image_url, session_id, comic_name, issue_numb
         
         # Download and save image if it doesn't exist
         if not os.path.exists(stored_path):
+            import requests
+            import shutil
             response = requests.get(image_url, timeout=10, stream=True)
             response.raise_for_status()
             
@@ -139,10 +170,11 @@ def copy_external_image_to_storage(image_url, session_id, comic_name, issue_numb
             
             logger.debug(f"Downloaded and saved external image to {stored_path}")
         
-        return f"/stored_images/{session_id}/{stored_filename}"
+        # CORRECT: Return URL that matches Flask app structure
+        return f"/inferno-comics-recognition/api/v1/stored_images/{session_id}/{stored_filename}"
         
     except Exception as e:
-        logger.warning(f"Failed to download external image {image_url}: {e}")
+        logger.warning(f"Failed to get external image {image_url}: {e}")
         # Return original URL as fallback
         return image_url
 
@@ -1161,7 +1193,7 @@ def serve_stored_image(session_id, filename):
             logger.warning(f"Stored image not found: {image_path}")
             abort(404)
         
-        # Security check - ensure the path is within our images directory
+        # Security check
         if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
             logger.warning(f"Security violation - path traversal attempt: {image_path}")
             abort(403)
@@ -1171,7 +1203,7 @@ def serve_stored_image(session_id, filename):
     except Exception as e:
         logger.error(f"Error serving stored image: {e}")
         abort(500)
-
+        
 # Admin endpoints for cleanup and migration
 @evaluation_bp.route('/evaluation/admin/cleanup', methods=['POST'])
 def admin_cleanup():
