@@ -518,4 +518,17 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   isSmallScreen(): boolean {
     return window.innerWidth <= 768;
   }
+
+  getCompletedImagesCount(): number {
+    // Count only images that are fully completed (successful or failed)
+    return this.thumbnailStates.filter(state => 
+      state === 'completed' || state === 'failed'
+    ).length;
+  }
+
+  getRemainingImagesCount(): number {
+    // Count images that haven't been processed yet (pending) + currently processing
+    const completed = this.getCompletedImagesCount();
+    return this.totalImages - completed;
+  }
 }

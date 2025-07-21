@@ -5,3 +5,4 @@ comic_*.html
 results/
 venv/
 logs/
+src/routes/stored_images/*

@@ -165,7 +165,7 @@
       <div class="progress-summary" *ngIf="isMultipleMode">
         <div class="summary-stats">
           <div class="stat-item">
-            <span class="stat-number">{{ processedImages }}</span>
+            <span class="stat-number">{{ getCompletedImagesCount() }}</span>
             <span class="stat-label">Processed</span>
           </div>
           <div class="stat-item" *ngIf="successfulImages > 0">
@@ -177,7 +177,7 @@
             <span class="stat-label">Failed</span>
           </div>
           <div class="stat-item">
-            <span class="stat-number">{{ totalImages - processedImages }}</span>
+            <span class="stat-number">{{ getRemainingImagesCount() }}</span>
             <span class="stat-label">Remaining</span>
           </div>
         </div>
