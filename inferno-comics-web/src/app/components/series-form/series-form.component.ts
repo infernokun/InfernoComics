@@ -3,8 +3,6 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SeriesService } from '../../services/series.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Observable, of } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { ComicVineSeries } from '../../models/comic-vine.model';
 import { Series } from '../../models/series.model';
 
@@ -229,7 +227,10 @@ export class SeriesFormComponent implements OnInit {
   onSubmit(): void {
     if (this.seriesForm.valid) {
       this.loading = true;
+
+      this.seriesForm.get('issueCount')?.enable();
       const seriesData: Series = this.seriesForm.value;
+      this.seriesForm.get('issueCount')?.disable();
 
       const operation = this.isEditMode && this.seriesId
         ? this.seriesService.updateSeries(this.seriesId, seriesData)

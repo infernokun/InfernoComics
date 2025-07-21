@@ -233,7 +233,7 @@ public class SeriesController {
             log.info("Starting image processing session: {} for series: {}", sessionId, seriesId);
 
             // IMPORTANT: Initialize the session in progress service BEFORE starting async processing
-            progressService.initializeSession(sessionId);
+            progressService.initializeSession(sessionId, seriesId);
 
             // Start async processing with image bytes instead of MultipartFile
             seriesService.startImageProcessingWithProgress(sessionId, seriesId, imageBytes,
@@ -342,7 +342,7 @@ public class SeriesController {
                     sessionId, seriesId, imageDataList.size());
 
             // IMPORTANT: Initialize the session in progress service BEFORE starting async processing
-            progressService.initializeSession(sessionId);
+            progressService.initializeSession(sessionId, seriesId);
 
             // Start async processing with image data list
             seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, name, year);

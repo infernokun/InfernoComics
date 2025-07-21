@@ -4,13 +4,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.infernokun.infernoComics.models.ProgressData;
+import com.infernokun.infernoComics.repositories.ProgressDataRepository;
+import lombok.Builder;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -24,8 +30,14 @@ public class ProgressService {
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final ProgressDataRepository progressDataRepository;
+
     // SSE timeout: 30 minutes (should be enough for image processing)
     private static final long SSE_TIMEOUT = 30 * 60 * 1000L;
+
+    public ProgressService(ProgressDataRepository progressDataRepository) {
+        this.progressDataRepository = progressDataRepository;
+    }
 
     public boolean emitterIsPresent(String sessionId) {
         return activeEmitters.containsKey(sessionId);
@@ -92,7 +104,7 @@ public class ProgressService {
     /**
      * Initialize a new processing session
      */
-    public void initializeSession(String sessionId) {
+    public ProgressData initializeSession(String sessionId, Long seriesId) {
         log.info("Initializing processing session: {}", sessionId);
 
         SSEProgressData initialStatus = SSEProgressData.builder()
@@ -106,6 +118,14 @@ public class ProgressService {
 
         sessionStatus.put(sessionId, initialStatus);
         log.info("Session {} initialized and stored in sessionStatus", sessionId);
+
+        ProgressData progressData = new ProgressData();
+        progressData.setState(ProgressData.State.PROCESSING);
+        progressData.setSessionId(sessionId);
+        progressData.setTimeStarted(LocalDateTime.now());
+        progressData.setSeriesId(seriesId);
+
+        return progressDataRepository.save(progressData);
     }
 
     /**
@@ -176,6 +196,15 @@ public class ProgressService {
             } catch (Exception e) {
                 log.error("Error checking result size for session {}: {}", sessionId, e.getMessage());
             }
+        }
+
+        Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
+
+        if (progressDataOptional.isPresent()) {
+            ProgressData progressData = progressDataOptional.get();
+            progressData.setTimeFinished(LocalDateTime.now());
+            progressData.setState(ProgressData.State.COMPLETE);
+            progressDataRepository.save(progressData);
         }
 
         SSEProgressData completeData = SSEProgressData.builder()
@@ -354,8 +383,8 @@ public class ProgressService {
     /**
      * Data class for SSE progress events
      */
-    @lombok.Data
-    @lombok.Builder
+    @Data
+    @Builder
     public static class SSEProgressData {
         private String type; // "progress", "complete", "error"
         private String sessionId;

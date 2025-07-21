@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
+import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
@@ -496,7 +497,7 @@ public class SeriesService {
 
         try {
             // Initialize progress tracking
-            progressService.initializeSession(sessionId);
+            //progressService.initializeSession(sessionId);
 
             // Stage 1: Series validation (quick)
             progressService.updateProgress(sessionId, "preparing", 2, "Validating series...");
@@ -664,7 +665,7 @@ public class SeriesService {
 
         try {
             // Initialize progress tracking
-            progressService.initializeSession(sessionId);
+            //ProgressData progressData = progressService.initializeSession(sessionId);
 
             int timeoutSeconds = 20;
             int intervalMs = 2000;
@@ -756,7 +757,6 @@ public class SeriesService {
 
             log.info("✅ SSE multiple images processing completed for session: {}", sessionId);
 
-
             if (result == null) {
                 log.warn("⚠️ No result received from Python for session: {}", sessionId);
                 progressService.sendError(sessionId, "No results returned from Python image processing");
@@ -786,7 +786,8 @@ public class SeriesService {
                 }
             }
 
-            progressService.sendComplete(sessionId, result);
+            // Python sends the complete
+            //progressService.sendComplete(sessionId, result);
 
         } catch (Exception e) {
             log.error("❌ Error in SSE multiple images processing for session {}: {}", sessionId, e.getMessage(), e);
