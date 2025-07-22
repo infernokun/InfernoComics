@@ -36,9 +36,6 @@ SIMILARITY_THRESHOLD = 0.55
 
 def ensure_images_directory():
     """Ensure the stored images directory exists"""
-    # Use absolute path or go up one directory from src/
-    import os
-
     # Get the parent directory of the src folder
     current_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(current_dir)
@@ -154,7 +151,6 @@ def copy_external_image_to_storage(image_url, session_id, comic_name, issue_numb
                 
                 # Copy from cache to session if not already there
                 if not os.path.exists(session_file_path):
-                    import shutil
                     shutil.copy2(cache_file_path, session_file_path)
                     logger.debug(f"Copied from cache to session: {session_file_path}")
                 
@@ -183,8 +179,6 @@ def copy_external_image_to_storage(image_url, session_id, comic_name, issue_numb
         
         # Download and save image if it doesn't exist
         if not os.path.exists(stored_path):
-            import requests
-            import shutil
             response = requests.get(image_url, timeout=10, stream=True)
             response.raise_for_status()
             
