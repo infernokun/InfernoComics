@@ -1,8 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
+import {
+  MatDialogRef,
+  MAT_DIALOG_DATA,
+  MatDialog,
+} from '@angular/material/dialog';
 import { MaterialModule } from '../../../material.module';
-import { ComicMatchSelectionComponent, ComicMatchDialogData } from '../comic-match-selection/comic-match-selection.component';
+import {
+  ComicMatchSelectionComponent,
+  ComicMatchDialogData,
+} from '../comic-match-selection/comic-match-selection.component';
 import { ComicMatch } from '../../../models/comic-match.model';
 
 export interface ProcessedImageResult {
@@ -21,8 +28,8 @@ export interface BulkSelectionDialogData {
   matches: ComicMatch[];
   seriesId: number;
   sessionId?: string;
-  originalImages: File[]; // Make optional
-  storedImages?: any[];
+  originalImages: File[]; // Optional - for live file uploads
+  storedImages?: any[];    // Optional - for session data with stored images
   isMultiple: boolean;
   highConfidenceThreshold: number;
   mediumConfidenceThreshold: number;
@@ -41,9 +48,8 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   currentFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match' = 'all';
 
   private imagePreviewUrls: string[] = [];
-  private highConfidenceThreshold: number = 0.70;
+  private highConfidenceThreshold: number = 0.7;
   private mediumConfidenceThreshold: number = 0.55;
-
   private isSessionData: boolean = false;
 
   constructor(
@@ -51,10 +57,19 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     @Inject(MAT_DIALOG_DATA) public data: BulkSelectionDialogData
   ) {
-    this.highConfidenceThreshold = data.highConfidenceThreshold || 0.70;
+    this.highConfidenceThreshold = data.highConfidenceThreshold || 0.7;
     this.mediumConfidenceThreshold = data.mediumConfidenceThreshold || 0.55;
 
-    
+    // Determine if we're working with session data or live files
+    this.isSessionData = !!(data.storedImages && data.storedImages.length > 0);
+
+    // Ensure we have either originalImages or storedImages
+    if (!this.data.originalImages) {
+      this.data.originalImages = [];
+    }
+    if (!this.data.storedImages) {
+      this.data.storedImages = [];
+    }
   }
 
   ngOnInit(): void {
@@ -64,32 +79,46 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.imagePreviewUrls.forEach((url) => {
-      if (url) {
-        URL.revokeObjectURL(url);
-      }
-    });
+    if (!this.isSessionData) {
+      this.imagePreviewUrls.forEach((url) => {
+        if (url && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    }
   }
 
   private createImagePreviews(): void {
-    if (this.data.originalImages && this.data.originalImages.length > 0) {
+    if (this.isSessionData && this.data.storedImages!.length > 0) {
+      // Use stored images from session data
+      this.imagePreviewUrls = this.data.storedImages!.map(
+        (storedImage) => storedImage.javaUrl
+      );
+      console.log('🖼️ Using stored image URLs:', this.imagePreviewUrls);
+    } else if (
+      this.data.originalImages &&
+      this.data.originalImages.length > 0
+    ) {
+      // Use original uploaded files
       this.imagePreviewUrls = this.data.originalImages.map((file) =>
         URL.createObjectURL(file)
       );
+      console.log('🖼️ Using original file URLs:', this.imagePreviewUrls.length);
     } else {
-      // No original images available (session data scenario)
+      // No images available
       this.imagePreviewUrls = [];
+      console.log('⚠️ No image sources available');
     }
   }
 
   private processMatches(): void {
-    console.log(' Processing matches in bulk selection component');
+    console.log('🔄 Processing matches in bulk selection component');
     console.log('Data matches length:', this.data.matches.length);
-    console.log('Original images length:', this.data.originalImages?.length || 0);
-  
+    console.log('Is session data:', this.isSessionData);
+
     // Group matches by source image
     const groupedMatches: { [key: number]: ComicMatch[] } = {};
-  
+
     this.data.matches.forEach((match) => {
       const sourceIndex = match.sourceImageIndex ?? 0;
       if (!groupedMatches[sourceIndex]) {
@@ -97,24 +126,31 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       }
       groupedMatches[sourceIndex].push(match);
     });
-  
-    console.log(' Grouped matches:', groupedMatches);
-  
-    // FIXED: Handle case where originalImages might be empty or undefined
-    const imageCount = this.data.originalImages?.length || 
-      Math.max(...Object.keys(groupedMatches).map(k => parseInt(k))) + 1;
-  
+
+    console.log('📊 Grouped matches:', groupedMatches);
+
+    // Determine image count
+    let imageCount = 0;
+    if (this.isSessionData) {
+      imageCount = this.data.storedImages!.length;
+    } else {
+      imageCount =
+        this.data.originalImages?.length ||
+        Math.max(...Object.keys(groupedMatches).map((k) => parseInt(k))) + 1;
+    }
+
+    console.log('📊 Processing', imageCount, 'images');
+
     // Process each image
     for (let index = 0; index < imageCount; index++) {
       const matches = groupedMatches[index] || [];
       const sortedMatches = matches.sort((a, b) => b.similarity - a.similarity);
       const bestMatch = sortedMatches[0] || null;
-  
+
       let status: ProcessedImageResult['status'] = 'no_match';
       let confidence: ProcessedImageResult['confidence'] = 'low';
-  
+
       if (bestMatch) {
-        // Determine confidence level
         if (bestMatch.similarity >= this.highConfidenceThreshold) {
           confidence = 'high';
           status = 'auto_selected';
@@ -126,18 +162,26 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
           status = 'needs_review';
         }
       }
-  
-      // Get image name from match data or use default
-      const imageName = bestMatch?.sourceImageName || 
-        this.data.originalImages?.[index]?.name || 
-        `Image ${index + 1}`;
-  
-      // Get preview URL - use first match's local_url as preview if no original file
-      const imagePreview = this.imagePreviewUrls[index] || 
-        bestMatch?.local_url || 
-        bestMatch?.url || 
-        'assets/images/no-image-placeholder.png';
-  
+
+      // Get image name and preview URL
+      let imageName: string;
+      let imagePreview: string;
+
+      if (this.isSessionData && this.data.storedImages![index]) {
+        imageName = this.data.storedImages![index].name;
+        imagePreview = this.imagePreviewUrls[index];
+      } else {
+        imageName =
+          bestMatch?.sourceImageName ||
+          this.data.originalImages?.[index]?.name ||
+          `Image ${index + 1}`;
+        imagePreview =
+          this.imagePreviewUrls[index] ||
+          bestMatch?.local_url ||
+          bestMatch?.url ||
+          'assets/images/no-image-placeholder.png';
+      }
+
       this.processedResults.push({
         imageIndex: index,
         imageName: imageName,
@@ -148,7 +192,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         confidence,
       });
     }
-  
+
     console.log('✅ Processed results:', this.processedResults);
   }
 
@@ -178,7 +222,8 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   // Action Methods
   acceptMatch(result: ProcessedImageResult): void {
     result.userAction = 'accepted';
-    result.selectedMatch = result.selectedMatch || (result.bestMatch ?? undefined);
+    result.selectedMatch =
+      result.selectedMatch || (result.bestMatch ?? undefined);
   }
 
   rejectMatch(result: ProcessedImageResult): void {
@@ -195,7 +240,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       originalImage: this.data.originalImages[result.imageIndex],
       isMultiple: false, // Single image review mode
     };
-  
+
     // Open the individual match selection dialog
     const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
       width: '95vw',
@@ -204,10 +249,9 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       data: dialogData,
       disableClose: false,
     });
-  
+
     // Handle the result from the individual match selection
     dialogRef.afterClosed().subscribe((dialogResult) => {
-      
       if (dialogResult && dialogResult.action === 'select') {
         // User selected a match
         result.userAction = 'manual_select';
@@ -218,14 +262,13 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         result.userAction = 'rejected';
         result.selectedMatch = undefined;
         result.status = 'no_match';
-        
+
         console.log('User rejected all matches for:', result.imageName);
-        
       } else if (dialogResult && dialogResult.action === 'cancel') {
         // User cancelled - no changes
         console.log('User cancelled match selection for:', result.imageName);
       }
-      
+
       // Refresh the filtered results to reflect any changes
       this.applyFilter();
     });
@@ -259,7 +302,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         result.selectedMatch = undefined;
         result.status = 'no_match';
       }
-      
+
       this.applyFilter();
     });
   }
@@ -270,12 +313,12 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     result.userAction = 'rejected';
     result.selectedMatch = undefined;
     result.status = 'skipped';
-    
+
     console.log('Manual add requested for:', result.imageName);
-    
+
     // You might want to emit an event or call a service here
     // to handle the manual addition workflow
-    
+
     this.applyFilter();
   }
 
@@ -304,7 +347,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     const acceptedResults = this.processedResults.filter(
       (r) => r.userAction === 'accepted' || r.userAction === 'manual_select'
     );
-  
+
     this.dialogRef.close({
       action: 'bulk_add',
       results: acceptedResults,
@@ -340,8 +383,9 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   getAcceptedCount(): number {
-    return this.processedResults.filter((r) => r.userAction === 'accepted' || r.userAction === 'manual_select')
-      .length;
+    return this.processedResults.filter(
+      (r) => r.userAction === 'accepted' || r.userAction === 'manual_select'
+    ).length;
   }
 
   getRejectedCount(): number {
@@ -431,14 +475,15 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   getConfidenceText(similarity: number): string {
     if (similarity >= this.highConfidenceThreshold) return 'High Confidence';
-    if (similarity >= this.mediumConfidenceThreshold) return 'Medium Confidence';
+    if (similarity >= this.mediumConfidenceThreshold)
+      return 'Medium Confidence';
     return 'Low Confidence';
   }
 
   resetUserAction(result: ProcessedImageResult): void {
     result.userAction = undefined;
     result.selectedMatch = result.bestMatch ?? undefined;
-    
+
     // Reset to original status based on confidence
     if (result.bestMatch) {
       if (result.bestMatch.similarity >= this.highConfidenceThreshold) {
@@ -449,7 +494,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     } else {
       result.status = 'no_match';
     }
-    
+
     this.applyFilter();
   }
 

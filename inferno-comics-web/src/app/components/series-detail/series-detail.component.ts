@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, WritableSignal } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -26,8 +26,6 @@ import {
   ProcessedImageResult,
 } from './bulk-comic-selection/bulk-comic-selection.component';
 import { AgGridModule } from 'ag-grid-angular';
-import { ColDef, FirstDataRenderedEvent, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
-import { AdminActionsComponent } from '../../admin/admin-actions.component';
 import { ProgressDataTable } from './progress-data-table/progress-data-table.component';
 import { ComicMatch } from '../../models/comic-match.model';
 
@@ -59,8 +57,7 @@ export class SeriesDetailComponent implements OnInit {
     private comicVineService: ComicVineService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
-  ) {
-  }
+  ) {}
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -739,7 +736,7 @@ export class SeriesDetailComponent implements OnInit {
       sessionId: result.session_id,
       originalImages: originalImages,
       isMultiple: true,
-      highConfidenceThreshold: 0.70,
+      highConfidenceThreshold: 0.7,
       mediumConfidenceThreshold: 0.55,
       autoSelectHighConfidence: true,
     };
@@ -770,15 +767,19 @@ export class SeriesDetailComponent implements OnInit {
     seriesId: number
   ): void {
     console.log(' Processing bulk add for', results.length, 'comics');
-    
+
     // Show loading indicator
     this.snackBar.open(`Adding ${results.length} comics to collection...`, '', {
       duration: 0,
     });
-  
+
     // Process each accepted result
     const addPromises = results.map(async (result) => {
-      if ((result.userAction === 'accepted' || result.userAction === 'manual_select') && result.selectedMatch) {
+      if (
+        (result.userAction === 'accepted' ||
+          result.userAction === 'manual_select') &&
+        result.selectedMatch
+      ) {
         const match = result.selectedMatch;
         try {
           // Fetch Comic Vine details for the match
@@ -789,14 +790,14 @@ export class SeriesDetailComponent implements OnInit {
                 : match.comic_vine_id!.toString()
             )
             .toPromise();
-  
+
           if (issue) {
             // Prepare issue data
             if (match.parent_comic_vine_id) {
               issue.imageUrl = match.url;
               issue.variant = true;
             }
-  
+
             // Create the issue
             const issueData = {
               seriesId: seriesId,
@@ -813,20 +814,35 @@ export class SeriesDetailComponent implements OnInit {
               generatedDescription: issue.generatedDescription || false,
               variant: issue.variant || false,
             };
-  
-            console.log('✅ Creating issue for:', result.imageName, 'with comic vine ID:', issue.id);
+
+            console.log(
+              '✅ Creating issue for:',
+              result.imageName,
+              'with comic vine ID:',
+              issue.id
+            );
             return this.issueService.createIssue(issueData).toPromise();
           }
         } catch (error) {
-          console.error('Error processing match for', result.imageName, ':', error);
+          console.error(
+            'Error processing match for',
+            result.imageName,
+            ':',
+            error
+          );
           return Promise.reject(error);
         }
       } else {
-        console.log('⚠️ Skipping result - userAction:', result.userAction, 'hasSelectedMatch:', !!result.selectedMatch);
+        console.log(
+          '⚠️ Skipping result - userAction:',
+          result.userAction,
+          'hasSelectedMatch:',
+          !!result.selectedMatch
+        );
         return Promise.resolve(null); // Skip this result
       }
     });
-  
+
     Promise.allSettled(addPromises)
       .then((results) => {
         this.snackBar.dismiss();
@@ -834,7 +850,7 @@ export class SeriesDetailComponent implements OnInit {
           (r) => r.status === 'fulfilled' && r.value !== null
         ).length;
         const failed = results.filter((r) => r.status === 'rejected').length;
-  
+
         if (successful > 0) {
           this.snackBar.open(
             `Successfully added ${successful} comics to collection${
@@ -948,7 +964,6 @@ export class SeriesDetailComponent implements OnInit {
       });
     }
   }
-
 
   private getStageDisplayName(stage: string): string {
     const stageMap: { [key: string]: string } = {
@@ -1267,12 +1282,16 @@ export class SeriesDetailComponent implements OnInit {
       return;
     }
 
-    const { matches, sessionId, isMultiple, summary } = result;
+    const { matches, sessionId, isMultiple, summary, storedImages } = result;
 
     if (!matches || matches.length === 0) {
-      this.snackBar.open('No matching comics found in the session data', 'Close', {
-        duration: 3000,
-      });
+      this.snackBar.open(
+        'No matching comics found in the session data',
+        'Close',
+        {
+          duration: 3000,
+        }
+      );
       return;
     }
 
@@ -1282,21 +1301,29 @@ export class SeriesDetailComponent implements OnInit {
       this.snackBar.open(message, 'Close', { duration: 3000 });
     }
 
-    this.openBulkSelectionFromSessionData(matches, sessionId, summary);
+    // Pass stored images to the bulk selection dialog
+    this.openBulkSelectionFromSessionData(
+      matches,
+      sessionId,
+      summary,
+      storedImages
+    );
   }
 
   private openBulkSelectionFromSessionData(
     matches: ComicMatch[],
     sessionId: string,
-    summary: any
+    summary: any,
+    storedImages?: any[]
   ): void {
     const dialogData: BulkSelectionDialogData = {
       matches: matches,
       seriesId: this.series?.id!,
       sessionId: sessionId,
-      originalImages: [], // Not available from session data
+      originalImages: [], // Empty array for session data
+      storedImages: storedImages || [], // Add stored images from session
       isMultiple: true,
-      highConfidenceThreshold: 0.70,
+      highConfidenceThreshold: 0.7,
       mediumConfidenceThreshold: 0.55,
       autoSelectHighConfidence: true,
     };
@@ -1314,10 +1341,9 @@ export class SeriesDetailComponent implements OnInit {
         console.log('✅ Bulk add selected:', result.results.length, 'comics');
         this.handleBulkAddResults(result.results, this.series?.id!);
       } else if (result && result.action === 'save') {
-        console.log(' Save selections:', result.results);
-        // Handle save logic if needed
+        console.log('💾 Save selections:', result.results);
       } else {
-        console.log(' User cancelled bulk selection');
+        console.log('🚫 User cancelled bulk selection');
       }
     });
   }

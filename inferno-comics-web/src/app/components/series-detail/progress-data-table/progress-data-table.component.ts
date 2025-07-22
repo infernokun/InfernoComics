@@ -21,6 +21,7 @@ import { CommonModule } from '@angular/common';
 import { AgGridModule } from 'ag-grid-angular';
 import { MaterialModule } from '../../../material.module';
 import { ComicMatch } from '../../../models/comic-match.model';
+import { EnvironmentService } from '../../../services/environment.service';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -94,7 +95,7 @@ export class ProgressDataTable implements OnInit {
 
   @Output() resultEmitter: EventEmitter<any> = new EventEmitter<any>(undefined);
 
-  constructor(private seriesService: SeriesService) {
+  constructor(private seriesService: SeriesService, private environmentService: EnvironmentService) {
     this.gridOptions = {
       animateRows: false,
       cellFlashDuration: 0,
@@ -208,24 +209,38 @@ export class ProgressDataTable implements OnInit {
     this.seriesService.getSessionJSON(sessionId).subscribe((res) => {
       // Transform the session JSON data into the format expected by openMatchSelectionDialog
       const transformedData = this.transformSessionDataToMatches(res);
+      console.log('Transformed session data:', transformedData);
       this.resultEmitter.emit(transformedData);
     });
   }
 
+  // In your progress-data-table.component.ts
   private transformSessionDataToMatches(sessionData: any): any {
     if (!sessionData?.results || !Array.isArray(sessionData.results)) {
       console.warn('No valid results found in session data');
       return null;
     }
-  
-    console.log(' Transforming session data:', sessionData);
-  
+
+    console.log('🔄 Transforming session data:', sessionData);
+
     const allMatches: ComicMatch[] = [];
+    const storedImages: any[] = []; // Track stored images for the bulk component
     
     sessionData.results.forEach((imageResult: any, imageIndex: number) => {
       console.log(`Processing image result ${imageIndex}:`, imageResult.image_name);
       
-      // FIXED: Check for 'matches' instead of 'top_matches'
+      // Store image information for bulk component
+      if (imageResult.image_name && imageResult.image_url) {
+        storedImages.push({
+          index: imageIndex,
+          name: imageResult.image_name,
+          originalUrl: imageResult.image_url, // Python server URL
+          // Convert to Java backend URL
+          javaUrl: this.convertToJavaImageUrl(sessionData.session_id, imageResult.image_url)
+        });
+      }
+      
+      // Process matches (your existing logic)
       if (imageResult.matches && Array.isArray(imageResult.matches)) {
         console.log(`Found ${imageResult.matches.length} matches for image ${imageIndex}`);
         
@@ -256,14 +271,16 @@ export class ProgressDataTable implements OnInit {
         console.log(`No matches found for image ${imageIndex}`);
       }
     });
-  
-    console.log(` Total transformed matches: ${allMatches.length}`);
-  
+
+    console.log(`📊 Total transformed matches: ${allMatches.length}`);
+    console.log(`🖼️ Stored images: ${storedImages.length}`);
+
     return {
       action: 'open_match_dialog',
       matches: allMatches,
       sessionId: sessionData.session_id,
       isMultiple: sessionData.total_images > 1,
+      storedImages: storedImages, // Add this for the bulk component
       summary: {
         total_images: sessionData.total_images,
         processed: sessionData.processed,
@@ -273,5 +290,17 @@ export class ProgressDataTable implements OnInit {
         best_similarity: sessionData.best_similarity
       }
     };
+  }
+
+  // Helper method to convert Python image URL to Java backend URL
+  private convertToJavaImageUrl(sessionId: string, pythonImageUrl: string): string {
+    // Extract filename from Python URL
+    // Python URL: "/inferno-comics-recognition/api/v1/stored_images/session_id/filename.jpg"
+    const urlParts = pythonImageUrl.split('/');
+    const filename = urlParts[urlParts.length - 1];
+    
+    // Convert to Java backend URL
+    // Java URL: "http://rest-url:8080/inferno-comics-rest/api/progress/image/session_id/filename.jpg"
+    return `${this.environmentService.settings?.restUrl}/progress/image/${sessionId}/${filename}`;
   }
 }
