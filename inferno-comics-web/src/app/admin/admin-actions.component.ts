@@ -7,17 +7,29 @@ import {
 
 import { ICellRendererParams } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
+import { MaterialModule } from '../material.module';
+import { CommonModule } from '@angular/common';
 
 export interface AdminActionRendererParams extends ICellRendererParams {
   viewClick: (data: any) => void;
   editClick: (data: any) => void;
   deleteClick: (data: any) => void;
+  playClick: (data: any) => void;
+  addClick: (data: any) => void;
+  showPlay: boolean;
+  showAdd: boolean;
 }
 
 @Component({
-  selector: 'amaterasu-admin-action',
+  selector: 'app-admin-action',
   template: `
     <span class="row">
+      <button *ngIf="params?.showPlay" mat-icon-button color="primary" matTooltip="Play" (click)="play()">
+        <mat-icon class="sm-icon">play_arrow</mat-icon>
+      </button>
+      <button *ngIf="params?.showAdd" mat-icon-button color="primary" matTooltip="Add" (click)="add()">
+        <mat-icon class="sm-icon">add</mat-icon>
+      </button>
       <button *ngIf="!params || !params.data || (!!params.data && !!params.viewClick)" mat-icon-button aria-label="View" class="table-action" color="primary" matToolTip="View" (click)="view()">
         <mat-icon class="sm-icon">visibility</mat-icon>
       </button>
@@ -74,7 +86,7 @@ export interface AdminActionRendererParams extends ICellRendererParams {
   `],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  standalone: false,
+  imports: [CommonModule, MaterialModule]
 })
 export class AdminActionsComponent implements ICellRendererAngularComp {
     params?: AdminActionRendererParams;
@@ -99,5 +111,13 @@ export class AdminActionsComponent implements ICellRendererAngularComp {
 
   delete() {
     this.params?.deleteClick(this.params?.data);
+  }
+
+  play() {
+    this.params?.playClick(this.params?.data);
+  }
+
+  add() {
+    this.params?.addClick(this.params?.data);
   }
 }

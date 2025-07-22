@@ -9,13 +9,14 @@ import { MaterialModule } from './material.module';
 import { EnvironmentService } from './services/environment.service';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { AgGridAngular, AgGridModule } from 'ag-grid-angular';
+import { AgGridAngular } from 'ag-grid-angular';
 import { AuthInterceptor } from './services/auth/auth-interceptor.service';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { SeriesFormComponent } from './components/series-form/series-form.component';
-import { SeriesListComponent } from './components/series-list/series-list.component';
 import { ThemeService } from './services/theme.service';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
+
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 export function init_app(environmentService: EnvironmentService) {
   return () => {
@@ -49,7 +50,7 @@ export function init_app(environmentService: EnvironmentService) {
     FormsModule,
     MaterialModule,
     CommonModule,
-    AgGridModule,
+    AgGridAngular,
   ],
   providers: [
     EnvironmentService,

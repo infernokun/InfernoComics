@@ -1,4 +1,5 @@
-<div class="series-detail-container" *ngIf="!loading">
+<div class="series-detail-container" *ngIf="!loading"> 
+  <app-progress-data-table [id]="series?.id!" (resultEmitter)="handleProgressDataResult($event)"></app-progress-data-table>
   <div class="series-header" *ngIf="series">
     <div class="series-image">
       <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name"

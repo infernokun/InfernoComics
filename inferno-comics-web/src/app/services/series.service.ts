@@ -20,12 +20,14 @@ export interface SSEProgressData {
 })
 export class SeriesService {
   private apiUrl: string = '';
+  private progressUrl: string = '';
 
   constructor(
     private http: HttpClient,
     private environmentService: EnvironmentService
   ) {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/series`;
+    this.progressUrl = `${this.environmentService.settings?.restUrl}/progress`;
   }
 
   getAllSeries(): Observable<any[]> {
@@ -289,6 +291,18 @@ export class SeriesService {
   getImageAnalysisStatus(seriesId: number, sessionId: string): Observable<any> {
     return this.http.get<any>(
       `${this.apiUrl}/${seriesId}/add-comic-by-image/status?sessionId=${sessionId}`
+    );
+  }
+
+  getProgressData(seriesId: number) {
+    return this.http.get<any[]>(
+      `${this.progressUrl}/data/${seriesId}`
+    );
+  }
+
+  getSessionJSON(sessionId: string) {
+    return this.http.get<any[]>(
+      `${this.progressUrl}/json/${sessionId}`
     );
   }
 }

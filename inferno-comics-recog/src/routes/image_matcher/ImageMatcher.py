@@ -1709,6 +1709,40 @@ def admin_migrate():
             'message': f'Migration failed: {str(e)}'
         }), 500
 
+@image_matcher_bp.route('/json', methods=['GET'])
+def get_json_by_session_id():
+    # Validate session_id parameter
+    session_id = request.args.get('sessionId')
+    if not session_id:
+        return jsonify({'error': 'sessionId parameter is required'}), 400
+    
+    # Sanitize session_id to prevent directory traversal attacks
+    if not session_id.replace('-', '').replace('_', '').isalnum():
+        return jsonify({'error': 'Invalid sessionId format'}), 400
+    
+    # Construct file path
+    file_path = f"./results/{session_id}.json"
+    
+    # Check if file exists
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'Session data not found'}), 404
+    
+    try:
+        # Read and parse JSON file
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)  # Parse JSON instead of reading as string
+        
+        return jsonify(data)
+    
+    except json.JSONDecodeError:
+        return jsonify({'error': 'Invalid JSON file format'}), 500
+    except IOError:
+        return jsonify({'error': 'Unable to read session data'}), 500
+    except Exception as e:
+        # Log the actual error for debugging (consider using proper logging)
+        print(f"Unexpected error reading session {session_id}: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 # Cleanup task - run this periodically (could be implemented with a scheduler)
 def run_cleanup():
     """Run cleanup periodically"""

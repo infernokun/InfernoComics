@@ -4,17 +4,24 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,12 +38,21 @@ public class ProgressService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final ProgressDataRepository progressDataRepository;
+    private final WebClient webClient;
 
     // SSE timeout: 30 minutes (should be enough for image processing)
     private static final long SSE_TIMEOUT = 30 * 60 * 1000L;
 
-    public ProgressService(ProgressDataRepository progressDataRepository) {
+    public ProgressService(ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig) {
         this.progressDataRepository = progressDataRepository;
+        this.webClient = WebClient.builder()
+                .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(configurer -> configurer
+                                .defaultCodecs()
+                                .maxInMemorySize(500 * 1024 * 1024))
+                        .build())
+                .build();
     }
 
     public boolean emitterIsPresent(String sessionId) {
@@ -378,6 +394,43 @@ public class ProgressService {
             }
             return shouldRemove;
         });
+    }
+
+    public List<ProgressData> getSessionsBySeriesId(Long seriesId) {
+        return progressDataRepository.findBySeriesId(seriesId);
+    }
+
+    public JsonNode getSessionJSON(String sessionId) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/json")
+                        .queryParam("sessionId", sessionId)
+                        .build())
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> {
+                    return clientResponse.bodyToMono(String.class)
+                            .flatMap(errorBody -> Mono.error(
+                                    new RuntimeException("Client error: " + clientResponse.statusCode() + " - " + errorBody)));
+                })
+                .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
+                    return clientResponse.bodyToMono(String.class)
+                            .flatMap(errorBody -> Mono.error(
+                                    new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
+                })
+                .bodyToMono(JsonNode.class)
+                .block();
+    }
+
+    public Resource getSessionImage(String sessionId, String fileName) {
+        return webClient.get()
+                .uri("/stored_images/" + sessionId + "/" + fileName)
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                        Mono.error(new RuntimeException("Image not found: " + fileName)))
+                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                        Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
+                .bodyToMono(Resource.class)
+                .block();
     }
 
     /**

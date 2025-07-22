@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal, WritableSignal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -10,7 +10,6 @@ import { Series } from '../../models/series.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
 import { RangeSelectionDialog } from './range-selection-dialog/range-selection-dialog';
 import {
-  ComicMatch,
   ComicMatchDialogData,
   ComicMatchSelectionComponent,
   ImageMatcherResponse,
@@ -26,12 +25,17 @@ import {
   BulkSelectionDialogData,
   ProcessedImageResult,
 } from './bulk-comic-selection/bulk-comic-selection.component';
+import { AgGridModule } from 'ag-grid-angular';
+import { ColDef, FirstDataRenderedEvent, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
+import { AdminActionsComponent } from '../../admin/admin-actions.component';
+import { ProgressDataTable } from './progress-data-table/progress-data-table.component';
+import { ComicMatch } from '../../models/comic-match.model';
 
 @Component({
   selector: 'app-series-detail',
   templateUrl: './series-detail.component.html',
   styleUrls: ['./series-detail.component.scss'],
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, AgGridModule, ProgressDataTable],
 })
 export class SeriesDetailComponent implements OnInit {
   series: Series | null = null;
@@ -55,7 +59,8 @@ export class SeriesDetailComponent implements OnInit {
     private comicVineService: ComicVineService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
-  ) {}
+  ) {
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
@@ -1254,5 +1259,66 @@ export class SeriesDetailComponent implements OnInit {
 
   toggleDescription(): void {
     this.showFullDescription = !this.showFullDescription;
+  }
+
+  handleProgressDataResult(result: any): void {
+    if (!result || result.action !== 'open_match_dialog') {
+      console.log('No valid match data received');
+      return;
+    }
+
+    const { matches, sessionId, isMultiple, summary } = result;
+
+    if (!matches || matches.length === 0) {
+      this.snackBar.open('No matching comics found in the session data', 'Close', {
+        duration: 3000,
+      });
+      return;
+    }
+
+    // Show summary information
+    if (summary) {
+      const message = `Found ${summary.successful_matches} matches from ${summary.processed} processed images`;
+      this.snackBar.open(message, 'Close', { duration: 3000 });
+    }
+
+    this.openBulkSelectionFromSessionData(matches, sessionId, summary);
+  }
+
+  private openBulkSelectionFromSessionData(
+    matches: ComicMatch[],
+    sessionId: string,
+    summary: any
+  ): void {
+    const dialogData: BulkSelectionDialogData = {
+      matches: matches,
+      seriesId: this.series?.id!,
+      sessionId: sessionId,
+      originalImages: [], // Not available from session data
+      isMultiple: true,
+      highConfidenceThreshold: 0.70,
+      mediumConfidenceThreshold: 0.55,
+      autoSelectHighConfidence: true,
+    };
+
+    const dialogRef = this.dialog.open(BulkComicSelectionComponent, {
+      width: '95vw',
+      maxWidth: '1200px',
+      maxHeight: '95vh',
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result && result.action === 'bulk_add') {
+        console.log('✅ Bulk add selected:', result.results.length, 'comics');
+        this.handleBulkAddResults(result.results, this.series?.id!);
+      } else if (result && result.action === 'save') {
+        console.log(' Save selections:', result.results);
+        // Handle save logic if needed
+      } else {
+        console.log(' User cancelled bulk selection');
+      }
+    });
   }
 }

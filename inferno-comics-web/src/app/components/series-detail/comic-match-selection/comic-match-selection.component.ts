@@ -3,29 +3,8 @@ import { Component, Inject, OnInit, OnDestroy } from "@angular/core";
 import { MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { MaterialModule } from "../../../material.module";
 import { Issue } from "../../../models/issue.model";
+import { ComicMatch } from "../../../models/comic-match.model";
 
-export interface ComicMatch {
-  session_id: string;
-  url: string;
-  similarity: number;
-  status: string;
-  match_details: {
-    orb: { good_matches: number; similarity: number; total_matches: number; };
-    sift: { good_matches: number; similarity: number; total_matches: number; };
-    akaze: { good_matches: number; similarity: number; total_matches: number; };
-    kaze: { good_matches: number; similarity: number; total_matches: number; };
-  };
-  candidate_features: { orb_count: number; sift_count: number; };
-  comic_name: string;
-  issue_number: string;
-  comic_vine_id: number | null;
-  cover_error: string;
-  issue: Issue | null;
-  parent_comic_vine_id: number | null;
-  // Multiple images specific properties
-  sourceImageIndex?: number;
-  sourceImageName?: string;
-}
 
 export interface ImageMatcherResponse {
   session_id: string;

@@ -2,30 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
 import { MaterialModule } from '../../../material.module';
-import { Issue } from '../../../models/issue.model';
 import { ComicMatchSelectionComponent, ComicMatchDialogData } from '../comic-match-selection/comic-match-selection.component';
-
-export interface ComicMatch {
-  session_id: string;
-  url: string;
-  similarity: number;
-  status: string;
-  match_details: {
-    orb: { good_matches: number; similarity: number; total_matches: number };
-    sift: { good_matches: number; similarity: number; total_matches: number };
-    akaze: { good_matches: number; similarity: number; total_matches: number; };
-    kaze: { good_matches: number; similarity: number; total_matches: number; };
-  };
-  candidate_features: { orb_count: number; sift_count: number };
-  comic_name: string;
-  issue_number: string;
-  comic_vine_id: number | null;
-  cover_error: string;
-  issue: Issue | null;
-  parent_comic_vine_id: number | null;
-  sourceImageIndex?: number;
-  sourceImageName?: string;
-}
+import { ComicMatch } from '../../../models/comic-match.model';
 
 export interface ProcessedImageResult {
   imageIndex: number;
@@ -43,12 +21,12 @@ export interface BulkSelectionDialogData {
   matches: ComicMatch[];
   seriesId: number;
   sessionId?: string;
-  originalImages: File[];
+  originalImages: File[]; // Make optional
+  storedImages?: any[];
   isMultiple: boolean;
-  // Thresholds for auto-selection
-  highConfidenceThreshold?: number;
-  mediumConfidenceThreshold?: number;
-  autoSelectHighConfidence?: boolean;
+  highConfidenceThreshold: number;
+  mediumConfidenceThreshold: number;
+  autoSelectHighConfidence: boolean;
 }
 
 @Component({
@@ -66,6 +44,8 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   private highConfidenceThreshold: number = 0.70;
   private mediumConfidenceThreshold: number = 0.55;
 
+  private isSessionData: boolean = false;
+
   constructor(
     public dialogRef: MatDialogRef<BulkComicSelectionComponent>,
     private dialog: MatDialog,
@@ -73,6 +53,8 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   ) {
     this.highConfidenceThreshold = data.highConfidenceThreshold || 0.70;
     this.mediumConfidenceThreshold = data.mediumConfidenceThreshold || 0.55;
+
+    
   }
 
   ngOnInit(): void {
@@ -90,15 +72,24 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   private createImagePreviews(): void {
-    this.imagePreviewUrls = this.data.originalImages.map((file) =>
-      URL.createObjectURL(file)
-    );
+    if (this.data.originalImages && this.data.originalImages.length > 0) {
+      this.imagePreviewUrls = this.data.originalImages.map((file) =>
+        URL.createObjectURL(file)
+      );
+    } else {
+      // No original images available (session data scenario)
+      this.imagePreviewUrls = [];
+    }
   }
 
   private processMatches(): void {
+    console.log(' Processing matches in bulk selection component');
+    console.log('Data matches length:', this.data.matches.length);
+    console.log('Original images length:', this.data.originalImages?.length || 0);
+  
     // Group matches by source image
     const groupedMatches: { [key: number]: ComicMatch[] } = {};
-
+  
     this.data.matches.forEach((match) => {
       const sourceIndex = match.sourceImageIndex ?? 0;
       if (!groupedMatches[sourceIndex]) {
@@ -106,16 +97,22 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       }
       groupedMatches[sourceIndex].push(match);
     });
-
+  
+    console.log(' Grouped matches:', groupedMatches);
+  
+    // FIXED: Handle case where originalImages might be empty or undefined
+    const imageCount = this.data.originalImages?.length || 
+      Math.max(...Object.keys(groupedMatches).map(k => parseInt(k))) + 1;
+  
     // Process each image
-    this.data.originalImages.forEach((file, index) => {
+    for (let index = 0; index < imageCount; index++) {
       const matches = groupedMatches[index] || [];
       const sortedMatches = matches.sort((a, b) => b.similarity - a.similarity);
       const bestMatch = sortedMatches[0] || null;
-
+  
       let status: ProcessedImageResult['status'] = 'no_match';
       let confidence: ProcessedImageResult['confidence'] = 'low';
-
+  
       if (bestMatch) {
         // Determine confidence level
         if (bestMatch.similarity >= this.highConfidenceThreshold) {
@@ -129,17 +126,30 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
           status = 'needs_review';
         }
       }
-
+  
+      // Get image name from match data or use default
+      const imageName = bestMatch?.sourceImageName || 
+        this.data.originalImages?.[index]?.name || 
+        `Image ${index + 1}`;
+  
+      // Get preview URL - use first match's local_url as preview if no original file
+      const imagePreview = this.imagePreviewUrls[index] || 
+        bestMatch?.local_url || 
+        bestMatch?.url || 
+        'assets/images/no-image-placeholder.png';
+  
       this.processedResults.push({
         imageIndex: index,
-        imageName: file.name,
-        imagePreview: this.imagePreviewUrls[index],
+        imageName: imageName,
+        imagePreview: imagePreview,
         bestMatch,
         allMatches: sortedMatches,
         status,
         confidence,
       });
-    });
+    }
+  
+    console.log('✅ Processed results:', this.processedResults);
   }
 
   applyFilter(): void {

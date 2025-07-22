@@ -15,6 +15,8 @@ class ColorFormatter(logging.Formatter):
         "ERROR": "\033[91m",      # Red
         "CRITICAL": "\033[1;91m", # Bold Red
     }
+
+    
     
     # Module name color (cyan)
     MODULE_COLOR = "\033[96m"
@@ -22,7 +24,7 @@ class ColorFormatter(logging.Formatter):
     RESET = "\033[0m"  # Reset color
     
     # Find the longest level name for alignment
-    MAX_LEVEL_WIDTH = max(len(level) for level in ["DEBUG", "INFO", "WARNING", "SUCCESS", "ERROR", "CRITICAL"])
+    MAX_LEVEL_WIDTH = max(len(level) for level in [x for x in COLORS.keys()])
     
     def __init__(self, fmt: str = None, datefmt: str = "%H:%M:%S", use_colors: bool = True):
         if fmt is None:
