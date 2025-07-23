@@ -28,8 +28,8 @@ export interface BulkSelectionDialogData {
   matches: ComicMatch[];
   seriesId: number;
   sessionId?: string;
-  originalImages: File[]; // Optional - for live file uploads
-  storedImages?: any[];    // Optional - for session data with stored images
+  originalImages: File[];
+  storedImages?: any[];
   isMultiple: boolean;
   highConfidenceThreshold: number;
   mediumConfidenceThreshold: number;
@@ -196,7 +196,22 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     console.log('✅ Processed results:', this.processedResults);
   }
 
+  onFilterChange(
+    newFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match'
+  ): void {
+    console.log('Filter changed to:', newFilter); // Debug log
+    this.currentFilter = newFilter;
+    this.applyFilter();
+  }
+
   applyFilter(): void {
+    console.log('Applying filter:', this.currentFilter);
+    console.log('ProcessedResults count:', this.processedResults.length);
+    console.log(
+      'ProcessedResults statuses:',
+      this.processedResults.map((r) => `${r.imageName}: ${r.status}`)
+    );
+
     switch (this.currentFilter) {
       case 'all':
         this.filteredResults = [...this.processedResults];
@@ -217,6 +232,8 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         );
         break;
     }
+
+    console.log('Filtered results count:', this.filteredResults.length);
   }
 
   // Action Methods

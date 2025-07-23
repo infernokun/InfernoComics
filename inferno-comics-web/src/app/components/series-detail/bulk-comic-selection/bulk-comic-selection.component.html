@@ -51,7 +51,7 @@
     <!-- Filter Options -->
     <div class="filter-section">
       <h3><mat-icon>filter_list</mat-icon> Filter View</h3>
-      <mat-button-toggle-group [(value)]="currentFilter" (change)="applyFilter()">
+      <mat-button-toggle-group [value]="currentFilter" (change)="onFilterChange($event.value)">
         <mat-button-toggle value="all">All ({{ processedResults.length }})</mat-button-toggle>
         <mat-button-toggle value="auto_selected">Auto-Selected ({{ getAutoSelectedCount() }})</mat-button-toggle>
         <mat-button-toggle value="needs_review">Needs Review ({{ getNeedsReviewCount() }})</mat-button-toggle>
