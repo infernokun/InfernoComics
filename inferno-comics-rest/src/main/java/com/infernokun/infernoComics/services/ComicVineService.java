@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.utils.GenericTextCleaner;
 import lombok.*;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -64,7 +65,13 @@ public class ComicVineService {
     @CachePut(value = "comic-vine-series", key = "#query")
     public List<ComicVineSeriesDto> refreshSeriesSearch(String query) {
         log.info("Force refreshing series cache for query: {}", query);
-        return searchSeriesFromAPI(query);
+        return searchSeriesFromAPI(query).stream().peek(r -> {
+                    if (r.getDescription() != null) {
+                        r.setDescription(GenericTextCleaner.makeReadable(r.getDescription()));
+                    }
+                })
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     // Cache issues for a series
@@ -81,7 +88,13 @@ public class ComicVineService {
         List<ComicVineIssueDto> allIssues = comicVineIds.parallelStream()
                 .map(this::searchIssuesFromAPI)
                 .flatMap(List::stream)
-                .distinct().sorted(this::compareIssueNumbers)
+                .peek(r -> {
+                    if (r.getDescription() != null) {
+                        r.setDescription(GenericTextCleaner.makeReadable(r.getDescription()));
+                    }
+                })
+                .distinct()
+                .sorted(this::compareIssueNumbers)
                 .collect(Collectors.toList());
 
         log.info("Retrieved and sorted {} total issues for series {}", allIssues.size(), series.getId());
@@ -372,7 +385,7 @@ public class ComicVineService {
                 ComicVineSeriesDto dto = new ComicVineSeriesDto();
                 dto.setId(result.path("id").asText());
                 dto.setName(result.path("name").asText());
-                dto.setDescription(result.path("description").asText());
+                dto.setDescription(GenericTextCleaner.makeReadable(result.path("description").asText()));
                 dto.setIssueCount(result.path("count_of_issues").asInt());
 
                 JsonNode publisher = result.path("publisher");
@@ -448,7 +461,8 @@ public class ComicVineService {
 
             dto.setId(result.path("id").asText());
             dto.setName(result.path("name").asText());
-            dto.setDescription(result.path("description").asText());
+            dto.setDescription(GenericTextCleaner.makeReadable(result.path("description").asText()));
+
             dto.setIssueCount(result.path("count_of_issues").asInt());
 
             JsonNode publisher = result.path("publisher");
@@ -480,7 +494,7 @@ public class ComicVineService {
                 dto.setId(result.path("id").asText());
                 dto.setIssueNumber(result.path("issue_number").asText());
                 dto.setName(result.path("name").asText());
-                dto.setDescription(result.path("description").asText());
+                dto.setDescription(GenericTextCleaner.makeReadable(result.path("description").asText()));
                 dto.setCoverDate(result.path("cover_date").asText());
 
                 JsonNode image = result.path("image");
@@ -536,7 +550,7 @@ public class ComicVineService {
             dto.setId(result.path("id").asText());
             dto.setIssueNumber(result.path("issue_number").asText());
             dto.setName(result.path("name").asText());
-            dto.setDescription(result.path("description").asText());
+            dto.setDescription(GenericTextCleaner.makeReadable(result.path("description").asText()));
             dto.setCoverDate(result.path("cover_date").asText());
 
             JsonNode image = result.path("image");

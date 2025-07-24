@@ -48,6 +48,8 @@ export class SeriesDetailComponent implements OnInit {
   showFullDescription = false;
 
   readonly DESCRIPTION_LIMIT = 100;
+  readonly ISSUE_DESCRIPTION_LIMIT = 150;
+  expandedIssues: Set<number> = new Set();
 
   constructor(
     private route: ActivatedRoute,
@@ -1274,6 +1276,38 @@ export class SeriesDetailComponent implements OnInit {
 
   toggleDescription(): void {
     this.showFullDescription = !this.showFullDescription;
+  }
+
+  getIssueDescription(issue: any): string {
+    if (!issue.description) return '';
+
+    const isExpanded = this.expandedIssues.has(issue.id);
+    if (isExpanded) return issue.description;
+
+    if (issue.description.length <= this.ISSUE_DESCRIPTION_LIMIT) {
+      return issue.description;
+    }
+
+    return issue.description.substring(0, this.ISSUE_DESCRIPTION_LIMIT) + '...';
+  }
+
+  shouldShowIssueToggle(issue: any): boolean {
+    return (
+      issue.description &&
+      issue.description.length > this.ISSUE_DESCRIPTION_LIMIT
+    );
+  }
+
+  isIssueDescriptionExpanded(issueId: number): boolean {
+    return this.expandedIssues.has(issueId);
+  }
+
+  toggleIssueDescription(issueId: number): void {
+    if (this.expandedIssues.has(issueId)) {
+      this.expandedIssues.delete(issueId);
+    } else {
+      this.expandedIssues.add(issueId);
+    }
   }
 
   handleProgressDataResult(result: any): void {
