@@ -149,49 +149,6 @@
               </mat-card-actions>
             </mat-card>
           </div>
-          
-          <!-- Browse Issues Grid - Updated section -->
-          <div class="browse-grid" *ngIf="!loadingComicVine && comicVineIssues.length > 0">
-            <mat-card *ngFor="let issue of comicVineIssues; let i = index" class="browse-card" [class.owned]="isIssueOwned(issue)"
-              [class.selected]="isIssueSelected(issue.id)" (click)="onIssueClick($event, issue.id, i)">
-              <div class="browse-image">
-                <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + issue.issueNumber"
-                  onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                <div class="owned-badge" *ngIf="isIssueOwned(issue)">
-                  <mat-icon>check</mat-icon>
-                </div>
-                <div class="selection-indicator" *ngIf="isIssueSelected(issue.id)">
-                  <mat-icon>check_circle</mat-icon>
-                </div>
-              </div>
-              <mat-card-header>
-                <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
-                <mat-card-subtitle>{{ issue.name }}</mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-content>
-                <!-- Updated browse issue description with toggle -->
-                <div class="issue-description-container" *ngIf="issue.description">
-                  <p class="issue-description">{{ getIssueDescription(issue) }}</p>
-                  <button *ngIf="shouldShowIssueToggle(issue)"
-                    (click)="toggleIssueDescription(issue.id); $event.stopPropagation()" class="show-more-btn issue-toggle">
-                    {{ isIssueDescriptionExpanded(issue.id) ? 'Show less' : 'Show more' }}
-                  </button>
-                </div>
-                <p class="cover-date" *ngIf="issue.coverDate">{{ issue.coverDate }}</p>
-              </mat-card-content>
-              <mat-card-actions>
-                <button mat-button color="primary" (click)="addFromComicVine(issue); $event.stopPropagation()"
-                  *ngIf="!isIssueOwned(issue)">
-                  <mat-icon>add</mat-icon>
-                  Add to Collection
-                </button>
-                <span class="owned-label" *ngIf="isIssueOwned(issue)">
-                  <mat-icon>check_circle</mat-icon>
-                  In Collection
-                </span>
-              </mat-card-actions>
-            </mat-card>
-          </div>
 
           <!-- Compact View -->
           <div class="collection-list" *ngIf="issues.length > 0 && isCompactView">
@@ -326,7 +283,15 @@
                 <mat-card-subtitle>{{ issue.name }}</mat-card-subtitle>
               </mat-card-header>
               <mat-card-content>
-                <p class="issue-description" *ngIf="issue.description">{{ issue.description }}</p>
+                <!-- Updated browse issue description with toggle -->
+                <div class="issue-description-container" *ngIf="issue.description">
+                  <p class="issue-description">{{ getIssueDescription(issue) }}</p>
+                  <button *ngIf="shouldShowIssueToggle(issue)"
+                    (click)="toggleIssueDescription(issue.id); $event.stopPropagation()" 
+                    class="show-more-btn issue-toggle">
+                    {{ isIssueDescriptionExpanded(issue.id) ? 'Show less' : 'Show more' }}
+                  </button>
+                </div>
                 <p class="cover-date" *ngIf="issue.coverDate">{{ issue.coverDate }}</p>
               </mat-card-content>
               <mat-card-actions>
