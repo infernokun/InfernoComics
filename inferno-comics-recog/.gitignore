@@ -2,7 +2,7 @@
 image_cache/
 *.db
 comic_*.html
-results/
+results/*.json
 venv/
 logs/
 src/routes/stored_images/*

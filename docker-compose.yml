@@ -79,7 +79,7 @@ services:
       FLASK_ENV: "production"
     volumes:
       - /var/tmp/inferno-comics:/var/tmp/inferno-comics
-      - ./results:/app/src/results
+      - /var/tmp/inferno-comics/results:/app/results
     networks:
       - inferno-comics-network
 
