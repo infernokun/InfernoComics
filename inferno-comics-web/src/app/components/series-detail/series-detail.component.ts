@@ -92,6 +92,8 @@ export class SeriesDetailComponent implements OnInit {
     this.issueService.getIssuesBySeries(seriesId).subscribe({
       next: (books) => {
         this.issues = books;
+        // Re-filter Comic Vine issues after loading collection issues
+        this.filterComicVineIssues();
       },
       error: (error) => {
         console.error('Error loading comic books:', error);
@@ -106,6 +108,8 @@ export class SeriesDetailComponent implements OnInit {
     this.comicVineService.searchIssues(this.series.id.toString()).subscribe({
       next: (issues) => {
         this.comicVineIssues = issues;
+        // Filter out issues that are already in the collection
+        this.filterComicVineIssues();
         this.loadingComicVine = false;
       },
       error: (error) => {
@@ -115,6 +119,26 @@ export class SeriesDetailComponent implements OnInit {
           duration: 3000,
         });
       },
+    });
+  }
+
+  // New helper method to filter Comic Vine issues
+  private filterComicVineIssues(): void {
+    if (!this.comicVineIssues || !this.issues) return;
+
+    this.comicVineIssues = this.comicVineIssues.filter((cvIssue) => {
+      return !this.issues.some((ownedIssue) => {
+        // Check Comic Vine ID first (most reliable)
+        if (ownedIssue.comicVineId && cvIssue.id) {
+          return (
+            ownedIssue.comicVineId === cvIssue.id.toString() ||
+            ownedIssue.comicVineId === cvIssue.id
+          );
+        }
+
+        // Fallback to issue number if Comic Vine ID not available
+        return ownedIssue.issueNumber === cvIssue.issueNumber;
+      });
     });
   }
 
