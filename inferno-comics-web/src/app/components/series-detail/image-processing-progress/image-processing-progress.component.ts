@@ -133,7 +133,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     // Initialize all thumbnails as pending except the first one
     this.thumbnailStates = Array(this.totalImages).fill('pending');
     if (this.totalImages > 0) {
-      this.thumbnailStates[0] = 'processing'; // First image starts processing
+      this.thumbnailStates[0] = 'processing'; 
     }
   }
 
@@ -309,9 +309,9 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   setComplete(result?: any) {
     this.isProcessing = false;
     this.progress = 100;
-    // Fix: Set currentStageIndex to indicate ALL stages are complete
+
     this.currentStageIndex = this.processingStages.length; // This ensures all stages show as completed
-    this.currentStage = 'Complete!'; // Update the current stage text
+    this.currentStage = 'Complete!';
   
     // Mark all remaining images as completed
     for (let i = 0; i < this.thumbnailStates.length; i++) {

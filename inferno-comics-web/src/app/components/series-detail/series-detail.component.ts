@@ -18,7 +18,7 @@ import { IssueViewDialog } from './issue-view-dialog/issue-view-dialog.component
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { ConfirmationDialogComponent } from '../common/dialog/confirmation-dialog/confirmation-dialog.component';
-import { Issue } from '../../models/issue.model';
+import { Issue, IssueCondition } from '../../models/issue.model';
 import { ImageProcessingDialogComponent } from './image-processing-progress/image-processing-progress.component';
 import {
   BulkComicSelectionComponent,
@@ -128,7 +128,6 @@ export class SeriesDetailComponent implements OnInit {
 
     this.comicVineIssues = this.comicVineIssues.filter((cvIssue) => {
       return !this.issues.some((ownedIssue) => {
-        // Check Comic Vine ID first (most reliable)
         if (ownedIssue.comicVineId && cvIssue.id) {
           return (
             ownedIssue.comicVineId === cvIssue.id.toString() ||
@@ -142,16 +141,12 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  // Selection methods
   onIssueClick(event: MouseEvent, issueId: string, index: number): void {
     if (event.ctrlKey || event.metaKey) {
-      // Ctrl/Cmd click - toggle selection
       this.toggleSelection(issueId);
     } else if (event.shiftKey && this.lastSelectedIndex !== -1) {
-      // Shift click - select range
       this.selectRangeByIndex(this.lastSelectedIndex, index);
     } else {
-      // Normal click - single selection
       this.clearSelection();
       this.selectedIssues.add(issueId);
     }
@@ -188,7 +183,6 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   selectRange(): void {
-    // Open a dialog to select a range
     const dialog = this.dialog.open(RangeSelectionDialog, {
       width: '400px',
       data: {
@@ -254,7 +248,7 @@ export class SeriesDetailComponent implements OnInit {
         coverDate: issue.coverDate,
         imageUrl: issue.imageUrl,
         comicVineId: issue.id,
-        condition: 'VERY_FINE', // Use enum value instead of "VF"
+        condition: IssueCondition.VERY_FINE,
         purchasePrice: 0,
         currentValue: 0,
         keyIssue: false,
@@ -312,7 +306,6 @@ export class SeriesDetailComponent implements OnInit {
     );
   }
 
-  // Existing methods...
   addIssue(): void {
     const dialogRef = this.dialog.open(IssueFormComponent, {
       width: '600px',
@@ -327,7 +320,6 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   viewIssue(issueId: number): void {
-    // Find the comic book in our current list
     const issue = this.issues.find((comic) => comic.id === issueId);
     if (issue) {
       const dialogRef = this.dialog.open(IssueViewDialog, {
@@ -450,11 +442,10 @@ export class SeriesDetailComponent implements OnInit {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.multiple = true; // Enable multiple file selection
+    input.multiple = true; 
     input.onchange = (event: any) => {
       const files: FileList = event.target.files;
       if (files && files.length > 0) {
-        // Convert FileList to Array for easier processing
         const fileArray = Array.from(files);
 
         // Check if SSE is supported and use enhanced version, otherwise fallback
@@ -468,7 +459,6 @@ export class SeriesDetailComponent implements OnInit {
     input.click();
   }
 
-  // Updated handleSSEProgress method in SeriesDetailComponent
   private handleSSEProgress(
     seriesId: number,
     data: SSEProgressData,
@@ -488,8 +478,6 @@ export class SeriesDetailComponent implements OnInit {
       case 'complete':
         dialogComponent.setComplete(data.result);
 
-        // Handle the dialog close result (don't auto-open matcher anymore)
-        // The user will click "Next" to proceed
         break;
 
       case 'error':
@@ -540,8 +528,6 @@ export class SeriesDetailComponent implements OnInit {
         console.log('Completion result:', data.result);
 
         dialogComponent.setComplete(data.result);
-
-        // Don't automatically open matcher - user will click "Next"
         break;
 
       case 'error':
@@ -560,9 +546,7 @@ export class SeriesDetailComponent implements OnInit {
     }
   }
 
-  // Updated processImageWithSSE method to handle dialog result
   private processImageWithSSE(seriesId: number, file: File): void {
-    // Open the progress dialog
     const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
       width: '600px',
       maxWidth: '90vw',
@@ -575,7 +559,6 @@ export class SeriesDetailComponent implements OnInit {
 
     const dialogComponent = progressDialogRef.componentInstance;
 
-    // Handle dialog close
     progressDialogRef.afterClosed().subscribe((dialogResult) => {
       if (dialogResult && dialogResult.action === 'proceed_to_matcher') {
         console.log(
@@ -584,8 +567,7 @@ export class SeriesDetailComponent implements OnInit {
         );
 
         // Cast the result to ImageMatcherResponse for proper typing
-        const imageMatcherResponse =
-          dialogResult.result as ImageMatcherResponse;
+        const imageMatcherResponse = dialogResult.result as ImageMatcherResponse;
 
         if (
           imageMatcherResponse &&
@@ -628,7 +610,6 @@ export class SeriesDetailComponent implements OnInit {
 
   // Updated processMultipleImagesWithSSE method to handle dialog result
   private processMultipleImagesWithSSE(seriesId: number, files: File[]): void {
-    // Open the progress dialog
     const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
       width: '600px',
       maxWidth: '90vw',
@@ -642,7 +623,6 @@ export class SeriesDetailComponent implements OnInit {
 
     const dialogComponent = progressDialogRef.componentInstance;
 
-    // Handle dialog close
     progressDialogRef.afterClosed().subscribe((dialogResult) => {
       if (dialogResult && dialogResult.action === 'proceed_to_matcher') {
         console.log(
@@ -723,14 +703,8 @@ export class SeriesDetailComponent implements OnInit {
       if (imageResult.top_matches && Array.isArray(imageResult.top_matches)) {
         imageResult.top_matches.forEach((match: any) => {
           // Add source tracking to each match
-          match.sourceImageIndex =
-            imageResult.image_index !== undefined
-              ? imageResult.image_index
-              : imageIndex;
-          match.sourceImageName =
-            imageResult.image_name ||
-            originalImages[imageIndex]?.name ||
-            `Image ${imageIndex + 1}`;
+          match.sourceImageIndex = imageResult.image_index !== undefined ? imageResult.image_index : imageIndex;
+          match.sourceImageName = imageResult.image_name || originalImages[imageIndex]?.name || `Image ${imageIndex + 1}`;
           allMatches.push(match);
         });
       }
@@ -781,7 +755,7 @@ export class SeriesDetailComponent implements OnInit {
         this.handleBulkAddResults(result.results, seriesId);
       } else if (result && result.action === 'save') {
         console.log(' Save selections:', result.results);
-        // Handle save logic if needed
+        // Handle save logic
       } else {
         console.log(' User cancelled bulk selection');
       }
@@ -865,7 +839,7 @@ export class SeriesDetailComponent implements OnInit {
           'hasSelectedMatch:',
           !!result.selectedMatch
         );
-        return Promise.resolve(null); // Skip this result
+        return Promise.resolve(null);
       }
     });
 
@@ -927,7 +901,6 @@ export class SeriesDetailComponent implements OnInit {
         ).length;
 
         if (successfulResults.length > 0) {
-          // FIXED: Pass the files parameter
           this.handleMultipleImageResults(
             successfulResults,
             seriesId,
@@ -971,12 +944,11 @@ export class SeriesDetailComponent implements OnInit {
     });
 
     if (allMatches.length > 0) {
-      // FIXED: Add missing parameters
       this.openMatchSelectionDialog(
         allMatches,
         seriesId,
-        originalImages, // ADD THIS
-        results[0]?.session_id // ADD THIS
+        originalImages,
+        results[0]?.session_id
       );
 
       let message = `Found matches in ${results.length} images`;
@@ -1026,12 +998,11 @@ export class SeriesDetailComponent implements OnInit {
           response.top_matches &&
           response.top_matches.length > 0
         ) {
-          // FIXED: Add missing file and sessionId parameters
           this.openMatchSelectionDialog(
             response.top_matches,
             seriesId,
-            file, // ADD THIS
-            response.session_id // ADD THIS
+            file,
+            response.session_id
           );
         } else {
           this.snackBar.open('No matching comics found', 'Close', {
@@ -1152,7 +1123,6 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   private viewExistingIssue(existingIssue: any): void {
-    // Open the issue form in edit mode
     const dialogRef = this.dialog.open(IssueFormComponent, {
       width: '600px',
       data: {
@@ -1174,7 +1144,7 @@ export class SeriesDetailComponent implements OnInit {
   private handleSelectedMatch(match: ComicMatch, seriesId: number): void {
     // Show loading indicator while fetching Comic Vine details
     this.snackBar.open('Fetching comic details...', '', {
-      duration: 0, // Keep open until dismissed
+      duration: 0,
     });
 
     console.log('Selected match:', match.parent_comic_vine_id);
@@ -1188,7 +1158,6 @@ export class SeriesDetailComponent implements OnInit {
       )
       .subscribe({
         next: (issue: Issue) => {
-          // Dismiss loading indicator
           this.snackBar.dismiss();
 
           if (match.parent_comic_vine_id) {
@@ -1353,7 +1322,6 @@ export class SeriesDetailComponent implements OnInit {
       return;
     }
 
-    // Show summary information
     if (summary) {
       const message = `Found ${summary.successful_matches} matches from ${summary.processed} processed images`;
       this.snackBar.open(message, 'Close', { duration: 3000 });
@@ -1378,8 +1346,8 @@ export class SeriesDetailComponent implements OnInit {
       matches: matches,
       seriesId: this.series?.id!,
       sessionId: sessionId,
-      originalImages: [], // Empty array for session data
-      storedImages: storedImages || [], // Add stored images from session
+      originalImages: [],
+      storedImages: storedImages || [],
       isMultiple: true,
       highConfidenceThreshold: 0.7,
       mediumConfidenceThreshold: 0.55,

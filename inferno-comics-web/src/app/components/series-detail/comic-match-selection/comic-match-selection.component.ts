@@ -2,7 +2,6 @@ import { CommonModule } from "@angular/common";
 import { Component, Inject, OnInit, OnDestroy } from "@angular/core";
 import { MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { MaterialModule } from "../../../material.module";
-import { Issue } from "../../../models/issue.model";
 import { ComicMatch } from "../../../models/comic-match.model";
 
 
@@ -12,8 +11,7 @@ export interface ImageMatcherResponse {
   total_matches: number;
   total_covers_processed: number;
   total_urls_processed: number;
-  // Multiple images response format
-  results?: ImageMatcherResponse[]; // Array of individual image results
+  results?: ImageMatcherResponse[]; 
   summary?: {
     total_images_processed: number;
     successful_images: number;
@@ -27,8 +25,8 @@ export interface ComicMatchDialogData {
   seriesId: number;
   sessionId?: string;
   originalImage?: File;
-  originalImages?: File[]; // Multiple images support
-  isMultiple?: boolean; // Flag for multiple images mode
+  originalImages?: File[];
+  isMultiple?: boolean;
 }
 
 @Component({
@@ -124,7 +122,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
         index,
         name: firstMatch?.sourceImageName || `Image ${index + 1}`,
         matches,
-        previewUrl: null // Will be set in createImagePreviews
+        previewUrl: null 
       };
     }).sort((a, b) => a.index - b.index);
 

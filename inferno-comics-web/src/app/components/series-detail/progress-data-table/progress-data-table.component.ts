@@ -1,4 +1,3 @@
-// progress-data-table.component.ts
 import {
   Component,
   EventEmitter,
@@ -207,14 +206,12 @@ export class ProgressDataTable implements OnInit {
 
   getSessionJSON(sessionId: string) {
     this.seriesService.getSessionJSON(sessionId).subscribe((res) => {
-      // Transform the session JSON data into the format expected by openMatchSelectionDialog
       const transformedData = this.transformSessionDataToMatches(res);
       console.log('Transformed session data:', transformedData);
       this.resultEmitter.emit(transformedData);
     });
   }
 
-  // In your progress-data-table.component.ts
   private transformSessionDataToMatches(sessionData: any): any {
     if (!sessionData?.results || !Array.isArray(sessionData.results)) {
       console.warn('No valid results found in session data');
@@ -224,7 +221,7 @@ export class ProgressDataTable implements OnInit {
     console.log('🔄 Transforming session data:', sessionData);
 
     const allMatches: ComicMatch[] = [];
-    const storedImages: any[] = []; // Track stored images for the bulk component
+    const storedImages: any[] = [];
     
     sessionData.results.forEach((imageResult: any, imageIndex: number) => {
       console.log(`Processing image result ${imageIndex}:`, imageResult.image_name);
@@ -234,13 +231,11 @@ export class ProgressDataTable implements OnInit {
         storedImages.push({
           index: imageIndex,
           name: imageResult.image_name,
-          originalUrl: imageResult.image_url, // Python server URL
-          // Convert to Java backend URL
+          originalUrl: imageResult.image_url, 
           javaUrl: this.convertToJavaImageUrl(sessionData.session_id, imageResult.image_url)
         });
       }
       
-      // Process matches (your existing logic)
       if (imageResult.matches && Array.isArray(imageResult.matches)) {
         console.log(`Found ${imageResult.matches.length} matches for image ${imageIndex}`);
         
@@ -280,7 +275,7 @@ export class ProgressDataTable implements OnInit {
       matches: allMatches,
       sessionId: sessionData.session_id,
       isMultiple: sessionData.total_images > 1,
-      storedImages: storedImages, // Add this for the bulk component
+      storedImages: storedImages, 
       summary: {
         total_images: sessionData.total_images,
         processed: sessionData.processed,

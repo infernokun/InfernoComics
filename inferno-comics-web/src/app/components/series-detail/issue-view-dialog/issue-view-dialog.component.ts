@@ -11,7 +11,7 @@ import { CommonModule } from "@angular/common";
   imports: [CommonModule, MaterialModule],
 })
 export class IssueViewDialog {
-  Math = Math; // Make Math available in template
+  Math = Math; 
 
   constructor(
     public dialogRef: MatDialogRef<IssueViewDialog>,

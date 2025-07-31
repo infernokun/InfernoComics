@@ -54,9 +54,9 @@ export class SeriesFormComponent implements OnInit {
       startYear: [''],
       endYear: [''],
       imageUrl: [''],
-      issueCount: [{ value: 0, disabled: true }], // Disable editing for issue count
-      comicVineId: [''], // Keep for backwards compatibility
-      comicVineIds: [[]] // Array of Comic Vine IDs for combined series
+      issueCount: [{ value: 0, disabled: true }],
+      comicVineId: [''], 
+      comicVineIds: [[]]
     });
   }
 

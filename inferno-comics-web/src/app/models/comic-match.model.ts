@@ -1,7 +1,7 @@
 export interface ComicMatch {
     session_id?: string;
     url: string;
-    local_url?: string; // Make optional to accommodate both components
+    local_url?: string;
     similarity: number;
     status?: string;
     match_details: {
@@ -20,7 +20,7 @@ export interface ComicMatch {
     issue_number: string;
     comic_vine_id?: number | null;
     cover_error?: string;
-    issue?: any | null; // Use any or create proper Issue interface
+    issue?: any | null;
     parent_comic_vine_id?: number | null;
     sourceImageIndex?: number;
     sourceImageName?: string;

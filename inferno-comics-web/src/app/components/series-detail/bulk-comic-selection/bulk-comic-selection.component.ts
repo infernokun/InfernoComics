@@ -199,7 +199,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   onFilterChange(
     newFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match'
   ): void {
-    console.log('Filter changed to:', newFilter); // Debug log
+    console.log('Filter changed to:', newFilter); 
     this.currentFilter = newFilter;
     this.applyFilter();
   }
@@ -255,7 +255,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       seriesId: this.data.seriesId,
       sessionId: this.data.sessionId,
       originalImage: this.data.originalImages[result.imageIndex],
-      isMultiple: false, // Single image review mode
+      isMultiple: false, 
     };
 
     // Open the individual match selection dialog
@@ -333,9 +333,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
     console.log('Manual add requested for:', result.imageName);
 
-    // You might want to emit an event or call a service here
-    // to handle the manual addition workflow
-
+    // emit an event or call a service here to handle the manual addition workflow
     this.applyFilter();
   }
 

@@ -9,7 +9,7 @@ export interface Series {
   endYear?: number;
   imageUrl?: string;
   comicVineId?: string;
-  comicVineIds?: string[]; // Array of Comic Vine IDs for combined series
+  comicVineIds?: string[];
   issueCount?: number;
   createdAt?: Date;
   updatedAt?: Date;

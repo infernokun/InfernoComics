@@ -43,20 +43,17 @@ export class IssueFormComponent implements OnInit {
   ) {
     this.issueForm = this.createForm();
     this.isEditMode = !!data.issue;
-    this.isFromImageMatch = !!data.prefillData;  // Set flag if prefill data exists
+    this.isFromImageMatch = !!data.prefillData;
   }
 
   ngOnInit(): void {
     console.log('IssueFormComponent initialized with data:', this.data);
     if (this.data.issue) {
-      // Edit mode - populate form with existing data
       this.populateFormForEdit();
     } else if (this.data.comicVineIssue) {
-      // Add from Comic Vine - populate with Comic Vine data
       this.populateFormFromComicVine();
     }
 
-    // Handle prefill data from image matching (this should come last to override other data)
     if (this.data.prefillData) {
       this.prefillForm();
     }
@@ -66,15 +63,11 @@ export class IssueFormComponent implements OnInit {
     const prefillData = this.data.prefillData;
     
     if (prefillData) {
-      // Update form with prefilled values
       this.issueForm.patchValue({
         title: prefillData.title || '',
         issueNumber: prefillData.issueNumber || '',
-        imageUrl: prefillData.coverImageUrl || '',  // Note: using imageUrl not coverImageUrl to match your form
+        imageUrl: prefillData.coverImageUrl || '',
       });
-
-      // Don't disable fields, just mark them as auto-filled for visual indication
-      // Users should be able to edit these values if needed
     }
   }
 
@@ -151,7 +144,7 @@ export class IssueFormComponent implements OnInit {
         notes: formData.notes,
         comicVineId: formData.comicVineId,
         keyIssue: formData.keyIssue,
-        variant: formData.variant || false,  // New field for variant cover
+        variant: formData.variant || false,
         generatedDescription: this.data.comicVineIssue?.generatedDescription || false
       };
 
