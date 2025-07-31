@@ -16,7 +16,6 @@ public interface GCDIssueRepository extends JpaRepository<GCDIssue, Long> {
 
     List<GCDIssue> findBySeries_NameContainingIgnoreCaseAndKeyDateContaining(String seriesName, String year);
 
-    // Custom queries with @Query
     @Query("SELECT i FROM GCDIssue i WHERE LOWER(i.series.name) LIKE LOWER(CONCAT('%', :seriesName, '%')) AND i.keyDate LIKE %:year%")
     List<GCDIssue> findBySeriesNameAndYear(@Param("seriesName") String seriesName, @Param("year") String year);
 

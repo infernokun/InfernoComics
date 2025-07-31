@@ -90,7 +90,6 @@ public class Issue {
     private boolean generatedDescription = false;
     private boolean read = false;
 
-    // Enum for comic book condition
     public enum Condition {
         MINT, NEAR_MINT, VERY_FINE, FINE, VERY_GOOD, GOOD, FAIR, POOR
     }

@@ -56,7 +56,7 @@ public class InfernoComicsLogger implements Filter {
             if (!isExcludedUrl(requestUri)) {
                 logResponse(httpRequest, httpResponse, requestId, startTime, ex);
             }
-            throw ex; // Re-throw the exception
+            throw ex;
         }
     }
 

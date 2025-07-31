@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -31,7 +30,6 @@ public class GCDAPIService {
                 .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
                 .defaultHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
                 .defaultHeader("Accept-Language", "en-US,en;q=0.9")
-                .defaultHeader(HttpHeaders.COOKIE, "csrftoken=xlYHZLNfSnOh9tunU1PSs6d6B5zRo4pM; cf_clearance=bSRhg8voot0Z2EG5VnDsgqO36hjHDJaQlRYtfsUao4g-1752347282-1.2.1.1-OvkuTOZ2xFHAxedL2v78JWor21EqeIFvdxOR3rKCwsQoDuB48RT7_0sqhY5Yw1KbtK54M8MbfU2VzWMUt..Ga9nXJJcOio2Jxr4qMh0F0UhPseuj61rpe8fMWWs86bhFYAuaNbNgSb.gQ2RRG4ygSEcBt3aSBfadD7xzbABgR4bLm1BqK7hrph97V7KCtemv18tfu5K8Z.HfJ3U2Vltxt92wKan6L_HEyBdyebPs8vlSY5aabdbTbies1XzA4wFI; gcdsessionid=6w9voqifvwcdbn7u8a1r7y50tjpkep6f")
                 .build();
     }
 

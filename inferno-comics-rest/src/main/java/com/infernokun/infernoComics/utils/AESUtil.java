@@ -54,7 +54,6 @@ public class AESUtil {
         }
     }
 
-    /** Encrypts a given string using AES-GCM. */
     public String encrypt(String encryptedValue) {
         try {
 
@@ -90,7 +89,6 @@ public class AESUtil {
         }
     }
 
-    /** Decrypts a given AES-GCM encrypted string. */
     public String decrypt(String encryptedValue) {
         try {
             byte[] decoded = Base64.getDecoder().decode(encryptedValue);

@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 public class GCDCoverPageScraper {
 
     private static final String GCD_COVER_URL = "https://www.comics.org/issue/%d/cover/4/";
-    private static final int DRIVER_POOL_SIZE = 3; // Multiple drivers for parallel processing
+    private static final int DRIVER_POOL_SIZE = 3;
 
     private List<WebDriver> driverPool;
     private int currentDriverIndex = 0;
@@ -138,9 +138,6 @@ public class GCDCoverPageScraper {
         }
     }
 
-    /**
-     * Get next available driver from pool (round-robin)
-     */
     private synchronized WebDriver getNextDriver() {
         if (driverPool.isEmpty()) {
             throw new RuntimeException("No drivers available in pool");
@@ -151,9 +148,6 @@ public class GCDCoverPageScraper {
         return driver;
     }
 
-    /**
-     * Main scraping method - always collects ALL covers found on the page
-     */
     public GCDCover scrapeCoverPage(GCDIssue issue) {
         GCDCover gcdCover = new GCDCover();
         WebDriver driver;
@@ -208,9 +202,6 @@ public class GCDCoverPageScraper {
         }
     }
 
-    /**
-     * Find ALL cover images on the page - collects every matching image
-     */
     private GCDCover findAllCoverImages(WebDriver driver) {
         GCDCover gcdCover = new GCDCover();
 
@@ -271,9 +262,6 @@ public class GCDCoverPageScraper {
         return gcdCover;
     }
 
-    /**
-     * Normalize URL (handle relative URLs)
-     */
     private String normalizeUrl(String url) {
         if (url.startsWith("//")) {
             return "https:" + url;

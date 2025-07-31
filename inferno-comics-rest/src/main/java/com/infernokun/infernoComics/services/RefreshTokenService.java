@@ -34,9 +34,6 @@ public class RefreshTokenService {
     // Cache name
     private static final String TOKEN_CACHE = "tokenCache";
 
-    /**
-     * Creates a refresh token (opaque UUID) stored in database
-     */
     public RefreshToken createRefreshToken(User user, String deviceInfo, HttpServletRequest request) {
         // Clean up expired tokens first
         cleanupExpiredTokensForUser(user.getId());
@@ -58,9 +55,6 @@ public class RefreshTokenService {
         return refreshTokenRepository.save(refreshToken);
     }
 
-    /**
-     * Generates short-lived JWT access token (NOT stored in database)
-     */
     public String generateAccessToken(User user) {
         Instant now = Instant.now();
         Instant expiration = now.plus(30, ChronoUnit.MINUTES); // Short-lived
@@ -81,9 +75,6 @@ public class RefreshTokenService {
         return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
-    /**
-     * Validates refresh token and generates new access token
-     */
     public String refreshAccessToken(String refreshTokenString, HttpServletRequest request) {
         RefreshToken refreshToken = refreshTokenRepository.findByToken(refreshTokenString)
                 .orElseThrow(() -> new TokenException("Invalid refresh token"));
@@ -108,9 +99,6 @@ public class RefreshTokenService {
         return generateAccessToken(refreshToken.getUser());
     }
 
-    /**
-     * Security validation for refresh requests
-     */
     private void validateRefreshRequest(RefreshToken token, HttpServletRequest request) {
         String currentIP = getClientIP(request);
         String currentUserAgent = request.getHeader("User-Agent");
@@ -126,9 +114,6 @@ public class RefreshTokenService {
         }
     }
 
-    /**
-     * Rotate refresh token if needed (every 30 days)
-     */
     public RefreshToken rotateRefreshTokenIfNeeded(RefreshToken currentToken, HttpServletRequest request) {
         if (currentToken.needsRotation()) {
             // Ensure proper revocation
@@ -142,18 +127,12 @@ public class RefreshTokenService {
         return currentToken;
     }
 
-    /**
-     * Get all active sessions for a user
-     */
     public List<RefreshToken> getActiveSessionsForUser(String userId) {
         return refreshTokenRepository.findAllByUserId(userId).stream()
                 .filter(token -> !token.isRevoked() && !token.isExpired())
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Revoke specific session
-     */
     @Transactional
     public void revokeSession(String refreshTokenString, String reason) {
         if (reason == null || reason.trim().isEmpty()) {
@@ -168,9 +147,6 @@ public class RefreshTokenService {
         evictTokenCache(refreshTokenString);
     }
 
-    /**
-     * Revoke all sessions for a user
-     */
     @Transactional
     public void revokeAllUserSessions(String userId, String reason) {
         List<RefreshToken> userTokens = refreshTokenRepository.findAllByUserId(userId);

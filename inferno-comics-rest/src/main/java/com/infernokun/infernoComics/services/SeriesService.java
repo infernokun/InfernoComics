@@ -10,8 +10,6 @@ import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
-import com.infernokun.infernoComics.services.gcd.GCDAPIService;
-import com.infernokun.infernoComics.services.gcd.GCDCoverPageScraper;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
@@ -41,8 +39,6 @@ public class SeriesService {
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
-    private final GCDCoverPageScraper gcdCoverPageScraper;
-    private final GCDAPIService gcdapiService;
     private final ModelMapper modelMapper;
     private final ProgressService progressService;
 
@@ -54,8 +50,6 @@ public class SeriesService {
                          ComicVineService comicVineService,
                          DescriptionGeneratorService descriptionGeneratorService,
                          GCDatabaseService gcDatabaseService,
-                         GCDCoverPageScraper gcdCoverPageScraper,
-                         GCDAPIService gcdapiService,
                          ModelMapper modelMapper,
                          InfernoComicsConfig infernoComicsConfig,
                          ProgressService progressService) {
@@ -63,8 +57,6 @@ public class SeriesService {
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
-        this.gcdCoverPageScraper = gcdCoverPageScraper;
-        this.gcdapiService = gcdapiService;
         this.modelMapper = modelMapper;
         this.progressService = progressService;
         urlCache.put(0, new ArrayList<>());

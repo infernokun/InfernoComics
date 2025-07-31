@@ -13,7 +13,6 @@ public class ModelMapperConfig {
     public ModelMapper modelMapper() {
         ModelMapper mapper = new ModelMapper();
 
-        // Configure Series mapping
         mapper.createTypeMap(SeriesController.SeriesCreateRequestDto.class, Series.class)
                 .addMappings(mapping -> {
                     mapping.skip(Series::setId);

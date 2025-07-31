@@ -45,9 +45,6 @@ public class AuthenticationController extends BaseController {
                 .build());
     }
 
-    /**
-     * Refresh access token using refresh token
-     */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<LoginResponse>> refreshToken(
             @RequestBody RefreshTokenRequest request,
@@ -63,9 +60,6 @@ public class AuthenticationController extends BaseController {
                 .build());
     }
 
-    /**
-     * Check if refresh token is valid
-     */
     @PostMapping("/refresh/validate")
     public ResponseEntity<ApiResponse<Boolean>> validateRefreshToken(
             @RequestBody RefreshTokenRequest request) {
@@ -79,9 +73,6 @@ public class AuthenticationController extends BaseController {
                 .build());
     }
 
-    /**
-     * Logout user (revoke refresh token)
-     */
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(@RequestBody RefreshTokenRequest request) {
         authenticationService.logout(request.getRefreshToken());

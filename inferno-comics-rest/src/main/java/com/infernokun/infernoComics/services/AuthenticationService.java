@@ -86,9 +86,6 @@ public class AuthenticationService {
         }
     }
 
-    /**
-     * Refresh access token using refresh token
-     */
     public LoginResponse refreshToken(String refreshTokenString, HttpServletRequest request) {
         log.info("Refreshing token");
 
@@ -106,17 +103,11 @@ public class AuthenticationService {
         return new LoginResponse(newAccessToken, refreshToken.getUser(), finalRefreshToken.getToken());
     }
 
-    /**
-     * Logout user by revoking refresh token
-     */
     public void logout(String refreshTokenString) {
         refreshTokenService.revokeSession(refreshTokenString, "User logout");
         log.info("User logged out");
     }
 
-    /**
-     * Check if refresh token is valid (for client-side validation)
-     */
     public boolean isRefreshTokenValid(String refreshTokenString) {
         try {
             RefreshToken refreshToken = refreshTokenService.findByToken(refreshTokenString);

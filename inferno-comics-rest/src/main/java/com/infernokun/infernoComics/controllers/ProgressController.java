@@ -23,9 +23,7 @@ public class ProgressController {
 
     private final ProgressService progressService;
 
-    /**
-     * Health check endpoint for Python to verify Java service availability
-     */
+    // health check endpoint for Python to verify Java service availability
     @GetMapping("/health")
     public ResponseEntity<Map<String, String>> healthCheck() {
         return ResponseEntity.ok(Map.of(
@@ -35,9 +33,7 @@ public class ProgressController {
         ));
     }
 
-    /**
-     * Receive progress updates from Python
-     */
+    // receive progress updates from Python
     @PostMapping("/update")
     public ResponseEntity<Map<String, String>> receiveProgressUpdate(@RequestBody ProgressUpdateRequest request) {
         try {
@@ -59,9 +55,7 @@ public class ProgressController {
         }
     }
 
-    /**
-     * Receive completion notification from Python
-     */
+     // receive completion notification from Python
     @PostMapping("/complete")
     public ResponseEntity<Map<String, String>> receiveCompletion(@RequestBody CompletionRequest request) {
         try {
@@ -77,9 +71,7 @@ public class ProgressController {
         }
     }
 
-    /**
-     * Receive error notification from Python
-     */
+    // receive error notification from Python
     @PostMapping("/error")
     public ResponseEntity<Map<String, String>> receiveError(@RequestBody ErrorRequest request) {
         try {
@@ -95,9 +87,7 @@ public class ProgressController {
         }
     }
 
-    /**
-     * Get current status of a session (for debugging)
-     */
+    // get current status of a session (for debugging)
     @GetMapping("/status/{sessionId}")
     public ResponseEntity<Map<String, Object>> getSessionStatus(@PathVariable String sessionId) {
         try {
@@ -155,7 +145,6 @@ public class ProgressController {
         String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
 
         return switch (extension) {
-            case "jpg", "jpeg" -> MediaType.IMAGE_JPEG;
             case "png" -> MediaType.IMAGE_PNG;
             case "gif" -> MediaType.IMAGE_GIF;
             case "webp" -> MediaType.parseMediaType("image/webp");
@@ -181,6 +170,6 @@ public class ProgressController {
     @Data
     public static class ErrorRequest {
         private String sessionId;
-        private String error;  // Fixed: was error() method, now it's a field
+        private String error;
     }
 }

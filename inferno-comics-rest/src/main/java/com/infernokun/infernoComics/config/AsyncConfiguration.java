@@ -9,19 +9,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
 
-/**
- * Configuration for async processing and scheduling support
- * Required for @Async methods in SeriesService and @Scheduled tasks
- */
 @Slf4j
 @Configuration
 @EnableAsync
 @EnableScheduling
 public class AsyncConfiguration {
 
-    /**
-     * Thread pool for image processing tasks
-     */
     @Bean(name = "imageProcessingExecutor")
     public Executor imageProcessingExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -47,9 +40,6 @@ public class AsyncConfiguration {
         return executor;
     }
 
-    /**
-     * Default async executor for other async tasks
-     */
     @Bean(name = "taskExecutor")
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

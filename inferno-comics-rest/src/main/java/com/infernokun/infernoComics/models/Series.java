@@ -68,7 +68,7 @@ public class Series {
     @Column(name = "last_cached_covers")
     private LocalDateTime lastCachedCovers;
 
-    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // Change to LAZY
+    @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference
     @JsonIgnore
     private List<Issue> issues = new ArrayList<>();

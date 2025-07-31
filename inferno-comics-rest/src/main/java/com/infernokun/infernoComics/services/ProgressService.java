@@ -26,9 +26,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Service for managing Server-Sent Events (SSE) progress updates during image processing
- */
 @Slf4j
 @Service
 public class ProgressService {
@@ -59,9 +56,6 @@ public class ProgressService {
         return activeEmitters.containsKey(sessionId);
     }
 
-    /**
-     * Create a new SSE emitter for the given session ID
-     */
     public SseEmitter createProgressEmitter(String sessionId) {
         log.info("Creating SSE emitter for session: {}", sessionId);
 
@@ -117,9 +111,6 @@ public class ProgressService {
         return emitter;
     }
 
-    /**
-     * Initialize a new processing session
-     */
     public ProgressData initializeSession(String sessionId, Long seriesId) {
         log.info("Initializing processing session: {}", sessionId);
 
@@ -144,9 +135,6 @@ public class ProgressService {
         return progressDataRepository.save(progressData);
     }
 
-    /**
-     * Update progress for a session
-     */
     public void updateProgress(String sessionId, String stage, int progress, String message) {
         log.debug("Updating progress for session {}: stage={}, progress={}%, message={}",
                 sessionId, stage, progress, message);
@@ -164,9 +152,6 @@ public class ProgressService {
         sendToEmitter(sessionId, progressData);
     }
 
-    /**
-     * Send completion event with results
-     */
     public void sendComplete(String sessionId, JsonNode result) {
         log.info("Sending completion event for session: {}", sessionId);
 
@@ -246,9 +231,6 @@ public class ProgressService {
         scheduleEmitterCompletion(sessionId, 1000);
     }
 
-    /**
-     * Send error event
-     */
     public void sendError(String sessionId, String errorMessage) {
         log.error("Sending error event for session {}: {}", sessionId, errorMessage);
 
@@ -266,9 +248,6 @@ public class ProgressService {
         scheduleEmitterCompletion(sessionId, 2000);
     }
 
-    /**
-     * Get current status of a session
-     */
     public Map<String, Object> getSessionStatus(String sessionId) {
         SSEProgressData status = sessionStatus.get(sessionId);
         if (status == null) {
@@ -290,9 +269,6 @@ public class ProgressService {
         );
     }
 
-    /**
-     * Send data to a specific emitter
-     */
     private void sendToEmitter(String sessionId, SSEProgressData data) {
         SseEmitter emitter = activeEmitters.get(sessionId);
         if (emitter != null) {
@@ -310,9 +286,6 @@ public class ProgressService {
         }
     }
 
-    /**
-     * Send an event to an emitter
-     */
     private void sendEvent(SseEmitter emitter, SSEProgressData data) throws IOException {
         String jsonData = objectMapper.writeValueAsString(data);
 
@@ -327,9 +300,6 @@ public class ProgressService {
                 .reconnectTime(1000)); // Reconnect time in ms
     }
 
-    /**
-     * Schedule emitter completion after a delay
-     */
     private void scheduleEmitterCompletion(String sessionId, long delayMs) {
         new Thread(() -> {
             try {
@@ -347,9 +317,6 @@ public class ProgressService {
         }).start();
     }
 
-    /**
-     * Clean up resources for a session
-     */
     private void cleanupSession(String sessionId) {
         log.debug("Cleaning up session: {}", sessionId);
 
@@ -366,23 +333,14 @@ public class ProgressService {
         // Could implement cleanup after a certain time if needed
     }
 
-    /**
-     * Get count of active sessions
-     */
     public int getActiveSessionCount() {
         return activeEmitters.size();
     }
 
-    /**
-     * Get count of total sessions (including completed ones)
-     */
     public int getTotalSessionCount() {
         return sessionStatus.size();
     }
 
-    /**
-     * Clean up old sessions (call this periodically)
-     */
     public void cleanupOldSessions(long maxAgeMs) {
         long cutoffTime = Instant.now().toEpochMilli() - maxAgeMs;
 
@@ -433,9 +391,6 @@ public class ProgressService {
                 .block();
     }
 
-    /**
-     * Data class for SSE progress events
-     */
     @Data
     @Builder
     public static class SSEProgressData {

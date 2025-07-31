@@ -100,9 +100,6 @@ public class GCDatabaseService {
         }
     }
 
-    /**
-     * Builds the search URL for the Grand Comics Database
-     */
     private String buildSearchUri(String seriesName, String publisher, String startYear) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromPath(GCD_SEARCH_PATH)
                 .queryParam("target", "series")
@@ -115,9 +112,6 @@ public class GCDatabaseService {
         return builder.build().toUriString();
     }
 
-    /**
-     * Fetches HTML content from the given URL
-     */
     private String fetchHtmlContent(String uri) {
         try {
             return webClient.get()
@@ -137,9 +131,6 @@ public class GCDatabaseService {
         }
     }
 
-    /**
-     * Parses the HTML content to extract variant cover URLs for a specific issue
-     */
     private List<String> parseVariantUrls(String htmlContent, String issueNumber) {
         try {
             Document doc = Jsoup.parse(htmlContent);
@@ -175,9 +166,6 @@ public class GCDatabaseService {
         }
     }
 
-    /**
-     * Parses issue variants from the series page
-     */
     private List<String> parseIssueVariants(String seriesHtml, String issueNumber) {
         try {
             Document doc = Jsoup.parse(seriesHtml);
@@ -221,9 +209,6 @@ public class GCDatabaseService {
         }
     }
 
-    /**
-     * Extracts the actual image URL from a cover page
-     */
     private String extractImageUrlFromCoverPage(String coverPageUrl) {
         try {
             String coverHtml = fetchHtmlContent(coverPageUrl);
@@ -251,10 +236,6 @@ public class GCDatabaseService {
         }
     }
 
-    /**
-     * Checks if the row issue number matches the target issue number
-     * Handles various formats like "1", "#1", "1a", "1b", etc.
-     */
     private boolean matchesIssueNumber(String rowIssueNumber, String targetIssueNumber) {
         if (rowIssueNumber == null || targetIssueNumber == null) {
             return false;
@@ -269,9 +250,6 @@ public class GCDatabaseService {
                 cleanTargetNumber.startsWith(cleanRowNumber);
     }
 
-    /**
-     * Batch method to get variants for multiple issues
-     */
     public Map<String, List<String>> getVariantCoversForMultipleIssues(
             String seriesName, String publisher, String startYear, List<String> issueNumbers) {
 
@@ -294,9 +272,6 @@ public class GCDatabaseService {
         return variantMap;
     }
 
-    /**
-     * Utility method to validate if a URL is a valid image URL
-     */
     private boolean isValidImageUrl(String url) {
         return url != null &&
                 !url.isEmpty() &&

@@ -5,9 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-/**
- * Service for periodic cleanup of old SSE sessions
- */
 @Slf4j
 @Service
 public class SessionCleanupService {
@@ -19,9 +16,6 @@ public class SessionCleanupService {
         this.progressService = progressService;
     }
 
-    /**
-     * Clean up sessions older than 2 hours every 30 minutes
-     */
     @Scheduled(fixedDelay = 30 * 60 * 1000) // 30 minutes
     public void cleanupOldSessions() {
         long maxAgeMs = 2 * 60 * 60 * 1000; // 2 hours
@@ -42,9 +36,6 @@ public class SessionCleanupService {
         }
     }
 
-    /**
-     * Log session statistics every hour for monitoring
-     */
     @Scheduled(fixedDelay = 60 * 60 * 1000) // 1 hour
     public void logSessionStatistics() {
         int activeCount = progressService.getActiveSessionCount();

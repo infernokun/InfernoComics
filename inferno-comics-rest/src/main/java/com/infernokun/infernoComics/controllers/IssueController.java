@@ -118,11 +118,11 @@ public class IssueController {
             return ResponseEntity.ok(Map.of("error", "Unable to fetch statistics"));
         }
     }
+
     @GetMapping("/get-comic-vine/{comicVineId}")
     public ResponseEntity<ComicVineService.ComicVineIssueDto> getComicVineIssueById(@PathVariable Long comicVineId) {
         return ResponseEntity.ok(issueService.getComicVineIssueById(comicVineId));
     }
-
 
     @PostMapping
     public ResponseEntity<Issue> createIssue(@RequestBody IssueCreateRequestDto request) {
@@ -139,9 +139,8 @@ public class IssueController {
     }
 
     @PostMapping("/batch/from-comic-vine")
-    public ResponseEntity<List<Issue>> createIssuesFromComicVine(
-            @RequestParam Long seriesId,
-            @RequestBody List<String> comicVineIssueIds) {
+    public ResponseEntity<List<Issue>> createIssuesFromComicVine(@RequestParam Long seriesId,
+                                                                 @RequestBody List<String> comicVineIssueIds) {
         try {
             List<Issue> comicBooks = issueService.createIssuesFromComicVine(seriesId, comicVineIssueIds);
             return ResponseEntity.ok(comicBooks);
@@ -193,7 +192,6 @@ public class IssueController {
         }
     }
 
-    // DTO Classes
     @Setter
     @Getter
     public static class IssueCreateRequestDto implements IssueService.IssueCreateRequest {

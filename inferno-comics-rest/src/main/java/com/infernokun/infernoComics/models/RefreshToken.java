@@ -61,7 +61,6 @@ public class RefreshToken {
     public boolean isExpired() {
         if (revoked) return true;
 
-        // Check sliding expiration (90 days of inactivity)
         Instant inactivityThreshold = (lastUsed != null ? lastUsed : creationDate)
                 .plus(90, ChronoUnit.DAYS);
 

@@ -6,11 +6,10 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class LoginResponse {
-    private String accessToken;      // Short-lived JWT (30 minutes)
-    private String refreshToken;     // Long-lived UUID (90 days)
+    private String accessToken;
+    private String refreshToken;
     private UserResponse user;
 
-    // Constructor for backwards compatibility
     public LoginResponse(String accessToken, User user, String refreshToken) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;

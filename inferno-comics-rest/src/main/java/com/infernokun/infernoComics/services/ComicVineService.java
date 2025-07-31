@@ -613,9 +613,6 @@ public class ComicVineService {
         }
     }
 
-    /**
-     * Compare cover dates for tie-breaking when issue numbers are the same
-     */
     private int compareCoverDates(String date1, String date2) {
         try {
             if (date1 == null && date2 == null) return 0;

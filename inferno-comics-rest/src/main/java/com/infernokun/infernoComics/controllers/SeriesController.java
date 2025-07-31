@@ -248,9 +248,7 @@ public class SeriesController {
         }
     }
 
-    /**
-     * SSE endpoint for real-time progress updates
-     */
+
     @CrossOrigin(origins = "*", allowCredentials = "false")
     @GetMapping(value = "{seriesId}/add-comic-by-image/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter getImageProcessingProgress(
@@ -280,9 +278,6 @@ public class SeriesController {
         }
     }
 
-    /**
-     * Get current status of image processing session (optional - for debugging)
-     */
     @GetMapping("{seriesId}/add-comic-by-image/status")
     public ResponseEntity<Map<String, Object>> getImageProcessingStatus(
             @PathVariable Long seriesId,
@@ -295,6 +290,35 @@ public class SeriesController {
             log.error("Error getting session status: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error getting session status"));
+        }
+    }
+
+    @CrossOrigin(origins = "*", allowCredentials = "false")
+    @GetMapping(value = "{seriesId}/add-comics-by-images/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getMultipleImagesProcessingProgress(
+            @PathVariable Long seriesId,
+            @RequestParam String sessionId) {
+
+        log.info("Client connecting to SSE progress stream for multiple images session: {} (series: {})", sessionId, seriesId);
+
+        try {
+            SseEmitter emitter = progressService.createProgressEmitter(sessionId);
+            log.info("SSE emitter created successfully for multiple images session: {}", sessionId);
+            return emitter;
+        } catch (Exception e) {
+            log.error("Failed to create SSE emitter for session {}: {}", sessionId, e.getMessage(), e);
+
+            // Return a failed emitter
+            SseEmitter errorEmitter = new SseEmitter(1000L);
+            try {
+                errorEmitter.send(SseEmitter.event()
+                        .name("error")
+                        .data("{\"error\":\"Failed to create progress stream\"}"));
+                errorEmitter.complete();
+            } catch (Exception sendError) {
+                log.error("Failed to send error via SSE: {}", sendError.getMessage());
+            }
+            return errorEmitter;
         }
     }
 
@@ -356,34 +380,6 @@ public class SeriesController {
         }
     }
 
-    @CrossOrigin(origins = "*", allowCredentials = "false")
-    @GetMapping(value = "{seriesId}/add-comics-by-images/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter getMultipleImagesProcessingProgress(
-            @PathVariable Long seriesId,
-            @RequestParam String sessionId) {
-
-        log.info("Client connecting to SSE progress stream for multiple images session: {} (series: {})", sessionId, seriesId);
-
-        try {
-            SseEmitter emitter = progressService.createProgressEmitter(sessionId);
-            log.info("SSE emitter created successfully for multiple images session: {}", sessionId);
-            return emitter;
-        } catch (Exception e) {
-            log.error("Failed to create SSE emitter for session {}: {}", sessionId, e.getMessage(), e);
-
-            // Return a failed emitter
-            SseEmitter errorEmitter = new SseEmitter(1000L);
-            try {
-                errorEmitter.send(SseEmitter.event()
-                        .name("error")
-                        .data("{\"error\":\"Failed to create progress stream\"}"));
-                errorEmitter.complete();
-            } catch (Exception sendError) {
-                log.error("Failed to send error via SSE: {}", sendError.getMessage());
-            }
-            return errorEmitter;
-        }
-    }
 
     @PutMapping("/{id}")
     public ResponseEntity<Series> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesUpdateRequestDto request) {
@@ -435,7 +431,6 @@ public class SeriesController {
         }
     }
 
-    // DTO Classes
     @Setter
     @Getter
     public static class SeriesCreateRequestDto {
