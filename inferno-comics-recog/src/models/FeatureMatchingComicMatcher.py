@@ -11,6 +11,7 @@ from datetime import datetime
 from util.Logger import get_logger
 from typing import Dict, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from config.ComicMatcherConfig import ComicMatcherConfig
 
 logger = get_logger(__name__)
 
@@ -22,6 +23,7 @@ cv2.setNumThreads(1)
 
 DB_PATH = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
 DB_IMAGE_CACHE = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
+CONFIG_PATH = os.environ.get('CONFIG_PATH', '/var/tmp/inferno-comics/config.yml')
 
 def safe_progress_callback(callback, current_item, message=""):
     """Safely call progress callback, handling None case"""
@@ -33,92 +35,26 @@ def safe_progress_callback(callback, current_item, message=""):
             pass
 
 class FeatureMatchingComicMatcher:
-    def __init__(self, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH, max_workers=4):
+    def __init__(self, config_path=CONFIG_PATH, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH):
+
+        self.config = ComicMatcherConfig(config_path)
+
         self.cache_dir = cache_dir
         self.db_path = db_path
-        self.max_workers = max_workers
+        self.max_workers = self.config.get('max_workers', 4)
         
-        logger.info(f" Initializing Enhanced 4-Detector FeatureMatchingComicMatcher")
+        logger.info(f" Initializing Configurable FeatureMatchingComicMatcher")
         logger.debug(f" Cache directory: {cache_dir}")
-        logger.debug(f"️ Database path: {db_path}")
-        logger.debug(f" Max workers: {max_workers}")
+        logger.debug(f"️ Database path: {db_path}")
+        logger.debug(f"️ Image size: {self.config.get('image_size')}")
+        logger.debug(f" Workers: {self.max_workers}")
         
         os.makedirs(cache_dir, exist_ok=True)
         self._init_database()
+        self._setup_detectors()
+        self._setup_settings()
         
-        # Optimized SIFT parameters for maximum feature extraction
-        self.sift = cv2.SIFT_create(
-            nfeatures=2500,      # Increased for more features
-            nOctaveLayers=3,     # Optimized for comic images
-            contrastThreshold=0.03,  # Lower for more features
-            edgeThreshold=15,    # Balanced edge detection
-            sigma=1.2            # Slightly sharper for comic details
-        )
-        
-        # Enhanced ORB parameters
-        self.orb = cv2.ORB_create(
-            nfeatures=2000,      # Increased
-            scaleFactor=1.15,    # Finer scale steps
-            nlevels=12,          # More pyramid levels
-            edgeThreshold=15,    # Balanced
-            firstLevel=0,
-            WTA_K=2,
-            scoreType=cv2.ORB_HARRIS_SCORE,
-            patchSize=31,
-            fastThreshold=15     # More sensitive
-        )
-        
-        # Optimized AKAZE parameters
-        self.akaze = cv2.AKAZE_create(
-            descriptor_type=cv2.AKAZE_DESCRIPTOR_MLDB,
-            descriptor_size=0,
-            descriptor_channels=3,
-            threshold=0.0005,    # Lower for more features
-            nOctaves=5,          # More octaves
-            nOctaveLayers=4,
-            diffusivity=cv2.KAZE_DIFF_PM_G2
-        )
-
-
-
-        # KAZE parameters
-        self.kaze = cv2.KAZE_create(
-            extended=False,           # Use basic descriptors
-            upright=False,           # Enable rotation invariance
-            threshold=0.001,         # Detection threshold
-            nOctaves=4,             # Number of octaves
-            nOctaveLayers=4,        # Layers per octave
-            diffusivity=cv2.KAZE_DIFF_PM_G2
-        )
-        
-        # Enhanced matchers with FLANN for SIFT
-        FLANN_INDEX_KDTREE = 1
-        index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=8)
-        search_params = dict(checks=100)
-        self.flann_matcher = cv2.FlannBasedMatcher(index_params, search_params)
-        
-        self.bf_matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-        self.orb_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-        self.akaze_matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-        self.kaze_matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-        
-        # Optimized 4-detector feature weighting
-        self.feature_weights = { 
-            'sift': 0.25,    # Keep stable
-            'orb': 0.25,     # Keep stable
-            'akaze': 0.4,    # Keep dominant (proven performer)
-            'kaze': 0.1      # Increased from 5% - KAZE earned it!
-        }
-        
-        # Enhanced scoring parameters
-        self.scoring_params = {
-            'similarity_boost': 1.3,        # Boost factor for good matches
-            'geometric_weight': 0.15,       # Weight for geometric consistency
-            'multi_detector_bonus': 0.08,   # Bonus for multiple detector agreement
-            'quality_threshold': 0.15       # Minimum quality for boosting
-        }
-        
-        # Session for downloads
+        # Initialize session for downloads
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -132,12 +68,80 @@ class FeatureMatchingComicMatcher:
             'feature_cache_misses': 0,
             'processing_time_saved': 0.0
         }
+
+        self.print_config_summary()
         
-        logger.success("✅ Enhanced 4-Detector FeatureMatchingComicMatcher initialization complete")
+        logger.success("✅ Configurable Comic Matcher initialization complete")
+        
+    def _setup_detectors(self):
+        """Setup feature detectors based on config"""
+        self.detectors = {}
+        self.feature_weights = {}
+        detector_config = self.config.get('detectors', {})
+        
+        # SIFT
+        sift_features = detector_config.get('sift', 0)
+        if sift_features > 0:
+            self.detectors['sift'] = cv2.SIFT_create(nfeatures=sift_features)
+            self.feature_weights['sift'] = 0.3
+            logger.info(f" SIFT: {sift_features} features")
+        
+        # ORB  
+        orb_features = detector_config.get('orb', 0)
+        if orb_features > 0:
+            self.detectors['orb'] = cv2.ORB_create(nfeatures=orb_features)
+            self.feature_weights['orb'] = 0.3
+            logger.info(f" ORB: {orb_features} features")
+        
+        # AKAZE
+        akaze_features = detector_config.get('akaze', 0)
+        if akaze_features > 0:
+            self.detectors['akaze'] = cv2.AKAZE_create()
+            self.feature_weights['akaze'] = 0.25
+            logger.info(f" AKAZE: enabled")
+        
+        # KAZE
+        kaze_features = detector_config.get('kaze', 0)
+        if kaze_features > 0:
+            self.detectors['kaze'] = cv2.KAZE_create()
+            self.feature_weights['kaze'] = 0.15
+            logger.info(f" KAZE: enabled")
+        
+        # Normalize weights
+        if self.feature_weights:
+            total = sum(self.feature_weights.values())
+            self.feature_weights = {k: v/total for k, v in self.feature_weights.items()}
+        
+        # Setup matchers
+        self.matchers = {}
+        if 'sift' in self.detectors:
+            FLANN_INDEX_KDTREE = 1
+            index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
+            search_params = dict(checks=50)
+            self.matchers['sift'] = cv2.FlannBasedMatcher(index_params, search_params)
+        
+        for detector in ['orb', 'akaze']:
+            if detector in self.detectors:
+                self.matchers[detector] = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+        
+        if 'kaze' in self.detectors:
+            self.matchers['kaze'] = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
+    
+    def _setup_settings(self):
+        """Setup other settings from config"""
+        options = self.config.get('options', {})
+        
+        self.use_comic_detection = options.get('use_comic_detection', True)
+        self.use_advanced_matching = options.get('use_advanced_matching', True)
+        self.cache_only = options.get('cache_only', False)
+        
+        logger.info(f" Comic detection: {self.use_comic_detection}")
+        logger.info(f" Advanced matching: {self.use_advanced_matching}")
+        logger.info(f" Cache only: {self.cache_only}")
 
     def _init_database(self):
         """Initialize SQLite database with proper schema including KAZE"""
-        logger.debug("️ Initializing SQLite database...")
+        logger.debug("️ Initializing SQLite database...")
         
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -509,10 +513,47 @@ class FeatureMatchingComicMatcher:
             return None
     
     def detect_comic_area(self, image):
-        """Enhanced comic detection with multiple approaches"""
-        if image is None:
+        """Simple or enhanced comic detection based on config"""
+        if not self.use_comic_detection or image is None:
             return image, False
             
+        if self.use_advanced_matching:
+            # Enhanced comic detection with multiple approaches
+            return self._detect_comic_enhanced(image)
+        else:
+            # Simple and fast comic detection
+            return self._detect_comic_simple(image)
+    
+    def _detect_comic_simple(self, image):
+        """Simple and fast comic detection"""
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
+        edges = cv2.Canny(gray, 50, 150)
+        
+        # Find largest contour
+        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        if contours:
+            largest = max(contours, key=cv2.contourArea)
+            area = cv2.contourArea(largest)
+            h, w = image.shape[:2]
+            
+            # If contour is significant portion of image
+            if area > (w * h * 0.1):
+                x, y, cw, ch = cv2.boundingRect(largest)
+                # Add some padding
+                pad = 20
+                x = max(0, x - pad)
+                y = max(0, y - pad)
+                cw = min(w - x, cw + 2 * pad)
+                ch = min(h - y, ch + 2 * pad)
+                
+                cropped = image[y:y+ch, x:x+cw]
+                return cropped, True
+        
+        return image, False
+    
+    def _detect_comic_enhanced(self, image):
+        """Enhanced comic detection with multiple approaches"""
         original = image.copy()
         h, w = image.shape[:2]
         
@@ -691,42 +732,54 @@ class FeatureMatchingComicMatcher:
         return image, 0.0
    
     def preprocess_image(self, image):
-        """Enhanced preprocessing with adaptive techniques for better feature extraction"""
+        """Configurable image preprocessing based on settings"""
         if image is None:
             return None
         
-        # Resize strategically - larger size for feature extraction
+        # Resize based on config
         h, w = image.shape[:2]
-        target_size = 1000  # Increased from 800 for better feature detection
+        target_size = self.config.get('image_size', 800)
+        
         if max(h, w) > target_size:
             scale = target_size / max(h, w)
             new_w, new_h = int(w * scale), int(h * scale)
-            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LANCZOS4)
-            logger.debug(f" Resized image from {w}x{h} to {new_w}x{new_h}")
+            # Use faster interpolation for speed, better for quality
+            interpolation = cv2.INTER_LINEAR if not self.use_advanced_matching else cv2.INTER_LANCZOS4
+            image = cv2.resize(image, (new_w, new_h), interpolation=interpolation)
+            logger.debug(f"️ Resized image from {w}x{h} to {new_w}x{new_h}")
         
         # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
         
-        # Adaptive histogram equalization with optimized parameters
-        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(12, 12))
-        enhanced = clahe.apply(gray)
-        
-        # Edge-preserving denoising
-        denoised = cv2.bilateralFilter(enhanced, 5, 50, 50)
-        
-        # Subtle sharpening for better feature detection
-        kernel = np.array([[-0.5, -0.5, -0.5],
-                        [-0.5,  5.0, -0.5],
-                        [-0.5, -0.5, -0.5]])
-        sharpened = cv2.filter2D(denoised, -1, kernel)
-        
-        # Blend original and sharpened (70% sharpened, 30% original)
-        processed = cv2.addWeighted(sharpened, 0.7, denoised, 0.3, 0)
+        # Configurable preprocessing based on use_advanced_matching
+        if self.use_advanced_matching:
+            # High quality preprocessing
+            # Adaptive histogram equalization with optimized parameters
+            clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(12, 12))
+            enhanced = clahe.apply(gray)
+            
+            # Edge-preserving denoising
+            denoised = cv2.bilateralFilter(enhanced, 5, 50, 50)
+            
+            # Subtle sharpening for better feature detection
+            kernel = np.array([[-0.5, -0.5, -0.5],
+                            [-0.5,  5.0, -0.5],
+                            [-0.5, -0.5, -0.5]])
+            sharpened = cv2.filter2D(denoised, -1, kernel)
+            
+            # Blend original and sharpened (70% sharpened, 30% original)
+            processed = cv2.addWeighted(sharpened, 0.7, denoised, 0.3, 0)
+            
+            logger.debug(" Applied advanced preprocessing")
+        else:
+            # Fast preprocessing for speed
+            processed = cv2.equalizeHist(gray)
+            logger.debug(" Applied fast preprocessing")
         
         return processed
 
     def extract_features(self, image):
-        """Extract features using 4 detectors: SIFT, ORB, AKAZE, and KAZE"""
+        """Extract features using configured detectors with early termination"""
         if image is None:
             return None
         
@@ -736,57 +789,35 @@ class FeatureMatchingComicMatcher:
         
         features = {}
         
-        # SIFT features (most reliable)
-        try:
-            sift_kp, sift_desc = self.sift.detectAndCompute(processed, None)
-            features['sift'] = {
-                'keypoints': sift_kp,
-                'descriptors': sift_desc,
-                'count': len(sift_kp) if sift_kp else 0
-            }
-            logger.debug(f" SIFT features extracted: {features['sift']['count']}")
-        except Exception as e:
-            logger.warning(f"⚠️ SIFT feature extraction failed: {e}")
-            features['sift'] = {'keypoints': [], 'descriptors': None, 'count': 0}
+        # Extract features for each enabled detector
+        for detector_name, detector in self.detectors.items():
+            try:
+                kp, desc = detector.detectAndCompute(processed, None)
+                features[detector_name] = {
+                    'keypoints': kp,
+                    'descriptors': desc,
+                    'count': len(kp) if kp else 0
+                }
+                logger.debug(f" {detector_name.upper()} features: {features[detector_name]['count']}")
+                
+                # Early termination for speed if ORB finds very few features and not in advanced mode
+                if (not self.use_advanced_matching and detector_name == 'orb' and 
+                    features[detector_name]['count'] < 10):
+                    logger.debug(f" Early termination: Only {features[detector_name]['count']} ORB features found")
+                    # Still initialize other detectors with empty results for compatibility
+                    for other_detector in ['sift', 'akaze', 'kaze']:
+                        if other_detector not in features:
+                            features[other_detector] = {'keypoints': [], 'descriptors': None, 'count': 0}
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ {detector_name.upper()} extraction failed: {e}")
+                features[detector_name] = {'keypoints': [], 'descriptors': None, 'count': 0}
         
-        # ORB features (fast and efficient)
-        try:
-            orb_kp, orb_desc = self.orb.detectAndCompute(processed, None)
-            features['orb'] = {
-                'keypoints': orb_kp,
-                'descriptors': orb_desc,
-                'count': len(orb_kp) if orb_kp else 0
-            }
-            logger.debug(f" ORB features extracted: {features['orb']['count']}")
-        except Exception as e:
-            logger.warning(f"⚠️ ORB feature extraction failed: {e}")
-            features['orb'] = {'keypoints': [], 'descriptors': None, 'count': 0}
-        
-        # AKAZE features (robust to scale and rotation)
-        try:
-            akaze_kp, akaze_desc = self.akaze.detectAndCompute(processed, None)
-            features['akaze'] = {
-                'keypoints': akaze_kp,
-                'descriptors': akaze_desc,
-                'count': len(akaze_kp) if akaze_kp else 0
-            }
-            logger.debug(f" AKAZE features extracted: {features['akaze']['count']}")
-        except Exception as e:
-            logger.warning(f"⚠️ AKAZE feature extraction failed: {e}")
-            features['akaze'] = {'keypoints': [], 'descriptors': None, 'count': 0}
-        
-        # KAZE features (Non-linear diffusion) - The new star performer!
-        try:
-            kaze_kp, kaze_desc = self.kaze.detectAndCompute(processed, None)
-            features['kaze'] = {
-                'keypoints': kaze_kp,
-                'descriptors': kaze_desc,
-                'count': len(kaze_kp) if kaze_kp else 0
-            }
-            logger.debug(f" KAZE features extracted: {features['kaze']['count']}")
-        except Exception as e:
-            logger.warning(f"⚠️ KAZE feature extraction failed: {e}")
-            features['kaze'] = {'keypoints': [], 'descriptors': None, 'count': 0}
+        # Ensure all detector types have entries for compatibility
+        for detector_type in ['sift', 'orb', 'akaze', 'kaze']:
+            if detector_type not in features:
+                features[detector_type] = {'keypoints': [], 'descriptors': None, 'count': 0}
         
         return features
     
@@ -796,6 +827,11 @@ class FeatureMatchingComicMatcher:
         cached_features = self._get_cached_features(url)
         if cached_features is not None:
             return cached_features
+        
+        # If cache-only mode, return None instead of processing
+        if self.cache_only:
+            logger.debug(f" Cache-only mode: skipping processing for {url[:50]}...")
+            return None
         
         # Download image
         image = self.download_image(url)
@@ -818,37 +854,107 @@ class FeatureMatchingComicMatcher:
         return features
     
     def match_features(self, query_features, candidate_features):
-        """Enhanced feature matching with 4 detectors and geometric verification"""
+        """Configurable feature matching - simple or advanced based on settings"""
         if not query_features or not candidate_features:
             return 0.0, {}
         
+        if self.use_advanced_matching:
+            return self._match_features_advanced(query_features, candidate_features)
+        else:
+            return self._match_features_simple(query_features, candidate_features)
+    
+    def _match_features_simple(self, query_features, candidate_features):
+        """Simple and fast feature matching"""
+        similarities = []
+        match_results = {}
+        
+        # Match each enabled detector
+        for detector_name in self.detectors.keys():
+            if (query_features.get(detector_name, {}).get('descriptors') is not None and 
+                candidate_features.get(detector_name, {}).get('descriptors') is not None):
+                
+                try:
+                    # Simple matching without ratio test
+                    if detector_name in self.matchers:
+                        matches = self.matchers[detector_name].match(
+                            query_features[detector_name]['descriptors'], 
+                            candidate_features[detector_name]['descriptors']
+                        )
+                        # Simple distance filter
+                        good_matches = [m for m in matches if m.distance < 50]
+                    else:
+                        good_matches = []
+                    
+                    # Calculate similarity
+                    total_features = min(
+                        query_features[detector_name]['count'], 
+                        candidate_features[detector_name]['count']
+                    )
+                    
+                    if total_features > 0:
+                        similarity = len(good_matches) / total_features
+                        weight = self.feature_weights.get(detector_name, 0.25)
+                        similarities.append((similarity, weight))
+                        
+                        match_results[detector_name] = {
+                            'matches': len(good_matches),
+                            'similarity': similarity
+                        }
+                
+                except Exception as e:
+                    logger.debug(f"⚠️ {detector_name} matching failed: {e}")
+        
+        # Calculate weighted average
+        if similarities:
+            weighted_sum = sum(sim * weight for sim, weight in similarities)
+            total_weight = sum(weight for _, weight in similarities)
+            overall_similarity = weighted_sum / total_weight if total_weight > 0 else 0.0
+        else:
+            overall_similarity = 0.0
+        
+        return overall_similarity, match_results
+    
+    def _match_features_advanced(self, query_features, candidate_features):
+        """Advanced feature matching with geometric verification"""
         match_results = {}
         similarities = []
         geometric_scores = []
         
+        # Enhanced scoring parameters for advanced matching
+        scoring_params = {
+            'similarity_boost': 1.3,
+            'geometric_weight': 0.15,
+            'multi_detector_bonus': 0.08,
+            'quality_threshold': 0.15
+        }
+        
         # SIFT matching with FLANN and geometric verification
-        sift_similarity, sift_geometric = self._match_sift_enhanced(query_features, candidate_features, match_results)
-        if sift_similarity > 0:
-            similarities.append(('sift', sift_similarity, self.feature_weights['sift']))
-            geometric_scores.append(sift_geometric)
+        if 'sift' in self.detectors:
+            sift_similarity, sift_geometric = self._match_sift_enhanced(query_features, candidate_features, match_results)
+            if sift_similarity > 0:
+                similarities.append(('sift', sift_similarity, self.feature_weights.get('sift', 0.25)))
+                geometric_scores.append(sift_geometric)
         
         # Enhanced ORB matching
-        orb_similarity, orb_geometric = self._match_orb_enhanced(query_features, candidate_features, match_results)
-        if orb_similarity > 0:
-            similarities.append(('orb', orb_similarity, self.feature_weights['orb']))
-            geometric_scores.append(orb_geometric)
+        if 'orb' in self.detectors:
+            orb_similarity, orb_geometric = self._match_orb_enhanced(query_features, candidate_features, match_results)
+            if orb_similarity > 0:
+                similarities.append(('orb', orb_similarity, self.feature_weights.get('orb', 0.25)))
+                geometric_scores.append(orb_geometric)
         
         # Enhanced AKAZE matching
-        akaze_similarity, akaze_geometric = self._match_akaze_enhanced(query_features, candidate_features, match_results)
-        if akaze_similarity > 0:
-            similarities.append(('akaze', akaze_similarity, self.feature_weights['akaze']))
-            geometric_scores.append(akaze_geometric)
+        if 'akaze' in self.detectors:
+            akaze_similarity, akaze_geometric = self._match_akaze_enhanced(query_features, candidate_features, match_results)
+            if akaze_similarity > 0:
+                similarities.append(('akaze', akaze_similarity, self.feature_weights.get('akaze', 0.25)))
+                geometric_scores.append(akaze_geometric)
         
-        # KAZE matching - The new star performer!
-        kaze_similarity, kaze_geometric = self._match_kaze_enhanced(query_features, candidate_features, match_results)
-        if kaze_similarity > 0:
-            similarities.append(('kaze', kaze_similarity, self.feature_weights['kaze']))
-            geometric_scores.append(kaze_geometric)
+        # KAZE matching
+        if 'kaze' in self.detectors:
+            kaze_similarity, kaze_geometric = self._match_kaze_enhanced(query_features, candidate_features, match_results)
+            if kaze_similarity > 0:
+                similarities.append(('kaze', kaze_similarity, self.feature_weights.get('kaze', 0.15)))
+                geometric_scores.append(kaze_geometric)
         
         # Enhanced combination with geometric consistency
         if similarities:
@@ -860,26 +966,26 @@ class FeatureMatchingComicMatcher:
                 base_similarity = weighted_sum / total_weight
                 
                 # Apply similarity boost for good matches
-                if base_similarity > self.scoring_params['quality_threshold']:
-                    boosted_similarity = base_similarity * self.scoring_params['similarity_boost']
+                if base_similarity > scoring_params['quality_threshold']:
+                    boosted_similarity = base_similarity * scoring_params['similarity_boost']
                 else:
                     boosted_similarity = base_similarity
                 
                 # Add geometric consistency bonus
                 if geometric_scores:
                     avg_geometric = sum(geometric_scores) / len(geometric_scores)
-                    geometric_bonus = avg_geometric * self.scoring_params['geometric_weight']
+                    geometric_bonus = avg_geometric * scoring_params['geometric_weight']
                     boosted_similarity += geometric_bonus
                 
                 # Multi-detector agreement bonus
                 if len(similarities) > 1:
-                    agreement_bonus = self.scoring_params['multi_detector_bonus'] * (len(similarities) - 1)
+                    agreement_bonus = scoring_params['multi_detector_bonus'] * (len(similarities) - 1)
                     boosted_similarity += agreement_bonus
                 
                 # Ensure we don't exceed 1.0 but allow high scores
                 overall_similarity = min(0.95, boosted_similarity)  # Cap at 95% to be realistic
                 
-                logger.debug(f" Enhanced 4-detector similarity: {overall_similarity:.3f} (base: {base_similarity:.3f}, {len(similarities)} detectors)")
+                logger.debug(f" Advanced matching similarity: {overall_similarity:.3f} (base: {base_similarity:.3f}, {len(similarities)} detectors)")
             else:
                 overall_similarity = 0.0
         else:
@@ -897,7 +1003,7 @@ class FeatureMatchingComicMatcher:
         
         try:
             # Use FLANN matcher for better performance and accuracy
-            matches = self.flann_matcher.knnMatch(
+            matches = self.matchers['sift'].knnMatch(
                 query_features['sift']['descriptors'], 
                 candidate_features['sift']['descriptors'], 
                 k=2
@@ -931,7 +1037,7 @@ class FeatureMatchingComicMatcher:
                     if M is not None and mask is not None:
                         inliers = int(np.sum(mask))  # Convert to int for JSON serialization
                         geometric_score = float(inliers / len(good_matches))  # Ensure float
-                        logger.debug(f" SIFT geometric verification: {inliers}/{len(good_matches)} inliers")
+                        logger.debug(f" SIFT geometric verification: {inliers}/{len(good_matches)} inliers")
                 except Exception as geo_e:
                     geometric_score = 0.5  # Default modest score if homography fails
                     logger.debug(f"Geometric verification failed: {geo_e}")
@@ -962,7 +1068,7 @@ class FeatureMatchingComicMatcher:
                 'similarity': float(similarity)
             }
             
-            logger.debug(f" Enhanced SIFT: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
+            logger.debug(f" Enhanced SIFT: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
             return similarity, geometric_score
             
         except Exception as e:
@@ -979,7 +1085,7 @@ class FeatureMatchingComicMatcher:
             return 0.0, 0.0
         
         try:
-            matches = self.orb_matcher.knnMatch(
+            matches = self.matchers['orb'].knnMatch(
                 query_features['orb']['descriptors'], 
                 candidate_features['orb']['descriptors'], 
                 k=2
@@ -1027,7 +1133,7 @@ class FeatureMatchingComicMatcher:
                 'similarity': float(similarity)
             }
             
-            logger.debug(f" Enhanced ORB: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
+            logger.debug(f" Enhanced ORB: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
             return similarity, geometric_score
             
         except Exception as e:
@@ -1044,7 +1150,7 @@ class FeatureMatchingComicMatcher:
             return 0.0, 0.0
         
         try:
-            matches = self.akaze_matcher.knnMatch(
+            matches = self.matchers['akaze'].knnMatch(
                 query_features['akaze']['descriptors'], 
                 candidate_features['akaze']['descriptors'], 
                 k=2
@@ -1074,7 +1180,7 @@ class FeatureMatchingComicMatcher:
                 'similarity': float(similarity)
             }
             
-            logger.debug(f" Enhanced AKAZE: {len(good_matches)}/{len(matches)} matches, sim: {similarity:.3f}")
+            logger.debug(f" Enhanced AKAZE: {len(good_matches)}/{len(matches)} matches, sim: {similarity:.3f}")
             return similarity, geometric_score
             
         except Exception as e:
@@ -1091,7 +1197,7 @@ class FeatureMatchingComicMatcher:
             return 0.0, 0.0
         
         try:
-            matches = self.kaze_matcher.knnMatch(
+            matches = self.matchers['kaze'].knnMatch(
                 query_features['kaze']['descriptors'], 
                 candidate_features['kaze']['descriptors'], 
                 k=2
@@ -1151,7 +1257,7 @@ class FeatureMatchingComicMatcher:
                 'similarity': float(similarity)
             }
             
-            logger.debug(f" Enhanced KAZE: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
+            logger.debug(f" Enhanced KAZE: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
             return similarity, geometric_score
             
         except Exception as e:
@@ -1160,8 +1266,8 @@ class FeatureMatchingComicMatcher:
             return 0.0, 0.0
 
     def find_matches_img(self, query_image, candidate_urls, threshold=0.1, progress_callback=None):
-        """Main matching function with caching support and progress callback"""
-        logger.info(" Starting Cached 4-Detector Feature Matching Comic Search...")
+        """Main matching function with configurable caching support and progress callback"""
+        logger.info(" Starting Configurable Feature Matching Comic Search...")
         start_time = time.time()
         
         if query_image is None:
@@ -1179,10 +1285,13 @@ class FeatureMatchingComicMatcher:
         if not query_features:
             raise ValueError("Could not extract features from query image")
         
-        logger.success(f"✅ Query features - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}, AKAZE: {query_features['akaze']['count']}, KAZE: {query_features['kaze']['count']}")
+        enabled_detectors = [name for name in ['sift', 'orb', 'akaze', 'kaze'] if name in self.detectors]
+        feature_counts = {name: query_features[name]['count'] for name in enabled_detectors}
+        
+        logger.success(f"✅ Query features - {', '.join([f'{name.upper()}: {count}' for name, count in feature_counts.items()])}")
         
         # Use safe progress callback for feature extraction completion
-        safe_progress_callback(progress_callback, 1, f"Query features extracted - SIFT: {query_features['sift']['count']}, ORB: {query_features['orb']['count']}, AKAZE: {query_features['akaze']['count']}, KAZE: {query_features['kaze']['count']}")
+        safe_progress_callback(progress_callback, 1, f"Query features extracted - {', '.join([f'{name.upper()}: {count}' for name, count in feature_counts.items()])}")
         
         # Process candidates with caching
         logger.info(f"⬇️ Processing {len(candidate_urls)} candidate images (with caching)...")
@@ -1203,7 +1312,7 @@ class FeatureMatchingComicMatcher:
         
         # Use ThreadPoolExecutor for parallel processing with progress tracking
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            logger.debug(f" Using {self.max_workers} worker threads")
+            logger.debug(f" Using {self.max_workers} worker threads")
             
             # Submit all jobs
             future_to_url = {}
@@ -1256,8 +1365,8 @@ class FeatureMatchingComicMatcher:
         safe_progress_callback(progress_callback, total_candidates + 3, f"Completed analysis - found {len(good_matches)} matches above threshold")
         
         total_time = time.time() - start_time
-        logger.success(f"✨ Cached 4-detector feature matching completed in {total_time:.2f}s")
-        logger.info(f" Found {len(good_matches)} matches above threshold ({threshold})")
+        logger.success(f"✨ Configurable feature matching completed in {total_time:.2f}s")
+        logger.info(f" Found {len(good_matches)} matches above threshold ({threshold})")
         
         if good_matches:
             logger.info(f" Top match: {good_matches[0]['url'][:50]}... (similarity: {good_matches[0]['similarity']:.3f})")
@@ -1326,7 +1435,7 @@ class FeatureMatchingComicMatcher:
         
         # Get detector-specific statistics
         detector_stats = {}
-        for detector in ['akaze', 'kaze']:
+        for detector in ['sift', 'orb', 'akaze', 'kaze']:
             try:
                 cursor.execute(f'SELECT COUNT(*) FROM cached_features WHERE {detector}_count > 0')
                 detector_stats[f'{detector}_features_count'] = cursor.fetchone()[0]
@@ -1361,27 +1470,29 @@ class FeatureMatchingComicMatcher:
         return stats
     
     def print_cache_stats(self):
-        """Print cache statistics for all 4 detectors"""
+        """Print cache statistics for all detectors"""
         stats = self.get_cache_stats()
         
         logger.info("\n" + "="*60)
-        logger.info(" 4-DETECTOR OPTIMIZED CACHE PERFORMANCE STATISTICS")
+        logger.info(" CONFIGURABLE CACHE PERFORMANCE STATISTICS")
         logger.info("="*60)
-        logger.info(f" Cached Images: {stats['cached_images_count']}")
-        logger.info(f" Cached Features: {stats['cached_features_count']}")
+        logger.info(f"️ Cached Images: {stats['cached_images_count']}")
+        logger.info(f" Cached Features: {stats['cached_features_count']}")
+        logger.info(f"⚡ SIFT Features: {stats.get('sift_features_count', 0)}")
+        logger.info(f" ORB Features: {stats.get('orb_features_count', 0)}")
         logger.info(f"⚡ AKAZE Features: {stats.get('akaze_features_count', 0)}")
         logger.info(f" KAZE Features: {stats.get('kaze_features_count', 0)}")
         logger.info(f" Disk Usage: {stats['total_disk_usage_mb']:.1f} MB")
         logger.info(f"⏱️ Processing Time Saved: {stats['total_processing_time_saved']:.2f} seconds")
-        logger.info(f" Image Cache Hit Rate: {stats['image_cache_hit_rate']:.1f}%")
-        logger.info(f" Feature Cache Hit Rate: {stats['feature_cache_hit_rate']:.1f}%")
+        logger.info(f" Image Cache Hit Rate: {stats['image_cache_hit_rate']:.1f}%")
+        logger.info(f" Feature Cache Hit Rate: {stats['feature_cache_hit_rate']:.1f}%")
         logger.info(f"✅ Image Cache Hits: {stats['image_cache_hits']}")
         logger.info(f"❌ Image Cache Misses: {stats['image_cache_misses']}")
         logger.info(f"✅ Feature Cache Hits: {stats['feature_cache_hits']}")
         logger.info(f"❌ Feature Cache Misses: {stats['feature_cache_misses']}")
         
         if stats['total_processing_time_saved'] > 0:
-            logger.success(f" Efficiency Gained: {stats['total_processing_time_saved']:.1f}s saved with optimized 4-detector system!")
+            logger.success(f" Efficiency Gained: {stats['total_processing_time_saved']:.1f}s saved with configurable system!")
     
     def cleanup_old_cache(self, days_old: int = 30):
         """Remove cache entries older than specified days"""
@@ -1416,3 +1527,43 @@ class FeatureMatchingComicMatcher:
             logger.success(f"粒 Cleaned up {cleaned_count} old cache entries")
         else:
             logger.info("粒 No old cache entries found to clean")
+
+    def get_config_summary(self):
+        """Get a summary of current configuration"""
+        enabled_detectors = list(self.detectors.keys())
+        detector_counts = {name: self.config.get('detectors', {}).get(name, 0) for name in enabled_detectors}
+        
+        summary = {
+            'performance_level': self.config.get('performance_level', 'custom'),
+            'image_size': self.config.get('image_size', 800),
+            'max_workers': self.max_workers,
+            'enabled_detectors': enabled_detectors,
+            'detector_feature_counts': detector_counts,
+            'use_comic_detection': self.use_comic_detection,
+            'use_advanced_matching': self.use_advanced_matching,
+            'cache_only': self.cache_only,
+            'feature_weights': self.feature_weights
+        }
+        
+        return summary
+    
+    def print_config_summary(self):
+        """Print current configuration summary"""
+        summary = self.get_config_summary()
+        
+        logger.info("\n" + "="*60)
+        logger.info(" CURRENT CONFIGURATION SUMMARY")
+        logger.info("="*60)
+        logger.info(f"⚡ Performance Level: {summary['performance_level']}")
+        logger.info(f"️ Image Size: {summary['image_size']}")
+        logger.info(f" Max Workers: {summary['max_workers']}")
+        logger.info(f" Enabled Detectors: {', '.join(summary['enabled_detectors'])}")
+        
+        for detector, count in summary['detector_feature_counts'].items():
+            logger.info(f"   {detector.upper()}: {count} features")
+        
+        logger.info(f" Comic Detection: {summary['use_comic_detection']}")
+        logger.info(f"⚡ Advanced Matching: {summary['use_advanced_matching']}")
+        logger.info(f" Cache Only: {summary['cache_only']}")
+        logger.info(f"⚖️ Feature Weights: {', '.join([f'{k}:{v:.2f}' for k, v in summary['feature_weights'].items()])}")
+        logger.info("="*60)

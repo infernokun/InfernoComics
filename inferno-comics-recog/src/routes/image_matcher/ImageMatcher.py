@@ -623,7 +623,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         java_reporter.update_progress('initializing_matcher', 22, 'Initializing image matching engine...')
         
         # Initialize matcher
-        matcher = FeatureMatchingComicMatcher(max_workers=6)
+        matcher = FeatureMatchingComicMatcher()
         logger.debug("🔧 Initialized FeatureMatchingComicMatcher with 6 workers")
         
         # Create a safe progress callback wrapper for the matcher
@@ -825,7 +825,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         java_reporter.update_progress('initializing_matcher', 22, 'Initializing image matching engine for multiple images...')
         
         # Initialize matcher
-        matcher = FeatureMatchingComicMatcher(max_workers=6)
+        matcher = FeatureMatchingComicMatcher()
         logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers for multiple images")
         
         java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready for multiple images')
@@ -1255,7 +1255,7 @@ def image_matcher_operation():
         return jsonify({'error': 'No valid URLs found in candidate covers'}), 400
 
     # Initialize matcher
-    matcher = FeatureMatchingComicMatcher(max_workers=6)
+    matcher = FeatureMatchingComicMatcher()
     logger.debug(" Initialized matcher for regular processing")
 
     try:
