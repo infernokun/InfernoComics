@@ -349,9 +349,11 @@ export class ProgressDataTable implements OnInit {
 
 @Component({
   template: `
+  @if (params.data.state == "COMPLETE") {
     <a (click)="openEvaluationUrl()" style="cursor: pointer; color: blue; text-decoration: underline;">
       {{ params.value }}
     </a>
+  }
   `
 })
 export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {

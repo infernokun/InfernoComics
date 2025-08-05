@@ -355,7 +355,49 @@ public class ProgressService {
     }
 
     public List<ProgressData> getSessionsBySeriesId(Long seriesId) {
+        progressDataRepository.findBySeriesId(seriesId).forEach(progressData -> {
+            if (progressData.getState() == ProgressData.State.PROCESSING) { // Only check processing sessions
+
+                try {
+                    JsonNode node = webClient.get()
+                            .uri(uriBuilder -> uriBuilder
+                                    .path("/image-matcher/status")
+                                    .queryParam("sessionId", progressData.getSessionId())
+                                    .build())
+                            .retrieve()
+                            .onStatus(status -> status.value() == 404, clientResponse -> {
+                                // Session not found in Python service - this is expected for orphaned sessions
+                                return Mono.error(new SessionNotFoundException("Session not found in processing service"));
+                            })
+                            .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
+                                return clientResponse.bodyToMono(String.class)
+                                        .flatMap(errorBody -> Mono.error(
+                                                new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
+                            })
+                            .bodyToMono(JsonNode.class)
+                            .block();
+                } catch (SessionNotFoundException e) {
+                    // Session doesn't exist in Python service anymore
+                    log.info("Session {} not found in processing service, marking as ERROR",
+                            progressData.getSessionId());
+                    progressData.setState(ProgressData.State.ERROR);
+                    progressDataRepository.save(progressData);
+
+                } catch (Exception e) {
+                    // Other errors (network, server error, etc.)
+                    log.error("Failed to check status for session {}: {}",
+                            progressData.getSessionId(), e.getMessage());
+                }
+            }
+        });
+
         return progressDataRepository.findBySeriesId(seriesId);
+    }
+
+    public static class SessionNotFoundException extends RuntimeException {
+        public SessionNotFoundException(String message) {
+            super(message);
+        }
     }
 
     public JsonNode getSessionJSON(String sessionId) {

@@ -15,6 +15,7 @@ import numpy as np
 from util.Logger import get_logger
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
+from models.SSEProgressTracker import SSEProgressTracker
 from models.JavaProgressReporter import JavaProgressReporter
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 from flask import Blueprint, jsonify, request, Response, current_app, render_template, send_file, abort
@@ -485,79 +486,6 @@ def load_image_matcher_result(session_id):
     except Exception as e:
         logger.error(f"❌ Error loading image matcher result: {e}")
         return None
-
-class SSEProgressTracker:
-    """Class to track and send progress updates via SSE (for fallback when no session_id)"""
-    
-    def __init__(self, session_id):
-        self.session_id = session_id
-        self.progress_queue = queue.Queue()
-        self.is_active = True
-        logger.debug(f" Created SSE progress tracker for session {session_id}")
-        
-    def send_progress(self, stage, progress, message):
-        """Send progress update"""
-        if not self.is_active:
-            return
-            
-        progress_event = {
-            'type': 'progress',
-            'sessionId': self.session_id,
-            'stage': stage,
-            'progress': progress,
-            'message': message,
-            'timestamp': int(time.time() * 1000)
-        }
-        
-        try:
-            self.progress_queue.put(progress_event, timeout=1.0)
-            logger.debug(f" Progress {progress}%: {message}")
-        except queue.Full:
-            logger.warning(f"⚠️ Progress queue full for session {self.session_id}")
-    
-    def send_complete(self, result):
-        """Send completion event with results"""
-        if not self.is_active:
-            return
-            
-        complete_event = {
-            'type': 'complete',
-            'sessionId': self.session_id,
-            'stage': 'complete',
-            'progress': 100,
-            'message': 'Image processing completed successfully',
-            'result': result,
-            'timestamp': int(time.time() * 1000)
-        }
-        
-        try:
-            self.progress_queue.put(complete_event, timeout=1.0)
-            logger.success(f"✅ Processing completed for session {self.session_id}")
-        except queue.Full:
-            logger.warning(f"⚠️ Progress queue full for session {self.session_id}")
-    
-    def send_error(self, error_message):
-        """Send error event"""
-        if not self.is_active:
-            return
-            
-        error_event = {
-            'type': 'error',
-            'sessionId': self.session_id,
-            'error': error_message,
-            'timestamp': int(time.time() * 1000)
-        }
-        
-        try:
-            self.progress_queue.put(error_event, timeout=1.0)
-            logger.error(f"❌ Error sent to session {self.session_id}: {error_message}")
-        except queue.Full:
-            logger.warning(f"⚠️ Progress queue full for session {self.session_id}")
-    
-    def close(self):
-        """Close the progress tracker"""
-        self.is_active = False
-        logger.debug(f" Closed progress tracker for session {self.session_id}")
 
 def safe_progress_callback(callback, current_item, message=""):
     """Safely call progress callback, handling None case"""
@@ -1341,8 +1269,6 @@ def image_matcher_operation():
         
         return jsonify({'error': f'Matching failed: {str(e)}'}, {'session_id': session_id}), 500
 
-# SSE ENDPOINTS (for backward compatibility)
-
 @image_matcher_bp.route('/image-matcher/start', methods=['POST'])
 def start_image_processing():
     """Start image processing and return session ID for SSE tracking"""
@@ -1519,8 +1445,6 @@ def get_image_processing_status():
             status.update(progress_data[session_id])
     
     return jsonify(status)
-
-# NEW ENDPOINTS FOR RESULT VIEWING (compatible with evaluation system)
 
 @image_matcher_bp.route('/image-matcher/<session_id>')
 def view_image_matcher_result(session_id):
@@ -1759,7 +1683,6 @@ def get_json_by_session_id():
         print(f"Unexpected error reading session {session_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-# Cleanup task - run this periodically (could be implemented with a scheduler)
 def run_cleanup():
     """Run cleanup periodically"""
     def cleanup_task():
@@ -1773,5 +1696,4 @@ def run_cleanup():
     cleanup_thread.start()
     logger.info("粒 Cleanup task initialized")
 
-# Initialize cleanup when module loads
 run_cleanup()
