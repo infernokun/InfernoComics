@@ -1,7 +1,9 @@
 package com.infernokun.infernoComics.controllers;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.services.ProgressService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,6 +14,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +25,7 @@ import java.util.Map;
 public class ProgressController {
 
     private final ProgressService progressService;
+    private final InfernoComicsConfig infernoComicsConfig;
 
     // health check endpoint for Python to verify Java service availability
     @GetMapping("/health")
@@ -139,6 +143,16 @@ public class ProgressController {
             System.err.println("Error fetching stored image: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    @GetMapping("/evaluation/{sessionId}")
+    public ResponseEntity<?> getEvaluationUrl(@PathVariable String sessionId, HttpServletRequest request) {
+        String host = request.getServerName() + ":" + infernoComicsConfig.getRecognitionServerPort();
+        String url = "http://" + host + "/inferno-comics-recognition/api/v1/evaluation/" + sessionId;
+
+        Map<String, String> response = new HashMap<>();
+        response.put("evaluationUrl", url);
+        return ResponseEntity.ok(response);
     }
 
     private MediaType getMediaTypeFromFilename(String filename) {

@@ -2,6 +2,9 @@
 
 import yaml
 import os
+from util.Logger import get_logger
+
+logger = get_logger(__name__)
 
 DEFAULT_CONFIG = """
 # Comic Matcher Configuration - Optimized for AKAZE Performance
@@ -54,22 +57,22 @@ presets:
       use_advanced_matching: false
       cache_only: true
       
-  fast:  # For decent hardware - ORB + AKAZE combo
-    image_size: 400
-    max_workers: 2
+  fast:  # For decent hardware - optimized for speed with good accuracy
+    image_size: 800
+    max_workers: 3
     detectors:
-      sift: 0        # Skip SIFT for speed
-      orb: 800       # More ORB features
-      akaze: 400     # Keep AKAZE for accuracy
-      kaze: 0        # Skip KAZE for speed
+      sift: 800        # Include SIFT for better matching
+      orb: 1200        # High ORB for speed
+      akaze: 600       # Good AKAZE for accuracy
+      kaze: 0          # Skip KAZE for speed
     feature_weights:
-      sift: 0.0
-      orb: 0.40      # 40% ORB for speed
-      akaze: 0.60    # 60% AKAZE for accuracy
+      sift: 0.25       # 25% SIFT for quality
+      orb: 0.35        # 35% ORB for speed
+      akaze: 0.40      # 40% AKAZE for accuracy
       kaze: 0.0
     options:
-      use_comic_detection: false
-      use_advanced_matching: false
+      use_comic_detection: true     # Enable for better accuracy
+      use_advanced_matching: true   # Keep advanced matching for quality
       
   balanced:  # AKAZE-focused with SIFT/ORB support
     image_size: 1000
@@ -130,17 +133,44 @@ presets:
 # 4. SIFT - Slowest, most CPU intensive, very robust
 
 class ComicMatcherConfig:
-    def __init__(self, config_path=None):
-        self.config = self._load_config(config_path)
+    def __init__(self, config_path=None, create_default=True):
+        self.config_path = config_path
+        self.config = self._load_config(config_path, create_default)
         self._apply_performance_level()
         
-    def _load_config(self, config_path):
+    def _load_config(self, config_path, create_default=True):
         """Load configuration from YAML file or use defaults"""
         if config_path and os.path.exists(config_path):
+            logger.info(f" Loading config from: {config_path}")
             with open(config_path, 'r') as f:
                 return yaml.safe_load(f)
         else:
-            return yaml.safe_load(DEFAULT_CONFIG)
+            logger.info(" Using default configuration")
+            default_config = yaml.safe_load(DEFAULT_CONFIG)
+            
+            # Save default config if path provided and create_default is True
+            if config_path and create_default:
+                self._save_default_config(config_path, default_config)
+            
+            return default_config
+    
+    def _save_default_config(self, config_path, config_data):
+        """Save default configuration to file"""
+        try:
+            # Create directory if it doesn't exist
+            config_dir = os.path.dirname(config_path)
+            if config_dir and not os.path.exists(config_dir):
+                os.makedirs(config_dir, exist_ok=True)
+                logger.info(f" Created config directory: {config_dir}")
+            
+            # Save the default config
+            with open(config_path, 'w') as f:
+                yaml.dump(config_data, f, default_flow_style=False, indent=2)
+            logger.info(f" Created default config file: {config_path}")
+            logger.debug(f"✏️ You can edit this file to customize your settings")
+            
+        except Exception as e:
+            logger.error(f"⚠️ Could not save default config to {config_path}: {e}")
     
     def _apply_performance_level(self):
         """Apply performance level preset, prioritizing environment variable"""
@@ -166,22 +196,55 @@ class ComicMatcherConfig:
                 self.config['feature_weights'] = preset['feature_weights'].copy()
                 
             if env_level:
-                print(f"⚡ Applied '{level}' performance preset from environment variable")
+                logger.info(f"⚡ Applied '{level}' performance preset from environment variable")
             else:
-                print(f"⚡ Applied '{level}' performance preset from config")
+                logger.info(f"⚡ Applied '{level}' performance preset from config")
                 
             # Show the weights being applied
             if 'feature_weights' in preset:
-                weights_str = ', '.join([f'{k}:{v:.1%}' for k, v in preset['feature_weights'].items() if v > 0])
-                print(f"⚖️ Feature weights: {weights_str}")
+                weights_str = ', '.join([f'{k}:{v*100:.0f}%' for k, v in preset['feature_weights'].items() if v > 0])
+                logger.info(f"⚖️ Feature weights: {weights_str}")
         else:
-            print(f"🔧 Using custom configuration (level: {level})")
+            logger.info(f" Using custom configuration (level: {level})")
            
     def get(self, key, default=None):
         """Get configuration value"""
         return self.config.get(key, default)
     
-    def save(self, output_path):
-        """Save current configuration"""
-        with open(output_path, 'w') as f:
-            yaml.dump(self.config, f, default_flow_style=False, indent=2)
+    def save(self, output_path=None):
+        """Save current configuration to file"""
+        save_path = output_path or self.config_path
+        if not save_path:
+            raise ValueError("No output path specified and no config path available")
+            
+        try:
+            # Create directory if needed
+            config_dir = os.path.dirname(save_path)
+            if config_dir and not os.path.exists(config_dir):
+                os.makedirs(config_dir, exist_ok=True)
+            
+            with open(save_path, 'w') as f:
+                yaml.dump(self.config, f, default_flow_style=False, indent=2)
+            logger.info(f" Configuration saved to: {save_path}")
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to save configuration: {e}")
+            raise
+    
+    def create_custom_preset(self, preset_name, **kwargs):
+        """Create a custom preset with specified parameters"""
+        if 'presets' not in self.config:
+            self.config['presets'] = {}
+        
+        # Build preset from kwargs or current config
+        preset = {
+            'image_size': kwargs.get('image_size', self.config.get('image_size', 800)),
+            'max_workers': kwargs.get('max_workers', self.config.get('max_workers', 4)),
+            'detectors': kwargs.get('detectors', self.config.get('detectors', {})),
+            'feature_weights': kwargs.get('feature_weights', self.config.get('feature_weights', {})),
+            'options': kwargs.get('options', self.config.get('options', {}))
+        }
+        
+        self.config['presets'][preset_name] = preset
+        logger.info(f"✨ Created custom preset: {preset_name}")
+        return preset

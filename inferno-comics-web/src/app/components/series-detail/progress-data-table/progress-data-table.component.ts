@@ -17,10 +17,11 @@ import {
 import { AdminActionsComponent } from '../../../admin/admin-actions.component';
 import { SeriesService } from '../../../services/series.service';
 import { CommonModule } from '@angular/common';
-import { AgGridModule } from 'ag-grid-angular';
+import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { MaterialModule } from '../../../material.module';
 import { ComicMatch } from '../../../models/comic-match.model';
 import { EnvironmentService } from '../../../services/environment.service';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -164,13 +165,28 @@ export class ProgressDataTable implements OnInit {
       {
         headerName: 'Session ID',
         field: 'sessionId',
-        sort: 'asc',
         filter: 'agNumberColumnFilter',
         minWidth: 60,
       },
       {
         headerName: 'State',
         field: 'state',
+        cellRenderer: (params: any) => {
+          const state: string = params.value;
+          const icons: any = {
+            'COMPLETE': '✅',
+            'PROCESSING': '⏳',
+            'FAILED': '❌',
+            'PENDING': '⏸️'
+          };
+          const colors: any = {
+            'COMPLETE': '#28a745',
+            'PROCESSING': '#ffc107', 
+            'FAILED': '#dc3545',
+            'PENDING': '#6c757d'
+          };
+          return `<span style="color: ${colors[state] || '#000'}">${icons[state] || '❓'} ${state}</span>`;
+        },
         filter: 'agTextColumnFilter',
         minWidth: 150,
       },
@@ -179,6 +195,8 @@ export class ProgressDataTable implements OnInit {
         field: 'timeStarted',
         filter: 'agTextColumnFilter',
         minWidth: 100,
+        sort: 'desc',
+        sortIndex: 0
       },
       {
         headerName: 'Time Finished',
@@ -188,19 +206,48 @@ export class ProgressDataTable implements OnInit {
         minWidth: 100,
       },
       {
+        headerName: 'Time Taken',
+        valueGetter: (params) => {
+          const timeStarted = params.data?.timeStarted;
+          const timeFinished = params.data?.timeFinished;
+          
+          if (!timeStarted || !timeFinished) {
+            return 'Not Finished';
+          }
+          
+          try {
+            const startTime = new Date(timeStarted);
+            const endTime = new Date(timeFinished);
+            const diffMs = endTime.getTime() - startTime.getTime();
+            
+            if (diffMs < 0) return 'Invalid';
+            
+            const hours = Math.floor(diffMs / (1000 * 60 * 60));
+            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+            
+            if (hours > 0) {
+              return `${hours}h ${minutes}m ${seconds}s`;
+            } else if (minutes > 0) {
+              return `${minutes}m ${seconds}s`;
+            } else {
+              return `${seconds}s`;
+            }
+          } catch (error) {
+            return 'Error';
+          }
+        },
+        filter: 'agTextColumnFilter',
+        minWidth: 120,
+        sortable: true,
+      },
+      {
         headerName: 'Link',
         field: 'sessionId',
-        cellRenderer: (params: any) => {
-          const sessionId = params.value;
-          const url = `http://localhost:5000/inferno-comics-recognition/api/v1/evaluation/${sessionId}`;
-          return `<a href="${url}" target="_blank" rel="noopener noreferrer">${sessionId}</a>`;
-        },
+        cellRenderer: EvaluationLinkCellRenderer,
         minWidth: 200,
-        cellRendererParams: {
-          suppressCount: true,
-        },
         tooltipField: 'sessionId',
-      },
+      }
     ];
   }
 
@@ -297,5 +344,36 @@ export class ProgressDataTable implements OnInit {
     // Convert to Java backend URL
     // Java URL: "http://rest-url:8080/inferno-comics-rest/api/progress/image/session_id/filename.jpg"
     return `${this.environmentService.settings?.restUrl}/progress/image/${sessionId}/${filename}`;
+  }
+}
+
+@Component({
+  template: `
+    <a (click)="openEvaluationUrl()" style="cursor: pointer; color: blue; text-decoration: underline;">
+      {{ params.value }}
+    </a>
+  `
+})
+export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
+  params: any;
+
+  constructor(private httpClient: HttpClient, private environmentService: EnvironmentService) {}
+
+  agInit(params: any): void {
+    this.params = params;
+  }
+
+  refresh(): boolean {
+    return false;
+  }
+
+  async openEvaluationUrl() {
+    const sessionId = this.params.value;
+    try {
+      const response = await this.httpClient.get<{evaluationUrl: string}>(`${this.environmentService.settings?.restUrl}/progress/evaluation/${sessionId}`).toPromise();
+      window.open(response!.evaluationUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Error fetching evaluation URL:', error);
+    }
   }
 }
