@@ -74,45 +74,50 @@ class FeatureMatchingComicMatcher:
         logger.success("✅ Configurable Comic Matcher initialization complete")
         
     def _setup_detectors(self):
-        """Setup feature detectors based on config"""
+        """Setup feature detectors based on config with configurable weights"""
         self.detectors = {}
         self.feature_weights = {}
         detector_config = self.config.get('detectors', {})
+        weights_config = self.config.get('feature_weights', {})
         
         # SIFT
         sift_features = detector_config.get('sift', 0)
         if sift_features > 0:
             self.detectors['sift'] = cv2.SIFT_create(nfeatures=sift_features)
-            self.feature_weights['sift'] = 0.3
-            logger.info(f" SIFT: {sift_features} features")
+            self.feature_weights['sift'] = weights_config.get('sift', 0.25)
+            logger.info(f"🔍 SIFT: {sift_features} features (weight: {self.feature_weights['sift']:.2f})")
         
         # ORB  
         orb_features = detector_config.get('orb', 0)
         if orb_features > 0:
             self.detectors['orb'] = cv2.ORB_create(nfeatures=orb_features)
-            self.feature_weights['orb'] = 0.3
-            logger.info(f" ORB: {orb_features} features")
+            self.feature_weights['orb'] = weights_config.get('orb', 0.25)
+            logger.info(f"⚡ ORB: {orb_features} features (weight: {self.feature_weights['orb']:.2f})")
         
-        # AKAZE
+        # AKAZE - The star performer!
         akaze_features = detector_config.get('akaze', 0)
         if akaze_features > 0:
             self.detectors['akaze'] = cv2.AKAZE_create()
-            self.feature_weights['akaze'] = 0.25
-            logger.info(f" AKAZE: enabled")
+            self.feature_weights['akaze'] = weights_config.get('akaze', 0.40)
+            logger.info(f"⭐ AKAZE: enabled (weight: {self.feature_weights['akaze']:.2f} - star performer!)")
         
         # KAZE
         kaze_features = detector_config.get('kaze', 0)
         if kaze_features > 0:
             self.detectors['kaze'] = cv2.KAZE_create()
-            self.feature_weights['kaze'] = 0.15
-            logger.info(f" KAZE: enabled")
+            self.feature_weights['kaze'] = weights_config.get('kaze', 0.10)
+            logger.info(f"🌊 KAZE: enabled (weight: {self.feature_weights['kaze']:.2f})")
         
-        # Normalize weights
+        # Normalize weights to ensure they sum to 1.0
         if self.feature_weights:
             total = sum(self.feature_weights.values())
-            self.feature_weights = {k: v/total for k, v in self.feature_weights.items()}
+            if total > 0:
+                self.feature_weights = {k: v/total for k, v in self.feature_weights.items()}
+                logger.info(f"⚖️ Normalized weights: {', '.join([f'{k}:{v:.2f}' for k, v in self.feature_weights.items()])}")
+            else:
+                logger.warning("⚠️ All feature weights are zero!")
         
-        # Setup matchers
+        # Setup matchers (same as before)
         self.matchers = {}
         if 'sift' in self.detectors:
             FLANN_INDEX_KDTREE = 1
@@ -126,7 +131,7 @@ class FeatureMatchingComicMatcher:
         
         if 'kaze' in self.detectors:
             self.matchers['kaze'] = cv2.BFMatcher(cv2.NORM_L2, crossCheck=False)
-    
+     
     def _setup_settings(self):
         """Setup other settings from config"""
         options = self.config.get('options', {})

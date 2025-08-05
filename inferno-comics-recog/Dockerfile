@@ -67,6 +67,7 @@ ENV PYTHONPATH=/app
 ENV PATH=/home/python/.local/bin:$PATH
 ENV COMIC_CACHE_DB_PATH=/var/tmp/inferno-comics/comic_cache.db
 ENV COMIC_CACHE_IMAGE_PATH=/var/tmp/inferno-comics/image_cache
+ENV PERFORMANCE_LEVEL=balanced 
 
 # Copy entrypoint script
 COPY --link --chown=python:python scripts/docker-entrypoint.sh /

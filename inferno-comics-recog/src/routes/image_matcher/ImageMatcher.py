@@ -34,6 +34,22 @@ executor = ThreadPoolExecutor(max_workers=3)
 # Constants
 SIMILARITY_THRESHOLD = 0.55
 
+def get_global_matcher():
+    """Get the global matcher instance from Flask app config"""
+    try:
+        from flask import current_app
+        get_matcher_func = current_app.config.get('GET_MATCHER')
+        if get_matcher_func:
+            return get_matcher_func()
+        else:
+            # Fallback: create a new instance (should not happen in production)
+            logger.warning("⚠️ Global matcher not found, creating new instance")
+            return FeatureMatchingComicMatcher()
+    except Exception as e:
+        logger.error(f"❌ Error getting global matcher: {e}")
+        # Fallback: create a new instance
+        return FeatureMatchingComicMatcher()
+
 def ensure_images_directory():
     """Ensure the stored images directory exists"""
     # Get the parent directory of the src folder
@@ -623,7 +639,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         java_reporter.update_progress('initializing_matcher', 22, 'Initializing image matching engine...')
         
         # Initialize matcher
-        matcher = FeatureMatchingComicMatcher()
+        matcher = get_global_matcher()
         logger.debug("🔧 Initialized FeatureMatchingComicMatcher with 6 workers")
         
         # Create a safe progress callback wrapper for the matcher
@@ -825,7 +841,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         java_reporter.update_progress('initializing_matcher', 22, 'Initializing image matching engine for multiple images...')
         
         # Initialize matcher
-        matcher = FeatureMatchingComicMatcher()
+        matcher = get_global_matcher()
         logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers for multiple images")
         
         java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready for multiple images')
@@ -1255,7 +1271,7 @@ def image_matcher_operation():
         return jsonify({'error': 'No valid URLs found in candidate covers'}), 400
 
     # Initialize matcher
-    matcher = FeatureMatchingComicMatcher()
+    matcher = get_global_matcher()
     logger.debug(" Initialized matcher for regular processing")
 
     try:
