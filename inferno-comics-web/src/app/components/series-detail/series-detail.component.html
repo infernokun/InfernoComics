@@ -75,22 +75,52 @@
     <mat-tab-group [(selectedIndex)]="selectedTabIndex">
       <mat-tab label="My Collection">
         <div class="tab-content">
-          <!-- View Toggle Button -->
-          <div class="view-controls" *ngIf="issues.length > 0">
-            <button mat-icon-button [matTooltip]="isCompactView ? 'Switch to Grid View' : 'Switch to Compact View'"
-              (click)="toggleCompactView()">
-              <mat-icon>{{ isCompactView ? 'grid_view' : 'view_list' }}</mat-icon>
-            </button>
-            <span class="view-label">{{ isCompactView ? 'Compact View' : 'Grid View' }}</span>
+          <!-- Collection Controls -->
+          <div class="collection-controls" *ngIf="issues.length > 0">
+            <!-- View Toggle -->
+            <div class="view-controls">
+              <button mat-icon-button [matTooltip]="isCompactView ? 'Switch to Grid View' : 'Switch to Compact View'"
+                (click)="toggleCompactView()">
+                <mat-icon>{{ isCompactView ? 'grid_view' : 'view_list' }}</mat-icon>
+              </button>
+              <span class="view-label">{{ isCompactView ? 'Compact View' : 'Grid View' }}</span>
+            </div>
+
+            <!-- Collection Management -->
+            <div class="collection-actions">
+              <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
+                <mat-icon>photo_camera</mat-icon>
+                Add Comic By Image
+              </button>
+
+              <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
+                <mat-icon>photo_library</mat-icon>
+                Add Comics By Image
+              </button>
+
+              <button mat-stroked-button 
+                      color="warn" 
+                      matTooltip="Delete all issues in this collection" 
+                      (click)="deleteAllIssues()"
+                      [disabled]="issues.length === 0">
+                <mat-icon>delete_sweep</mat-icon>
+                Delete All Issues
+              </button>
+            </div>
           </div>
 
-          <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
-            Add Comic By Image
-          </button>
+          <!-- Single row for buttons when no issues -->
+          <div class="no-issues-actions" *ngIf="issues.length === 0">
+            <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
+              <mat-icon>photo_camera</mat-icon>
+              Add Comic By Image
+            </button>
 
-          <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
-            Add Comics By Image
-          </button>
+            <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
+              <mat-icon>photo_library</mat-icon>
+              Add Comics By Image
+            </button>
+          </div>
 
           <!-- Grid View (Default) -->
           <div class="collection-grid" *ngIf="issues.length > 0 && !isCompactView">

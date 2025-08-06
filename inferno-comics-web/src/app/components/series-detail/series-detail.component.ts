@@ -442,7 +442,7 @@ export class SeriesDetailComponent implements OnInit {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.multiple = true; 
+    input.multiple = true;
     input.onchange = (event: any) => {
       const files: FileList = event.target.files;
       if (files && files.length > 0) {
@@ -567,7 +567,8 @@ export class SeriesDetailComponent implements OnInit {
         );
 
         // Cast the result to ImageMatcherResponse for proper typing
-        const imageMatcherResponse = dialogResult.result as ImageMatcherResponse;
+        const imageMatcherResponse =
+          dialogResult.result as ImageMatcherResponse;
 
         if (
           imageMatcherResponse &&
@@ -703,8 +704,14 @@ export class SeriesDetailComponent implements OnInit {
       if (imageResult.top_matches && Array.isArray(imageResult.top_matches)) {
         imageResult.top_matches.forEach((match: any) => {
           // Add source tracking to each match
-          match.sourceImageIndex = imageResult.image_index !== undefined ? imageResult.image_index : imageIndex;
-          match.sourceImageName = imageResult.image_name || originalImages[imageIndex]?.name || `Image ${imageIndex + 1}`;
+          match.sourceImageIndex =
+            imageResult.image_index !== undefined
+              ? imageResult.image_index
+              : imageIndex;
+          match.sourceImageName =
+            imageResult.image_name ||
+            originalImages[imageIndex]?.name ||
+            `Image ${imageIndex + 1}`;
           allMatches.push(match);
         });
       }
@@ -1373,5 +1380,123 @@ export class SeriesDetailComponent implements OnInit {
         console.log('🚫 User cancelled bulk selection');
       }
     });
+  }
+
+  deleteAllIssues(): void {
+    if (!this.issues || this.issues.length === 0) {
+      this.snackBar.open('No issues to delete', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const issueCount = this.issues.length;
+    const seriesName = this.series?.name || 'this series';
+
+    // Show confirmation dialog
+    const confirmDialogRef = this.dialog.open(ConfirmationDialogComponent, {
+      width: '500px',
+      data: {
+        title: 'Delete All Issues',
+        message: `Are you sure you want to delete all ${issueCount} issues from "${seriesName}"? This action cannot be undone.`,
+        confirmText: 'Delete All Issues',
+        cancelText: 'Cancel',
+        isDestructive: true,
+        details: [
+          `• ${issueCount} issues will be permanently deleted`,
+          `• Total value: $${this.calculateTotalPurchasePrice()} (purchase) / $${this.calculateCurrentValue()} (current)`,
+          `• This action cannot be undone`,
+        ],
+      },
+    });
+
+    confirmDialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        this.performBulkDelete();
+      }
+    });
+  }
+
+  private performBulkDelete(): void {
+    const totalIssues = this.issues.length;
+    const seriesId = this.series?.id;
+
+    if (!seriesId) {
+      this.snackBar.open('Error: Series ID not found', 'Close', {
+        duration: 3000,
+      });
+      return;
+    }
+
+    // Show progress indicator
+    this.snackBar.open(`Deleting ${totalIssues} issues...`, '', {
+      duration: 0, // Keep open until manually dismissed
+    });
+
+    // Get all issue IDs
+    const issueIds = this.issues.map((issue) => issue.id);
+
+    // Create deletion promises for all issues
+    const deletePromises = issueIds.map((id) =>
+      this.issueService.deleteIssue(id).toPromise()
+    );
+
+    // Execute all deletions
+    Promise.allSettled(deletePromises)
+      .then((results) => {
+        this.snackBar.dismiss();
+
+        const successful = results.filter(
+          (result) => result.status === 'fulfilled'
+        ).length;
+        const failed = results.filter(
+          (result) => result.status === 'rejected'
+        ).length;
+
+        if (successful === totalIssues) {
+          // All deletions successful
+          this.snackBar.open(
+            `Successfully deleted all ${successful} issues`,
+            'Close',
+            { duration: 5000 }
+          );
+
+          // Clear the local issues array and refresh
+          this.issues = [];
+          this.loadIssues(seriesId); // Refresh from server to be sure
+        } else if (successful > 0) {
+          // Partial success
+          this.snackBar.open(
+            `Deleted ${successful} of ${totalIssues} issues (${failed} failed)`,
+            'Close',
+            { duration: 5000 }
+          );
+
+          // Refresh the issues list to show current state
+          this.loadIssues(seriesId);
+        } else {
+          // All failed
+          this.snackBar.open(
+            'Failed to delete issues. Please try again.',
+            'Close',
+            { duration: 5000 }
+          );
+        }
+
+        // Log any failures for debugging
+        if (failed > 0) {
+          console.error(
+            `${failed} issue deletions failed:`,
+            results.filter((r) => r.status === 'rejected')
+          );
+        }
+      })
+      .catch((error) => {
+        this.snackBar.dismiss();
+        console.error('Error during bulk delete:', error);
+        this.snackBar.open(
+          'Unexpected error during deletion. Please try again.',
+          'Close',
+          { duration: 5000 }
+        );
+      });
   }
 }

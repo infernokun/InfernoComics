@@ -6,9 +6,15 @@ import { MaterialModule } from '../../../../material.module';
 export interface ConfirmationDialogData {
   title: string;
   message: string;
-  confirmButtonText: string;
-  cancelButtonText: string;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
+  confirmText?: string;
+  cancelText?: string;
   confirmButtonColor?: 'primary' | 'accent' | 'warn';
+  isDestructive?: boolean;
+  details?: string[];
+  showThirdOption?: boolean;
+  thirdOptionText?: string;
 }
 
 @Component({
@@ -22,9 +28,9 @@ export class ConfirmationDialogComponent {
     public dialogRef: MatDialogRef<ConfirmationDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ConfirmationDialogData
   ) {}
-  
+
   getHeaderIcon(): string {
-    if (this.data.confirmButtonColor === 'warn') {
+    if (this.data.isDestructive || this.data.confirmButtonColor === 'warn') {
       return 'warning';
     } else if (this.data.confirmButtonColor === 'accent') {
       return 'help';

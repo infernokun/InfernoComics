@@ -1,21 +1,45 @@
 <div class="dialog-container">
-    <div class="dialog-header" [ngClass]="{'warn-header': data.confirmButtonColor === 'warn'}">
-        <mat-icon class="header-icon">{{ getHeaderIcon() }}</mat-icon>
-        <h2 class="dialog-title">{{ data.title }}</h2>
+  <div class="dialog-header" [ngClass]="{'warn-header': data.isDestructive || data.confirmButtonColor === 'warn'}">
+    <mat-icon class="header-icon">{{ getHeaderIcon() }}</mat-icon>
+    <h2 class="dialog-title">{{ data.title }}</h2>
+  </div>
+  
+  <mat-dialog-content class="dialog-content">
+    <p class="dialog-message">{{ data.message }}</p>
+    
+    <!-- Add support for details list -->
+    <ul class="details-list" *ngIf="data.details && data.details.length > 0">
+      <li *ngFor="let detail of data.details">{{ detail }}</li>
+    </ul>
+    
+    <!-- Add destructive warning if needed -->
+    <div class="destructive-warning" *ngIf="data.isDestructive">
+      <mat-icon style="vertical-align: middle; margin-right: 8px; font-size: 16px;">warning</mat-icon>
+      This action cannot be undone.
     </div>
-
-    <mat-dialog-content class="dialog-content">
-        <p class="dialog-message">{{ data.message }}</p>
-    </mat-dialog-content>
-
-    <mat-dialog-actions class="dialog-actions">
-        <button mat-button class="cancel-button" [mat-dialog-close]="false">
-            {{ data.cancelButtonText || 'Cancel' }}
-        </button>
-        <button mat-raised-button class="confirm-button" [ngClass]="{'warn-button': data.confirmButtonColor === 'warn'}"
-            [color]="data.confirmButtonColor || 'primary'" [mat-dialog-close]="true">
-            <mat-icon *ngIf="data.confirmButtonColor === 'warn'">delete</mat-icon>
-            {{ data.confirmButtonText || 'Confirm' }}
-        </button>
-    </mat-dialog-actions>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions class="dialog-actions">
+    <button mat-button 
+            class="cancel-button" 
+            [mat-dialog-close]="'third'"
+            *ngIf="data.showThirdOption && data.thirdOptionText">
+      {{ data.thirdOptionText }}
+    </button>
+    
+    <button mat-button 
+            class="cancel-button" 
+            [mat-dialog-close]="data.showThirdOption ? 'cancel' : false">
+      {{ data.cancelButtonText || data.cancelText || 'Cancel' }}
+    </button>
+    
+    <button mat-raised-button 
+            class="confirm-button" 
+            [ngClass]="{'warn-button': data.isDestructive || data.confirmButtonColor === 'warn'}"
+            [color]="(data.isDestructive || data.confirmButtonColor === 'warn') ? 'warn' : (data.confirmButtonColor || 'primary')" 
+            [mat-dialog-close]="data.showThirdOption ? 'confirm' : true">
+      <mat-icon *ngIf="data.isDestructive || data.confirmButtonColor === 'warn'">delete</mat-icon>
+      {{ data.confirmButtonText || data.confirmText || 'Confirm' }}
+    </button>
+  </mat-dialog-actions>
 </div>
