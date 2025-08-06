@@ -1,61 +1,187 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { trigger, transition, style, animate } from '@angular/animations';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { SeriesService } from '../../services/series.service';
 import { IssueService } from '../../services/issue.service';
 import { Series } from '../../models/series.model';
 import { Issue } from '../../models/issue.model';
 
+interface PublisherStat {
+  name: string;
+  count: number;
+  percentage: number;
+}
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
-  standalone: false
+  standalone: false,
+  animations: [
+    trigger('fadeInUp', [
+      transition(':enter', [
+        style({ transform: 'translateY(30px)', opacity: 0 }),
+        animate('600ms ease-out', style({ transform: 'translateY(0)', opacity: 1 }))
+      ])
+    ]),
+    trigger('slideInUp', [
+      transition(':enter', [
+        style({ transform: 'translateY(50px)', opacity: 0 }),
+        animate('400ms ease-out', style({ transform: 'translateY(0)', opacity: 1 }))
+      ])
+    ]),
+    trigger('scaleIn', [
+      transition(':enter', [
+        style({ transform: 'scale(0.8)', opacity: 0 }),
+        animate('300ms ease-out', style({ transform: 'scale(1)', opacity: 1 }))
+      ])
+    ]),
+    trigger('cardAnimation', [
+      transition(':enter', [
+        style({ transform: 'scale(0.9) translateY(20px)', opacity: 0 }),
+        animate('400ms ease-out', style({ transform: 'scale(1) translateY(0)', opacity: 1 }))
+      ])
+    ])
+  ]
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
+  // Core data
   totalSeries = 0;
   totalIssues = 0;
-  keyIssues: Issue[] = [];
-  recentSeries: Series[] = [];
+  allSeries: Series[] = [];
   loading = true;
+  
+  // Enhanced features
+  uniquePublishers = 0;
+  favoritePublisher = '';
+  publisherStats: PublisherStat[] = [];
+  showAllPublishers = false;
+  
+  // Series display
+  favoriteSeriesIds: Set<number> = new Set();
+  viewMode: 'grid' | 'list' = 'grid';
+  
+  private destroy$ = new Subject<void>();
 
   constructor(
     private seriesService: SeriesService,
     private issueService: IssueService
-  ) {}
+  ) {
+    // Load saved preferences
+    this.loadUserPreferences();
+  }
 
   ngOnInit(): void {
     this.loadDashboardData();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // Data Loading
   loadDashboardData(): void {
     this.loading = true;
-
+    
     // Load all series
-    this.seriesService.getAllSeries().subscribe({
-      next: (series) => {
-        this.totalSeries = series.length;
-        this.recentSeries = series.slice(0, 6);
-      },
-      error: (error) => console.error('Error loading series:', error)
-    });
+    this.seriesService.getAllSeries()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (series) => {
+          this.totalSeries = series.length;
+          // Sort all series by name
+          this.allSeries = series.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          this.calculatePublisherStats(series);
+        },
+        error: (error) => console.error('Error loading series:', error)
+      });
 
-    // Load all comic books
-    this.issueService.getAllIssues().subscribe({
-      next: (issues) => {
-        this.totalIssues = issues.length;
-      },
-      error: (error) => console.error('Error loading comic books:', error)
-    });
+    // Load all issues
+    this.issueService.getAllIssues()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (issues) => {
+          this.totalIssues = issues.length;
+          this.loading = false;
+        },
+        error: (error) => {
+          console.error('Error loading issues:', error);
+          this.loading = false;
+        }
+      });
+  }
 
-    // Load key issues
-    this.issueService.getKeyIssues().subscribe({
-      next: (keyIssues) => {
-        this.keyIssues = keyIssues.slice(0, 6);
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error loading key issues:', error);
-        this.loading = false;
+  refreshData(): void {
+    this.loadDashboardData();
+  }
+
+  // Publisher Statistics
+  private calculatePublisherStats(series: Series[]): void {
+    const publisherCount = new Map<string, number>();
+    
+    series.forEach(s => {
+      const publisher = s.publisher || 'Unknown';
+      publisherCount.set(publisher, (publisherCount.get(publisher) || 0) + 1);
+    });
+    
+    this.uniquePublishers = publisherCount.size;
+    
+    this.publisherStats = Array.from(publisherCount.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: (count / series.length) * 100
+      }))
+      .sort((a, b) => b.count - a.count);
+    
+    this.favoritePublisher = this.publisherStats[0]?.name || '';
+  }
+
+  toggleView(): void {
+    this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
+    this.saveUserPreferences();
+  }
+
+  // Favorites Management
+  toggleFavorite(series: Series, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (series.id) {
+      if (this.favoriteSeriesIds.has(series.id)) {
+        this.favoriteSeriesIds.delete(series.id);
+      } else {
+        this.favoriteSeriesIds.add(series.id);
       }
-    });
+      this.saveUserPreferences();
+    }
+  }
+
+  isFavorited(seriesId: number | undefined): boolean {
+    return seriesId ? this.favoriteSeriesIds.has(seriesId) : false;
+  }
+
+  trackBySeries(index: number, series: Series): any {
+    return series.id;
+  }
+
+  // User Preferences
+  private loadUserPreferences(): void {
+    const preferences = localStorage.getItem('dashboardPreferences');
+    if (preferences) {
+      const prefs = JSON.parse(preferences);
+      this.viewMode = prefs.viewMode || 'grid';
+      this.favoriteSeriesIds = new Set(prefs.favoriteSeriesIds || []);
+    }
+  }
+
+  private saveUserPreferences(): void {
+    const preferences = {
+      viewMode: this.viewMode,
+      favoriteSeriesIds: Array.from(this.favoriteSeriesIds)
+    };
+    localStorage.setItem('dashboardPreferences', JSON.stringify(preferences));
   }
 }

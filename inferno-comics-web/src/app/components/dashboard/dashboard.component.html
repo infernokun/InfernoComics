@@ -1,74 +1,151 @@
 <div class="dashboard-container">
-    <h1>Collection Dashboard</h1>
-
-    <div class="stats-grid" *ngIf="!loading">
-        <mat-card class="stat-card">
-            <mat-card-header>
-                <mat-card-title>Total Series</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-                <div class="stat-number">{{ totalSeries }}</div>
-            </mat-card-content>
-        </mat-card>
-
-        <mat-card class="stat-card">
-            <mat-card-header>
-                <mat-card-title>Total Comic Books</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-                <div class="stat-number">{{ totalIssues }}</div>
-            </mat-card-content>
-        </mat-card>
-
-        <mat-card class="stat-card">
-            <mat-card-header>
-                <mat-card-title>Key Issues</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-                <div class="stat-number">{{ keyIssues.length }}</div>
-            </mat-card-content>
-        </mat-card>
+  <!-- Header Section -->
+  <div class="header-section">
+    <h1 class="main-title">Comic Collection Hub</h1>
+    <p class="subtitle">Discover, track, and explore your comic universe</p>
+    
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <button mat-raised-button class="action-btn primary" [routerLink]="['/series/add']">
+        <mat-icon>add</mat-icon>
+        Add Series
+      </button>
+      <button mat-raised-button class="action-btn secondary" (click)="refreshData()">
+        <mat-icon>refresh</mat-icon>
+        Refresh
+      </button>
+      <button mat-raised-button class="action-btn accent" (click)="toggleView()">
+        <mat-icon>{{ viewMode === 'grid' ? 'view_list' : 'grid_view' }}</mat-icon>
+        {{ viewMode === 'grid' ? 'List View' : 'Grid View' }}
+      </button>
     </div>
+  </div>
 
-    <div class="content-sections" *ngIf="!loading">
-        <section class="recent-series">
-            <h2>Recent Series</h2>
-            <div class="series-grid">
-                <mat-card *ngFor="let series of recentSeries" class="series-card" [routerLink]="['/series', series.id]">
-                    <img mat-card-image [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name"
-                        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}" />
-                        <mat-card-header>
-                    <mat-card-title>{{ series.name }}</mat-card-title>
-                    <mat-card-subtitle>{{ series.publisher }}</mat-card-subtitle>
-                    </mat-card-header>
-                </mat-card>
+  <!-- Enhanced Stats Grid -->
+  <div class="stats-container" *ngIf="!loading">
+    <div class="stats-grid">
+      <div class="stat-card total-series" [@slideInUp]>
+        <div class="stat-icon">
+          <mat-icon>library_books</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ totalSeries | number }}</div>
+          <div class="stat-label">Total Series</div>
+        </div>
+      </div>
+
+      <div class="stat-card total-issues" [@slideInUp]>
+        <div class="stat-icon">
+          <mat-icon>auto_stories</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ totalIssues | number }}</div>
+          <div class="stat-label">Total Issues</div>
+        </div>
+      </div>
+
+      <div class="stat-card publishers" [@slideInUp]>
+        <div class="stat-icon">
+          <mat-icon>business</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ uniquePublishers }}</div>
+          <div class="stat-label">Publishers</div>
+          <div class="stat-detail">{{ favoritePublisher || 'Various' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Sections -->
+  <div class="content-sections" *ngIf="!loading">
+    
+    <!-- Publisher Breakdown -->
+    <section class="publisher-section" [@fadeInUp]>
+      <div class="section-header">
+        <h2>
+          <mat-icon>business</mat-icon>
+          Publisher Breakdown
+        </h2>
+        <button mat-button color="primary" (click)="showAllPublishers = !showAllPublishers">
+          {{ showAllPublishers ? 'Show Less' : 'Show All' }}
+        </button>
+      </div>
+      
+      <div class="publisher-grid">
+        <div *ngFor="let pub of (showAllPublishers ? publisherStats : publisherStats.slice(0, 6))" 
+             class="publisher-card" 
+             [@scaleIn]>
+          <div class="publisher-logo">
+            <div class="publisher-fallback">{{ pub.name.charAt(0) }}</div>
+          </div>
+          <div class="publisher-info">
+            <h3>{{ pub.name }}</h3>
+            <p>{{ pub.count }} series</p>
+            <div class="progress-bar">
+              <div class="progress-fill" [style.width.%]="(pub.count / totalSeries) * 100"></div>
             </div>
-        </section>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        <section class="key-issues">
-            <h2>Key Issues</h2>
-            <div class="issues-grid">
-                <mat-card *ngFor="let issue of keyIssues" class="issue-card">
-                    <img mat-card-image [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'"
-                        [alt]="'Issue #' + issue.issueNumber"
-                        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}"/>
-                        <mat-card-header>
-                    <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
-                    <mat-card-subtitle>{{ issue.title }}</mat-card-subtitle>
-                    </mat-card-header>
-                    <mat-card-content>
-                        <mat-chip-listbox>
-                            <mat-chip-option selected>Key Issue</mat-chip-option>
-                            <mat-chip-option *ngIf="issue.condition">{{ issue.condition }}</mat-chip-option>
-                        </mat-chip-listbox>
-                    </mat-card-content>
-                </mat-card>
+    <!-- All Series -->
+    <section class="series-section" [@fadeInUp]>
+      <div class="section-header">
+        <h2>
+          <mat-icon>auto_stories</mat-icon>
+          All Series
+        </h2>
+      </div>
+      
+      <div class="series-container" [ngClass]="viewMode">
+        <div *ngFor="let series of allSeries; trackBy: trackBySeries" 
+             class="series-card" 
+             [routerLink]="['/series', series.id]"
+             [@cardAnimation]>
+          
+          <div class="series-image-container">
+            <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" 
+                 [alt]="series.name"
+                 onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}"
+                 loading="lazy" />
+            <div class="series-overlay">
+              <div class="series-badges">
+                <span class="badge publisher">{{ series.publisher }}</span>
+                <span class="badge year" *ngIf="series.startYear">{{ series.startYear }}</span>
+              </div>
+              <div class="series-actions">
+                <button mat-icon-button (click)="toggleFavorite(series, $event)">
+                  <mat-icon [class.favorited]="isFavorited(series.id)">
+                    {{ isFavorited(series.id) ? 'favorite' : 'favorite_border' }}
+                  </mat-icon>
+                </button>
+              </div>
             </div>
-        </section>
-    </div>
+          </div>
+          
+          <div class="series-content">
+            <h3>{{ series.name }}</h3>
+            <p class="series-publisher">{{ series.publisher }}</p>
+            <div class="series-meta">
+              <span class="issue-count">
+                <mat-icon>library_books</mat-icon>
+                {{ series.issueCount || 0 }} issues
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 
-    <div class="loading-container" *ngIf="loading">
-        <mat-spinner></mat-spinner>
-        <p>Loading dashboard...</p>
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="loading-content">
+      <mat-spinner diameter="60"></mat-spinner>
+      <h3>Loading your collection...</h3>
+      <p>Gathering your comic data</p>
     </div>
+  </div>
 </div>

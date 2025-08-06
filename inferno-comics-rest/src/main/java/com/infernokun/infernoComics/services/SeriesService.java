@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class SeriesService {
     private final SeriesRepository seriesRepository;
+    private final IssueService issueService;
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
@@ -46,7 +47,7 @@ public class SeriesService {
 
     private final Map<Integer, List<GCDCover>> urlCache = new HashMap<>();
 
-    public SeriesService(SeriesRepository seriesRepository,
+    public SeriesService(SeriesRepository seriesRepository, IssueService issueService,
                          ComicVineService comicVineService,
                          DescriptionGeneratorService descriptionGeneratorService,
                          GCDatabaseService gcDatabaseService,
@@ -54,6 +55,7 @@ public class SeriesService {
                          InfernoComicsConfig infernoComicsConfig,
                          ProgressService progressService) {
         this.seriesRepository = seriesRepository;
+        this.issueService = issueService;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
@@ -69,11 +71,13 @@ public class SeriesService {
                         .build())
                 .build();
     }
-
     @Cacheable(value = "all-series")
     public List<Series> getAllSeries() {
         log.info("Fetching all series from database");
-        return seriesRepository.findAll();
+        List<Series> seriesList = seriesRepository.findAll();
+        seriesList.forEach(series ->
+                series.setIssueCount(issueService.getIssuesBySeriesId(series.getId()).size()));
+        return seriesList;
     }
 
     @Cacheable(value = "series", key = "#id")

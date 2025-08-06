@@ -16,3 +16,17 @@ export interface Series {
   comicBooks?: Issue[];
   generatedDescription: boolean;
 }
+
+// Additional interfaces for dashboard features
+export interface PublisherStats {
+  name: string;
+  seriesCount: number;
+  totalIssues: number;
+  percentage: number;
+  logoUrl?: string;
+}
+
+export interface UserPreferences {
+  viewMode: 'grid' | 'list';
+  favoritePublishers: string[];
+}
