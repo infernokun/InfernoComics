@@ -443,14 +443,20 @@ public class IssueService {
         issue.setComicVineId(request.getComicVineId());
         issue.setIsKeyIssue(request.getIsKeyIssue());
 
-        String fullUrl = request.getUploadedImageUrl();
+        String url = request.getUploadedImageUrl();
+        String imagePath;
 
-        if (fullUrl != null && !fullUrl.isEmpty() && !fullUrl.equals("null")) {
-            String imagePath = fullUrl.substring(fullUrl.lastIndexOf("/image/") + "/image/".length());
-            issue.setUploadedImageUrl(imagePath);
+        if (url.contains("stored_images/")) {
+            // Handle: "/inferno-comics-recognition/api/v1/stored_images/..."
+            imagePath = url.substring(url.indexOf("stored_images/") + "stored_images/".length());
+        } else if (url.contains("/image/")) {
+            // Handle: "http://localhost:8080/inferno-comics-rest/api/progress/image/..."
+            imagePath = url.substring(url.indexOf("/image/") + "/image/".length());
         } else {
-            issue.setUploadedImageUrl(null);
+            imagePath = url;
         }
+
+        issue.setUploadedImageUrl(imagePath);
 
 
         // Handle variant covers if present in request

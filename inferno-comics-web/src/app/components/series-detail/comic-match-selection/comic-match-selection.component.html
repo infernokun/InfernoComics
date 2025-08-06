@@ -122,33 +122,47 @@
         <div class="info">
           <h3>{{ match.comic_name }}</h3>
           <p>Issue #{{ match.issue_number }}</p>
-          
           <div class="features">
             <div class="feature">
               <span class="label">ORB:</span>
-              <span class="value">{{ match.match_details.orb.good_matches }}/{{ match.match_details.orb.total_matches }}</span>
-              <div class="bar">
+              <span class="value" *ngIf="match.match_details?.orb; else noOrbData">
+                {{ match.match_details.orb.good_matches }}/{{ match.match_details.orb.total_matches }}
+              </span>
+              <ng-template #noOrbData><span class="value">N/A</span></ng-template>
+              <div class="bar" *ngIf="match.match_details?.orb">
                 <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.orb)"></div>
               </div>
             </div>
+          
             <div class="feature">
               <span class="label">SIFT:</span>
-              <span class="value">{{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}</span>
-              <div class="bar">
+              <span class="value" *ngIf="match.match_details?.sift; else noSiftData">
+                {{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}
+              </span>
+              <ng-template #noSiftData><span class="value">N/A</span></ng-template>
+              <div class="bar" *ngIf="match.match_details?.sift">
                 <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.sift)"></div>
               </div>
             </div>
+          
             <div class="feature">
               <span class="label">AKAZE:</span>
-              <span class="value">{{ match.match_details.akaze.good_matches }}/{{ match.match_details.akaze.total_matches }}</span>
-              <div class="bar">
+              <span class="value" *ngIf="match.match_details?.akaze; else noAkazeData">
+                {{ match.match_details.akaze.good_matches }}/{{ match.match_details.akaze.total_matches }}
+              </span>
+              <ng-template #noAkazeData><span class="value">N/A</span></ng-template>
+              <div class="bar" *ngIf="match.match_details?.akaze">
                 <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.akaze)"></div>
               </div>
             </div>
+          
             <div class="feature">
               <span class="label">KAZE:</span>
-              <span class="value">{{ match.match_details.kaze.good_matches }}/{{ match.match_details.kaze.total_matches }}</span>
-              <div class="bar">
+              <span class="value" *ngIf="match.match_details?.kaze; else noKazeData">
+                {{ match.match_details.kaze.good_matches }}/{{ match.match_details.kaze.total_matches }}
+              </span>
+              <ng-template #noKazeData><span class="value">N/A</span></ng-template>
+              <div class="bar" *ngIf="match.match_details?.kaze">
                 <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.kaze)"></div>
               </div>
             </div>

@@ -742,6 +742,7 @@ export class SeriesDetailComponent implements OnInit {
       seriesId: seriesId,
       sessionId: result.session_id,
       originalImages: originalImages,
+      liveStoredImages: result.results.map((r: any) => r.image_url),
       isMultiple: true,
       highConfidenceThreshold: 0.7,
       mediumConfidenceThreshold: 0.55,
@@ -820,7 +821,7 @@ export class SeriesDetailComponent implements OnInit {
               keyIssue: false,
               generatedDescription: issue.generatedDescription || false,
               variant: issue.variant || false,
-              uploadedImageUrl: result.imagePreview || undefined,
+              uploadedImageUrl: result.imagePreview.includes("blob") ? result.liveStoredImage : result.imagePreview,
             };
 
             console.log(

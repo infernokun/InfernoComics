@@ -17,6 +17,7 @@ export interface ProcessedImageResult {
   imageName: string;
   imagePreview: string;
   bestMatch: ComicMatch | null;
+  liveStoredImage?: any;
   allMatches: ComicMatch[];
   status: 'auto_selected' | 'needs_review' | 'no_match' | 'skipped';
   confidence: 'high' | 'medium' | 'low';
@@ -30,6 +31,7 @@ export interface BulkSelectionDialogData {
   sessionId?: string;
   originalImages: File[];
   storedImages?: any[];
+  liveStoredImages?: any[];
   isMultiple: boolean;
   highConfidenceThreshold: number;
   mediumConfidenceThreshold: number;
@@ -186,6 +188,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         imageIndex: index,
         imageName: imageName,
         imagePreview: imagePreview,
+        liveStoredImage: this.data.liveStoredImages ? this.data.liveStoredImages![index] : null,
         bestMatch,
         allMatches: sortedMatches,
         status,

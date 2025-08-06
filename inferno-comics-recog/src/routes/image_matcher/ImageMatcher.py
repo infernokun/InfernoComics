@@ -928,7 +928,7 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         }
         
         # Save result to JSON file
-        save_multiple_images_matcher_result(session_id, final_result, query_images_data)
+        sanitized_result = save_multiple_images_matcher_result(session_id, final_result, query_images_data)
         
         # Print cache stats
         matcher.print_cache_stats()
@@ -939,6 +939,10 @@ def process_multiple_images_with_centralized_progress(session_id, query_images_d
         # Send completion at 100% to Java
         java_reporter.update_progress('complete', 100, final_msg)
         
+        for i, result in enumerate(final_result['results']):
+            if i < len(sanitized_result['results']):
+                result['image_url'] = sanitized_result['results'][i]['image_url']
+                        
         # IMPORTANT: Send the complete result to Java
         java_reporter.send_complete(final_result)
         
@@ -1075,7 +1079,7 @@ def save_multiple_images_matcher_result(session_id, result_data, query_images_da
             json.dump(sanitized_result, f, indent=2, ensure_ascii=False)
         
         logger.info(f" Saved multiple images matcher result to {result_file}")
-        return result_file
+        return sanitized_result
         
     except Exception as e:
         logger.error(f"❌ Error saving multiple images matcher result: {e}")
