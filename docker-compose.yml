@@ -81,6 +81,7 @@ services:
     volumes:
       - /var/tmp/inferno-comics:/var/tmp/inferno-comics
       - /var/tmp/inferno-comics/results:/app/results
+      - /var/tmp/inferno-comics/stored_images:/app/src/routes/stored_images
     networks:
       - inferno-comics-network
 
