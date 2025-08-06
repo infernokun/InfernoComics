@@ -210,6 +210,7 @@ public class IssueController {
         private Boolean isKeyIssue;
         private List<Issue.VariantCover> variantCovers = new ArrayList<>();
         private Boolean hasVariants;
+        private String uploadedImageUrl;
     }
 
     @Setter
@@ -229,5 +230,6 @@ public class IssueController {
         private Boolean isKeyIssue;
         private List<Issue.VariantCover> variantCovers = new ArrayList<>();
         private Boolean hasVariants;
+        private String uploadedImageUrl;
     }
 }

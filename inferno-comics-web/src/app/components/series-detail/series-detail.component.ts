@@ -813,6 +813,7 @@ export class SeriesDetailComponent implements OnInit {
               keyIssue: false,
               generatedDescription: issue.generatedDescription || false,
               variant: issue.variant || false,
+              uploadedImageUrl: result.imagePreview || undefined,
             };
 
             console.log(

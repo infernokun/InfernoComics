@@ -22,7 +22,6 @@ public class ModelMapperConfig {
                     mapping.skip(Series::setCachedCoverUrls);
                     mapping.skip(Series::setLastCachedCovers);
                 });
-
         return mapper;
     }
 }

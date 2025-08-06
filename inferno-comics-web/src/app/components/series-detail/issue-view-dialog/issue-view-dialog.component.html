@@ -12,12 +12,37 @@
         <div class="comic-view-layout">
             <div class="comic-image-section">
                 <div class="comic-image-container">
-                    <img [src]="data.issue.imageUrl || 'assets/placeholder-comic.jpg'"
+                    <!-- Image Toggle Controls -->
+                    <div class="image-controls" *ngIf="hasUploadedImage()">
+                        <button mat-button 
+                                class="image-toggle-btn" 
+                                (click)="toggleImageView()"
+                                [class.active]="!showUploadedImage">
+                            <mat-icon>image</mat-icon>
+                            Cover
+                        </button>
+                        <button mat-button 
+                                class="image-toggle-btn" 
+                                (click)="toggleImageView()"
+                                [class.active]="showUploadedImage">
+                            <mat-icon>photo_library</mat-icon>
+                            Uploaded
+                        </button>
+                    </div>
+
+                    <img [src]="getCurrentImageUrl()"
                         [alt]="'Issue #' + data.issue.issueNumber"
                         onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}" />
+                    
                     <div class="key-issue-badge" *ngIf="data.issue.keyIssue">
                         <mat-icon>star</mat-icon>
                         <span>Key Issue</span>
+                    </div>
+
+                    <!-- Current Image Type Indicator -->
+                    <div class="image-type-indicator" *ngIf="hasUploadedImage()">
+                        <mat-icon>{{ showUploadedImage ? 'photo_library' : 'image' }}</mat-icon>
+                        <span>{{ showUploadedImage ? 'Uploaded Image' : 'Cover Image' }}</span>
                     </div>
                 </div>
             </div>

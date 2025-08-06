@@ -30,4 +30,5 @@ export interface Issue {
   updatedAt?: Date;
   series?: Series;
   generatedDescription: boolean;
+  uploadedImageUrl?: string;
 }

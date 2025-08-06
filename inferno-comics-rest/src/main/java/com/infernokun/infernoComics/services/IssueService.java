@@ -443,6 +443,16 @@ public class IssueService {
         issue.setComicVineId(request.getComicVineId());
         issue.setIsKeyIssue(request.getIsKeyIssue());
 
+        String fullUrl = request.getUploadedImageUrl();
+
+        if (fullUrl != null && !fullUrl.isEmpty() && !fullUrl.equals("null")) {
+            String imagePath = fullUrl.substring(fullUrl.lastIndexOf("/image/") + "/image/".length());
+            issue.setUploadedImageUrl(imagePath);
+        } else {
+            issue.setUploadedImageUrl(null);
+        }
+
+
         // Handle variant covers if present in request
         if (request instanceof IssueRequestWithVariants) {
             IssueRequestWithVariants variantRequest = (IssueRequestWithVariants) request;
@@ -522,6 +532,7 @@ public class IssueService {
         String getNotes();
         String getComicVineId();
         Boolean getIsKeyIssue();
+        String getUploadedImageUrl();
     }
 
     // Extended request interface for variant covers
