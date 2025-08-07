@@ -23,7 +23,7 @@ cv2.setNumThreads(1)
 
 DB_PATH = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
 DB_IMAGE_CACHE = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
-CONFIG_PATH = os.environ.get('CONFIG_PATH', '/var/tmp/inferno-comics/config.yml')
+
 
 def safe_progress_callback(callback, current_item, message=""):
     """Safely call progress callback, handling None case"""
@@ -35,9 +35,9 @@ def safe_progress_callback(callback, current_item, message=""):
             pass
 
 class FeatureMatchingComicMatcher:
-    def __init__(self, config_path=CONFIG_PATH, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH):
+    def __init__(self, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH):
 
-        self.config = ComicMatcherConfig(config_path)
+        self.config = ComicMatcherConfig()
 
         self.cache_dir = cache_dir
         self.db_path = db_path

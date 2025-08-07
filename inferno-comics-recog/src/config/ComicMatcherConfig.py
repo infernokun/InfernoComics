@@ -12,6 +12,8 @@ DEFAULT_CONFIG = """
 # Options: "minimal", "fast", "balanced", "high_performance"
 performance_level: "balanced"
 
+simularity_threshold = 55%
+
 # Basic Settings (only used if performance_level is "custom")
 image_size: 800
 max_workers: 4
@@ -132,8 +134,10 @@ presets:
 # 3. KAZE - Slower, non-linear diffusion
 # 4. SIFT - Slowest, most CPU intensive, very robust
 
+CONFIG_PATH = os.environ.get('CONFIG_PATH', '/var/tmp/inferno-comics/config.yml')
+
 class ComicMatcherConfig:
-    def __init__(self, config_path=None, create_default=True):
+    def __init__(self, config_path=CONFIG_PATH, create_default=True):
         self.config_path = config_path
         self.config = self._load_config(config_path, create_default)
         self._apply_performance_level()
@@ -248,3 +252,6 @@ class ComicMatcherConfig:
         self.config['presets'][preset_name] = preset
         logger.info(f"✨ Created custom preset: {preset_name}")
         return preset
+    
+    def get_simularity_threshold(self):
+        return self.get("simularity_threshold")
