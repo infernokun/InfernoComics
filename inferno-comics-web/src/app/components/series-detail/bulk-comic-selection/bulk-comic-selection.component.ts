@@ -239,63 +239,55 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     console.log('Filtered results count:', this.filteredResults.length);
   }
 
-  // Action Methods
   acceptMatch(result: ProcessedImageResult): void {
     result.userAction = 'accepted';
-    result.selectedMatch =
-      result.selectedMatch || (result.bestMatch ?? undefined);
+    result.selectedMatch = result.selectedMatch || (result.bestMatch ?? undefined);
+    console.log('✅ Accepted match for:', result.imageName);
   }
 
   rejectMatch(result: ProcessedImageResult): void {
     result.userAction = 'rejected';
     result.selectedMatch = undefined;
+    console.log('❌ Rejected match for:', result.imageName);
   }
 
   reviewMatch(result: ProcessedImageResult): void {
-    // Create dialog data for the individual match selection
-    const dialogData: ComicMatchDialogData = {
-      matches: result.allMatches,
-      seriesId: this.data.seriesId,
-      sessionId: this.data.sessionId,
-      originalImage: this.data.originalImages[result.imageIndex],
-      isMultiple: false, 
-    };
-
-    // Open the individual match selection dialog
-    const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
-      width: '95vw',
-      maxWidth: '1200px',
-      maxHeight: '90vh',
-      data: dialogData,
-      disableClose: false,
-    });
-
-    // Handle the result from the individual match selection
-    dialogRef.afterClosed().subscribe((dialogResult) => {
-      if (dialogResult && dialogResult.action === 'select') {
-        // User selected a match
-        result.userAction = 'manual_select';
-        result.selectedMatch = dialogResult.match;
-        result.status = 'auto_selected'; // Update status to show it's been handled
-      } else if (dialogResult && dialogResult.action === 'no_match') {
-        // User chose no match
-        result.userAction = 'rejected';
-        result.selectedMatch = undefined;
-        result.status = 'no_match';
-
-        console.log('User rejected all matches for:', result.imageName);
-      } else if (dialogResult && dialogResult.action === 'cancel') {
-        // User cancelled - no changes
-        console.log('User cancelled match selection for:', result.imageName);
-      }
-
-      // Refresh the filtered results to reflect any changes
-      this.applyFilter();
-    });
+    this.openMatchSelectionDialog(result);
   }
 
   showAllMatches(result: ProcessedImageResult): void {
-    // Similar to reviewMatch but with a different context
+    this.openMatchSelectionDialog(result);
+  }
+
+  manualAdd(result: ProcessedImageResult): void {
+    result.userAction = 'rejected';
+    result.selectedMatch = undefined;
+    result.status = 'skipped';
+
+    console.log('📝 Manual add requested for:', result.imageName);
+    this.applyFilter();
+  }
+
+  resetUserAction(result: ProcessedImageResult): void {
+    result.userAction = undefined;
+    result.selectedMatch = result.bestMatch ?? undefined;
+
+    // Reset to original status based on confidence
+    if (result.bestMatch) {
+      if (result.bestMatch.similarity >= this.highConfidenceThreshold) {
+        result.status = 'auto_selected';
+      } else {
+        result.status = 'needs_review';
+      }
+    } else {
+      result.status = 'no_match';
+    }
+
+    console.log('🔄 Reset user action for:', result.imageName);
+    this.applyFilter();
+  }
+
+  private openMatchSelectionDialog(result: ProcessedImageResult): void {
     const dialogData: ComicMatchDialogData = {
       matches: result.allMatches,
       seriesId: this.data.seriesId,
@@ -317,54 +309,59 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         result.userAction = 'manual_select';
         result.selectedMatch = dialogResult.match;
         result.status = 'auto_selected';
+        console.log('👆 User manually selected match for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'no_match') {
         result.userAction = 'rejected';
         result.selectedMatch = undefined;
         result.status = 'no_match';
+        console.log('❌ User rejected all matches for:', result.imageName);
+      } else if (dialogResult && dialogResult.action === 'cancel') {
+        console.log('🚫 User cancelled match selection for:', result.imageName);
       }
 
       this.applyFilter();
     });
   }
 
-  manualAdd(result: ProcessedImageResult): void {
-    // This would open a manual comic addition dialog
-    // For now, we'll mark it as skipped and let the parent handle it
-    result.userAction = 'rejected';
-    result.selectedMatch = undefined;
-    result.status = 'skipped';
+  acceptAll(): void {
+    const acceptableResults = this.processedResults.filter(
+      (r) => r.bestMatch && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+    );
 
-    console.log('Manual add requested for:', result.imageName);
+    acceptableResults.forEach((result) => {
+      this.acceptMatch(result);
+    });
 
-    // emit an event or call a service here to handle the manual addition workflow
+    console.log('✅ Accepted all acceptable matches:', acceptableResults.length);
     this.applyFilter();
-  }
-
-  acceptAllAutoSelected(): void {
-    this.processedResults
-      .filter((r) => r.status === 'auto_selected')
-      .forEach((r) => this.acceptMatch(r));
   }
 
   reviewAllMatches(): void {
-    // Switch to review view
     this.currentFilter = 'needs_review';
     this.applyFilter();
+    console.log('👀 Switched to review view');
   }
 
-  skipLowConfidence(): void {
-    this.processedResults
-      .filter((r) => r.confidence === 'low')
-      .forEach((r) => {
-        r.userAction = 'rejected';
-        r.selectedMatch = undefined;
-      });
+  rejectLowConfidence(): void {
+    const lowConfidenceResults = this.processedResults.filter(
+      (r) => r.confidence === 'low' && r.userAction !== 'rejected'
+    );
+
+    lowConfidenceResults.forEach((result) => {
+      result.userAction = 'rejected';
+      result.selectedMatch = undefined;
+    });
+
+    console.log('❌ Rejected low confidence matches:', lowConfidenceResults.length);
+    this.applyFilter();
   }
 
   addAllAccepted(): void {
     const acceptedResults = this.processedResults.filter(
       (r) => r.userAction === 'accepted' || r.userAction === 'manual_select'
     );
+
+    console.log('🎯 Adding accepted results:', acceptedResults.length);
 
     this.dialogRef.close({
       action: 'bulk_add',
@@ -374,6 +371,8 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   saveSelections(): void {
+    console.log('💾 Saving selections');
+    
     this.dialogRef.close({
       action: 'save',
       results: this.processedResults,
@@ -382,18 +381,16 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   onCancel(): void {
+    console.log('🚫 Dialog cancelled');
     this.dialogRef.close({ action: 'cancel' });
   }
 
-  // Helper Methods
   getAutoSelectedCount(): number {
-    return this.processedResults.filter((r) => r.status === 'auto_selected')
-      .length;
+    return this.processedResults.filter((r) => r.status === 'auto_selected').length;
   }
 
   getNeedsReviewCount(): number {
-    return this.processedResults.filter((r) => r.status === 'needs_review')
-      .length;
+    return this.processedResults.filter((r) => r.status === 'needs_review').length;
   }
 
   getNoMatchCount(): number {
@@ -407,16 +404,45 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   getRejectedCount(): number {
-    return this.processedResults.filter((r) => r.userAction === 'rejected')
-      .length;
+    return this.processedResults.filter((r) => r.userAction === 'rejected').length;
   }
 
   getPendingCount(): number {
     return this.processedResults.filter((r) => !r.userAction).length;
   }
 
+  getAcceptableCount(): number {
+    return this.processedResults.filter(
+      (r) => r.bestMatch && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+    ).length;
+  }
+
+  getHighConfidenceCount(): number {
+    return this.processedResults.filter(
+      (r) => r.confidence === 'high' && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+    ).length;
+  }
+
+  getLowConfidenceCount(): number {
+    return this.processedResults.filter(
+      (r) => r.confidence === 'low' && r.userAction !== 'rejected'
+    ).length;
+  }
+
   hasAcceptedMatches(): boolean {
     return this.getAcceptedCount() > 0;
+  }
+
+  hasAnyChanges(): boolean {
+    return this.processedResults.some((r) => r.userAction);
+  }
+
+  canReviewMatch(result: ProcessedImageResult): boolean {
+    return result.allMatches.length > 0;
+  }
+
+  canShowAllMatches(result: ProcessedImageResult): boolean {
+    return result.allMatches.length > 1;
   }
 
   getStatusText(status: string): string {
@@ -434,6 +460,25 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     }
   }
 
+  getStatusIcon(status: string): string {
+    switch (status) {
+      case 'auto_selected':
+        return 'auto_awesome';
+      case 'needs_review':
+        return 'rate_review';
+      case 'no_match':
+        return 'block';
+      case 'skipped':
+        return 'skip_next';
+      default:
+        return 'help_outline';
+    }
+  }
+
+  getStatusClass(result: ProcessedImageResult): string {
+    return result.status.replace('_', '-');
+  }
+
   getConfidenceIcon(confidence: string): string {
     switch (confidence) {
       case 'high':
@@ -443,38 +488,20 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       case 'low':
         return 'star_border';
       default:
-        return 'help';
+        return 'help_outline';
     }
   }
 
-  // New helper methods for better UX
-  canReviewMatch(result: ProcessedImageResult): boolean {
-    return result.allMatches.length > 0;
-  }
-
-  canShowAllMatches(result: ProcessedImageResult): boolean {
-    return result.allMatches.length > 1;
-  }
-
-  getMatchCountText(result: ProcessedImageResult): string {
-    const count = result.allMatches.length;
-    if (count === 0) return 'No matches';
-    if (count === 1) return '1 match';
-    return `${count} matches`;
-  }
-
-  getStatusColor(result: ProcessedImageResult): string {
-    switch (result.status) {
-      case 'auto_selected':
-        return 'primary';
-      case 'needs_review':
-        return 'warn';
-      case 'no_match':
-        return 'accent';
-      case 'skipped':
-        return 'basic';
+  getUserActionIcon(userAction: string): string {
+    switch (userAction) {
+      case 'accepted':
+        return 'check_circle';
+      case 'rejected':
+        return 'cancel';
+      case 'manual_select':
+        return 'touch_app';
       default:
-        return 'basic';
+        return 'help_outline';
     }
   }
 
@@ -491,32 +518,246 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     }
   }
 
+  getMatchCountText(result: ProcessedImageResult): string {
+    const count = result.allMatches.length;
+    if (count === 0) return 'No matches found';
+    if (count === 1) return '1 potential match';
+    return `${count} potential matches`;
+  }
+
   getConfidenceText(similarity: number): string {
     if (similarity >= this.highConfidenceThreshold) return 'High Confidence';
-    if (similarity >= this.mediumConfidenceThreshold)
-      return 'Medium Confidence';
+    if (similarity >= this.mediumConfidenceThreshold) return 'Medium Confidence';
     return 'Low Confidence';
   }
 
-  resetUserAction(result: ProcessedImageResult): void {
-    result.userAction = undefined;
-    result.selectedMatch = result.bestMatch ?? undefined;
+  onImageError(event: any): void {
+    console.warn('Image failed to load:', event.target.src);
+    event.target.src = 'assets/images/no-cover-placeholder.png';
+  }
 
-    // Reset to original status based on confidence
-    if (result.bestMatch) {
-      if (result.bestMatch.similarity >= this.highConfidenceThreshold) {
-        result.status = 'auto_selected';
-      } else {
-        result.status = 'needs_review';
-      }
-    } else {
-      result.status = 'no_match';
-    }
+  logCurrentState(): void {
+    console.log('=== CURRENT STATE DEBUG ===');
+    console.log('Filter:', this.currentFilter);
+    console.log('Total results:', this.processedResults.length);
+    console.log('Filtered results:', this.filteredResults.length);
+    console.log('Auto-selected:', this.getAutoSelectedCount());
+    console.log('Needs review:', this.getNeedsReviewCount());
+    console.log('No match:', this.getNoMatchCount());
+    console.log('Accepted:', this.getAcceptedCount());
+    console.log('Rejected:', this.getRejectedCount());
+    console.log('Pending:', this.getPendingCount());
+    console.log('Results breakdown:', 
+      this.processedResults.map(r => ({
+        name: r.imageName,
+        status: r.status,
+        confidence: r.confidence,
+        userAction: r.userAction,
+        hasMatch: !!r.bestMatch,
+        similarity: r.bestMatch?.similarity
+      }))
+    );
+    console.log('========================');
+  }
 
+  acceptAllHighConfidence(): void {
+    const highConfidenceResults = this.processedResults.filter(
+      (r) => r.confidence === 'high' && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+    );
+
+    highConfidenceResults.forEach((result) => {
+      this.acceptMatch(result);
+    });
+
+    console.log('✅ Auto-accepted high confidence matches:', highConfidenceResults.length);
     this.applyFilter();
   }
 
-  onImageError(event: any): void {
-    event.target.src = 'assets/images/no-cover-placeholder.png';
+  acceptAllMediumConfidence(): void {
+    const mediumConfidenceResults = this.processedResults.filter(
+      (r) => r.confidence === 'medium' && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+    );
+
+    mediumConfidenceResults.forEach((result) => {
+      this.acceptMatch(result);
+    });
+
+    console.log('✅ Accepted medium confidence matches:', mediumConfidenceResults.length);
+    this.applyFilter();
+  }
+
+  rejectAllNoMatch(): void {
+    const noMatchResults = this.processedResults.filter(
+      (r) => r.status === 'no_match' && r.userAction !== 'rejected'
+    );
+
+    noMatchResults.forEach((result) => {
+      result.userAction = 'rejected';
+      result.selectedMatch = undefined;
+    });
+
+    console.log('❌ Rejected all no-match items:', noMatchResults.length);
+    this.applyFilter();
+  }
+
+  resetAllActions(): void {
+    this.processedResults.forEach((result) => {
+      this.resetUserAction(result);
+    });
+
+    console.log('🔄 Reset all user actions');
+    this.applyFilter();
+  }
+
+  onKeyDown(event: KeyboardEvent): void {
+    // Ctrl/Cmd + A: Accept all
+    if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+      event.preventDefault();
+      this.acceptAll();
+      return;
+    }
+
+    // Ctrl/Cmd + R: Review all
+    if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+      event.preventDefault();
+      this.reviewAllMatches();
+      return;
+    }
+
+    // Ctrl/Cmd + S: Save
+    if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+      event.preventDefault();
+      if (this.hasAnyChanges()) {
+        this.saveSelections();
+      }
+      return;
+    }
+
+    // Enter: Add accepted comics
+    if (event.key === 'Enter' && this.hasAcceptedMatches()) {
+      event.preventDefault();
+      this.addAllAccepted();
+      return;
+    }
+
+    // Escape: Cancel
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.onCancel();
+      return;
+    }
+
+    // Number keys for filter switching
+    switch (event.key) {
+      case '1':
+        event.preventDefault();
+        this.onFilterChange('all');
+        break;
+      case '2':
+        event.preventDefault();
+        this.onFilterChange('auto_selected');
+        break;
+      case '3':
+        event.preventDefault();
+        this.onFilterChange('needs_review');
+        break;
+      case '4':
+        event.preventDefault();
+        this.onFilterChange('no_match');
+        break;
+    }
+  }
+
+  private getMatchIdentifier(match: ComicMatch): string {
+    return `${match.comic_vine_id || 'unknown'}-${match.comic_name}-${match.issue_number}-${match.url}`;
+  }
+
+  exportSelections(): string {
+    const exportData = {
+      timestamp: new Date().toISOString(),
+      seriesId: this.data.seriesId,
+      sessionId: this.data.sessionId,
+      selections: this.processedResults.map(result => ({
+        imageIndex: result.imageIndex,
+        imageName: result.imageName,
+        userAction: result.userAction,
+        selectedMatchIdentifier: result.selectedMatch ? this.getMatchIdentifier(result.selectedMatch) : null,
+        status: result.status,
+        confidence: result.confidence
+      }))
+    };
+
+    return JSON.stringify(exportData, null, 2);
+  }
+
+  importSelections(jsonData: string): boolean {
+    try {
+      const importData = JSON.parse(jsonData);
+      
+      if (!importData.selections || !Array.isArray(importData.selections)) {
+        console.error('Invalid import data format');
+        return false;
+      }
+
+      // Apply imported selections
+      importData.selections.forEach((selection: any) => {
+        const result = this.processedResults.find(r => r.imageIndex === selection.imageIndex);
+        if (result) {
+          result.userAction = selection.userAction;
+          if (selection.selectedMatchIdentifier) {
+            result.selectedMatch = result.allMatches.find(m => 
+              this.getMatchIdentifier(m) === selection.selectedMatchIdentifier
+            );
+          }
+        }
+      });
+
+      this.applyFilter();
+      console.log('✅ Successfully imported selections');
+      return true;
+    } catch (error) {
+      console.error('Failed to import selections:', error);
+      return false;
+    }
+  }
+
+  getProcessingStats(): any {
+    const totalImages = this.processedResults.length;
+    const stats = {
+      totalImages,
+      autoSelected: this.getAutoSelectedCount(),
+      needsReview: this.getNeedsReviewCount(),
+      noMatch: this.getNoMatchCount(),
+      userAccepted: this.getAcceptedCount(),
+      userRejected: this.getRejectedCount(),
+      pending: this.getPendingCount(),
+      averageConfidence: 0,
+      highConfidencePercentage: 0,
+      mediumConfidencePercentage: 0,
+      lowConfidencePercentage: 0,
+      processingTime: 0, // Would need to track this
+      autoAcceptanceRate: 0
+    };
+
+    // Calculate confidence statistics
+    const highConf = this.processedResults.filter(r => r.confidence === 'high').length;
+    const mediumConf = this.processedResults.filter(r => r.confidence === 'medium').length;
+    const lowConf = this.processedResults.filter(r => r.confidence === 'low').length;
+
+    stats.highConfidencePercentage = totalImages > 0 ? (highConf / totalImages) * 100 : 0;
+    stats.mediumConfidencePercentage = totalImages > 0 ? (mediumConf / totalImages) * 100 : 0;
+    stats.lowConfidencePercentage = totalImages > 0 ? (lowConf / totalImages) * 100 : 0;
+
+    // Calculate average similarity
+    const matchResults = this.processedResults.filter(r => r.bestMatch);
+    if (matchResults.length > 0) {
+      const totalSimilarity = matchResults.reduce((sum, r) => sum + (r.bestMatch?.similarity || 0), 0);
+      stats.averageConfidence = totalSimilarity / matchResults.length;
+    }
+
+    // Calculate auto-acceptance rate
+    stats.autoAcceptanceRate = stats.totalImages > 0 ? (stats.autoSelected / stats.totalImages) * 100 : 0;
+
+    return stats;
   }
 }

@@ -639,7 +639,7 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         for i, match in enumerate(top_matches[:3], 1):
             logger.info(f"   {i}. {match['comic_name']} #{match['issue_number']} - Similarity: {match['similarity']:.3f}")
         
-        result = {
+        final_result = {
             'top_matches': top_matches,
             'total_matches': len(enhanced_results),
             'total_covers_processed': len(candidate_covers),
@@ -648,12 +648,16 @@ def process_image_with_centralized_progress(session_id, query_image, candidate_c
         }
         
         # Save result to JSON file
-        save_image_matcher_result(session_id, result, query_filename, query_image)
+        sanitized_result = save_image_matcher_result(session_id, result, query_filename, query_image)
         
-        java_reporter.send_complete(result)
+        for i, result in enumerate(final_result['results']):
+            if i < len(sanitized_result['results']):
+                result['image_url'] = sanitized_result['results'][i]['image_url']
+        
+        java_reporter.send_complete(final_result)
         logger.success(f"✅ Centralized image processing completed and saved for session: {session_id}")
         
-        return result
+        return final_result
         
     except Exception as e:
         traceback.print_exc()

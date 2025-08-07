@@ -3,219 +3,258 @@
   <div class="dialog-header">
     <div class="header-content">
       <mat-icon class="header-icon">auto_awesome</mat-icon>
-      <div>
+      <div class="header-text">
         <h2 mat-dialog-title>Bulk Comic Selection</h2>
         <p class="session-info">
-          {{ processedResults.length }} images processed • 
+          {{ processedResults.length }} images • 
           {{ getAutoSelectedCount() }} auto-selected • 
           {{ getNeedsReviewCount() }} need review
         </p>
       </div>
     </div>
     <div class="results-summary">
-      <div class="summary-item">
-        <span class="summary-number">{{ getAutoSelectedCount() }}</span>
-        <span class="summary-label">Auto</span>
+      <div class="summary-item auto">
+        <span class="number">{{ getAutoSelectedCount() }}</span>
+        <span class="label">Auto</span>
       </div>
-      <div class="summary-item">
-        <span class="summary-number">{{ getNeedsReviewCount() }}</span>
-        <span class="summary-label">Review</span>
+      <div class="summary-item review">
+        <span class="number">{{ getNeedsReviewCount() }}</span>
+        <span class="label">Review</span>
       </div>
-      <div class="summary-item">
-        <span class="summary-number">{{ getNoMatchCount() }}</span>
-        <span class="summary-label">No Match</span>
+      <div class="summary-item none">
+        <span class="number">{{ getNoMatchCount() }}</span>
+        <span class="label">No Match</span>
       </div>
     </div>
   </div>
 
   <div mat-dialog-content class="content">
-    <!-- Bulk Actions -->
-    <div class="bulk-actions">
-      <h3><mat-icon>settings</mat-icon> Bulk Actions</h3>
-      <div class="action-buttons">
-        <button mat-raised-button color="primary" (click)="acceptAllAutoSelected()">
+    <!-- Actions Bar -->
+    <div class="actions-bar">
+      <div class="bulk-actions">
+        <button mat-raised-button color="primary" 
+                (click)="acceptAll()" 
+                [disabled]="getAcceptableCount() === 0"
+                class="accept-all-btn">
           <mat-icon>check_circle</mat-icon>
-          Accept All Auto-Selected ({{ getAutoSelectedCount() }})
+          Accept All ({{ getAcceptableCount() }})
         </button>
-        <button mat-button (click)="reviewAllMatches()">
+        <button mat-button 
+                (click)="acceptAllHighConfidence()" 
+                [disabled]="getHighConfidenceCount() === 0"
+                class="accept-high-btn">
+          <mat-icon>star</mat-icon>
+          Accept High Confidence ({{ getHighConfidenceCount() }})
+        </button>
+        <button mat-button (click)="reviewAllMatches()" [disabled]="getNeedsReviewCount() === 0">
           <mat-icon>rate_review</mat-icon>
-          Review All Matches
+          Review All
         </button>
-        <button mat-button (click)="skipLowConfidence()">
-          <mat-icon>skip_next</mat-icon>
-          Skip Low Confidence
+        <button mat-button (click)="rejectLowConfidence()" [disabled]="getLowConfidenceCount() === 0">
+          <mat-icon>block</mat-icon>
+          Reject Low Confidence
+        </button>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="filter-tabs">
+        <button class="filter-tab" 
+                [class.active]="currentFilter === 'all'"
+                (click)="onFilterChange('all')">
+          All <span class="count">{{ processedResults.length }}</span>
+        </button>
+        <button class="filter-tab auto" 
+                [class.active]="currentFilter === 'auto_selected'"
+                (click)="onFilterChange('auto_selected')">
+          Auto-Selected <span class="count">{{ getAutoSelectedCount() }}</span>
+        </button>
+        <button class="filter-tab review" 
+                [class.active]="currentFilter === 'needs_review'"
+                (click)="onFilterChange('needs_review')">
+          Need Review <span class="count">{{ getNeedsReviewCount() }}</span>
+        </button>
+        <button class="filter-tab none" 
+                [class.active]="currentFilter === 'no_match'"
+                (click)="onFilterChange('no_match')">
+          No Match <span class="count">{{ getNoMatchCount() }}</span>
         </button>
       </div>
     </div>
 
-    <!-- Filter Options -->
-    <div class="filter-section">
-      <h3><mat-icon>filter_list</mat-icon> Filter View</h3>
-      <mat-button-toggle-group [value]="currentFilter" (change)="onFilterChange($event.value)">
-        <mat-button-toggle value="all">All ({{ processedResults.length }})</mat-button-toggle>
-        <mat-button-toggle value="auto_selected">Auto-Selected ({{ getAutoSelectedCount() }})</mat-button-toggle>
-        <mat-button-toggle value="needs_review">Needs Review ({{ getNeedsReviewCount() }})</mat-button-toggle>
-        <mat-button-toggle value="no_match">No Match ({{ getNoMatchCount() }})</mat-button-toggle>
-      </mat-button-toggle-group>
-    </div>
+    <!-- Table View -->
+    <div class="results-table">
+      <div class="table-header">
+        <div class="col-image">Original</div>
+        <div class="col-match">Best Match</div>
+        <div class="col-confidence">Confidence</div>
+        <div class="col-status">Status</div>
+        <div class="col-actions">Actions</div>
+      </div>
 
-    <!-- Results Grid -->
-    <div class="results-grid">
-      <div *ngFor="let result of filteredResults; let i = index" 
-           class="result-card" 
-           [class.auto-selected]="result.status === 'auto_selected'"
-           [class.needs-review]="result.status === 'needs_review'"
-           [class.no-match]="result.status === 'no_match'"
-           [class.skipped]="result.status === 'skipped'">
-        
-        <!-- Status Badge -->
-        <div class="status-badge" [class]="result.status">
-          <mat-icon *ngIf="result.status === 'auto_selected'">auto_awesome</mat-icon>
-          <mat-icon *ngIf="result.status === 'needs_review'">rate_review</mat-icon>
-          <mat-icon *ngIf="result.status === 'no_match'">block</mat-icon>
-          <mat-icon *ngIf="result.status === 'skipped'">skip_next</mat-icon>
-          <span>{{ getStatusText(result.status) }}</span>
-        </div>
-
-        <!-- Original Image -->
-        <div class="original-image-section">
-          <img [src]="result.imagePreview" 
-               [alt]="result.imageName" 
-               class="original-image"
-               (error)="onImageError($event)" />
-          <div class="image-info">
-            <p class="image-name">{{ result.imageName }}</p>
-            <p class="image-index">Image {{ result.imageIndex + 1 }}</p>
+      <div class="table-body">
+        <div *ngFor="let result of filteredResults; let i = index" 
+             class="table-row" 
+             [class.accepted]="result.userAction === 'accepted'"
+             [class.rejected]="result.userAction === 'rejected'"
+             [class.auto-selected]="result.status === 'auto_selected'"
+             [class.needs-review]="result.status === 'needs_review'"
+             [class.no-match]="result.status === 'no_match'">
+          
+          <!-- Original Image Column -->
+          <div class="col-image">
+            <div class="image-preview">
+              <img [src]="result.imagePreview" 
+                   [alt]="result.imageName" 
+                   (error)="onImageError($event)" />
+            </div>
+            <div class="image-details">
+              <div class="image-name">{{ result.imageName }}</div>
+              <div class="image-index">Image {{ result.imageIndex + 1 }}</div>
+            </div>
           </div>
-        </div>
 
-        <!-- Match Section -->
-        <div class="match-section" *ngIf="result.bestMatch">
-          <div class="match-header">
-            <div class="confidence-indicator" [class]="result.confidence">
+          <!-- Match Column -->
+          <div class="col-match">
+            <div class="match-content" *ngIf="result.bestMatch; else noMatchTemplate">
+              <div class="match-image">
+                <img [src]="result.bestMatch.url" 
+                     [alt]="result.bestMatch.comic_name" 
+                     (error)="onImageError($event)" />
+              </div>
+              <div class="match-details">
+                <div class="comic-title">{{ result.bestMatch.comic_name }}</div>
+                <div class="issue-number">Issue #{{ result.bestMatch.issue_number }}</div>
+                <div class="similarity">{{ (result.bestMatch.similarity * 100).toFixed(1) }}% match</div>
+                <div class="match-count" *ngIf="result.allMatches.length > 1">
+                  +{{ result.allMatches.length - 1 }} more matches
+                </div>
+              </div>
+            </div>
+            <ng-template #noMatchTemplate>
+              <div class="no-match-content">
+                <mat-icon>search_off</mat-icon>
+                <span>No matches found</span>
+              </div>
+            </ng-template>
+          </div>
+
+          <!-- Confidence Column -->
+          <div class="col-confidence">
+            <div class="confidence-badge" [class]="result.confidence" *ngIf="result.bestMatch">
               <mat-icon>{{ getConfidenceIcon(result.confidence) }}</mat-icon>
-              <span>{{ result.confidence | titlecase }} Confidence</span>
+              <span>{{ result.confidence | titlecase }}</span>
             </div>
-            <div class="similarity">{{ (result.bestMatch.similarity * 100).toFixed(1) }}%</div>
+            <span class="no-confidence" *ngIf="!result.bestMatch">-</span>
           </div>
 
-          <div class="match-preview">
-            <img [src]="result.bestMatch.url" 
-                 [alt]="result.bestMatch.comic_name" 
-                 class="match-image"
-                 (error)="onImageError($event)" />
-            <div class="match-info">
-              <h4>{{ result.bestMatch.comic_name }}</h4>
-              <p>Issue #{{ result.bestMatch.issue_number }}</p>
+          <!-- Status Column -->
+          <div class="col-status">
+            <div class="status-indicator">
+              <div class="status-badge" [class]="getStatusClass(result)">
+                <mat-icon>{{ getStatusIcon(result.status) }}</mat-icon>
+                <span>{{ getStatusText(result.status) }}</span>
+              </div>
+              <div class="user-action" *ngIf="result.userAction" [class]="result.userAction">
+                <mat-icon>{{ getUserActionIcon(result.userAction) }}</mat-icon>
+                <span>{{ getUserActionText(result) }}</span>
+              </div>
             </div>
           </div>
 
-          <!-- Actions for this match -->
-          <div class="match-actions">
-            <button mat-button 
-                    color="primary"
-                    *ngIf="result.status === 'auto_selected' && result.userAction !== 'accepted'"
-                    (click)="acceptMatch(result)">
-              <mat-icon>check</mat-icon>Accept
-            </button>
-            
-            <button mat-button 
-                    color="warn"
-                    *ngIf="result.status === 'auto_selected' && result.userAction !== 'rejected'"
-                    (click)="rejectMatch(result)">
-              <mat-icon>close</mat-icon>Reject
-            </button>
-            
-            <button mat-raised-button 
-                    color="warn"
-                    *ngIf="result.status === 'needs_review' && !result.userAction"
-                    (click)="reviewMatch(result)"
-                    [disabled]="!canReviewMatch(result)">
-              <mat-icon>visibility</mat-icon>Review Options
-            </button>
-            
-            <button mat-button 
-                    *ngIf="result.status === 'needs_review' && !result.userAction"
-                    (click)="acceptMatch(result)"
-                    [disabled]="!result.bestMatch">
-              <mat-icon>check</mat-icon>Accept Anyway
-            </button>
-            
-            <button mat-button 
-                    *ngIf="canShowAllMatches(result)"
-                    (click)="showAllMatches(result)">
-              <mat-icon>list</mat-icon>All Matches ({{ result.allMatches.length }})
-            </button>
-            
-            <!-- Reset button for processed items -->
-            <button mat-button 
-                    *ngIf="result.userAction"
-                    (click)="resetUserAction(result)"
-                    class="reset-btn">
-              <mat-icon>refresh</mat-icon>Reset
-            </button>
+          <!-- Actions Column -->
+          <div class="col-actions">
+            <div class="action-buttons">
+              <!-- Primary Accept Button -->
+              <button mat-raised-button 
+                      color="primary"
+                      size="small"
+                      *ngIf="result.bestMatch && result.userAction !== 'accepted'"
+                      (click)="acceptMatch(result)"
+                      class="accept-btn">
+                <mat-icon>check</mat-icon>
+                Accept
+              </button>
+
+              <!-- Secondary Actions -->
+              <div class="secondary-actions">
+                <button mat-icon-button 
+                        *ngIf="canShowAllMatches(result)"
+                        (click)="showAllMatches(result)"
+                        matTooltip="Review all matches"
+                        class="icon-btn review-btn">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+
+                <button mat-icon-button 
+                        *ngIf="!result.bestMatch"
+                        (click)="manualAdd(result)"
+                        matTooltip="Add manually"
+                        class="icon-btn manual-btn">
+                  <mat-icon>add</mat-icon>
+                </button>
+
+                <button mat-icon-button 
+                        *ngIf="result.userAction !== 'rejected'"
+                        (click)="rejectMatch(result)"
+                        matTooltip="Reject"
+                        class="icon-btn reject-btn">
+                  <mat-icon>close</mat-icon>
+                </button>
+
+                <button mat-icon-button 
+                        *ngIf="result.userAction"
+                        (click)="resetUserAction(result)"
+                        matTooltip="Reset"
+                        class="icon-btn reset-btn">
+                  <mat-icon>refresh</mat-icon>
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <!-- No Match Section -->
-        <div class="no-match-section" *ngIf="!result.bestMatch">
-          <div class="no-match-content">
-            <mat-icon>search_off</mat-icon>
-            <p>No matches found</p>
-            <p class="match-count">{{ getMatchCountText(result) }}</p>
-            <button mat-button 
-                    color="primary"
-                    (click)="manualAdd(result)">
-              <mat-icon>add</mat-icon>Add Manually
-            </button>
-            <button mat-button 
-                    (click)="rejectMatch(result)">
-              <mat-icon>skip_next</mat-icon>Skip
-            </button>
-          </div>
-        </div>
-
-        <!-- User Action Indicator -->
-        <div class="user-action" *ngIf="result.userAction">
-          <mat-icon *ngIf="result.userAction === 'accepted'">check_circle</mat-icon>
-          <mat-icon *ngIf="result.userAction === 'rejected'">cancel</mat-icon>
-          <mat-icon *ngIf="result.userAction === 'manual_select'">touch_app</mat-icon>
-          <span>{{ getUserActionText(result) }}</span>
-        </div>
-
-        <!-- Selected Match Preview (when different from best match) -->
-        <div class="selected-match-preview" *ngIf="result.selectedMatch && result.selectedMatch !== result.bestMatch">
-          <h4>Selected Match:</h4>
-          <div class="match-preview">
-            <img [src]="result.selectedMatch.url" 
-                 [alt]="result.selectedMatch.comic_name"
-                 class="match-image"
-                 (error)="onImageError($event)" />
-            <div class="match-info">
-              <h4>{{ result.selectedMatch.comic_name }}</h4>
-              <p>Issue #{{ result.selectedMatch.issue_number }}</p>
-              <p>Similarity: {{ (result.selectedMatch.similarity * 100).toFixed(1) }}%</p>
+          <!-- Selected Match Indicator (when different) -->
+          <div class="selected-match-indicator" 
+               *ngIf="result.selectedMatch && result.selectedMatch !== result.bestMatch">
+            <div class="selected-label">
+              <mat-icon>check_circle</mat-icon>
+              <span>Selected: {{ result.selectedMatch.comic_name }} #{{ result.selectedMatch.issue_number }}</span>
             </div>
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="filteredResults.length === 0">
+      <mat-icon>inbox</mat-icon>
+      <h3>No items match the current filter</h3>
+      <p>Try selecting a different filter to see more results.</p>
     </div>
   </div>
 
-  <!-- Actions -->
-  <div mat-dialog-actions class="actions">
-    <div class="action-stats">
-      <span>{{ getAcceptedCount() }} accepted • {{ getRejectedCount() }} rejected • {{ getPendingCount() }} pending</span>
+  <!-- Footer -->
+  <div mat-dialog-actions class="footer">
+    <div class="progress-info">
+      <span class="stat accepted">{{ getAcceptedCount() }} accepted</span>
+      <span class="stat rejected">{{ getRejectedCount() }} rejected</span>
+      <span class="stat pending">{{ getPendingCount() }} pending</span>
     </div>
-    <div class="action-buttons">
+
+    <div class="main-actions">
       <button mat-button (click)="onCancel()">
-        <mat-icon>close</mat-icon>Cancel
+        Cancel
       </button>
-      <button mat-button (click)="saveSelections()" [disabled]="!hasAcceptedMatches()">
-        <mat-icon>save</mat-icon>Save Selections
+      <button mat-button 
+              (click)="saveSelections()" 
+              [disabled]="!hasAnyChanges()">
+        Save Progress
       </button>
-      <button mat-raised-button color="primary" (click)="addAllAccepted()" [disabled]="!hasAcceptedMatches()">
-        <mat-icon>add_box</mat-icon>Add {{ getAcceptedCount() }} Comics
+      <button mat-raised-button 
+              color="primary" 
+              (click)="addAllAccepted()" 
+              [disabled]="!hasAcceptedMatches()">
+        <mat-icon>add_box</mat-icon>
+        Add {{ getAcceptedCount() }} Comics
       </button>
     </div>
   </div>
