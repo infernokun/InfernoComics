@@ -369,11 +369,9 @@ public class ProgressService {
                                 // Session not found in Python service - this is expected for orphaned sessions
                                 return Mono.error(new SessionNotFoundException("Session not found in processing service"));
                             })
-                            .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
-                                return clientResponse.bodyToMono(String.class)
-                                        .flatMap(errorBody -> Mono.error(
-                                                new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
-                            })
+                            .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> clientResponse.bodyToMono(String.class)
+                                    .flatMap(errorBody -> Mono.error(
+                                            new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody))))
                             .bodyToMono(JsonNode.class)
                             .block();
                 } catch (SessionNotFoundException e) {

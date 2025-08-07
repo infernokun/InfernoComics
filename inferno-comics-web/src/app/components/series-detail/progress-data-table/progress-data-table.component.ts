@@ -176,14 +176,12 @@ export class ProgressDataTable implements OnInit {
           const icons: any = {
             'COMPLETE': '✅',
             'PROCESSING': '⏳',
-            'FAILED': '❌',
-            'PENDING': '⏸️'
+            'ERROR': '❌',
           };
           const colors: any = {
             'COMPLETE': '#28a745',
             'PROCESSING': '#ffc107', 
-            'FAILED': '#dc3545',
-            'PENDING': '#6c757d'
+            'ERROR': '#dc3545',
           };
           return `<span style="color: ${colors[state] || '#000'}">${icons[state] || '❓'} ${state}</span>`;
         },
