@@ -1,8 +1,5 @@
 package com.infernokun.infernoComics.controllers;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
@@ -175,34 +172,6 @@ public class SeriesController {
         }
     }
 
-    // ORIGINAL METHOD - Keep for backward compatibility
-    @PostMapping("{seriesId}/add-comic-by-image")
-    public ResponseEntity<JsonNode> addComicByImage(@PathVariable Long seriesId, @RequestParam("image") MultipartFile imageFile,
-                                                    @RequestParam(value = "name", required = false, defaultValue = "") String name,
-                                                    @RequestParam(value = "year", required = false, defaultValue = "0") Integer year) {
-        try {
-            // Validate image
-            if (imageFile.isEmpty()) {
-                // Returning a simple JSON message in JsonNode form
-                ObjectMapper mapper = new ObjectMapper();
-                ObjectNode errorJson = mapper.createObjectNode();
-                errorJson.put("error", "Image file is missing.");
-                return ResponseEntity.badRequest().body(errorJson);
-            }
-
-            // Call service and get JSON response
-            JsonNode responseJson = seriesService.addIssueByImage(seriesId, imageFile, name, year);
-            return ResponseEntity.ok(responseJson);
-
-        } catch (Exception e) {
-            // Return structured JSON error
-            ObjectMapper mapper = new ObjectMapper();
-            ObjectNode errorJson = mapper.createObjectNode();
-            errorJson.put("error", "Error processing image: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorJson);
-        }
-    }
-
     @PostMapping("{seriesId}/add-comic-by-image/start")
     public ResponseEntity<Map<String, String>> startImageProcessing(
             @PathVariable Long seriesId,
@@ -275,21 +244,6 @@ public class SeriesController {
                 log.error("Failed to send error via SSE: {}", sendError.getMessage());
             }
             return errorEmitter;
-        }
-    }
-
-    @GetMapping("{seriesId}/add-comic-by-image/status")
-    public ResponseEntity<Map<String, Object>> getImageProcessingStatus(
-            @PathVariable Long seriesId,
-            @RequestParam String sessionId) {
-
-        try {
-            Map<String, Object> status = progressService.getSessionStatus(sessionId);
-            return ResponseEntity.ok(status);
-        } catch (Exception e) {
-            log.error("Error getting session status: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error getting session status"));
         }
     }
 

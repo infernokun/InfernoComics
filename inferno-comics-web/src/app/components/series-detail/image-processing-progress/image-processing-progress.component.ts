@@ -31,7 +31,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   startTime = new Date();
 
   // Multiple images specific properties
-  isMultipleMode = false;
   totalImages = 0;
   currentImageIndex = 0;
   currentImageName = '';
@@ -108,9 +107,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   }
 
   private setupImageProcessing() {
-    this.isMultipleMode = this.data.isMultiple || (this.data.files! && this.data.files.length > 1);
-
-    if (this.isMultipleMode && this.data.files) {
+    if (this.data.files) {
       this.totalImages = this.data.files.length;
       this.currentImageIndex = 0;
       this.currentImageName = this.data.files[0]?.name || '';
@@ -122,7 +119,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   }
 
   private createImagePreviews() {
-    if (this.isMultipleMode && this.data.files) {
+    if (this.data.files) {
       this.imagePreviews = this.data.files.map((file) => URL.createObjectURL(file));
     } else if (this.data.file) {
       this.imagePreviews = [URL.createObjectURL(this.data.file)];
@@ -138,11 +135,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   }
 
   private addInitialStatusMessage() {
-    if (this.isMultipleMode) {
-      this.addStatusMessage(`Starting analysis of ${this.totalImages} images...`, 'info');
-    } else {
-      this.addStatusMessage('Starting image analysis...', 'info');
-    }
+    this.addStatusMessage(`Starting analysis of ${this.totalImages} images...`, 'info');
   }
 
   updateProgress(stage: string, progressPercent: number, message?: string) {
@@ -176,13 +169,8 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
         this.currentStageIndex = Math.max(this.currentStageIndex, mappedIndex);
       }
 
-      // Enhanced multi-image progress parsing
-      if (message && this.isMultipleMode) {
-        this.parseImageProgressEnhanced(message);
-      }
-
       if (message) {
-        this.addStatusMessage(message, 'info');
+        this.parseImageProgressEnhanced(message);
       }
 
       console.log(`Progress update: ${stage} ${newProgress}% - ${message || ''}`);
@@ -320,21 +308,13 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
       }
     }
   
-    if (this.isMultipleMode) {
-      this.processedImages = this.totalImages;
-      this.successfulImages = Math.max(this.successfulImages, this.totalImages);
-      this.currentStage = `Analysis Complete! Processed ${this.totalImages} images`;
-      this.addStatusMessage(
-        `Successfully analyzed ${this.totalImages} images in ${this.getElapsedTime()}!`,
-        'success'
-      );
-    } else {
-      this.currentStage = 'Analysis Complete!';
-      this.addStatusMessage(
-        `Analysis completed successfully in ${this.getElapsedTime()}!`,
-        'success'
-      );
-    }
+    this.processedImages = this.totalImages;
+    this.successfulImages = Math.max(this.successfulImages, this.totalImages);
+    this.currentStage = `Analysis Complete! Processed ${this.totalImages} images`;
+    this.addStatusMessage(
+      `Successfully analyzed ${this.totalImages} images in ${this.getElapsedTime()}!`,
+      'success'
+    );
   
     if (this.data.onComplete) {
       this.data.onComplete(result);
@@ -427,12 +407,9 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     // Reset thumbnail states
     this.initializeThumbnailStates();
 
-    if (this.isMultipleMode && this.data.files) {
+    if (this.data.files) {
       this.currentImageName = this.data.files[0]?.name || '';
       this.addStatusMessage(`Retrying analysis of ${this.totalImages} images...`, 'info');
-    } else {
-      this.currentImageName = this.data.file?.name || '';
-      this.addStatusMessage('Retrying image analysis...', 'info');
     }
 
     console.log('🔄 Retrying processing...');
@@ -449,37 +426,32 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   }
 
   getMainImagePreview(): string | null {
-    if (this.isMultipleMode && this.currentImageIndex < this.imagePreviews.length) {
-      return this.imagePreviews[this.currentImageIndex] || this.imagePreviews[0];
-    }
-    return this.imagePreviews[0] || null;
+    return this.imagePreviews[this.currentImageIndex] || this.imagePreviews[0];
+
   }
 
   getTotalFileSize(): number {
-    if (this.isMultipleMode && this.data.files) {
+    if (this.data.files) {
       return this.data.files.reduce((total, file) => total + file.size, 0);
     }
     return this.data.file?.size || 0;
   }
 
   getDisplayFilename(): string {
-    if (this.isMultipleMode) {
-      if (this.currentImageName) {
-        return `${this.currentImageName} (${Math.min(this.processedImages + 1, this.totalImages)}/${this.totalImages})`;
-      }
+    if (this.currentImageName) {
+      return `${this.currentImageName} (${Math.min(this.processedImages + 1, this.totalImages)}/${this.totalImages})`;
+    }
+    if (this.totalImages > 1) {
       return `${this.totalImages} images selected`;
     }
     return this.data.file?.name || 'Unknown file';
   }
 
   getCurrentImageProgress(): string {
-    if (!this.isMultipleMode) return '';
     return `${Math.min(this.processedImages, this.totalImages)}/${this.totalImages}`;
   }
 
   getProgressSummary(): string {
-    if (!this.isMultipleMode) return '';
-
     if (this.isProcessing) {
       if (this.currentImageName) {
         return `Processing ${this.currentImageName} (${Math.min(this.processedImages + 1, this.totalImages)}/${this.totalImages})`;

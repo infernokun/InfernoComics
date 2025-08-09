@@ -88,11 +88,6 @@
 
             <!-- Collection Management -->
             <div class="collection-actions">
-              <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
-                <mat-icon>photo_camera</mat-icon>
-                Add Comic By Image
-              </button>
-
               <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
                 <mat-icon>photo_library</mat-icon>
                 Add Comics By Image
@@ -111,11 +106,6 @@
 
           <!-- Single row for buttons when no issues -->
           <div class="no-issues-actions" *ngIf="issues.length === 0">
-            <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
-              <mat-icon>photo_camera</mat-icon>
-              Add Comic By Image
-            </button>
-
             <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
               <mat-icon>photo_library</mat-icon>
               Add Comics By Image
