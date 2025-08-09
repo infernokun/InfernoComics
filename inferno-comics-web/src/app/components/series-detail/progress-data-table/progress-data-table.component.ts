@@ -316,8 +316,8 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
         headerName: 'Session ID',
         field: 'sessionId',
         filter: 'agNumberColumnFilter',
-        minWidth: 300,
-        maxWidth: 300,
+        minWidth: 320,
+        maxWidth: 330,
       },
       {
         headerName: 'Status & Progress',
@@ -333,20 +333,11 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
         }
       },
       {
-        headerName: 'Type',
-        field: 'processType',
-        cellRenderer: (params: any) => {
-          const type = params.value;
-          const typeLabels: Record<string, string> = {
-            'single_image': '📄 Single',
-            'multiple_images': '📁 Multiple',
-            'folder_evaluation': '📂 Folder',
-          };
-          return typeLabels[type] || type || 'Unknown';
-        },
+        headerName: 'Total',
+        field: 'processedItems',
         filter: 'agTextColumnFilter',
-        minWidth: 100,
-        maxWidth: 120,
+        minWidth: 60,
+        maxWidth: 70,
       },
       {
         headerName: 'Timing Info',

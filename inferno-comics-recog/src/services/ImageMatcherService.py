@@ -158,7 +158,16 @@ class ImageMatcherService:
                 'total_matches': len(enhanced_results),
                 'total_covers_processed': len(candidate_covers),
                 'total_urls_processed': len(candidate_urls),
-                'session_id': session_id
+                'session_id': session_id,
+                
+                # Add enhanced fields for database consistency (same as multiple images)
+                'percentageComplete': 100,
+                'currentStage': 'complete',
+                'statusMessage': f'Image processing completed successfully - {len(top_matches)} matches found',
+                'totalItems': 1,
+                'processedItems': 1,
+                'successfulItems': 1 if len(top_matches) > 0 else 0,
+                'failedItems': 0 if len(top_matches) > 0 else 1
             }
             
             # Save result to JSON file
@@ -175,14 +184,21 @@ class ImageMatcherService:
             java_reporter.send_error(error_msg)
             logger.error(f"❌ Error in centralized image processing for session {session_id}: {error_msg}")
             
-            # Save error state as well
+            # Save error state as well with enhanced fields
             error_result = {
                 'top_matches': [],
                 'total_matches': 0,
                 'total_covers_processed': len(candidate_covers) if candidate_covers else 0,
                 'total_urls_processed': 0,
                 'session_id': session_id,
-                'error': error_msg
+                'error': error_msg,
+                'percentageComplete': 0,
+                'currentStage': 'error',
+                'statusMessage': error_msg,
+                'totalItems': 1,
+                'processedItems': 0,
+                'successfulItems': 0,
+                'failedItems': 1
             }
             save_image_matcher_result(session_id, error_result, query_filename, query_image)
             
@@ -324,7 +340,14 @@ class ImageMatcherService:
                     'total_urls_processed': 0
                 },
                 'session_id': session_id,
-                'error': error_msg
+                'error': error_msg,
+                'percentageComplete': 0,
+                'currentStage': 'error',
+                'statusMessage': error_msg,
+                'totalItems': len(query_images_data),
+                'processedItems': 0,
+                'successfulItems': 0,
+                'failedItems': len(query_images_data)
             }
             self.save_multiple_images_matcher_result(session_id, error_result, query_images_data, [])
             
@@ -535,8 +558,8 @@ class ImageMatcherService:
                 'image_data': query_image
             }
 
-    def _finalize_multiple_images_result(self, all_results, query_images_data, candidate_covers, 
-                                       candidate_urls, session_id, java_reporter):
+    def _finalize_multiple_images_result(self, all_results, query_images_data, candidate_covers,
+                                        candidate_urls, session_id, java_reporter):
         """Finalize multiple images processing result"""
         java_reporter.update_progress('finalizing', 95, f'Finalizing results for {len(query_images_data)} images...')
         
@@ -553,7 +576,7 @@ class ImageMatcherService:
                 del result_copy['image_data']
             serializable_results.append(result_copy)
         
-        # Create final result structure
+        # Create final result structure with ALL required fields
         final_result = {
             'results': serializable_results,  # Array of individual image results (without numpy arrays)
             'summary': {
@@ -564,7 +587,14 @@ class ImageMatcherService:
                 'total_covers_processed': len(candidate_covers),
                 'total_urls_processed': len(candidate_urls)
             },
-            'session_id': session_id
+            'session_id': session_id,
+            'percentageComplete': 100,
+            'currentStage': 'complete',
+            'statusMessage': f'Analysis complete! Successfully processed {successful_images}/{len(query_images_data)} images with {total_matches_all_images} total matches',
+            'totalItems': len(query_images_data),
+            'processedItems': len(query_images_data),
+            'successfulItems': successful_images,
+            'failedItems': len(query_images_data) - successful_images
         }
         
         # Final completion message

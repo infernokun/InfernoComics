@@ -181,49 +181,6 @@ public class ProgressService {
         sendToEmitter(request.getSessionId(), progressData);
     }
 
-    // New overloaded method to handle the enhanced data from Python
-    public void updateProgressWithEnhancedData(String sessionId, String stage, int progress, String message,
-                                               String processType, Integer totalItems, Integer processedItems,
-                                               Integer successfulItems, Integer failedItems) {
-        log.debug("Updating enhanced progress for session {}: stage={}, progress={}%, message={}",
-                sessionId, stage, progress, message);
-
-        // Create SSE progress data with enhanced information
-        Map<String, Object> enhancedData = new HashMap<>();
-        if (processType != null) enhancedData.put("processType", processType);
-        if (totalItems != null) enhancedData.put("totalItems", totalItems);
-        if (processedItems != null) enhancedData.put("processedItems", processedItems);
-        if (successfulItems != null) enhancedData.put("successfulItems", successfulItems);
-        if (failedItems != null) enhancedData.put("failedItems", failedItems);
-
-        SSEProgressData progressData = SSEProgressData.builder()
-                .type("progress")
-                .sessionId(sessionId)
-                .stage(stage)
-                .progress(progress)
-                .message(message)
-                .data(enhancedData.isEmpty() ? null : enhancedData)
-                .timestamp(Instant.now().toEpochMilli())
-                .build();
-
-        sessionStatus.put(sessionId, progressData);
-        sendToEmitter(sessionId, progressData);
-    }
-
-    // Helper method to safely convert various number types to Integer
-    private Integer getIntegerFromObject(Object value) {
-        if (value instanceof Number) {
-            return ((Number) value).intValue();
-        } else if (value instanceof String) {
-            try {
-                return Integer.parseInt((String) value);
-            } catch (NumberFormatException e) {
-                return null;
-            }
-        }
-        return null;
-    }
-
     public void sendComplete(String sessionId, JsonNode result) {
         log.info("Sending completion event for session: {}", sessionId);
 
@@ -278,7 +235,34 @@ public class ProgressService {
                 ProgressData progressData = progressDataOptional.get();
                 progressData.setTimeFinished(LocalDateTime.now());
                 progressData.setState(ProgressData.State.COMPLETE);
+
+                // Extract and save the enhanced fields from the result
+                if (result != null) {
+                    if (result.has("percentageComplete")) {
+                        progressData.setPercentageComplete(result.get("percentageComplete").asInt());
+                    }
+                    if (result.has("currentStage")) {
+                        progressData.setCurrentStage(result.get("currentStage").asText());
+                    }
+                    if (result.has("statusMessage")) {
+                        progressData.setStatusMessage(result.get("statusMessage").asText());
+                    }
+                    if (result.has("totalItems")) {
+                        progressData.setTotalItems(result.get("totalItems").asInt());
+                    }
+                    if (result.has("processedItems")) {
+                        progressData.setProcessedItems(result.get("processedItems").asInt());
+                    }
+                    if (result.has("successfulItems")) {
+                        progressData.setSuccessfulItems(result.get("successfulItems").asInt());
+                    }
+                    if (result.has("failedItems")) {
+                        progressData.setFailedItems(result.get("failedItems").asInt());
+                    }
+                }
+
                 progressDataRepository.save(progressData);
+                log.info("✅ Database updated with completion data for session: {}", sessionId);
             }
         } catch (Exception e) {
             log.error("Failed to update database with completion for session {}: {}", sessionId, e.getMessage());
@@ -418,6 +402,8 @@ public class ProgressService {
         } else {
             //storeProgressInRedis(sessionId, data);
         }
+
+        storeProgressInRedis(sessionId, data);
     }
 
     private void storeProgressInRedis(String sessionId, SSEProgressData data) {
@@ -568,12 +554,6 @@ public class ProgressService {
                     if (failedItems != null) {
                         progressData.setFailedItems(failedItems);
                     }
-                }
-
-                // Update process type if not set
-                if (progressData.getProcessType() == null && dataMap.containsKey("processType")) {
-                    String processType = (String) dataMap.get("processType");
-                    progressData.setProcessType(processType);
                 }
             }
         } catch (Exception e) {

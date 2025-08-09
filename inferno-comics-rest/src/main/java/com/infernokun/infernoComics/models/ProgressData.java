@@ -55,8 +55,6 @@ public class ProgressData {
     @Column(length = 2000)
     private String errorMessage;
 
-    private String processType; // e.g., "single_image", "multiple_images", "folder_evaluation"
-
     private Integer totalItems; // Total images to process
 
     private Integer processedItems; // Images processed so far
@@ -135,7 +133,6 @@ public class ProgressData {
     public ProgressData(String sessionId, Long seriesId, String processType) {
         this.sessionId = sessionId;
         this.seriesId = seriesId;
-        this.processType = processType;
         this.state = State.PROCESSING;
         this.percentageComplete = 0;
         this.timeStarted = LocalDateTime.now();

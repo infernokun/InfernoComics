@@ -64,20 +64,6 @@ class JavaProgressReporter:
         
         extracted_info = {}
         
-        # Detect process type from message patterns
-        if self.process_type is None:
-            if 'multiple images' in message.lower() or 'image ' in message and '/' in message:
-                self.process_type = 'multiple_images'
-                extracted_info['processType'] = 'multiple_images'
-            elif 'folder' in message.lower():
-                self.process_type = 'folder_evaluation'
-                extracted_info['processType'] = 'folder_evaluation'
-            else:
-                self.process_type = 'single_image'
-                extracted_info['processType'] = 'single_image'
-        else:
-            extracted_info['processType'] = self.process_type
-        
         # Extract total items from messages like "Processing 5 uploaded images" or "Image 2/10"
         total_match = re.search(r'(\d+)\s+(?:uploaded\s+)?images?|Image\s+\d+/(\d+)', message)
         if total_match:
@@ -321,7 +307,6 @@ class JavaProgressReporter:
                 stats['successfulItems'] = summary.get('successful_images', self.successful_items)
                 stats['failedItems'] = summary.get('failed_images', self.failed_items)
                 stats['processedItems'] = summary.get('total_images_processed', self.processed_items)
-                stats['processType'] = 'multiple_images'
                 
             # Single image results
             elif 'top_matches' in result:
@@ -329,7 +314,6 @@ class JavaProgressReporter:
                 stats['successfulItems'] = 1 if len(result.get('top_matches', [])) > 0 else 0
                 stats['failedItems'] = 0 if len(result.get('top_matches', [])) > 0 else 1
                 stats['processedItems'] = 1
-                stats['processType'] = 'single_image'
         
         # Use tracked values as fallback
         if 'totalItems' not in stats and self.total_items:
@@ -340,8 +324,6 @@ class JavaProgressReporter:
             stats['failedItems'] = self.failed_items
         if 'processedItems' not in stats and self.processed_items:
             stats['processedItems'] = self.processed_items
-        if 'processType' not in stats and self.process_type:
-            stats['processType'] = self.process_type
         
         # Final completion data
         stats['percentageComplete'] = 100
@@ -363,9 +345,6 @@ class JavaProgressReporter:
                 'statusMessage': f'Processing failed: {str(error_message)[:500]}'
             }
             
-            # Add process tracking info if available
-            if self.process_type:
-                error_stats['processType'] = self.process_type
             if self.total_items:
                 error_stats['totalItems'] = self.total_items
             if self.processed_items:
