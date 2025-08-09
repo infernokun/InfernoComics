@@ -5,7 +5,8 @@
     "start": "venv/bin/python3 src/recog.py",
     "start:debug": "/usr/bin/python3 src/recog.py --debug",
     
-    "dev:setup": "pyenv global 3.9.21 && npm run venv:init && echo 'Now activate the venv and run: npm run deps:install'",
+    "dev:setup": "pyenv install 3.9.21 && pyenv global 3.9.21 && npm run venv:init && echo 'Now activate the venv and run: npm run deps:install'",
+    "dev:sql": "sudo apt install libsqlite3-dev libssl-dev libffi-dev libbz2-dev libreadline-dev libncurses5-dev libncursesw5-dev libgdbm-dev libc6-dev zlib1g-dev",
     "dev:activate": "source venv/bin/activate",
     "dev:reset": "npm run venv:remove && npm run venv:init && echo 'Virtual environment reset. Activate it and run: npm run deps:install'",
     "dev:clean": "npm run venv:remove && echo 'Development environment cleaned'",

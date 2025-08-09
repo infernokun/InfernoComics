@@ -173,6 +173,12 @@ public class ProgressController {
         private String stage;
         private int progress;
         private String message;
+        private String statusMessage;
+        private String processType;
+        private Integer totalItems;
+        private Integer processedItems;
+        private Integer successfulItems;
+        private Integer failedItems;
     }
 
     @Data

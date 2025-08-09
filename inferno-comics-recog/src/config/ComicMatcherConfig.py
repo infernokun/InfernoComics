@@ -254,4 +254,36 @@ class ComicMatcherConfig:
         return preset
     
     def get_simularity_threshold(self):
-        return self.get("simularity_threshold")
+        threshold_value = self.get("simularity_threshold")
+        
+        if threshold_value is None:
+            return 0.55
+        
+        if isinstance(threshold_value, str):
+            threshold_value = threshold_value.strip()
+            
+            if threshold_value.endswith('%'):
+                try:
+                    percentage = float(threshold_value.rstrip('%').strip())
+                    return percentage / 100.0
+                except ValueError:
+                    logger.warning(f"Invalid percentage format for simularity_threshold: {threshold_value}, using default 0.55")
+                    return 0.55
+            
+            try:
+                decimal_value = float(threshold_value)
+                if decimal_value > 1:
+                    return decimal_value / 100.0
+                return decimal_value
+            except ValueError:
+                logger.warning(f"Invalid format for simularity_threshold: {threshold_value}, using default 0.55")
+                return 0.55
+        
+        elif isinstance(threshold_value, (int, float)):
+            if threshold_value > 1:
+                return threshold_value / 100.0
+            return float(threshold_value)
+        
+        else:
+            logger.warning(f"Unexpected type for simularity_threshold: {type(threshold_value)}, using default 0.55")
+            return 0.55

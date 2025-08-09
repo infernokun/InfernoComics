@@ -75,7 +75,7 @@ class ImageMatcherService:
         
         # Create Java progress reporter - this is the SINGLE source of truth
         java_reporter = JavaProgressReporter(session_id)
-        logger.info(f" Starting centralized image processing for session: {session_id}")
+        logger.info(f" Starting centralized image processing for session: {session_id}")
         
         # Convert query image to base64 for storage
         query_image_base64 = image_to_base64(query_image)
@@ -91,7 +91,7 @@ class ImageMatcherService:
             candidate_urls, url_to_cover_map = self._prepare_candidates(candidate_covers)
             
             java_reporter.update_progress('processing_data', 20, f'Prepared {len(candidate_urls)} candidate images for comparison')
-            logger.info(f" Prepared {len(candidate_urls)} candidate URLs from {len(candidate_covers)} covers")
+            logger.info(f" Prepared {len(candidate_urls)} candidate URLs from {len(candidate_covers)} covers")
             
             if not candidate_urls:
                 raise ValueError("No valid URLs found in candidate covers")
@@ -101,7 +101,7 @@ class ImageMatcherService:
             
             # Initialize matcher
             matcher = self.get_global_matcher()
-            logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers")
+            logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers")
             
             # Create a safe progress callback wrapper for the matcher
             def safe_matcher_progress(current_item, message=""):
@@ -120,7 +120,7 @@ class ImageMatcherService:
             
             # Stage 3: Feature extraction from query image (25% -> 35%)
             java_reporter.update_progress('extracting_features', 30, 'Extracting features from uploaded image...')
-            logger.debug(" Extracting features from query image...")
+            logger.debug(" Extracting features from query image...")
             
             # Stage 4: Heavy image comparison work (35% -> 85%)
             java_reporter.update_progress('comparing_images', 35, 'Starting image feature comparison...')
@@ -149,7 +149,7 @@ class ImageMatcherService:
             top_matches = enhanced_results[:5]
             
             # Log top matches for debugging
-            logger.info(f" Top {len(top_matches)} matches for session {session_id}:")
+            logger.info(f" Top {len(top_matches)} matches for session {session_id}:")
             for i, match in enumerate(top_matches[:3], 1):
                 logger.info(f"   {i}. {match['comic_name']} #{match['issue_number']} - Similarity: {match['similarity']:.3f}")
             
@@ -225,14 +225,14 @@ class ImageMatcherService:
                     del self.progress_data[session_id]
             
             if sessions_to_remove:
-                logger.info(f"️ Cleaned up {len(sessions_to_remove)} old sessions")
+                logger.info(f"️ Cleaned up {len(sessions_to_remove)} old sessions")
 
     def process_multiple_images_with_centralized_progress(self, session_id, query_images_data, candidate_covers):
         """Process multiple images matching with CENTRALIZED progress reporting to Java"""
         
         # Create Java progress reporter - this is the SINGLE source of truth
         java_reporter = JavaProgressReporter(session_id)
-        logger.info(f" Starting centralized multiple images processing for session: {session_id} with {len(query_images_data)} images")
+        logger.info(f" Starting centralized multiple images processing for session: {session_id} with {len(query_images_data)} images")
         
         try:
             # Continue from where Java left off (10%)
@@ -245,7 +245,7 @@ class ImageMatcherService:
             candidate_urls, url_to_cover_map = self._prepare_candidates(candidate_covers)
             
             java_reporter.update_progress('processing_data', 20, f'Prepared {len(candidate_urls)} candidate images for {len(query_images_data)} query images')
-            logger.info(f" Prepared {len(candidate_urls)} candidate URLs from {len(candidate_covers)} covers for {len(query_images_data)} query images")
+            logger.info(f" Prepared {len(candidate_urls)} candidate URLs from {len(candidate_covers)} covers for {len(query_images_data)} query images")
             
             if not candidate_urls:
                 raise ValueError("No valid URLs found in candidate covers")
@@ -255,7 +255,7 @@ class ImageMatcherService:
             
             # Initialize matcher
             matcher = self.get_global_matcher()
-            logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers for multiple images")
+            logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers for multiple images")
             
             java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready for multiple images')
             
@@ -276,14 +276,30 @@ class ImageMatcherService:
                 all_results, query_images_data, candidate_covers, 
                 candidate_urls, session_id, java_reporter
             )
-            
-            # Save result to JSON file
-            self.save_multiple_images_matcher_result(session_id, final_result, query_images_data)
+
+            # Calculate stats for final message
+            successful_images = final_result.get('summary', {}).get('successful_images', 0)
+            total_matches_all_images = final_result.get('summary', {}).get('total_matches_all_images', 0)
+
+            # Save result to JSON file - FIXED: Pass all required arguments
+            sanitized_result = self.save_multiple_images_matcher_result(session_id, final_result, query_images_data, all_results)
             
             # Print cache stats
             matcher.print_cache_stats()
             
+            # CONSISTENT: Final completion message
+            final_msg = f'Analysis complete! Successfully processed {successful_images}/{len(query_images_data)} images with {total_matches_all_images} total matches'
+            
             # Send completion at 100% to Java
+            java_reporter.update_progress('complete', 100, final_msg)
+            
+            # Update final_result with image URLs from sanitized_result
+            if sanitized_result:
+                for i, result in enumerate(final_result['results']):
+                    if i < len(sanitized_result['results']):
+                        result['image_url'] = sanitized_result['results'][i]['image_url']
+            
+            # IMPORTANT: Send the complete result to Java
             java_reporter.send_complete(final_result)
             
             logger.success(f"✅ Centralized multiple images processing completed and saved for session: {session_id}")
@@ -419,7 +435,7 @@ class ImageMatcherService:
         java_reporter.update_progress('comparing_images', int(start_progress), 
                                     f'Processing image {current_image_num}/{len(query_images_data)}: {query_filename}')
         
-        logger.info(f"️ Processing image {current_image_num}/{len(query_images_data)}: {query_filename}")
+        logger.info(f"️ Processing image {current_image_num}/{len(query_images_data)}: {query_filename}")
         
         # Create progress callback
         def create_image_progress_callback(img_num, total_imgs, filename, start_prog, end_prog):
@@ -658,7 +674,7 @@ class ImageMatcherService:
             with open(result_file, 'w', encoding='utf-8') as f:
                 json.dump(sanitized_result, f, indent=2, ensure_ascii=False)
             
-            logger.info(f" Saved multiple images matcher result to {result_file}")
+            logger.info(f" Saved multiple images matcher result to {result_file}")
             return sanitized_result
             
         except Exception as e:

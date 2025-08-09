@@ -785,7 +785,7 @@ public class SeriesService {
             //progressService.sendComplete(sessionId, result);
 
         } catch (Exception e) {
-            log.error("❌ Error in SSE multiple images processing for session {}: {}", sessionId, e.getMessage(), e);
+            log.error("❌ Error in SSE multiple images processing for session {}: {}", sessionId, e.getMessage());
             progressService.sendError(sessionId, "Error processing images: " + e.getMessage());
         } finally {
             log.info("🔚 Multiple images processing method completed for session: {}", sessionId);
