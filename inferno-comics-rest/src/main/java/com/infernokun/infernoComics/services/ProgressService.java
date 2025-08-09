@@ -292,6 +292,7 @@ public class ProgressService {
                 .message("Image processing completed successfully")
                 .result(result)
                 .timestamp(Instant.now().toEpochMilli())
+                .data(result)
                 .build();
 
         sessionStatus.put(sessionId, completeData);
@@ -408,13 +409,14 @@ public class ProgressService {
                 log.info("Sending SSE event to session {}: type={}, stage={}, progress={}",
                         sessionId, data.getType(), data.getStage(), data.getProgress());
                 sendEvent(emitter, data);
+                storeProgressInRedis(sessionId, data);
                 log.info("SSE event sent successfully to session: {}", sessionId);
             } catch (Exception e) {
                 log.error("Failed to send SSE event to session {}: {}", sessionId, e.getMessage());
                 cleanupSession(sessionId);
             }
         } else {
-            storeProgressInRedis(sessionId, data);
+            //storeProgressInRedis(sessionId, data);
         }
     }
 
