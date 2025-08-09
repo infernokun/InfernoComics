@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.controllers.ProgressController;
 import com.infernokun.infernoComics.models.ProgressData;
+import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -22,12 +24,16 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -37,6 +43,7 @@ public class ProgressService {
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
     private final ProgressDataRepository progressDataRepository;
     private final WebClient webClient;
@@ -57,6 +64,19 @@ public class ProgressService {
                         .build())
                 .build();
         this.redisTemplate = redisTemplate;
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     public boolean emitterIsPresent(String sessionId) {
@@ -142,56 +162,23 @@ public class ProgressService {
         return progressDataRepository.save(progressData);
     }
 
-    public void updateProgress(String sessionId, String stage, int progress, String message) {
+    public void updateProgress(ProgressUpdateRequest request) {
         log.debug("Updating progress for session {}: stage={}, progress={}%, message={}",
-                sessionId, stage, progress, message);
+                request.getSessionId(), request.getStage(), request.getProgress(), request.getMessage());
 
-        // Update database record with enhanced information extracted from message
-        Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
-        if (progressDataOptional.isPresent()) {
-            ProgressData progressData = progressDataOptional.get();
-            boolean hasChanges = false;
-
-            // Update basic progress fields
-            if (!Objects.equals(progressData.getPercentageComplete(), progress)) {
-                progressData.setPercentageComplete(progress);
-                hasChanges = true;
-            }
-
-            if (stage != null && !Objects.equals(progressData.getCurrentStage(), stage)) {
-                progressData.setCurrentStage(stage);
-                hasChanges = true;
-            }
-
-            if (message != null && !Objects.equals(progressData.getStatusMessage(), message)) {
-                progressData.setStatusMessage(message.length() > 1000 ? message.substring(0, 1000) : message);
-                hasChanges = true;
-            }
-
-            // Extract enhanced information from the message
-            extractAndUpdateEnhancedFields(progressData, message, stage);
-            hasChanges = true; // Assume changes for simplicity since extraction might update fields
-
-            // Only save if there were actual changes
-            if (hasChanges) {
-                progressData.setLastUpdated(LocalDateTime.now());
-                progressDataRepository.save(progressData);
-                log.debug("Updated progress data for session {} with enhanced fields extracted from message", sessionId);
-            }
-        }
-
-        // Create SSE progress data
+        // Create SSE progress data - FIXED: using request.getStage() instead of request.getSessionId()
         SSEProgressData progressData = SSEProgressData.builder()
                 .type("progress")
-                .sessionId(sessionId)
-                .stage(stage)
-                .progress(progress)
-                .message(message)
+                .sessionId(request.getSessionId())
+                .stage(request.getStage())
+                .progress(request.getProgress())
+                .message(request.getMessage())
                 .timestamp(Instant.now().toEpochMilli())
+                .data(request)
                 .build();
 
-        sessionStatus.put(sessionId, progressData);
-        sendToEmitter(sessionId, progressData);
+        sessionStatus.put(request.getSessionId(), progressData);
+        sendToEmitter(request.getSessionId(), progressData);
     }
 
     // New overloaded method to handle the enhanced data from Python
@@ -200,62 +187,6 @@ public class ProgressService {
                                                Integer successfulItems, Integer failedItems) {
         log.debug("Updating enhanced progress for session {}: stage={}, progress={}%, message={}",
                 sessionId, stage, progress, message);
-
-        // Update database record with enhanced information
-        Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
-        if (progressDataOptional.isPresent()) {
-            ProgressData progressData = progressDataOptional.get();
-            boolean hasChanges = false;
-
-            // Update basic progress fields
-            if (!Objects.equals(progressData.getPercentageComplete(), progress)) {
-                progressData.setPercentageComplete(progress);
-                hasChanges = true;
-            }
-
-            if (stage != null && !Objects.equals(progressData.getCurrentStage(), stage)) {
-                progressData.setCurrentStage(stage);
-                hasChanges = true;
-            }
-
-            if (message != null && !Objects.equals(progressData.getStatusMessage(), message)) {
-                progressData.setStatusMessage(message.length() > 1000 ? message.substring(0, 1000) : message);
-                hasChanges = true;
-            }
-
-            // Update enhanced fields directly
-            if (processType != null && !Objects.equals(progressData.getProcessType(), processType)) {
-                progressData.setProcessType(processType);
-                hasChanges = true;
-            }
-
-            if (totalItems != null && !Objects.equals(progressData.getTotalItems(), totalItems)) {
-                progressData.setTotalItems(totalItems);
-                hasChanges = true;
-            }
-
-            if (processedItems != null && !Objects.equals(progressData.getProcessedItems(), processedItems)) {
-                progressData.setProcessedItems(processedItems);
-                hasChanges = true;
-            }
-
-            if (successfulItems != null && !Objects.equals(progressData.getSuccessfulItems(), successfulItems)) {
-                progressData.setSuccessfulItems(successfulItems);
-                hasChanges = true;
-            }
-
-            if (failedItems != null && !Objects.equals(progressData.getFailedItems(), failedItems)) {
-                progressData.setFailedItems(failedItems);
-                hasChanges = true;
-            }
-
-            // Only save if there were actual changes
-            if (hasChanges) {
-                progressData.setLastUpdated(LocalDateTime.now());
-                progressDataRepository.save(progressData);
-                log.debug("Updated progress data from Python for session {} with enhanced fields", sessionId);
-            }
-        }
 
         // Create SSE progress data with enhanced information
         Map<String, Object> enhancedData = new HashMap<>();
@@ -277,80 +208,6 @@ public class ProgressService {
 
         sessionStatus.put(sessionId, progressData);
         sendToEmitter(sessionId, progressData);
-    }
-
-    // Helper method to extract enhanced information from message text
-    private void extractAndUpdateEnhancedFields(ProgressData progressData, String message, String stage) {
-        if (message == null) return;
-
-        try {
-            // Detect process type from message patterns
-            if (progressData.getProcessType() == null) {
-                if (message.toLowerCase().contains("multiple images") ||
-                        (message.contains("Image ") && message.contains("/"))) {
-                    progressData.setProcessType("multiple_images");
-                } else if (message.toLowerCase().contains("folder")) {
-                    progressData.setProcessType("folder_evaluation");
-                } else {
-                    progressData.setProcessType("single_image");
-                }
-            }
-
-            // Extract total items from messages like "Processing 5 uploaded images" or "Image 2/10"
-            if (progressData.getTotalItems() == null) {
-                java.util.regex.Pattern totalPattern = java.util.regex.Pattern.compile("(\\d+)\\s+(?:uploaded\\s+)?images?|Image\\s+\\d+/(\\d+)");
-                java.util.regex.Matcher totalMatcher = totalPattern.matcher(message);
-                if (totalMatcher.find()) {
-                    String total = totalMatcher.group(1) != null ? totalMatcher.group(1) : totalMatcher.group(2);
-                    if (total != null) {
-                        progressData.setTotalItems(Integer.parseInt(total));
-                    }
-                }
-            }
-
-            // Extract current item from messages like "Image 3/10" or "Processing candidate 45/200"
-            java.util.regex.Pattern currentPattern = java.util.regex.Pattern.compile("Image\\s+(\\d+)/\\d+|candidate\\s+(\\d+)/\\d+|Processing\\s+(\\d+)");
-            java.util.regex.Matcher currentMatcher = currentPattern.matcher(message);
-            if (currentMatcher.find()) {
-                String current = currentMatcher.group(1) != null ? currentMatcher.group(1) :
-                        (currentMatcher.group(2) != null ? currentMatcher.group(2) : currentMatcher.group(3));
-                if (current != null) {
-                    int currentItem = Integer.parseInt(current);
-                    // Only update if it's actually progressing forward
-                    if (progressData.getProcessedItems() == null || currentItem > progressData.getProcessedItems()) {
-                        progressData.setProcessedItems(currentItem);
-                    }
-                }
-            }
-
-            // Track successful/failed items from completion messages
-            if (message.toLowerCase().contains("complete") || message.toLowerCase().contains("completed")) {
-                if (!message.toLowerCase().contains("error") && !message.toLowerCase().contains("failed")) {
-                    // Successful completion
-                    java.util.regex.Pattern successPattern = java.util.regex.Pattern.compile("Successfully processed (\\d+)/(\\d+)");
-                    java.util.regex.Matcher successMatcher = successPattern.matcher(message);
-                    if (successMatcher.find()) {
-                        progressData.setSuccessfulItems(Integer.parseInt(successMatcher.group(1)));
-                        int total = Integer.parseInt(successMatcher.group(2));
-                        progressData.setFailedItems(total - progressData.getSuccessfulItems());
-                    } else if (message.toLowerCase().contains("image ")) {
-                        // Single image completion
-                        Integer current = progressData.getSuccessfulItems();
-                        progressData.setSuccessfulItems(current != null ? current + 1 : 1);
-                    }
-                }
-            }
-
-            if (message.toLowerCase().contains("failed") || message.toLowerCase().contains("error")) {
-                if (message.toLowerCase().contains("image ")) {
-                    Integer current = progressData.getFailedItems();
-                    progressData.setFailedItems(current != null ? current + 1 : 1);
-                }
-            }
-
-        } catch (Exception e) {
-            log.warn("Failed to extract enhanced fields from message: {}", e.getMessage());
-        }
     }
 
     // Helper method to safely convert various number types to Integer
@@ -414,13 +271,17 @@ public class ProgressService {
             }
         }
 
-        Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
+        try {
+            Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
 
-        if (progressDataOptional.isPresent()) {
-            ProgressData progressData = progressDataOptional.get();
-            progressData.setTimeFinished(LocalDateTime.now());
-            progressData.setState(ProgressData.State.COMPLETE);
-            progressDataRepository.save(progressData);
+            if (progressDataOptional.isPresent()) {
+                ProgressData progressData = progressDataOptional.get();
+                progressData.setTimeFinished(LocalDateTime.now());
+                progressData.setState(ProgressData.State.COMPLETE);
+                progressDataRepository.save(progressData);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update database with completion for session {}: {}", sessionId, e.getMessage());
         }
 
         SSEProgressData completeData = SSEProgressData.builder()
@@ -449,6 +310,20 @@ public class ProgressService {
     public void sendError(String sessionId, String errorMessage) {
         log.error("Sending error event for session {}: {}", sessionId, errorMessage);
 
+        try {
+            Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
+            if (progressDataOptional.isPresent()) {
+                ProgressData progressData = progressDataOptional.get();
+                progressData.setState(ProgressData.State.ERROR);
+                progressData.setErrorMessage(errorMessage);
+                progressData.setTimeFinished(LocalDateTime.now());
+                progressDataRepository.save(progressData);
+                log.info("✅ Database updated with error state for session: {}", sessionId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update database with error for session {}: {}", sessionId, e.getMessage());
+        }
+
         SSEProgressData errorData = SSEProgressData.builder()
                 .type("error")
                 .sessionId(sessionId)
@@ -464,23 +339,65 @@ public class ProgressService {
     }
 
     public Map<String, Object> getSessionStatus(String sessionId) {
-        SSEProgressData status = sessionStatus.get(sessionId);
-        if (status == null) {
+        SSEProgressData redisStatus = getLatestProgressFromRedis(sessionId);
+
+        if (redisStatus != null) {
+            log.debug("📊 Retrieved status from Redis for session: {}", sessionId);
             return Map.of(
                     "sessionId", sessionId,
-                    "status", "not_found",
-                    "message", "Session not found"
+                    "type", redisStatus.getType(),
+                    "stage", redisStatus.getStage() != null ? redisStatus.getStage() : "",
+                    "progress", redisStatus.getProgress() != null ? redisStatus.getProgress() : 0,
+                    "message", redisStatus.getMessage() != null ? redisStatus.getMessage() : "",
+                    "timestamp", redisStatus.getTimestamp(),
+                    "hasEmitter", activeEmitters.containsKey(sessionId),
+                    "source", "redis"
             );
+        }
+
+        // ✅ FALLBACK to in-memory sessionStatus
+        SSEProgressData status = sessionStatus.get(sessionId);
+        if (status != null) {
+            log.debug("📊 Retrieved status from memory for session: {}", sessionId);
+            return Map.of(
+                    "sessionId", sessionId,
+                    "type", status.getType(),
+                    "stage", status.getStage() != null ? status.getStage() : "",
+                    "progress", status.getProgress() != null ? status.getProgress() : 0,
+                    "message", status.getMessage() != null ? status.getMessage() : "",
+                    "timestamp", status.getTimestamp(),
+                    "hasEmitter", activeEmitters.containsKey(sessionId),
+                    "source", "memory"
+            );
+        }
+
+        // ✅ FINAL FALLBACK to database for completed/error sessions
+        try {
+            Optional<ProgressData> dbData = progressDataRepository.findBySessionId(sessionId);
+            if (dbData.isPresent()) {
+                ProgressData progressData = dbData.get();
+                log.debug("📊 Retrieved status from database for session: {}", sessionId);
+                return Map.of(
+                        "sessionId", sessionId,
+                        "type", progressData.getState().toString().toLowerCase(),
+                        "stage", progressData.getCurrentStage() != null ? progressData.getCurrentStage() : "",
+                        "progress", progressData.getPercentageComplete() != null ? progressData.getPercentageComplete() : 0,
+                        "message", progressData.getStatusMessage() != null ? progressData.getStatusMessage() : "",
+                        "timestamp", progressData.getLastUpdated() != null ?
+                                progressData.getLastUpdated().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : 0,
+                        "hasEmitter", activeEmitters.containsKey(sessionId),
+                        "source", "database"
+                );
+            }
+        } catch (Exception e) {
+            log.warn("Failed to retrieve status from database for session {}: {}", sessionId, e.getMessage());
         }
 
         return Map.of(
                 "sessionId", sessionId,
-                "type", status.getType(),
-                "stage", status.getStage() != null ? status.getStage() : "",
-                "progress", status.getProgress() != null ? status.getProgress() : 0,
-                "message", status.getMessage() != null ? status.getMessage() : "",
-                "timestamp", status.getTimestamp(),
-                "hasEmitter", activeEmitters.containsKey(sessionId)
+                "status", "not_found",
+                "message", "Session not found",
+                "source", "none"
         );
     }
 
@@ -514,7 +431,7 @@ public class ProgressService {
             // Also maintain a list of recent progress updates
             String listKey = "sse:progress:list:" + sessionId;
             redisTemplate.opsForList().leftPush(listKey, jsonData);
-            //redisTemplate.opsForList().trim(listKey, 0, 99); // Keep last 100 updates
+            redisTemplate.opsForList().trim(listKey, 0, 99); // Keep last 100 updates - FIXED: Uncommented to prevent unbounded growth
             redisTemplate.expire(listKey, PROGRESS_TTL);
 
         } catch (Exception e) {
@@ -577,33 +494,111 @@ public class ProgressService {
         return Collections.emptyList();
     }
 
+    private void updateInMemoryProgressFromRedis(ProgressData progressData, SSEProgressData latestProgress) {
+        try {
+            // Update progress percentage
+            if (latestProgress.getProgress() != null) {
+                progressData.setPercentageComplete(latestProgress.getProgress());
+            }
+
+            // Update current stage
+            if (latestProgress.getStage() != null) {
+                progressData.setCurrentStage(latestProgress.getStage());
+            }
+
+            // Update status message
+            if (latestProgress.getMessage() != null) {
+                progressData.setStatusMessage(latestProgress.getMessage());
+            }
+
+            // Parse additional data from Redis if available
+            if (latestProgress.getData() != null) {
+                updateProgressFromAdditionalDataInMemory(progressData, latestProgress.getData());
+            }
+
+            // Update last updated timestamp
+            progressData.setLastUpdated(LocalDateTime.ofInstant(
+                    Instant.ofEpochMilli(latestProgress.getTimestamp()),
+                    java.time.ZoneId.systemDefault()));
+
+            log.debug("Updated in-memory progress data from Redis for session {}", progressData.getSessionId());
+
+        } catch (Exception e) {
+            log.error("Failed to update in-memory progress data from Redis for session {}: {}",
+                    progressData.getSessionId(), e.getMessage());
+        }
+    }
+
+    // ✅ NEW METHOD: Update additional data in memory only
+    private void updateProgressFromAdditionalDataInMemory(ProgressData progressData, Object additionalData) {
+        try {
+            if (additionalData instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dataMap = (Map<String, Object>) additionalData;
+
+                // Update total items
+                if (dataMap.containsKey("totalItems")) {
+                    Integer totalItems = getIntegerFromMap(dataMap, "totalItems");
+                    if (totalItems != null) {
+                        progressData.setTotalItems(totalItems);
+                    }
+                }
+
+                // Update processed items
+                if (dataMap.containsKey("processedItems")) {
+                    Integer processedItems = getIntegerFromMap(dataMap, "processedItems");
+                    if (processedItems != null) {
+                        progressData.setProcessedItems(processedItems);
+                    }
+                }
+
+                // Update successful items
+                if (dataMap.containsKey("successfulItems")) {
+                    Integer successfulItems = getIntegerFromMap(dataMap, "successfulItems");
+                    if (successfulItems != null) {
+                        progressData.setSuccessfulItems(successfulItems);
+                    }
+                }
+
+                // Update failed items
+                if (dataMap.containsKey("failedItems")) {
+                    Integer failedItems = getIntegerFromMap(dataMap, "failedItems");
+                    if (failedItems != null) {
+                        progressData.setFailedItems(failedItems);
+                    }
+                }
+
+                // Update process type if not set
+                if (progressData.getProcessType() == null && dataMap.containsKey("processType")) {
+                    String processType = (String) dataMap.get("processType");
+                    progressData.setProcessType(processType);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse additional progress data in memory: {}", e.getMessage());
+        }
+    }
+
     public List<ProgressData> getSessionsBySeriesId(Long seriesId) {
         List<ProgressData> sessions = progressDataRepository.findBySeriesId(seriesId);
 
         sessions.forEach(progressData -> {
             if (progressData.getState() == ProgressData.State.PROCESSING) {
-
                 try {
                     // Check if session has recent progress data in Redis
                     SSEProgressData latestProgress = getLatestProgressFromRedis(progressData.getSessionId());
 
                     if (latestProgress != null) {
-                        // Session exists and has recent activity
+                        // Session exists and has recent activity - update in-memory copy (NOT database)
                         log.debug("Session {} found in Redis with latest progress: {} - {}%",
                                 progressData.getSessionId(), latestProgress.getStage(), latestProgress.getProgress());
 
-                        // Update progress data with latest info from Redis
-                        updateProgressDataFromRedis(progressData, latestProgress);
+                        // FIXED: Added the missing method call
+                        updateInMemoryProgressFromRedis(progressData, latestProgress);
 
                     } else if (progressData.isStale()) {
-                        // No recent progress data and session is stale - likely orphaned
-                        log.info("Session {} appears to be stale/orphaned, marking as ERROR",
+                        log.debug("Session {} appears stale but leaving as PROCESSING - will be updated on next complete/error event",
                                 progressData.getSessionId());
-
-                        progressData.setState(ProgressData.State.ERROR);
-                        progressData.setErrorMessage("Session appears to be orphaned - no recent progress updates");
-                        progressData.setTimeFinished(LocalDateTime.now());
-                        progressDataRepository.save(progressData);
                     }
 
                 } catch (Exception e) {
@@ -614,117 +609,6 @@ public class ProgressService {
         });
 
         return sessions;
-    }
-
-    private void updateProgressDataFromRedis(ProgressData progressData, SSEProgressData latestProgress) {
-        try {
-            boolean hasChanges = false;
-
-            // Update progress percentage
-            if (latestProgress.getProgress() != null &&
-                    !Objects.equals(progressData.getPercentageComplete(), latestProgress.getProgress())) {
-                progressData.setPercentageComplete(latestProgress.getProgress());
-                hasChanges = true;
-            }
-
-            // Update current stage
-            if (latestProgress.getStage() != null &&
-                    !Objects.equals(progressData.getCurrentStage(), latestProgress.getStage())) {
-                progressData.setCurrentStage(latestProgress.getStage());
-                hasChanges = true;
-            }
-
-            // Update status message
-            if (latestProgress.getMessage() != null &&
-                    !Objects.equals(progressData.getStatusMessage(), latestProgress.getMessage())) {
-                progressData.setStatusMessage(latestProgress.getMessage());
-                hasChanges = true;
-            }
-
-            // Parse additional data from Redis if available
-            if (latestProgress.getData() != null) {
-                updateProgressFromAdditionalData(progressData, latestProgress.getData());
-                hasChanges = true;
-            }
-
-            // Check if processing is complete
-            if ("complete".equals(latestProgress.getType()) ||
-                    (latestProgress.getProgress() != null && latestProgress.getProgress() >= 100)) {
-
-                if (progressData.getState() != ProgressData.State.COMPLETE) {
-                    progressData.setState(ProgressData.State.COMPLETE);
-                    progressData.setTimeFinished(LocalDateTime.now());
-                    hasChanges = true;
-                }
-
-            } else if ("error".equals(latestProgress.getType())) {
-                if (progressData.getState() != ProgressData.State.ERROR) {
-                    progressData.setState(ProgressData.State.ERROR);
-                    progressData.setErrorMessage(latestProgress.getError() != null ? latestProgress.getError() : latestProgress.getMessage());
-                    progressData.setTimeFinished(LocalDateTime.now());
-                    hasChanges = true;
-                }
-            }
-
-            // Only save if there were actual changes
-            if (hasChanges) {
-                progressData.setLastUpdated(LocalDateTime.now());
-                progressDataRepository.save(progressData);
-                log.debug("Updated progress data from Redis for session {}", progressData.getSessionId());
-            }
-
-        } catch (Exception e) {
-            log.error("Failed to update progress data from Redis for session {}: {}",
-                    progressData.getSessionId(), e.getMessage());
-        }
-    }
-
-    private void updateProgressFromAdditionalData(ProgressData progressData, Object additionalData) {
-        try {
-            if (additionalData instanceof Map) {
-                Map<String, Object> dataMap = (Map<String, Object>) additionalData;
-
-                // Update total items
-                if (dataMap.containsKey("total_images") || dataMap.containsKey("totalItems")) {
-                    Integer totalItems = getIntegerFromMap(dataMap, "total_images", "totalItems");
-                    if (totalItems != null && !Objects.equals(progressData.getTotalItems(), totalItems)) {
-                        progressData.setTotalItems(totalItems);
-                    }
-                }
-
-                // Update processed items
-                if (dataMap.containsKey("processed_images") || dataMap.containsKey("processedItems")) {
-                    Integer processedItems = getIntegerFromMap(dataMap, "processed_images", "processedItems");
-                    if (processedItems != null && !Objects.equals(progressData.getProcessedItems(), processedItems)) {
-                        progressData.setProcessedItems(processedItems);
-                    }
-                }
-
-                // Update successful items
-                if (dataMap.containsKey("successful_images") || dataMap.containsKey("successfulItems")) {
-                    Integer successfulItems = getIntegerFromMap(dataMap, "successful_images", "successfulItems");
-                    if (successfulItems != null && !Objects.equals(progressData.getSuccessfulItems(), successfulItems)) {
-                        progressData.setSuccessfulItems(successfulItems);
-                    }
-                }
-
-                // Update failed items
-                if (dataMap.containsKey("failed_images") || dataMap.containsKey("failedItems")) {
-                    Integer failedItems = getIntegerFromMap(dataMap, "failed_images", "failedItems");
-                    if (failedItems != null && !Objects.equals(progressData.getFailedItems(), failedItems)) {
-                        progressData.setFailedItems(failedItems);
-                    }
-                }
-
-                // Update process type if not set
-                if (progressData.getProcessType() == null && dataMap.containsKey("query_type")) {
-                    String queryType = (String) dataMap.get("query_type");
-                    progressData.setProcessType(queryType);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to parse additional progress data: {}", e.getMessage());
-        }
     }
 
     private Integer getIntegerFromMap(Map<String, Object> map, String... keys) {
@@ -757,21 +641,18 @@ public class ProgressService {
                 .reconnectTime(1000)); // Reconnect time in ms
     }
 
+    // FIXED: Using ScheduledExecutorService instead of creating new threads
     private void scheduleEmitterCompletion(String sessionId, long delayMs) {
-        new Thread(() -> {
-            try {
-                Thread.sleep(delayMs);
-                SseEmitter emitter = activeEmitters.get(sessionId);
-                if (emitter != null) {
+        scheduler.schedule(() -> {
+            SseEmitter emitter = activeEmitters.get(sessionId);
+            if (emitter != null) {
+                try {
                     emitter.complete();
+                } catch (Exception e) {
+                    log.error("Error completing emitter for session {}: {}", sessionId, e.getMessage());
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("Emitter completion scheduling interrupted for session: {}", sessionId);
-            } catch (Exception e) {
-                log.error("Error completing emitter for session {}: {}", sessionId, e.getMessage());
             }
-        }).start();
+        }, delayMs, TimeUnit.MILLISECONDS);
     }
 
     private void cleanupSession(String sessionId) {
@@ -785,9 +666,6 @@ public class ProgressService {
                 log.debug("Error completing emitter during cleanup for session {}: {}", sessionId, e.getMessage());
             }
         }
-
-        // Keep session status for a while in case client wants to check it
-        // Could implement cleanup after a certain time if needed
     }
 
     public int getActiveSessionCount() {
@@ -829,6 +707,7 @@ public class ProgressService {
                                     new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
                 })
                 .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
                 .block();
     }
 
@@ -841,6 +720,7 @@ public class ProgressService {
                 .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
                         Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
                 .bodyToMono(Resource.class)
+                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
                 .block();
     }
 

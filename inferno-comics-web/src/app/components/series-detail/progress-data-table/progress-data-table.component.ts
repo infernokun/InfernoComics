@@ -23,6 +23,7 @@ import { MaterialModule } from '../../../material.module';
 import { ComicMatch } from '../../../models/comic-match.model';
 import { EnvironmentService } from '../../../services/environment.service';
 import { HttpClient } from '@angular/common/http';
+import { Subscription, interval } from 'rxjs';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -190,7 +191,8 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
     filterParams: { buttons: ['clear', 'reset'], debounceMs: 200 },
   };
 
-  private refreshInterval?: any;
+  // FIXED: Using proper Subscription type instead of any
+  private refreshSubscription?: Subscription;
   private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
 
   constructor(private seriesService: SeriesService, private environmentService: EnvironmentService) {
@@ -219,36 +221,44 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
     this.stopAutoRefresh();
   }
 
+  // FIXED: Added proper error handling
   private loadProgressData(): void {
-    this.seriesService.getProgressData(this.id).subscribe((res) => {
-      this.progressData.set(res);
-      if (this.gridApi) {
-        console.log('Updating grid with progress data:', this.progressData());
-        this.gridApi.setGridOption('rowData', this.progressData());
-        this.gridApi.refreshCells();
-        
-        setTimeout(() => {
-          this.gridApi?.sizeColumnsToFit();
-        }, 100);
+    this.seriesService.getProgressData(this.id).subscribe({
+      next: (res) => {
+        this.progressData.set(res);
+        if (this.gridApi) {
+          console.log('Updating grid with progress data:', this.progressData());
+          this.gridApi.setGridOption('rowData', this.progressData());
+          this.gridApi.refreshCells();
+          
+          setTimeout(() => {
+            this.gridApi?.sizeColumnsToFit();
+          }, 100);
+        }
+      },
+      error: (error) => {
+        console.error('Failed to load progress data:', error);
+        // Could add user notification here
       }
     });
   }
 
+  // FIXED: Using proper interval observable instead of setInterval
   private startAutoRefresh(): void {
-    this.refreshInterval = setInterval(() => {
+    this.refreshSubscription = interval(this.REFRESH_INTERVAL_MS).subscribe(() => {
       // Only refresh if there are processing sessions
       const hasProcessingSessions = this.progressData().some(item => item.state === 'PROCESSING');
       if (hasProcessingSessions) {
         console.log('Auto-refreshing progress data...');
         this.loadProgressData();
       }
-    }, this.REFRESH_INTERVAL_MS);
+    });
   }
 
   private stopAutoRefresh(): void {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-      this.refreshInterval = undefined;
+    if (this.refreshSubscription) {
+      this.refreshSubscription.unsubscribe();
+      this.refreshSubscription = undefined;
     }
   }
 
@@ -283,10 +293,20 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
         lockPosition: true,
         cellRenderer: AdminActionsComponent,
         cellRendererParams: (params: any) => {
-          const state = params.data?.state;
+          // FIXED: Added validation for params.data
+          if (!params.data) {
+            return {
+              showPlay: false,
+              showAdd: false,
+              playClick: () => {},
+              addClick: () => {},
+            };
+          }
+          
+          const state = params.data.state;
           return {
-            showPlay: state != 'COMPLETE' && state != 'PROCESSING',
-            showAdd: state == 'COMPLETE',
+            showPlay: state !== 'COMPLETE' && state !== 'PROCESSING',
+            showAdd: state === 'COMPLETE',
             playClick: (data: any) => console.log('playClick', state),
             addClick: (data: any) => this.getSessionJSON(data.sessionId),
           };
@@ -317,7 +337,7 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
         field: 'processType',
         cellRenderer: (params: any) => {
           const type = params.value;
-          const typeLabels: any = {
+          const typeLabels: Record<string, string> = {
             'single_image': '📄 Single',
             'multiple_images': '📁 Multiple',
             'folder_evaluation': '📂 Folder',
@@ -354,11 +374,18 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
     ];
   }
 
+  // FIXED: Added error handling
   getSessionJSON(sessionId: string) {
-    this.seriesService.getSessionJSON(sessionId).subscribe((res) => {
-      const transformedData = this.transformSessionDataToMatches(res);
-      console.log('Transformed session data:', transformedData);
-      this.resultEmitter.emit(transformedData);
+    this.seriesService.getSessionJSON(sessionId).subscribe({
+      next: (res) => {
+        const transformedData = this.transformSessionDataToMatches(res);
+        console.log('Transformed session data:', transformedData);
+        this.resultEmitter.emit(transformedData);
+      },
+      error: (error) => {
+        console.error('Failed to get session JSON:', error);
+        // Could add user notification here
+      }
     });
   }
 
@@ -452,7 +479,7 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
 
 @Component({
   template: `
-  @if (params.data.state == "COMPLETE") {
+  @if (params?.data?.state === "COMPLETE") {
     <a (click)="openEvaluationUrl()" style="cursor: pointer; color: blue; text-decoration: underline;">
       Evaluation
     </a>
@@ -472,20 +499,32 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
     return false;
   }
 
+  // FIXED: Added proper error handling
   async openEvaluationUrl() {
+    if (!this.params?.value) {
+      console.error('No session ID available');
+      return;
+    }
+
     const sessionId = this.params.value;
     try {
-      const response = await this.httpClient.get<{ evaluationUrl: string }>(`${this.environmentService.settings?.restUrl}/progress/evaluation/${sessionId}`).toPromise();
+      const response = await this.httpClient.get<{ evaluationUrl: string }>(
+        `${this.environmentService.settings?.restUrl}/progress/evaluation/${sessionId}`
+      ).toPromise();
+
+      if (!response?.evaluationUrl) {
+        console.error('No evaluation URL received from server');
+        return;
+      }
 
       const currentHost = window.location.hostname;
+      const evaluationUrl = response.evaluationUrl.replace('localhost', currentHost);
 
-      const evaluationUrl = response!.evaluationUrl.replace('localhost', currentHost);
-
-      console.log(evaluationUrl);
-
+      console.log('Opening evaluation URL:', evaluationUrl);
       window.open(evaluationUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Error fetching evaluation URL:', error);
+      // Could show user notification here
     }
   }
 }
@@ -496,17 +535,17 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
     <div class="time-info-container">
       <div class="time-row started">
         <span class="time-label">Started:</span>
-        <span class="time-value">{{ formatTime(params.data?.timeStarted) }}</span>
+        <span class="time-value">{{ formatTime(params?.data?.timeStarted) }}</span>
       </div>
-      <div class="time-row finished" *ngIf="params.data?.timeFinished">
+      <div class="time-row finished" *ngIf="params?.data?.timeFinished">
         <span class="time-label">Finished:</span>
-        <span class="time-value">{{ formatTime(params.data?.timeFinished) }}</span>
+        <span class="time-value">{{ formatTime(params?.data?.timeFinished) }}</span>
       </div>
       <div class="time-row duration" *ngIf="getDuration()">
         <span class="time-label">Duration:</span>
         <span class="time-value duration-text">{{ getDuration() }}</span>
       </div>
-      <div class="time-row processing" *ngIf="!params.data?.timeFinished">
+      <div class="time-row processing" *ngIf="!params?.data?.timeFinished">
         <span class="time-value processing-text">{{ getProcessingStatus() }}</span>
       </div>
     </div>
@@ -576,6 +615,10 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
     
     try {
       const date = new Date(timeString);
+      if (isNaN(date.getTime())) {
+        return 'Invalid';
+      }
+      
       return date.toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -584,13 +627,14 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
         hour12: true
       });
     } catch (error) {
+      console.error('Error formatting time:', error);
       return 'Invalid';
     }
   }
 
   getDuration(): string {
-    const timeStarted = this.params.data?.timeStarted;
-    const timeFinished = this.params.data?.timeFinished;
+    const timeStarted = this.params?.data?.timeStarted;
+    const timeFinished = this.params?.data?.timeFinished;
     
     if (!timeStarted || !timeFinished) {
       return '';
@@ -599,6 +643,11 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
     try {
       const startTime = new Date(timeStarted);
       const endTime = new Date(timeFinished);
+      
+      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        return 'Invalid';
+      }
+      
       const diffMs = endTime.getTime() - startTime.getTime();
       
       if (diffMs < 0) return 'Invalid';
@@ -615,12 +664,13 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
         return `${seconds}s`;
       }
     } catch (error) {
+      console.error('Error calculating duration:', error);
       return 'Error';
     }
   }
 
   getProcessingStatus(): string {
-    const state = this.params.data?.state;
+    const state = this.params?.data?.state;
     if (state === 'PROCESSING') {
       return 'Currently processing...';
     } else if (state === 'ERROR') {
@@ -650,7 +700,7 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
       </div>
       
       <!-- Status message (smaller font) -->
-      <div class="status-message" *ngIf="params.data?.statusMessage">
+      <div class="status-message" *ngIf="params?.data?.statusMessage">
         {{ params.data.statusMessage }}
       </div>
     </div>
@@ -749,8 +799,8 @@ export class CombinedStatusRenderer implements ICellRendererAngularComp {
   }
 
   getStatusIcon(): string {
-    const state = this.params.data?.state;
-    const icons: { [key: string]: string } = {
+    const state = this.params?.data?.state;
+    const icons: Record<string, string> = {
       'COMPLETE': '✅',
       'PROCESSING': '⏳',
       'ERROR': '❌',
@@ -761,8 +811,8 @@ export class CombinedStatusRenderer implements ICellRendererAngularComp {
   }
 
   getStatusColor(): string {
-    const state = this.params.data?.state;
-    const colors: { [key: string]: string } = {
+    const state = this.params?.data?.state;
+    const colors: Record<string, string> = {
       'COMPLETE': '#28a745',
       'PROCESSING': '#ffc107',
       'ERROR': '#dc3545',
@@ -773,7 +823,7 @@ export class CombinedStatusRenderer implements ICellRendererAngularComp {
   }
 
   getMainStatusText(): string {
-    const state = this.params.data?.state;
+    const state = this.params?.data?.state;
     
     switch (state) {
       case 'COMPLETE':
@@ -792,7 +842,7 @@ export class CombinedStatusRenderer implements ICellRendererAngularComp {
   }
 
   shouldShowProgress(): boolean {
-    const state = this.params.data?.state;
+    const state = this.params?.data?.state;
     const percentage = this.getPercentage();
     
     // Show progress bar if processing or if we have meaningful progress data (but not complete)
@@ -800,10 +850,10 @@ export class CombinedStatusRenderer implements ICellRendererAngularComp {
   }
 
   isProcessing(): boolean {
-    return this.params.data?.state === 'PROCESSING';
+    return this.params?.data?.state === 'PROCESSING';
   }
 
   getPercentage(): number {
-    return this.params.data?.percentageComplete || 0;
+    return this.params?.data?.percentageComplete || 0;
   }
 }
