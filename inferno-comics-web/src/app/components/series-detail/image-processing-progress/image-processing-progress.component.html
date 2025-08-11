@@ -3,15 +3,15 @@
   <div class="dialog-header">
     <div class="header-content">
       <div class="icon-container">
-        <mat-icon class="processing-icon">{{ isMultipleMode ? 'photo_library' : 'image_search' }}</mat-icon>
+        <mat-icon class="processing-icon">photo_library</mat-icon>
         <div class="pulse-ring" *ngIf="isProcessing"></div>
       </div>
       <div class="header-text">
         <h2 mat-dialog-title>
-          {{ isMultipleMode ? 'Analyzing Comic Images' : 'Analyzing Comic Image' }}
+          Analyzing Comic Images
         </h2>
         <p class="subtitle">
-          {{ isMultipleMode ? 'Finding the best matches for your comics' : 'Finding the best matches for your comic' }}
+        'Finding the best matches for your comics
         </p>
       </div>
     </div>
@@ -25,8 +25,8 @@
     <div class="image-preview-card">
       <div class="card-header">
         <div class="upload-badge">
-          <mat-icon>{{ isMultipleMode ? 'photo_library' : 'cloud_upload' }}</mat-icon>
-          <span>{{ isMultipleMode ? 'Multiple Images' : 'Uploaded Image' }}</span>
+          <mat-icon>photo_library</mat-icon>
+          <span>Multiple Images</span>
         </div>
         <div class="processing-status" *ngIf="isProcessing">
           <mat-spinner diameter="20"></mat-spinner>
@@ -36,7 +36,7 @@
 
       <div class="image-showcase">
         <!-- Multiple Images Grid View -->
-        <div class="images-grid" *ngIf="isMultipleMode && imagePreviews.length > 1">
+        <div class="images-grid">
           <div class="grid-main-image">
             <div class="image-frame">
               <img [src]="imagePreviews[currentImageIndex]" [alt]="'Current processing image: ' + currentImageName"
@@ -96,49 +96,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Single Image View (existing) -->
-        <div class="single-image-view" *ngIf="!isMultipleMode || imagePreviews.length === 1">
-          <div class="image-frame">
-            <img [src]="getMainImagePreview()" alt="Uploaded comic image" class="uploaded-image">
-            <div class="scanning-line" *ngIf="isProcessing"></div>
-          </div>
-
-          <div class="image-details">
-            <div class="detail-item">
-              <mat-icon>description</mat-icon>
-              <div class="detail-content">
-                <span class="detail-label">{{ isMultipleMode ? 'Images' : 'Filename' }}</span>
-                <span class="detail-value">{{ getDisplayFilename() }}</span>
-              </div>
-            </div>
-
-            <div class="detail-item">
-              <mat-icon>storage</mat-icon>
-              <div class="detail-content">
-                <span class="detail-label">{{ isMultipleMode ? 'Total Size' : 'Size' }}</span>
-                <span class="detail-value">{{ formatFileSize(getTotalFileSize()) }}</span>
-              </div>
-            </div>
-
-            <div class="detail-item">
-              <mat-icon>schedule</mat-icon>
-              <div class="detail-content">
-                <span class="detail-label">Started</span>
-                <span class="detail-value">{{ getCurrentTime() }}</span>
-              </div>
-            </div>
-
-            <!-- Multiple Images Progress Detail -->
-            <div class="detail-item" *ngIf="isMultipleMode && isProcessing">
-              <mat-icon>timeline</mat-icon>
-              <div class="detail-content">
-                <span class="detail-label">Current Progress</span>
-                <span class="detail-value">{{ getCurrentImageProgress() }} images</span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -162,7 +119,7 @@
       </div>
 
       <!-- Multiple Images Progress Summary -->
-      <div class="progress-summary" *ngIf="isMultipleMode">
+      <div class="progress-summary">
         <div class="summary-stats">
           <div class="stat-item">
             <span class="stat-number">{{ getCompletedImagesCount() }}</span>
@@ -264,7 +221,7 @@
     <div class="actions-right">
       <div class="processing-indicator" *ngIf="isProcessing">
         <mat-spinner diameter="16"></mat-spinner>
-        <span>{{ isMultipleMode ? 'Processing images...' : 'Processing...' }}</span>
+        <span>Processing images...</span>
       </div>
 
       <!-- Show Next button when processing is complete -->

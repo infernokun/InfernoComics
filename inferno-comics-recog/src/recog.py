@@ -22,13 +22,11 @@ def create_matcher():
         logger.info("🔧 Initializing global FeatureMatchingComicMatcher...")
         
         # Get config path from environment or use default
-        config_path = os.environ.get('CONFIG_PATH', '/var/tmp/inferno-comics/config.yml')
         cache_dir = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
         db_path = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
         
         try:
             global_matcher = FeatureMatchingComicMatcher(
-                config_path=config_path,
                 cache_dir=cache_dir,
                 db_path=db_path
             )

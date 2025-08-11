@@ -2,6 +2,7 @@ import {
   Component,
   EventEmitter,
   Input,
+  OnDestroy,
   OnInit,
   Output,
   signal,
@@ -22,6 +23,7 @@ import { MaterialModule } from '../../../material.module';
 import { ComicMatch } from '../../../models/comic-match.model';
 import { EnvironmentService } from '../../../services/environment.service';
 import { HttpClient } from '@angular/common/http';
+import { Subscription, interval } from 'rxjs';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -29,6 +31,9 @@ import { HttpClient } from '@angular/common/http';
     <div class="grid-container">
       <div class="grid-header">
         <h2 class="grid-title">Progress Data</h2>
+        <button class="refresh-button" (click)="refreshData()">
+          🔄 Refresh
+        </button>
       </div>
       <div class="grid-wrapper ag-theme-quartz">
         <ag-grid-angular
@@ -44,41 +49,134 @@ import { HttpClient } from '@angular/common/http';
   `,
   styles: [
     `
-      .grid-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        height: 600px;
-        border: 1px solid #d0d0d0;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        background: #fff;
-      }
-      .grid-header {
-        padding: 0.5rem 1rem;
-        background: #f5f5f5;
-        border-bottom: 1px solid #e0e0e0;
-        display: flex;
-        align-items: center;
-      }
-      .grid-title {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 600;
-      }
-      .grid-wrapper {
-        flex: 1;
-        overflow: hidden;
-      }
-      .ag-theme-quartz {
-        height: 100%;
-      }
-    `,
+    .grid-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      height: 700px;
+      border: 1px solid #d0d0d0;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      background: #fff;
+    }
+    
+    .grid-header {
+      padding: 0.5rem 1rem;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .grid-title {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #495057;
+    }
+    
+    .refresh-button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .refresh-button:hover {
+      background: #0056b3;
+    }
+    
+    .grid-wrapper {
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    .ag-theme-quartz {
+      height: 100%;
+    }
+    
+    /* Custom AG-Grid styles for taller rows */
+    .ag-theme-quartz .ag-header-cell-label {
+      font-weight: 600;
+    }
+    
+    .ag-theme-quartz .ag-row {
+      border-bottom: 1px solid #f1f3f4;
+    }
+    
+    .ag-theme-quartz .ag-row:hover {
+      background-color: #f8f9fa;
+    }
+    
+    /* Center content vertically in taller cells */
+    .ag-theme-quartz .ag-cell {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+    }
+    
+    /* Progress bar styles */
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background-color: #e9ecef;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+      border-radius: 10px;
+      transition: width 0.3s ease;
+      position: relative;
+    }
+    
+    .progress-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      z-index: 2;
+    }
+    
+    .progress-processing .progress-fill {
+      animation: progress-pulse 2s infinite;
+    }
+    
+    @keyframes progress-pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+    
+    .status-message {
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.85em;
+      color: #6c757d;
+    }
+  `,
   ],
   imports: [CommonModule, MaterialModule, AgGridModule],
 })
-export class ProgressDataTable implements OnInit {
+export class ProgressDataTable implements OnInit, OnDestroy  {
   @Input() id!: number;
+  @Output() resultEmitter: EventEmitter<any> = new EventEmitter<any>(undefined);
 
   progressData: WritableSignal<any[]> = signal<any[]>([]);
 
@@ -93,7 +191,9 @@ export class ProgressDataTable implements OnInit {
     filterParams: { buttons: ['clear', 'reset'], debounceMs: 200 },
   };
 
-  @Output() resultEmitter: EventEmitter<any> = new EventEmitter<any>(undefined);
+  // FIXED: Using proper Subscription type instead of any
+  private refreshSubscription?: Subscription;
+  private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
 
   constructor(private seriesService: SeriesService, private environmentService: EnvironmentService) {
     this.gridOptions = {
@@ -104,6 +204,8 @@ export class ProgressDataTable implements OnInit {
       suppressDragLeaveHidesColumns: true,
       suppressMovableColumns: false,
       pagination: false,
+      rowHeight: 80, // Increase from default ~28px to 80px
+      headerHeight: 40, // Optional: increase header height too
       columnDefs: this.getColumnDefs(),
       onGridReady: (params) => this.onGridReady(params),
       onFirstDataRendered: (params) => this.onFirstDataRendered(params),
@@ -111,21 +213,57 @@ export class ProgressDataTable implements OnInit {
   }
 
   ngOnInit(): void {
-    this.seriesService.getProgressData(this.id).subscribe((res) => {
-      this.progressData.set(res);
-      if (this.gridApi) {
-        console.log('Updating grid with users:', this.progressData());
-        this.gridApi.setGridOption('rowData', this.progressData());
+    this.loadProgressData();
+    this.startAutoRefresh();
+  }
 
-        // Force refresh
-        this.gridApi.refreshCells();
+  ngOnDestroy(): void {
+    this.stopAutoRefresh();
+  }
 
-        // Size columns after data update
-        setTimeout(() => {
-          this.gridApi?.sizeColumnsToFit();
-        }, 100);
+  // FIXED: Added proper error handling
+  private loadProgressData(): void {
+    this.seriesService.getProgressData(this.id).subscribe({
+      next: (res) => {
+        this.progressData.set(res);
+        if (this.gridApi) {
+          console.log('Updating grid with progress data:', this.progressData());
+          this.gridApi.setGridOption('rowData', this.progressData());
+          this.gridApi.refreshCells();
+          
+          setTimeout(() => {
+            this.gridApi?.sizeColumnsToFit();
+          }, 100);
+        }
+      },
+      error: (error) => {
+        console.error('Failed to load progress data:', error);
+        // Could add user notification here
       }
     });
+  }
+
+  // FIXED: Using proper interval observable instead of setInterval
+  private startAutoRefresh(): void {
+    this.refreshSubscription = interval(this.REFRESH_INTERVAL_MS).subscribe(() => {
+      // Only refresh if there are processing sessions
+      const hasProcessingSessions = this.progressData().some(item => item.state === 'PROCESSING');
+      if (hasProcessingSessions) {
+        console.log('Auto-refreshing progress data...');
+        this.loadProgressData();
+      }
+    });
+  }
+
+  private stopAutoRefresh(): void {
+    if (this.refreshSubscription) {
+      this.refreshSubscription.unsubscribe();
+      this.refreshSubscription = undefined;
+    }
+  }
+
+  refreshData(): void {
+    this.loadProgressData();
   }
 
   onGridReady(params: GridReadyEvent): void {
@@ -144,8 +282,10 @@ export class ProgressDataTable implements OnInit {
   getColumnDefs(): ColDef[] {
     return [
       {
-        headerName: 'Actions',
-        width: 130,
+        //headerName: 'Actions',
+        width: 60,
+        minWidth: 60,
+        maxWidth: 70,
         pinned: 'left',
         sortable: false,
         filter: false,
@@ -153,10 +293,20 @@ export class ProgressDataTable implements OnInit {
         lockPosition: true,
         cellRenderer: AdminActionsComponent,
         cellRendererParams: (params: any) => {
-          const state = params.data?.state;
+          // FIXED: Added validation for params.data
+          if (!params.data) {
+            return {
+              showPlay: false,
+              showAdd: false,
+              playClick: () => {},
+              addClick: () => {},
+            };
+          }
+          
+          const state = params.data.state;
           return {
-            showPlay: state != 'COMPLETE' && state != 'PROCESSING',
-            showAdd: state == 'COMPLETE',
+            showPlay: state !== 'COMPLETE' && state !== 'PROCESSING',
+            showAdd: state === 'COMPLETE',
             playClick: (data: any) => console.log('playClick', state),
             addClick: (data: any) => this.getSessionJSON(data.sessionId),
           };
@@ -166,96 +316,67 @@ export class ProgressDataTable implements OnInit {
         headerName: 'Session ID',
         field: 'sessionId',
         filter: 'agNumberColumnFilter',
-        minWidth: 60,
+        minWidth: 320,
+        maxWidth: 330,
       },
       {
-        headerName: 'State',
-        field: 'state',
-        cellRenderer: (params: any) => {
-          const state: string = params.value;
-          const icons: any = {
-            'COMPLETE': '✅',
-            'PROCESSING': '⏳',
-            'FAILED': '❌',
-            'PENDING': '⏸️'
-          };
-          const colors: any = {
-            'COMPLETE': '#28a745',
-            'PROCESSING': '#ffc107', 
-            'FAILED': '#dc3545',
-            'PENDING': '#6c757d'
-          };
-          return `<span style="color: ${colors[state] || '#000'}">${icons[state] || '❓'} ${state}</span>`;
-        },
+        headerName: 'Status & Progress',
+        field: 'state', // Use state for sorting
+        cellRenderer: CombinedStatusRenderer,
         filter: 'agTextColumnFilter',
-        minWidth: 150,
-      },
-      {
-        headerName: 'Time Started',
-        field: 'timeStarted',
-        filter: 'agTextColumnFilter',
-        minWidth: 100,
-        sort: 'desc',
-        sortIndex: 0
-      },
-      {
-        headerName: 'Time Finished',
-        field: 'timeFinished',
-        valueGetter: (params) => params.data?.timeFinished ?? 'Not Finished',
-        filter: 'agTextColumnFilter',
-        minWidth: 100,
-      },
-      {
-        headerName: 'Time Taken',
-        valueGetter: (params) => {
-          const timeStarted = params.data?.timeStarted;
-          const timeFinished = params.data?.timeFinished;
-          
-          if (!timeStarted || !timeFinished) {
-            return 'Not Finished';
-          }
-          
-          try {
-            const startTime = new Date(timeStarted);
-            const endTime = new Date(timeFinished);
-            const diffMs = endTime.getTime() - startTime.getTime();
-            
-            if (diffMs < 0) return 'Invalid';
-            
-            const hours = Math.floor(diffMs / (1000 * 60 * 60));
-            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-            
-            if (hours > 0) {
-              return `${hours}h ${minutes}m ${seconds}s`;
-            } else if (minutes > 0) {
-              return `${minutes}m ${seconds}s`;
-            } else {
-              return `${seconds}s`;
-            }
-          } catch (error) {
-            return 'Error';
-          }
-        },
-        filter: 'agTextColumnFilter',
-        minWidth: 120,
+        width: 450,
+        maxWidth: 450,
         sortable: true,
+        cellStyle: {
+          padding: '8px',
+          lineHeight: '1.2'
+        }
+      },
+      {
+        headerName: 'Total',
+        field: 'processedItems',
+        filter: 'agTextColumnFilter',
+        minWidth: 60,
+        maxWidth: 70,
+      },
+      {
+        headerName: 'Timing Info',
+        field: 'timeStarted', // Use timeStarted for sorting
+        cellRenderer: TimeInfoCellRenderer,
+        filter: 'agTextColumnFilter',
+        minWidth: 160,
+        maxWidth: 160,
+        sort: 'desc',
+        sortIndex: 0,
+        sortable: true,
+        cellStyle: {
+          padding: '4px 8px',
+          lineHeight: '1.2'
+        }
       },
       {
         headerName: 'Link',
         field: 'sessionId',
         cellRenderer: EvaluationLinkCellRenderer,
-        minWidth: 200,
+        minWidth: 100,
+        maxWidth: 120,
         tooltipField: 'sessionId',
       }
     ];
   }
 
+  // FIXED: Added error handling
   getSessionJSON(sessionId: string) {
-    this.seriesService.getSessionJSON(sessionId).subscribe((res) => {
-      const transformedData = this.transformSessionDataToMatches(res);
-      console.log('Transformed session data:', transformedData);
-      this.resultEmitter.emit(transformedData);
+    this.seriesService.getSessionJSON(sessionId).subscribe({
+      next: (res) => {
+        const transformedData = this.transformSessionDataToMatches(res);
+        console.log('Transformed session data:', transformedData);
+        this.resultEmitter.emit(transformedData);
+      },
+      error: (error) => {
+        console.error('Failed to get session JSON:', error);
+        // Could add user notification here
+      }
     });
   }
 
@@ -349,9 +470,9 @@ export class ProgressDataTable implements OnInit {
 
 @Component({
   template: `
-  @if (params.data.state == "COMPLETE") {
+  @if (params?.data?.state === "COMPLETE") {
     <a (click)="openEvaluationUrl()" style="cursor: pointer; color: blue; text-decoration: underline;">
-      {{ params.value }}
+      Evaluation
     </a>
   }
   `
@@ -369,13 +490,361 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
     return false;
   }
 
+  // FIXED: Added proper error handling
   async openEvaluationUrl() {
+    if (!this.params?.value) {
+      console.error('No session ID available');
+      return;
+    }
+
     const sessionId = this.params.value;
     try {
-      const response = await this.httpClient.get<{evaluationUrl: string}>(`${this.environmentService.settings?.restUrl}/progress/evaluation/${sessionId}`).toPromise();
-      window.open(response!.evaluationUrl, '_blank', 'noopener,noreferrer');
+      const response = await this.httpClient.get<{ evaluationUrl: string }>(
+        `${this.environmentService.settings?.restUrl}/progress/evaluation/${sessionId}`
+      ).toPromise();
+
+      if (!response?.evaluationUrl) {
+        console.error('No evaluation URL received from server');
+        return;
+      }
+
+      const currentHost = window.location.hostname;
+      const evaluationUrl = response.evaluationUrl.replace('localhost', currentHost);
+
+      console.log('Opening evaluation URL:', evaluationUrl);
+      window.open(evaluationUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Error fetching evaluation URL:', error);
+      // Could show user notification here
     }
+  }
+}
+
+@Component({
+  selector: 'app-time-info-renderer',
+  template: `
+    <div class="time-info-container">
+      <div class="time-row started">
+        <span class="time-label">Started:</span>
+        <span class="time-value">{{ formatTime(params?.data?.timeStarted) }}</span>
+      </div>
+      <div class="time-row finished" *ngIf="params?.data?.timeFinished">
+        <span class="time-label">Finished:</span>
+        <span class="time-value">{{ formatTime(params?.data?.timeFinished) }}</span>
+      </div>
+      <div class="time-row duration" *ngIf="getDuration()">
+        <span class="time-label">Duration:</span>
+        <span class="time-value duration-text">{{ getDuration() }}</span>
+      </div>
+      <div class="time-row processing" *ngIf="!params?.data?.timeFinished">
+        <span class="time-value processing-text">{{ getProcessingStatus() }}</span>
+      </div>
+    </div>
+  `,
+  styles: [`
+    .time-info-container {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 4px 0;
+      font-size: 0.8em;
+      line-height: 1.2;
+    }
+    
+    .time-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
+    .time-label {
+      font-weight: 500;
+      color: #6c757d;
+      min-width: 50px;
+      font-size: 0.85em;
+    }
+    
+    .time-value {
+      color: #495057;
+      font-weight: 400;
+    }
+    
+    .duration-text {
+      color: #007bff;
+      font-weight: 600;
+    }
+    
+    .processing-text {
+      color: #ffc107;
+      font-style: italic;
+      font-weight: 500;
+    }
+    
+    .started .time-value {
+      color: #28a745;
+    }
+    
+    .finished .time-value {
+      color: #17a2b8;
+    }
+  `],
+  imports: [CommonModule]
+})
+export class TimeInfoCellRenderer implements ICellRendererAngularComp {
+  params: any;
+
+  agInit(params: any): void {
+    this.params = params;
+  }
+
+  refresh(): boolean {
+    return false;
+  }
+
+  formatTime(timeString: string): string {
+    if (!timeString) return 'N/A';
+    
+    try {
+      const date = new Date(timeString);
+      if (isNaN(date.getTime())) {
+        return 'Invalid';
+      }
+      
+      return date.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting time:', error);
+      return 'Invalid';
+    }
+  }
+
+  getDuration(): string {
+    const timeStarted = this.params?.data?.timeStarted;
+    const timeFinished = this.params?.data?.timeFinished;
+    
+    if (!timeStarted || !timeFinished) {
+      return '';
+    }
+    
+    try {
+      const startTime = new Date(timeStarted);
+      const endTime = new Date(timeFinished);
+      
+      if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        return 'Invalid';
+      }
+      
+      const diffMs = endTime.getTime() - startTime.getTime();
+      
+      if (diffMs < 0) return 'Invalid';
+      
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+      
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+      } else {
+        return `${seconds}s`;
+      }
+    } catch (error) {
+      console.error('Error calculating duration:', error);
+      return 'Error';
+    }
+  }
+
+  getProcessingStatus(): string {
+    const state = this.params?.data?.state;
+    if (state === 'PROCESSING') {
+      return 'Currently processing...';
+    } else if (state === 'ERROR') {
+      return 'Failed to complete';
+    } else {
+      return 'Not finished';
+    }
+  }
+}
+
+@Component({
+  selector: 'app-combined-status-renderer',
+  template: `
+    <div class="combined-status-container">
+      <!-- Main status with icon -->
+      <div class="main-status">
+        <span class="status-icon" [style.color]="getStatusColor()">{{ getStatusIcon() }}</span>
+        <span class="status-text" [style.color]="getStatusColor()">{{ getMainStatusText() }}</span>
+      </div>
+      
+      <!-- Progress bar for processing items -->
+      <div class="progress-section" *ngIf="shouldShowProgress()">
+        <div class="progress-bar" [class.progress-processing]="isProcessing()">
+          <div class="progress-fill" [style.width.%]="getPercentage()"></div>
+          <div class="progress-text">{{ getPercentage() }}%</div>
+        </div>
+      </div>
+      
+      <!-- Status message (smaller font) -->
+      <div class="status-message" *ngIf="params?.data?.statusMessage">
+        {{ params.data.statusMessage }}
+      </div>
+    </div>
+  `,
+  styles: [`
+    .combined-status-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px 0;
+      min-height: 40px;
+      justify-content: center;
+    }
+    
+    .main-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      font-size: 0.9em;
+    }
+    
+    .status-icon {
+      font-size: 1.1em;
+    }
+    
+    .status-text {
+      font-weight: 600;
+    }
+    
+    .progress-section {
+      margin: 2px 0;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 16px;
+      background-color: #e9ecef;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+      border-radius: 8px;
+      transition: width 0.3s ease;
+      position: relative;
+    }
+    
+    .progress-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 10px;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      z-index: 2;
+    }
+    
+    .progress-processing .progress-fill {
+      animation: progress-pulse 2s infinite;
+    }
+    
+    @keyframes progress-pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 1; }
+      100% { opacity: 0.6; }
+    }
+    
+    .status-message {
+      font-size: 0.75em;
+      color: #6c757d;
+      font-style: italic;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+  `],
+  imports: [CommonModule]
+})
+export class CombinedStatusRenderer implements ICellRendererAngularComp {
+  params: any;
+
+  agInit(params: any): void {
+    this.params = params;
+  }
+
+  refresh(): boolean {
+    return false;
+  }
+
+  getStatusIcon(): string {
+    const state = this.params?.data?.state;
+    const icons: Record<string, string> = {
+      'COMPLETE': '✅',
+      'PROCESSING': '⏳',
+      'ERROR': '❌',
+      'PENDING': '⏸️',
+      'QUEUED': '⏳',
+    };
+    return icons[state] || '❓';
+  }
+
+  getStatusColor(): string {
+    const state = this.params?.data?.state;
+    const colors: Record<string, string> = {
+      'COMPLETE': '#28a745',
+      'PROCESSING': '#ffc107',
+      'ERROR': '#dc3545',
+      'PENDING': '#6c757d',
+      'QUEUED': '#17a2b8',
+    };
+    return colors[state] || '#6c757d';
+  }
+
+  getMainStatusText(): string {
+    const state = this.params?.data?.state;
+    
+    switch (state) {
+      case 'COMPLETE':
+        return 'Complete';
+      case 'PROCESSING':
+        return 'Processing';
+      case 'ERROR':
+        return 'Failed';
+      case 'PENDING':
+        return 'Pending';
+      case 'QUEUED':
+        return 'Queued';
+      default:
+        return state || 'Unknown';
+    }
+  }
+
+  shouldShowProgress(): boolean {
+    const state = this.params?.data?.state;
+    const percentage = this.getPercentage();
+    
+    // Show progress bar if processing or if we have meaningful progress data (but not complete)
+    return state === 'PROCESSING' || (percentage > 0 && percentage < 100 && state !== 'COMPLETE');
+  }
+
+  isProcessing(): boolean {
+    return this.params?.data?.state === 'PROCESSING';
+  }
+
+  getPercentage(): number {
+    return this.params?.data?.percentageComplete || 0;
   }
 }

@@ -71,19 +71,6 @@ export class SeriesService {
     return this.http.get<any[]>(`${this.apiUrl}/recent?limit=${limit}`);
   }
 
-  // ORIGINAL METHOD - Keep for backward compatibility
-  addComicByImage(
-    seriesId: number,
-    imageFile: File
-  ): Observable<ImageMatcherResponse> {
-    const formData = new FormData();
-    formData.append('image', imageFile);
-    return this.http.post<ImageMatcherResponse>(
-      `${this.apiUrl}/${seriesId}/add-comic-by-image`,
-      formData
-    );
-  }
-
   addComicsByImagesWithSSE(
     seriesId: number,
     imageFiles: File[]
@@ -92,9 +79,8 @@ export class SeriesService {
 
     const formData = new FormData();
 
-    // FIXED: Use 'images' as the field name to match Java @RequestParam
     imageFiles.forEach((file) => {
-      formData.append('images', file); // Changed from images[${index}] to just 'images'
+      formData.append('images', file);
     });
 
     this.http
@@ -111,46 +97,10 @@ export class SeriesService {
               progressSubject,
               'add-comics-by-images'
             );
-          }, 500); // 500ms delay to ensure backend is ready
+          }, 500);
         },
         error: (error) => {
           console.error('Error starting multiple images analysis:', error);
-          progressSubject.error(error);
-        },
-      });
-
-    return progressSubject.asObservable();
-  }
-
-  // NEW SSE-BASED METHOD - Enhanced with real-time progress
-  addComicByImageWithSSE(
-    seriesId: number,
-    file: File
-  ): Observable<SSEProgressData> {
-    const progressSubject = new Subject<SSEProgressData>();
-
-    // Step 1: Start the process and get session ID
-    const formData = new FormData();
-    formData.append('image', file);
-
-    this.http
-      .post<{ sessionId: string }>(
-        `${this.apiUrl}/${seriesId}/add-comic-by-image/start`,
-        formData
-      )
-      .subscribe({
-        next: (response) => {
-          // Step 2: Wait a moment for the backend to initialize, then connect to SSE stream
-          setTimeout(() => {
-            this.connectToSSEProgress(
-              seriesId,
-              response.sessionId,
-              progressSubject
-            );
-          }, 500); // 500ms delay to ensure backend is ready
-        },
-        error: (error) => {
-          console.error('Error starting image analysis:', error);
           progressSubject.error(error);
         },
       });
@@ -169,10 +119,9 @@ export class SeriesService {
 
     const eventSource = new EventSource(sseUrl);
 
-    // Add more detailed error handling
     eventSource.onopen = (event) => {
       console.log('SSE connection opened successfully for session:', sessionId);
-      console.log('Connection state:', eventSource.readyState); // Should be 1 (OPEN)
+      console.log('Connection state:', eventSource.readyState);
     };
 
     // Listen for the specific "progress" event name (not onmessage)
@@ -285,13 +234,6 @@ export class SeriesService {
   // Utility method to check if SSE is supported
   isSSESupported(): boolean {
     return typeof EventSource !== 'undefined';
-  }
-
-  // Method to get session status (optional - for debugging)
-  getImageAnalysisStatus(seriesId: number, sessionId: string): Observable<any> {
-    return this.http.get<any>(
-      `${this.apiUrl}/${seriesId}/add-comic-by-image/status?sessionId=${sessionId}`
-    );
   }
 
   getProgressData(seriesId: number) {

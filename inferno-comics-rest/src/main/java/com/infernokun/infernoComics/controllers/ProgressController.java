@@ -2,8 +2,10 @@ package com.infernokun.infernoComics.controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ProgressData;
+import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.services.ProgressService;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,12 +46,7 @@ public class ProgressController {
             log.debug("📊 Received progress update from Python: session={}, stage={}, progress={}%, message='{}'",
                     request.getSessionId(), request.getStage(), request.getProgress(), request.getMessage());
 
-            progressService.updateProgress(
-                    request.getSessionId(),
-                    request.getStage(),
-                    request.getProgress(),
-                    request.getMessage()
-            );
+            progressService.updateProgress(request);
 
             return ResponseEntity.ok(Map.of("status", "success"));
 
@@ -165,14 +162,6 @@ public class ProgressController {
             case "bmp" -> MediaType.parseMediaType("image/bmp");
             default -> MediaType.IMAGE_JPEG;
         };
-    }
-
-    @Data
-    public static class ProgressUpdateRequest {
-        private String sessionId;
-        private String stage;
-        private int progress;
-        private String message;
     }
 
     @Data

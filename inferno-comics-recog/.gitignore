@@ -5,5 +5,5 @@ comic_*.html
 results/*.json
 venv/
 logs/
-src/routes/stored_images/**
-!src/routes/stored_images/.gitkeep
+src/stored_images/**
+!src/stored_images/.gitkeep
