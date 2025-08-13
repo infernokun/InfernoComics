@@ -42,9 +42,7 @@ public class IssueController {
     @GetMapping("/{id}")
     public ResponseEntity<Issue> getIssueById(@PathVariable Long id) {
         try {
-            Optional<Issue> comicBook = issueService.getIssueById(id);
-            return comicBook.map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok(issueService.getIssueById(id));
         } catch (Exception e) {
             log.error("Error fetching issue {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().build();

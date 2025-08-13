@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
-import com.infernokun.infernoComics.controllers.ProgressController;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
@@ -18,13 +17,13 @@ import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.CacheManager;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -44,6 +43,7 @@ public class SeriesService {
     private final GCDatabaseService gcDatabaseService;
     private final ModelMapper modelMapper;
     private final ProgressService progressService;
+    private final CacheManager cacheManager;
 
     private final WebClient webClient;
 
@@ -55,7 +55,8 @@ public class SeriesService {
                          GCDatabaseService gcDatabaseService,
                          ModelMapper modelMapper,
                          InfernoComicsConfig infernoComicsConfig,
-                         ProgressService progressService) {
+                         ProgressService progressService,
+                         CacheManager cacheManager) {
         this.seriesRepository = seriesRepository;
         this.issueService = issueService;
         this.comicVineService = comicVineService;
@@ -63,6 +64,7 @@ public class SeriesService {
         this.gcDatabaseService = gcDatabaseService;
         this.modelMapper = modelMapper;
         this.progressService = progressService;
+        this.cacheManager = cacheManager;
         urlCache.put(0, new ArrayList<>());
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
@@ -73,31 +75,44 @@ public class SeriesService {
                         .build())
                 .build();
     }
-    @Cacheable(value = "all-series")
+
     public List<Series> getAllSeries() {
         log.info("Fetching all series from database");
+
+        // Try to get from cache first
+        String cacheKey = "all-series-with-counts";
+        List<Series> cachedSeries = getCachedValue("series-list", cacheKey);
+
+        if (cachedSeries != null) {
+            log.info("Returning cached series list with {} items", cachedSeries.size());
+            return cachedSeries;
+        }
+
+        // Fetch from database and compute issue counts
         List<Series> seriesList = seriesRepository.findAll();
         seriesList.forEach(series ->
                 series.setIssueCount(issueService.getIssuesBySeriesId(series.getId()).size()));
+
+        // Cache the result for 30 minutes
+        putCacheValue("series-list", cacheKey, seriesList);
+
         return seriesList;
     }
 
-    @Cacheable(value = "series", key = "#id")
+    @Cacheable(value = "series", key = "#id", unless = "#result == null")
     @Transactional(readOnly = true)
-    public Optional<Series> getSeriesById(Long id) {
+    public Series getSeriesById(Long id) {
         log.info("Fetching series with ID: {}", id);
-        return seriesRepository.findByIdWithIssues(id);
+        return seriesRepository.findByIdWithIssues(id).orElse(null);
     }
 
-    // Cache series search results
-    @Cacheable(value = "series-search", key = "#query")
+    @Cacheable(value = "series-search", key = "#query", unless = "#result.isEmpty()")
     public List<Series> searchSeries(String query) {
         log.info("Searching series with query: {}", query);
         return seriesRepository.findByNameContainingIgnoreCaseOrPublisherContainingIgnoreCase(query, query);
     }
 
-    // Cache Comic Vine series search
-    @Cacheable(value = "comic-vine-series-search", key = "#query")
+    @Cacheable(value = "comic-vine-series", key = "#query", unless = "#result.isEmpty()")
     public List<ComicVineService.ComicVineSeriesDto> searchComicVineSeries(String query) {
         log.info("Searching Comic Vine series with query: {}", query);
         try {
@@ -109,7 +124,7 @@ public class SeriesService {
     }
 
     // Cache Comic Vine issues search
-    @Cacheable(value = "comic-vine-issues-search", key = "#seriesId")
+    @Cacheable(value = "comic-vine-issues", key = "#seriesId", unless = "#result.isEmpty()")
     public List<ComicVineService.ComicVineIssueDto> searchComicVineIssues(Long seriesId) {
         log.info("Searching Comic Vine issues for series ID: {}", seriesId);
         try {
@@ -125,8 +140,6 @@ public class SeriesService {
         }
     }
 
-    // Create series and invalidate relevant caches
-    @CacheEvict(value = {"all-series", "series-stats", "recent-series"}, allEntries = true)
     @Transactional
     public Series createSeries(SeriesController.SeriesCreateRequestDto request) {
         log.info("Creating series: {}", request.getName());
@@ -177,35 +190,39 @@ public class SeriesService {
         series.setGcdIds(gcdIds);
         Series savedSeries = seriesRepository.save(series);
 
+        // Only evict caches that are directly affected
+        evictListCaches();
+
         log.info("Created series with ID: {} (mapped {} GCD IDs)", savedSeries.getId(), gcdIds.size());
         return savedSeries;
     }
 
-    // Update series and refresh cache
-    @CachePut(value = "series", key = "#id")
-    @CacheEvict(value = {"all-series", "series-search", "series-stats", "recent-series"}, allEntries = true)
+    // Fixed: Proper update with cache management
+    @CachePut(value = "series", key = "#id", condition = "#result != null")
+    @Transactional
     public Series updateSeries(Long id, SeriesUpdateRequest request) {
         log.info("Updating series with ID: {}", id);
 
-        Optional<Series> optionalSeries = seriesRepository.findById(id);
-        if (optionalSeries.isEmpty()) {
-            throw new IllegalArgumentException("Series with ID " + id + " not found");
-        }
+        Series existingSeries = seriesRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Series with ID " + id + " not found"));
 
-        Series series = modelMapper.map(request, Series.class);
-        //mapRequestToSeries(request, series);
+        // Update existing series object instead of creating new one
+        modelMapper.map(request, existingSeries);
 
-        Series updatedSeries = seriesRepository.save(series);
+        Series updatedSeries = seriesRepository.save(existingSeries);
+
+        // Evict list caches since series data changed
+        evictListCaches();
 
         // Evict description cache if series details changed
         descriptionGeneratorService.evictSeriesCache(updatedSeries);
 
-        log.info("Updated series: {}", series.getName());
+        log.info("Updated series: {}", updatedSeries.getName());
         return updatedSeries;
     }
 
-    // Delete series and invalidate caches
-    @CacheEvict(value = {"series", "all-series", "series-search", "series-stats", "recent-series"}, allEntries = true)
+    @CacheEvict(value = "series", key = "#id")
+    @Transactional
     public void deleteSeries(Long id) {
         log.info("Deleting series with ID: {}", id);
 
@@ -218,11 +235,15 @@ public class SeriesService {
         series.ifPresent(descriptionGeneratorService::evictSeriesCache);
 
         seriesRepository.deleteById(id);
+
+        // Evict list caches since a series was deleted
+        evictListCaches();
+
         log.info("Deleted series with ID: {}", id);
     }
 
-    // Cache series statistics
-    @Cacheable(value = "series-stats")
+    // Cache series statistics with proper TTL
+    @Cacheable(value = "series-stats", key = "'global'")
     public Map<String, Object> getSeriesStats() {
         log.info("Calculating series statistics");
 
@@ -264,7 +285,8 @@ public class SeriesService {
     }
 
     // Advanced series search with caching
-    @Cacheable(value = "series-advanced-search", key = "#publisher + ':' + #startYear + ':' + #endYear")
+    @Cacheable(value = "series-advanced-search",
+            key = "T(java.util.Objects).hash(#publisher, #startYear, #endYear)")
     public List<Series> searchSeriesByPublisherAndYear(String publisher, Integer startYear, Integer endYear) {
         log.info("Advanced search - Publisher: {}, Start Year: {}, End Year: {}", publisher, startYear, endYear);
 
@@ -292,7 +314,6 @@ public class SeriesService {
     }
 
     // Create series from Comic Vine data
-    @CacheEvict(value = {"all-series", "series-stats", "recent-series"}, allEntries = true)
     public Series createSeriesFromComicVine(String comicVineId, ComicVineService.ComicVineSeriesDto comicVineData) {
         log.info("Creating series from Comic Vine data: {}", comicVineData.getName());
 
@@ -318,32 +339,60 @@ public class SeriesService {
         }
 
         Series savedSeries = seriesRepository.save(series);
+
+        // Evict list caches since new series was added
+        evictListCaches();
+
         log.info("Created series from Comic Vine with ID: {}", savedSeries.getId());
         return savedSeries;
     }
 
     // Batch import series with cache management
-    @CacheEvict(value = {"all-series", "series-stats", "recent-series"}, allEntries = true)
+    @Transactional
     public List<Series> createMultipleSeriesFromComicVine(List<ComicVineService.ComicVineSeriesDto> comicVineSeriesList) {
         log.info("Batch creating {} series from Comic Vine data", comicVineSeriesList.size());
 
-        return comicVineSeriesList.stream()
-                .map(comicVineData -> createSeriesFromComicVine(comicVineData.getId(), comicVineData))
+        List<Series> createdSeries = comicVineSeriesList.stream()
+                .map(comicVineData -> {
+                    // Don't call createSeriesFromComicVine to avoid multiple cache evictions
+                    Series series = new Series();
+                    series.setName(comicVineData.getName());
+                    series.setDescription(comicVineData.getDescription());
+                    series.setPublisher(comicVineData.getPublisher());
+                    series.setStartYear(comicVineData.getStartYear());
+                    series.setImageUrl(comicVineData.getImageUrl());
+                    series.setComicVineId(comicVineData.getId());
+
+                    return seriesRepository.save(series);
+                })
                 .collect(Collectors.toList());
+
+        // Single cache eviction after all series are created
+        evictListCaches();
+
+        return createdSeries;
     }
 
-    // Force refresh Comic Vine search cache
-    @CacheEvict(value = {"comic-vine-series-search", "comic-vine-issues-search"}, allEntries = true)
+    // Cache management methods
+    @CacheEvict(value = {"comic-vine-series", "comic-vine-issues"}, allEntries = true)
     public void refreshComicVineCache() {
         log.info("Refreshed Comic Vine search caches");
     }
 
-    // Clear all series related caches
-    @CacheEvict(value = {"series", "all-series", "series-search", "series-stats", "recent-series",
-            "series-advanced-search", "comic-vine-series-search", "comic-vine-issues-search"},
-            allEntries = true)
     public void clearAllSeriesCaches() {
-        log.info("Cleared all series caches");
+        log.info("Clearing all series caches");
+
+        // Clear specific cache regions
+        Arrays.asList("series", "series-list", "series-search", "series-stats",
+                "recent-series", "series-advanced-search", "comic-vine-series",
+                "comic-vine-issues").forEach(cacheName -> {
+            try {
+                Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
+                log.debug("Cleared cache: {}", cacheName);
+            } catch (Exception e) {
+                log.warn("Failed to clear cache {}: {}", cacheName, e.getMessage());
+            }
+        });
     }
 
     // Get popular series (most comic books)
@@ -357,179 +406,58 @@ public class SeriesService {
                 .collect(Collectors.toList());
     }
 
-    // NEW SSE-BASED METHOD - Enhanced with real-time progress
-    @Async("imageProcessingExecutor")
-    public CompletableFuture<Void> startImageProcessingWithProgress(String sessionId, Long seriesId, byte[] imageBytes, String originalFilename, String contentType, String name, int year) {
-        log.info("🚀 Starting SSE image processing session: {} for series ID: {}", sessionId, seriesId);
-
-        try {
-            // Initialize progress tracking
-            //progressService.initializeSession(sessionId);
-            ProgressUpdateRequest request;
-
-            // Stage 1: Series validation (quick)
-
-            progressService.updateProgress(new ProgressUpdateRequest(
-                    sessionId, "preparing", 2, "Validating series..."));
-
-            Optional<Series> series = seriesRepository.findById(seriesId);
-            if (series.isEmpty()) {
-                progressService.sendError(sessionId, "Series not found with id: " + seriesId);
-                return CompletableFuture.completedFuture(null);
-            }
-
-            Series seriesEntity = series.get();
-            log.info("📚 Processing series: '{}' ({})", seriesEntity.getName(), seriesEntity.getStartYear());
-
-            List<GCDCover> candidateCovers;
-
-            if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty() && seriesEntity.getLastCachedCovers() != null) {
-                log.info("Using cached images for session: {}", sessionId);
-                progressService.updateProgress(new ProgressUpdateRequest(
-                        sessionId, "preparing", 8, "Using cached cover data..."));
-                candidateCovers = seriesEntity.getCachedCoverUrls();
-            } else {
-                // Stage 2: ComicVine search (medium effort)
-                progressService.updateProgress(new ProgressUpdateRequest(
-                        sessionId, "preparing", 5, "Searching ComicVine database..."));
-
-                log.info("🦸 Starting ComicVine search for series: {} (session: {})", seriesId, sessionId);
-                List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
-
-                progressService.updateProgress(new ProgressUpdateRequest(
-                        sessionId, "preparing", 8, String.format("Found %d ComicVine issues", results.size())));
-                log.info("🦸 ComicVine completed: Found {} issues (session: {})", results.size(), sessionId);
-
-                candidateCovers = results.stream()
-                        .flatMap(issue -> {
-                            List<GCDCover> covers = new ArrayList<>();
-
-                            // First cover: Main cover from the issue
-                            GCDCover mainCover = new GCDCover();
-                            mainCover.setName(issue.getName());
-                            mainCover.setIssueNumber(issue.getIssueNumber());
-                            mainCover.setComicVineId(issue.getId());
-                            mainCover.setUrls(Collections.singletonList(issue.getImageUrl()));
-                            covers.add(mainCover);
-
-                            // Second cover: Variant covers from the issue
-                            issue.getVariants().forEach(i -> {
-                                GCDCover variantCover = new GCDCover();
-                                variantCover.setName(issue.getName());
-                                variantCover.setIssueNumber(issue.getIssueNumber());
-                                variantCover.setComicVineId(i.getId());
-                                variantCover.setUrls(Collections.singletonList(i.getOriginalUrl()));
-                                variantCover.setParentComicVineId(issue.getId());
-                                covers.add(variantCover);
-                            });
-
-                            return covers.stream();
-                        })
-                        .collect(Collectors.toList());
-
-                log.info("Comic vine has {} GCDCovers (session: {})", candidateCovers.size(), sessionId);
-
-                // Cache the covers
-                seriesEntity.setCachedCoverUrls(candidateCovers);
-                seriesRepository.save(seriesEntity);
-            }
-
-            // Stage 3: Hand off to Python for the heavy work (10% -> 100%)
-
-            progressService.updateProgress(new ProgressUpdateRequest(
-                    sessionId, "preparing", 10,
-                    String.format("Sending %d candidates to image matcher...", candidateCovers.size())));
-
-            // Let Python handle ALL remaining progress from 10% -> 100%
-            JsonNode result = sendToImageMatcherWithProgress(sessionId, imageBytes, originalFilename, contentType, candidateCovers, seriesEntity);
-
-            log.info("✅ SSE image processing completed for session: {}", sessionId);
-
-        } catch (Exception e) {
-            log.error("❌ Error in SSE image processing for session {}: {}", sessionId, e.getMessage(), e);
-            progressService.sendError(sessionId, "Error processing image: " + e.getMessage());
-        }
-
-        return CompletableFuture.completedFuture(null);
+    // Helper method to evict list-based caches when series data changes
+    private void evictListCaches() {
+        Arrays.asList("series-list", "recent-series", "popular-series", "series-stats")
+                .forEach(cacheName -> {
+                    try {
+                        Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
+                        log.debug("Evicted cache: {}", cacheName);
+                    } catch (Exception e) {
+                        log.warn("Failed to evict cache {}: {}", cacheName, e.getMessage());
+                    }
+                });
     }
 
-    private JsonNode sendToImageMatcherWithProgress(String sessionId, byte[] imageBytes,
-                                                    String originalFilename, String contentType, List<GCDCover> candidateCovers, Series seriesEntity) {
+    // Helper method to get cached values
+    @SuppressWarnings("unchecked")
+    private <T> T getCachedValue(String cacheName, String key) {
         try {
-            log.info("📤 Preparing Flask SSE image matcher request for session: {}...", sessionId);
-            log.info("    Image file: {} ({} bytes)", originalFilename, imageBytes.length);
-            log.info("    ✅ Candidate covers: {}", candidateCovers.size());
-
-            MultipartBodyBuilder builder = new MultipartBodyBuilder();
-
-            // Create ByteArrayResource from image bytes
-            builder.part("image", new ByteArrayResource(imageBytes) {
-                @Override
-                public String getFilename() {
-                    return originalFilename;
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                var wrapper = cache.get(key);
+                if (wrapper != null) {
+                    return (T) wrapper.get();
                 }
-            }).contentType(MediaType.valueOf(contentType != null ? contentType : "image/jpeg"));
-
-            // Convert GCDCover objects to JSON and send as candidate_covers
-            ObjectMapper mapper = new ObjectMapper();
-            try {
-                String candidateCoversJson = mapper.writeValueAsString(candidateCovers);
-                builder.part("candidate_covers", candidateCoversJson);
-                log.info("📤 Sending {} candidate covers as JSON (session: {})", candidateCovers.size(), sessionId);
-            } catch (JsonProcessingException e) {
-                log.error("❌ Failed to serialize candidate covers to JSON: {}", e.getMessage());
-                throw new RuntimeException("Failed to serialize candidate covers", e);
             }
-
-            // Add session ID so Python can report progress directly
-            builder.part("session_id", sessionId);
-
-            // Add metadata for better debugging
-            builder.part("series_name", seriesEntity.getName());
-            builder.part("series_start_year", seriesEntity.getStartYear().toString());
-            builder.part("total_candidates", String.valueOf(candidateCovers.size()));
-            builder.part("urls_scraped", "true");
-
-            log.info("📤 Sending request to image matcher service (session: {})...", sessionId);
-            long startTime = System.currentTimeMillis();
-
-            String response = webClient.post()
-                    .uri("/image-matcher")
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(BodyInserters.fromMultipartData(builder.build()))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
-
-            long duration = System.currentTimeMillis() - startTime;
-            log.info("📥 Image matcher response received in {}ms (session: {})", duration, sessionId);
-
-            JsonNode root = mapper.readTree(response);
-            JsonNode topMatches = root.get("top_matches");
-
-            if (topMatches != null && topMatches.isArray()) {
-                log.info("🎯 Image matcher found {} top matches (session: {})", topMatches.size(), sessionId);
-
-                // Debug: Log match details with comic names
-                for (int i = 0; i < Math.min(3, topMatches.size()); i++) {
-                    JsonNode match = topMatches.get(i);
-                    log.info("    Match {}: drop={}, issue={}, comic='{}', url={}, similarity={}",
-                            i + 1,
-                            match.has("similarity") && match.get("similarity").asDouble() < 0.15,
-                            match.has("issue_name") ? match.get("issue_name").asText() : "N/A",
-                            match.has("comic_name") ? match.get("comic_name").asText() : "N/A",
-                            match.has("url") ? match.get("url").asText() : "N/A",
-                            match.has("similarity") ? match.get("similarity").asDouble() : 0);
-                }
-            } else {
-                log.warn("⚠️ No top_matches found in response (session: {})", sessionId);
-            }
-
-            return root;
-
         } catch (Exception e) {
-            log.error("❌ Failed to send image to matcher service (session: {}): {}", sessionId, e.getMessage(), e);
-            throw new RuntimeException("Failed to send image to matcher service", e);
+            log.warn("Failed to get cached value from {} with key {}: {}", cacheName, key, e.getMessage());
+        }
+        return null;
+    }
+
+    // Helper method to put cached values
+    private void putCacheValue(String cacheName, String key, Object value) {
+        try {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.put(key, value);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to cache value in {} with key {}: {}", cacheName, key, e.getMessage());
+        }
+    }
+
+    // Helper method to evict specific cache entries
+    private void evictCacheValue(String cacheName, String key) {
+        try {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.evict(key);
+                log.debug("Evicted cache entry: {} - {}", cacheName, key);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to evict cache entry {} from {}: {}", key, cacheName, e.getMessage());
         }
     }
 
@@ -539,9 +467,6 @@ public class SeriesService {
                 sessionId, seriesId, imageDataList.size());
 
         try {
-            // Initialize progress tracking
-            //ProgressData progressData = progressService.initializeSession(sessionId);
-
             int timeoutSeconds = 20;
             int intervalMs = 2000;
             int waited = 0;
@@ -556,20 +481,17 @@ public class SeriesService {
                 waited += intervalMs;
             }
 
-
-
             // Stage 1: Series validation (quick)
             progressService.updateProgress(new ProgressUpdateRequest(
                     sessionId, "preparing", 2,
                     String.format("Validating series and %d images...", imageDataList.size())));
 
-            Optional<Series> series = seriesRepository.findById(seriesId);
-            if (series.isEmpty()) {
+            Series seriesEntity = getSeriesById(seriesId); // Use cached method
+            if (seriesEntity == null) {
                 progressService.sendError(sessionId, "Series not found with id: " + seriesId);
                 return CompletableFuture.completedFuture(null);
             }
 
-            Series seriesEntity = series.get();
             log.info("📚 Processing series: '{}' ({}) with {} images",
                     seriesEntity.getName(), seriesEntity.getStartYear(), imageDataList.size());
 
@@ -577,19 +499,16 @@ public class SeriesService {
 
             if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty() && seriesEntity.getLastCachedCovers() != null) {
                 log.info("Using cached images for session: {}", sessionId);
-
                 progressService.updateProgress(new ProgressUpdateRequest(
                         sessionId, "preparing", 8, "Using cached cover data..."));
                 candidateCovers = seriesEntity.getCachedCoverUrls();
             } else {
                 // Stage 2: ComicVine search (medium effort)
-
                 progressService.updateProgress(new ProgressUpdateRequest(
                         sessionId, "preparing", 5, "Searching ComicVine database..."));
 
                 log.info("🦸 Starting ComicVine search for series: {} (session: {})", seriesId, sessionId);
-                List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
-
+                List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId); // Uses cache
 
                 progressService.updateProgress(new ProgressUpdateRequest(
                         sessionId, "preparing", 8,
@@ -626,13 +545,15 @@ public class SeriesService {
 
                 log.info("Comic vine has {} GCDCovers (session: {})", candidateCovers.size(), sessionId);
 
-                // Cache the covers
+                // Cache the covers and update cache
                 seriesEntity.setCachedCoverUrls(candidateCovers);
                 seriesRepository.save(seriesEntity);
+
+                // Evict the cached series to ensure fresh data
+                evictCacheValue("series", seriesId.toString());
             }
 
             // Stage 3: Hand off to Python for the heavy work (10% -> 100%)
-
             progressService.updateProgress(new ProgressUpdateRequest(
                     sessionId, "preparing", 10,
                     String.format("Sending %d images with %d candidates to image matcher...",
@@ -647,18 +568,17 @@ public class SeriesService {
                 log.warn("⚠️ No result received from Python for session: {}", sessionId);
                 progressService.sendError(sessionId, "No results returned from Python image processing");
             }
-            // FIXED: Don't send completion here - Python already sent it via SSE
-            // Just log that we received the result
+
             log.info("📋 Received result from Python for session: {}, Python controls completion timing", sessionId);
 
             // Log the result structure for debugging
             log.info("🔍 Result structure for session {}: has results={}, has top_matches={}, has summary={}",
                     sessionId,
-                    result.has("results"),
-                    result.has("top_matches"),
-                    result.has("summary"));
+                    result != null && result.has("results"),
+                    result != null && result.has("top_matches"),
+                    result != null && result.has("summary"));
 
-            if (result.has("results")) {
+            if (result != null && result.has("results")) {
                 JsonNode resultsArray = result.get("results");
                 log.info("🔍 Results array size for session {}: {}", sessionId, resultsArray.size());
 
@@ -671,9 +591,6 @@ public class SeriesService {
                             imageResult.has("top_matches") ? imageResult.get("top_matches").size() : 0);
                 }
             }
-
-            // Python sends the complete
-            //progressService.sendComplete(sessionId, result);
 
         } catch (Exception e) {
             log.error("❌ Error in SSE multiple images processing for session {}: {}", sessionId, e.getMessage());
