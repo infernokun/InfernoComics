@@ -4,7 +4,6 @@ import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.gcd.GCDIssue;
-import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
@@ -12,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,34 +30,50 @@ public class IssueService {
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
+    private final CacheManager cacheManager;
 
     public IssueService(IssueRepository issueRepository,
                         SeriesRepository seriesRepository,
                         ComicVineService comicVineService,
-                        DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService) {
+                        DescriptionGeneratorService descriptionGeneratorService,
+                        GCDatabaseService gcDatabaseService,
+                        CacheManager cacheManager) {
         this.issueRepository = issueRepository;
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
+        this.cacheManager = cacheManager;
     }
 
-    // Cache all issues with TTL
-    @Cacheable(value = "all-issues")
     public List<Issue> getAllIssues() {
         log.info("Fetching all issues from database");
-        return issueRepository.findAll();
+
+        // Try to get from cache first
+        String cacheKey = "all-issues-list";
+        List<Issue> cachedIssues = getCachedValue("issue-list", cacheKey);
+
+        if (cachedIssues != null) {
+            log.info("Returning cached issues list with {} items", cachedIssues.size());
+            return cachedIssues;
+        }
+
+        // Fetch from database
+        List<Issue> issues = issueRepository.findAll();
+
+        // Cache the result
+        putCacheValue("issue-list", cacheKey, issues);
+
+        return issues;
     }
 
-    // Cache individual issue
-    @Cacheable(value = "issue", key = "#id")
-    public Optional<Issue> getIssueById(Long id) {
+    @Cacheable(value = "issue", key = "#id", unless = "#result == null")
+    public Issue getIssueById(Long id) {
         log.info("Fetching issue with ID: {}", id);
-        return issueRepository.findById(id);
+        return issueRepository.findById(id).orElse(null);
     }
 
-    // Cache issues by series
-    @Cacheable(value = "issues-by-series", key = "#seriesId")
+    @Cacheable(value = "issues-by-series", key = "#seriesId", unless = "#result.isEmpty()")
     public List<Issue> getIssuesBySeriesId(Long seriesId) {
         log.info("Fetching issues for series ID: {}", seriesId);
 
@@ -129,14 +145,14 @@ public class IssueService {
     }
 
     // Cache key issues
-    @Cacheable(value = "key-issues")
+    @Cacheable(value = "key-issues", key = "'all'", unless = "#result.isEmpty()")
     public List<Issue> getKeyIssues() {
         log.info("Fetching key issues");
         return issueRepository.findKeyIssues();
     }
 
     // Cache Comic Vine issues search
-    @Cacheable(value = "comic-vine-issues-by-series", key = "#seriesId")
+    @Cacheable(value = "comic-vine-issues-by-series", key = "#seriesId", unless = "#result.isEmpty()")
     public List<ComicVineService.ComicVineIssueDto> searchComicVineIssues(Long seriesId) {
         log.info("Searching Comic Vine issues for series ID: {}", seriesId);
         try {
@@ -152,7 +168,7 @@ public class IssueService {
     }
 
     // Get issues with variant covers
-    @Cacheable(value = "variant-issues")
+    @Cacheable(value = "variant-issues", key = "'all'", unless = "#result.isEmpty()")
     public List<Issue> getVariantIssues() {
         log.info("Fetching issues with variant covers");
         return issueRepository.findAll().stream()
@@ -160,8 +176,6 @@ public class IssueService {
                 .collect(Collectors.toList());
     }
 
-    // Create issue and invalidate relevant caches
-    @CacheEvict(value = {"all-issues", "issues-by-series", "key-issues"}, allEntries = true)
     @Transactional
     public Issue createIssue(IssueCreateRequest request) {
         log.info("Creating issue: {} #{}", request.getSeriesId(), request.getIssueNumber());
@@ -198,21 +212,21 @@ public class IssueService {
         // Process Comic Vine ID to find GCD mapping
         List<String> gcdIds = new ArrayList<>();
         if (request.getComicVineId() != null && !request.getComicVineId().trim().isEmpty()) {
-            log.info(" Processing Comic Vine ID: {}", request.getComicVineId());
+            log.info("Processing Comic Vine ID: {}", request.getComicVineId());
             try {
                 ComicVineService.ComicVineIssueDto dto = comicVineService.getIssueById(Long.valueOf(request.getComicVineId()));
-                log.info(" Comic Vine API response: dto={}", dto != null ? "found" : "null");
+                log.info("Comic Vine API response: dto={}", dto != null ? "found" : "null");
 
                 if (dto != null && series.get().getGcdIds() != null) {
-                    log.info(" Series has {} GCD IDs: {}", series.get().getGcdIds().size(), series.get().getGcdIds());
+                    log.info("Series has {} GCD IDs: {}", series.get().getGcdIds().size(), series.get().getGcdIds());
 
                     List<Long> gcdSeriesIds = series.get().getGcdIds().stream()
                             .map(Long::parseLong)
                             .toList();
-                    log.info(" Converted GCD series IDs: {}", gcdSeriesIds);
+                    log.info("Converted GCD series IDs: {}", gcdSeriesIds);
 
                     List<GCDIssue> allGcdIssues = gcDatabaseService.findGCDIssueBySeriesIds(gcdSeriesIds);
-                    log.info(" Found {} total GCD issues for series IDs", allGcdIssues.size());
+                    log.info("Found {} total GCD issues for series IDs", allGcdIssues.size());
 
                     List<GCDIssue> matchingGcdIssues = allGcdIssues.stream()
                             .filter(gcdIssue -> Objects.equals(gcdIssue.getNumber(), issue.getIssueNumber()))
@@ -222,7 +236,7 @@ public class IssueService {
                     gcdIds = matchingGcdIssues.stream()
                             .map(gcdIssue -> String.valueOf(gcdIssue.getId()))
                             .toList();
-                    log.info(" Final GCD IDs: {}", gcdIds);
+                    log.info("Final GCD IDs: {}", gcdIds);
                 } else {
                     if (dto == null) {
                         log.error("❌ Comic Vine DTO is null");
@@ -232,7 +246,7 @@ public class IssueService {
                     }
                 }
             } catch (Exception e) {
-                log.error(" Error processing Comic Vine ID {}: {}", request.getComicVineId(), e.getMessage(), e);
+                log.error("Error processing Comic Vine ID {}: {}", request.getComicVineId(), e.getMessage(), e);
             }
         } else {
             log.error("⏭️ Skipping Comic Vine processing - ID is null or empty");
@@ -241,55 +255,62 @@ public class IssueService {
         issue.setGcdIds(gcdIds);
         Issue savedIssue = issueRepository.save(issue);
 
+        evictIssueCaches();
+        evictSeriesRelatedCaches(request.getSeriesId());
+
         log.info("Created issue with ID: {} (mapped {} GCD IDs)", savedIssue.getId(), gcdIds.size());
         return savedIssue;
     }
 
-    // Update issue and refresh cache
-    @CachePut(value = "issue", key = "#id")
-    @CacheEvict(value = {"all-issues", "issues-by-series", "key-issues"}, allEntries = true)
+    @CachePut(value = "issue", key = "#id", condition = "#result != null")
+    @Transactional
     public Issue updateIssue(Long id, IssueUpdateRequest request) {
         log.info("Updating issue with ID: {}", id);
 
-        Optional<Issue> optionalIssue = issueRepository.findById(id);
-        if (optionalIssue.isEmpty()) {
-            throw new IllegalArgumentException("Issue with ID " + id + " not found");
-        }
+        Issue existingIssue = issueRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Issue with ID " + id + " not found"));
 
-        Issue issue = optionalIssue.get();
-        Issue originalIssue = new Issue(); // For cache eviction
-        copyIssue(issue, originalIssue);
+        Long seriesId = existingIssue.getSeries().getId();
 
-        mapRequestToIssue(request, issue);
+        // Update existing issue object instead of creating new one
+        mapRequestToIssue(request, existingIssue);
 
-        Issue updatedIssue = issueRepository.save(issue);
+        Issue updatedIssue = issueRepository.save(existingIssue);
+
+        // Evict relevant caches
+        evictIssueCaches();
+        evictSeriesRelatedCaches(seriesId);
 
         // Evict description cache if issue details changed
         descriptionGeneratorService.evictIssueCache(updatedIssue);
 
-        log.info("Updated issue: {} #{}", issue.getSeries().getName(), issue.getIssueNumber());
+        log.info("Updated issue: {} #{}", updatedIssue.getSeries().getName(), updatedIssue.getIssueNumber());
         return updatedIssue;
     }
 
-    // Delete issue and invalidate caches
-    @CacheEvict(value = {"issue", "all-issues", "issues-by-series", "key-issues"}, allEntries = true)
+    @CacheEvict(value = "issue", key = "#id")
+    @Transactional
     public void deleteIssue(Long id) {
         log.info("Deleting issue with ID: {}", id);
 
-        if (!issueRepository.existsById(id)) {
-            throw new IllegalArgumentException("Issue with ID " + id + " not found");
-        }
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Issue with ID " + id + " not found"));
 
-        // Get issue for cache eviction before deletion
-        Optional<Issue> issue = issueRepository.findById(id);
-        issue.ifPresent(descriptionGeneratorService::evictIssueCache);
+        Long seriesId = issue.getSeries().getId();
+
+        // Evict description cache before deletion
+        descriptionGeneratorService.evictIssueCache(issue);
 
         issueRepository.deleteById(id);
+
+        evictIssueCaches();
+        evictSeriesRelatedCaches(seriesId);
+
         log.info("Deleted issue with ID: {}", id);
     }
 
-    // Cache issue statistics
-    @Cacheable(value = "issue-stats")
+    // Cache issue statistics with proper TTL
+    @Cacheable(value = "issue-stats", key = "'global'")
     public Map<String, Object> getIssueStats() {
         log.info("Calculating issue statistics");
 
@@ -338,7 +359,7 @@ public class IssueService {
     }
 
     // Search issues with caching
-    @Cacheable(value = "issue-search", key = "#query + ':' + #limit")
+    @Cacheable(value = "issue-search", key = "T(java.util.Objects).hash(#query, #limit)")
     public List<Issue> searchIssues(String query, int limit) {
         log.info("Searching issues with query: {} (limit: {})", query, limit);
 
@@ -354,9 +375,9 @@ public class IssueService {
     }
 
     // Batch operations with cache management
-    @CacheEvict(value = {"all-issues", "issues-by-series", "key-issues", "issue-stats"}, allEntries = true)
+    @Transactional
     public List<Issue> createIssuesFromComicVine(Long seriesId, List<String> comicVineIssueIds) {
-        log.info("Creating issues from Comic Vine for series ID: {}", seriesId);
+        log.info("Creating {} issues from Comic Vine for series ID: {}", comicVineIssueIds.size(), seriesId);
 
         Optional<Series> series = seriesRepository.findById(seriesId);
         if (series.isEmpty()) {
@@ -369,7 +390,7 @@ public class IssueService {
 
         List<ComicVineService.ComicVineIssueDto> comicVineIssues = comicVineService.searchIssues(series.get());
 
-        return comicVineIssueIds.stream()
+        List<Issue> createdIssues = comicVineIssueIds.stream()
                 .map(issueId -> comicVineIssues.stream()
                         .filter(issue -> issue.getId().equals(issueId))
                         .findFirst()
@@ -377,55 +398,147 @@ public class IssueService {
                 .filter(Objects::nonNull)
                 .map(issue -> createIssueFromComicVineIssue(issue, series.get()))
                 .collect(Collectors.toList());
+
+        // Single cache eviction after all issues are created
+        evictIssueCaches();
+        evictSeriesRelatedCaches(seriesId);
+
+        log.info("Created {} issues from Comic Vine", createdIssues.size());
+        return createdIssues;
     }
 
     // Add variant cover to existing issue
-    @CachePut(value = "issue", key = "#issueId")
-    @CacheEvict(value = {"all-issues", "issues-by-series", "issues-with-variants"}, allEntries = true)
+    @CachePut(value = "issue", key = "#issueId", condition = "#result != null")
+    @Transactional
     public Issue addVariantCover(Long issueId, Issue.VariantCover variantCover) {
         log.info("Adding variant cover to issue ID: {}", issueId);
 
-        Optional<Issue> optionalIssue = issueRepository.findById(issueId);
-        if (optionalIssue.isEmpty()) {
-            throw new IllegalArgumentException("Issue with ID " + issueId + " not found");
-        }
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new IllegalArgumentException("Issue with ID " + issueId + " not found"));
 
-        Issue issue = optionalIssue.get();
         issue.getVariantCovers().add(variantCover);
 
         Issue updatedIssue = issueRepository.save(issue);
+
+        // Evict variant-related caches
+        evictCacheValue("variant-issues", "all");
+        evictCacheValue("issue-list", "all-issues-list");
+
         log.info("Added variant cover to issue: {} #{}", issue.getSeries().getName(), issue.getIssueNumber());
         return updatedIssue;
     }
 
     // Remove variant cover from issue
-    @CachePut(value = "issue", key = "#issueId")
-    @CacheEvict(value = {"all-issues", "issues-by-series", "issues-with-variants"}, allEntries = true)
+    @CachePut(value = "issue", key = "#issueId", condition = "#result != null")
+    @Transactional
     public Issue removeVariantCover(Long issueId, String variantId) {
         log.info("Removing variant cover {} from issue ID: {}", variantId, issueId);
 
-        Optional<Issue> optionalIssue = issueRepository.findById(issueId);
-        if (optionalIssue.isEmpty()) {
-            throw new IllegalArgumentException("Issue with ID " + issueId + " not found");
-        }
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new IllegalArgumentException("Issue with ID " + issueId + " not found"));
 
-        Issue issue = optionalIssue.get();
         if (issue.getVariantCovers() != null) {
             issue.getVariantCovers().removeIf(variant -> variant.getId().equals(variantId));
             issue.setIsVariant(!issue.getVariantCovers().isEmpty());
         }
 
         Issue updatedIssue = issueRepository.save(issue);
+
+        // Evict variant-related caches
+        evictCacheValue("variant-issues", "all");
+        evictCacheValue("issue-list", "all-issues-list");
+
         log.info("Removed variant cover from issue: {} #{}", issue.getSeries().getName(), issue.getIssueNumber());
         return updatedIssue;
     }
 
     // Clear all issue related caches
-    @CacheEvict(value = {"issue", "all-issues", "issues-by-series", "key-issues",
-            "issue-stats", "recent-issues", "issue-search",
-            "comic-vine-issues-by-series", "issues-with-variants"}, allEntries = true)
     public void clearAllIssueCaches() {
-        log.info("Cleared all issue caches");
+        log.info("Clearing all issue caches");
+
+        // Clear specific cache regions
+        Arrays.asList("issue", "issue-list", "issues-by-series", "key-issues",
+                "issue-stats", "recent-issues", "issue-search",
+                "comic-vine-issues-by-series", "variant-issues").forEach(cacheName -> {
+            try {
+                Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
+                log.debug("Cleared cache: {}", cacheName);
+            } catch (Exception e) {
+                log.warn("Failed to clear cache {}: {}", cacheName, e.getMessage());
+            }
+        });
+    }
+
+    private void evictIssueCaches() {
+        Arrays.asList("issue-list", "key-issues", "variant-issues", "issue-stats", "recent-issues")
+                .forEach(cacheName -> {
+                    try {
+                        Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
+                        log.debug("Evicted issue cache: {}", cacheName);
+                    } catch (Exception e) {
+                        log.warn("Failed to evict issue cache {}: {}", cacheName, e.getMessage());
+                    }
+                });
+    }
+
+    private void evictSeriesRelatedCaches(Long seriesId) {
+        // Evict the specific series issues cache
+        evictCacheValue("issues-by-series", seriesId.toString());
+
+        // Evict series-related caches that depend on issue counts
+        Arrays.asList("series-list", "series-stats", "popular-series").forEach(cacheName -> {
+            try {
+                Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
+                log.debug("Evicted series cache due to issue change: {}", cacheName);
+            } catch (Exception e) {
+                log.warn("Failed to evict series cache {}: {}", cacheName, e.getMessage());
+            }
+        });
+
+        // Evict the specific series from cache to refresh issue count
+        evictCacheValue("series", seriesId.toString());
+    }
+
+    // Helper method to get cached values
+    @SuppressWarnings("unchecked")
+    private <T> T getCachedValue(String cacheName, String key) {
+        try {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                var wrapper = cache.get(key);
+                if (wrapper != null) {
+                    return (T) wrapper.get();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get cached value from {} with key {}: {}", cacheName, key, e.getMessage());
+        }
+        return null;
+    }
+
+    // Helper method to put cached values
+    private void putCacheValue(String cacheName, String key, Object value) {
+        try {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.put(key, value);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to cache value in {} with key {}: {}", cacheName, key, e.getMessage());
+        }
+    }
+
+    // Helper method to evict specific cache entries
+    private void evictCacheValue(String cacheName, String key) {
+        try {
+            var cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.evict(key);
+                log.debug("Evicted cache entry: {} - {}", cacheName, key);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to evict cache entry {} from {}: {}", key, cacheName, e.getMessage());
+        }
     }
 
     // Private helper methods
@@ -443,21 +556,22 @@ public class IssueService {
         issue.setComicVineId(request.getComicVineId());
         issue.setIsKeyIssue(request.getIsKeyIssue());
 
-        String url = request.getUploadedImageUrl();
-        String imagePath;
+        if (request.getUploadedImageUrl() != null) {
+            String url = request.getUploadedImageUrl();
+            String imagePath;
 
-        if (url.contains("stored_images/")) {
-            // Handle: "/inferno-comics-recognition/api/v1/stored_images/..."
-            imagePath = url.substring(url.indexOf("stored_images/") + "stored_images/".length());
-        } else if (url.contains("/image/")) {
-            // Handle: "http://localhost:8080/inferno-comics-rest/api/progress/image/..."
-            imagePath = url.substring(url.indexOf("/image/") + "/image/".length());
-        } else {
-            imagePath = url;
+            if (url.contains("stored_images/")) {
+                // Handle: "/inferno-comics-recognition/api/v1/stored_images/..."
+                imagePath = url.substring(url.indexOf("stored_images/") + "stored_images/".length());
+            } else if (url.contains("/image/")) {
+                // Handle: "http://localhost:8080/inferno-comics-rest/api/progress/image/..."
+                imagePath = url.substring(url.indexOf("/image/") + "/image/".length());
+            } else {
+                imagePath = url;
+            }
+
+            issue.setUploadedImageUrl(imagePath);
         }
-
-        issue.setUploadedImageUrl(imagePath);
-
 
         // Handle variant covers if present in request
         if (request instanceof IssueRequestWithVariants) {
@@ -466,25 +580,6 @@ public class IssueService {
                 issue.setVariantCovers(new ArrayList<>(variantRequest.getVariantCovers()));
             }
         }
-    }
-
-    private void copyIssue(Issue source, Issue target) {
-        target.setId(source.getId());
-        target.setIssueNumber(source.getIssueNumber());
-        target.setTitle(source.getTitle());
-        target.setDescription(source.getDescription());
-        target.setCoverDate(source.getCoverDate());
-        target.setImageUrl(source.getImageUrl());
-        target.setCondition(source.getCondition());
-        target.setPurchasePrice(source.getPurchasePrice());
-        target.setCurrentValue(source.getCurrentValue());
-        target.setPurchaseDate(source.getPurchaseDate());
-        target.setNotes(source.getNotes());
-        target.setComicVineId(source.getComicVineId());
-        target.setIsKeyIssue(source.getIsKeyIssue());
-        target.setSeries(source.getSeries());
-        target.setVariantCovers(source.getVariantCovers() != null ? new ArrayList<>(source.getVariantCovers()) : null);
-        target.setIsVariant(source.getIsVariant());
     }
 
     private Issue createIssueFromComicVineIssue(ComicVineService.ComicVineIssueDto issueDto, Series series) {

@@ -46,9 +46,7 @@ public class SeriesController {
     @GetMapping("/{id}")
     public ResponseEntity<Series> getSeriesById(@PathVariable Long id) {
         try {
-            Optional<Series> series = seriesService.getSeriesById(id);
-            return series.map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok( seriesService.getSeriesById(id));
         } catch (Exception e) {
             log.error("Error fetching series {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -171,52 +169,6 @@ public class SeriesController {
             return ResponseEntity.internalServerError().build();
         }
     }
-
-    @PostMapping("{seriesId}/add-comic-by-image/start")
-    public ResponseEntity<Map<String, String>> startImageProcessing(
-            @PathVariable Long seriesId,
-            @RequestParam("image") MultipartFile imageFile,
-            @RequestParam(value = "name", required = false, defaultValue = "") String name,
-            @RequestParam(value = "year", required = false, defaultValue = "0") Integer year) {
-
-        try {
-            // Validate image
-            if (imageFile.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Image file is missing."));
-            }
-
-            // IMPORTANT: Read image bytes immediately before async processing
-            // This prevents the temp file from being cleaned up by Tomcat
-            byte[] imageBytes;
-            try {
-                imageBytes = imageFile.getBytes();
-                log.info("Read {} bytes from uploaded file: {}", imageBytes.length, imageFile.getOriginalFilename());
-            } catch (IOException e) {
-                log.error("Failed to read image bytes: {}", e.getMessage());
-                return ResponseEntity.badRequest().body(Map.of("error", "Failed to read image file."));
-            }
-
-            // Generate unique session ID
-            String sessionId = UUID.randomUUID().toString();
-
-            log.info("Starting image processing session: {} for series: {}", sessionId, seriesId);
-
-            // IMPORTANT: Initialize the session in progress service BEFORE starting async processing
-            progressService.initializeSession(sessionId, seriesId);
-
-            // Start async processing with image bytes instead of MultipartFile
-            seriesService.startImageProcessingWithProgress(sessionId, seriesId, imageBytes,
-                    imageFile.getOriginalFilename(), imageFile.getContentType(), name, year);
-
-            return ResponseEntity.ok(Map.of("sessionId", sessionId));
-
-        } catch (Exception e) {
-            log.error("Error starting image processing: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Error starting image processing: " + e.getMessage()));
-        }
-    }
-
 
     @CrossOrigin(origins = "*", allowCredentials = "false")
     @GetMapping(value = "{seriesId}/add-comic-by-image/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
