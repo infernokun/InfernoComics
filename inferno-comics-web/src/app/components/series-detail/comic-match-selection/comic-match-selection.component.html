@@ -58,8 +58,8 @@
         </div>
         
         <div class="original-preview">
-          <img *ngIf="getCurrentImagePreview(); else noImageTemplate"
-               [src]="getCurrentImagePreview()" 
+          <img *ngIf="currentImagePreview; else noImageTemplate"
+               [src]="currentImagePreview" 
                [alt]="getDisplayFileName()" 
                class="original-image" 
                (error)="onImageError($event)" />
