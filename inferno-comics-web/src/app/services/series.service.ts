@@ -219,11 +219,11 @@ export class SeriesService {
     // Add timeout handling
     const connectionTimeout = setTimeout(() => {
       if (eventSource.readyState === EventSource.CONNECTING) {
-        console.error('SSE connection timeout after 10 seconds');
+        console.error('SSE connection timeout after 60 seconds');
         eventSource.close();
         progressSubject.error(new Error('Connection timeout'));
       }
-    }, 10000); // 10 second timeout
+    }, 60000); // 60 second timeout
 
     // Clear timeout when connection opens
     eventSource.addEventListener('open', () => {

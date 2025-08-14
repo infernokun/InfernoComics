@@ -47,7 +47,8 @@ export interface BulkSelectionDialogData {
 export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   processedResults: ProcessedImageResult[] = [];
   filteredResults: ProcessedImageResult[] = [];
-  currentFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match' = 'all';
+  currentFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match' | 'rejected' = 'all';
+
 
   private imagePreviewUrls: string[] = [];
   private highConfidenceThreshold: number = 0.7;
@@ -200,9 +201,9 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   onFilterChange(
-    newFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match'
+    newFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match' | 'rejected'
   ): void {
-    console.log('Filter changed to:', newFilter); 
+    console.log('Filter changed to:', newFilter);
     this.currentFilter = newFilter;
     this.applyFilter();
   }
@@ -227,6 +228,11 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       case 'needs_review':
         this.filteredResults = this.processedResults.filter(
           (r) => r.status === 'needs_review'
+        );
+        break;
+      case 'rejected':
+        this.filteredResults = this.processedResults.filter(
+          (r) => r.userAction === 'rejected'
         );
         break;
       case 'no_match':
@@ -288,12 +294,31 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   private openMatchSelectionDialog(result: ProcessedImageResult): void {
+    // Get the original image file for this result
+    let originalImage: File | undefined;
+    
+    if (this.data.originalImages && this.data.originalImages.length > result.imageIndex) {
+      originalImage = this.data.originalImages[result.imageIndex];
+    }
+
+    // Get file size - try original file first, then stored image data
+    let imageSize = 0;
+    if (originalImage) {
+      imageSize = originalImage.size;
+    } else if (this.data.storedImages && this.data.storedImages[result.imageIndex]) {
+      // If you have stored image data with size information
+      imageSize = this.data.storedImages[result.imageIndex].size || 0;
+    }
+
     const dialogData: ComicMatchDialogData = {
       matches: result.allMatches,
       seriesId: this.data.seriesId,
       sessionId: this.data.sessionId,
-      originalImage: this.data.originalImages[result.imageIndex],
+      originalImage: originalImage,
       isMultiple: false,
+      imagePreviewUrl: result.imagePreview,
+      imageName: result.imageName,
+      imageSize: imageSize
     };
 
     const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
@@ -372,7 +397,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   saveSelections(): void {
     console.log('💾 Saving selections');
-    
+
     this.dialogRef.close({
       action: 'save',
       results: this.processedResults,
@@ -426,6 +451,13 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   getLowConfidenceCount(): number {
     return this.processedResults.filter(
       (r) => r.confidence === 'low' && r.userAction !== 'rejected'
+    ).length;
+  }
+
+  // Helper method to count how many rejected items can be restored
+  getRestorableRejectedCount(): number {
+    return this.processedResults.filter(
+      (r) => r.userAction === 'rejected' && r.bestMatch
     ).length;
   }
 
@@ -547,7 +579,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     console.log('Accepted:', this.getAcceptedCount());
     console.log('Rejected:', this.getRejectedCount());
     console.log('Pending:', this.getPendingCount());
-    console.log('Results breakdown:', 
+    console.log('Results breakdown:',
       this.processedResults.map(r => ({
         name: r.imageName,
         status: r.status,
@@ -663,6 +695,10 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         break;
       case '4':
         event.preventDefault();
+        this.onFilterChange('rejected');
+        break;
+      case '5':
+        event.preventDefault();
         this.onFilterChange('no_match');
         break;
     }
@@ -693,7 +729,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   importSelections(jsonData: string): boolean {
     try {
       const importData = JSON.parse(jsonData);
-      
+
       if (!importData.selections || !Array.isArray(importData.selections)) {
         console.error('Invalid import data format');
         return false;
@@ -705,7 +741,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         if (result) {
           result.userAction = selection.userAction;
           if (selection.selectedMatchIdentifier) {
-            result.selectedMatch = result.allMatches.find(m => 
+            result.selectedMatch = result.allMatches.find(m =>
               this.getMatchIdentifier(m) === selection.selectedMatchIdentifier
             );
           }
@@ -759,5 +795,91 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     stats.autoAcceptanceRate = stats.totalImages > 0 ? (stats.autoSelected / stats.totalImages) * 100 : 0;
 
     return stats;
+  }
+
+  autoReviewAll(): void {
+    const needsReviewResults = this.processedResults.filter(
+      (r) => r.status === 'needs_review' && !r.userAction
+    );
+
+    if (needsReviewResults.length === 0) {
+      console.log('No items need review');
+      return;
+    }
+
+    // Start with the first item
+    this.currentReviewIndex = 0;
+    this.reviewQueue = needsReviewResults;
+    this.openNextReviewDialog();
+  }
+
+  private currentReviewIndex = 0;
+  private reviewQueue: ProcessedImageResult[] = [];
+
+  private openNextReviewDialog(): void {
+    if (this.currentReviewIndex >= this.reviewQueue.length) {
+      console.log('✅ Finished reviewing all items');
+      this.applyFilter();
+      return;
+    }
+
+    const result = this.reviewQueue[this.currentReviewIndex];
+    const dialogData: ComicMatchDialogData = {
+      matches: result.allMatches,
+      seriesId: this.data.seriesId,
+      sessionId: this.data.sessionId,
+      originalImage: this.data.originalImages[result.imageIndex],
+      isMultiple: false,
+    };
+
+    const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
+      width: '95vw',
+      maxWidth: '1200px',
+      maxHeight: '90vh',
+      data: dialogData,
+      disableClose: false,
+    });
+
+    dialogRef.afterClosed().subscribe((dialogResult) => {
+      if (dialogResult && dialogResult.action === 'select') {
+        result.userAction = 'manual_select';
+        result.selectedMatch = dialogResult.match;
+        result.status = 'auto_selected';
+      } else if (dialogResult && dialogResult.action === 'no_match') {
+        result.userAction = 'rejected';
+        result.selectedMatch = undefined;
+        result.status = 'no_match';
+      }
+
+      // Move to next item
+      this.currentReviewIndex++;
+      this.openNextReviewDialog();
+    });
+  }
+
+  restoreRejectedToReview(): void {
+    const rejectedResults = this.processedResults.filter(
+      (r) => r.userAction === 'rejected' && r.bestMatch
+    );
+
+    rejectedResults.forEach((result) => {
+      // Clear the user action
+      result.userAction = undefined;
+      result.selectedMatch = result.bestMatch ?? undefined;
+
+      // Reset status based on original confidence
+      if (result.bestMatch) {
+        if (result.bestMatch.similarity >= this.highConfidenceThreshold) {
+          result.status = 'auto_selected';
+        } else {
+          result.status = 'needs_review';
+        }
+      } else {
+        result.status = 'no_match';
+      }
+    });
+
+    console.log('🔄 Restored rejected items to review:', rejectedResults.length);
+    this.applyFilter();
   }
 }

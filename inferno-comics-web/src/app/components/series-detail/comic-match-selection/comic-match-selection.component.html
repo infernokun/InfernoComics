@@ -1,9 +1,9 @@
-<div class="dialog-container">
-  <!-- Header -->
+<div class="dialog-container dark-theme">
+  <!-- Compact Header -->
   <div class="dialog-header">
     <div class="header-content">
       <mat-icon class="header-icon">{{ isMultipleMode ? 'photo_library' : 'image_search' }}</mat-icon>
-      <div>
+      <div class="header-text">
         <h2 mat-dialog-title>{{ getHeaderTitle() }}</h2>
         <p class="session-info">{{ getHeaderSubtitle() }}</p>
       </div>
@@ -11,31 +11,25 @@
     <div class="results-summary">
       <div class="summary-item">
         <span class="summary-number">{{ sortedMatches.length }}</span>
-        <span class="summary-label">{{ isMultipleMode ? 'Total' : 'Matches' }}</span>
+        <span class="summary-label">Matches</span>
       </div>
       <div class="summary-item">
         <span class="summary-number">{{ getBestMatchPercentage() }}%</span>
         <span class="summary-label">Best</span>
       </div>
-      <div class="summary-item" *ngIf="isMultipleMode">
-        <span class="summary-number">{{ totalImagesProcessed }}</span>
-        <span class="summary-label">Images</span>
-      </div>
     </div>
   </div>
   
   <div mat-dialog-content class="content">
-    <!-- Multiple Images Navigation -->
+    <!-- Compact Navigation for Multiple Images -->
     <div class="image-navigation" *ngIf="isMultipleMode && imageGroups.length > 1">
-      <h3><mat-icon>collections</mat-icon> Select Image to View</h3>
-      
       <div class="navigation-tabs">
         <button mat-button 
                 class="nav-tab"
                 [class.active]="showAllMatches"
                 (click)="showAllMatchesView()">
           <mat-icon>view_module</mat-icon>
-          All Matches ({{ totalMatchesFound }})
+          All ({{ totalMatchesFound }})
         </button>
         
         <button *ngFor="let group of imageGroups; let i = index"
@@ -48,169 +42,148 @@
           </div>
           <div class="tab-info">
             <span class="tab-name">{{ group.name }}</span>
-            <span class="tab-stats">{{ getImageGroupStats(group) }}</span>
+            <span class="tab-stats">{{ group.matches.length }} matches</span>
           </div>
         </button>
       </div>
     </div>
 
-    <!-- Original Image Section -->
-    <div class="original-section" *ngIf="getCurrentImagePreview()">
-      <h3>
-        <mat-icon>upload</mat-icon> 
-        {{ isMultipleMode ? 'Current Image' : 'Your Image' }}
-      </h3>
-      <div class="original-card">
-        <img [src]="getCurrentImagePreview()" 
-             [alt]="getDisplayFileName()" 
-             class="original-image" />
+    <!-- Side-by-side Layout: Original + Matches -->
+    <div class="main-layout">
+      <!-- Original Image Sidebar -->
+      <div class="original-sidebar">
+        <div class="sidebar-header">
+          <mat-icon>upload</mat-icon>
+          <span>Original Image</span>
+        </div>
+        
+        <div class="original-preview">
+          <img *ngIf="getCurrentImagePreview(); else noImageTemplate"
+               [src]="getCurrentImagePreview()" 
+               [alt]="getDisplayFileName()" 
+               class="original-image" 
+               (error)="onImageError($event)" />
+          
+          <ng-template #noImageTemplate>
+            <div class="no-image-placeholder">
+              <mat-icon>image</mat-icon>
+              <span>No preview available</span>
+            </div>
+          </ng-template>
+        </div>
+        
         <div class="original-info">
           <p class="filename">{{ getDisplayFileName() }}</p>
-          <p class="filesize">{{ formatFileSize(getDisplayFileSize()) }}</p>
-          <p class="match-context" *ngIf="isMultipleMode && !showAllMatches">
-            Showing matches for this image only
-          </p>
+          <div class="match-context" *ngIf="isMultipleMode && !showAllMatches">
+            <mat-icon>info</mat-icon>
+            <span>Viewing matches for this image</span>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- Instructions -->
-    <div class="instructions">
-      <mat-icon>info</mat-icon>
-      <span>
-        {{ isMultipleMode && showAllMatches 
-           ? 'Select any comic from all processed images. Use the tabs above to view matches by individual image.' 
-           : 'Select the comic that best matches your image. Higher percentages indicate better matches.' }}
-      </span>
-    </div>
-
-    <!-- No Matches Message -->
-    <div class="no-matches" *ngIf="sortedMatches.length === 0">
-      <mat-icon>search_off</mat-icon>
-      <h3>No Matches Found</h3>
-      <p>{{ isMultipleMode ? 'No matches were found for the selected image.' : 'No matches were found for your image.' }}</p>
-    </div>
-
-    <!-- Matches Grid -->
-    <div class="matches-grid" *ngIf="sortedMatches.length > 0">
-      <div *ngFor="let match of sortedMatches; let i = index" 
-           class="match-card" 
-           [class.best]="i === 0"
-           (click)="selectMatch(match)">
-        
-        <div class="match-header">
-          <div class="rank" [class.gold]="i === 0">#{{ i + 1 }}</div>
-          <div class="similarity">{{ (match.similarity * 100).toFixed(1) }}%</div>
-          <span *ngIf="i === 0" class="best-badge">
-            <mat-icon>star</mat-icon>Best
-          </span>
+      <!-- Matches Section -->
+      <div class="matches-section">
+        <!-- Instructions -->
+        <div class="instructions" *ngIf="sortedMatches.length > 0">
+          <mat-icon>info</mat-icon>
+          <span>Select the comic that best matches your image. Higher percentages indicate better matches.</span>
         </div>
-        
-        <!-- Source Image Indicator for Multiple Images -->
-        <div class="source-indicator" *ngIf="getSourceImageIndicator(match)">
-          <mat-icon>image</mat-icon>
-          <span>{{ getSourceImageIndicator(match) }}</span>
-        </div>
-        
-        <div class="image-container">
-          <img [src]="match.url" 
-               [alt]="match.comic_name" 
-               (error)="onImageError($event)" 
-               loading="lazy" />
-        </div>
-        
-        <div class="info">
-          <h3>{{ match.comic_name }}</h3>
-          <p>Issue #{{ match.issue_number }}</p>
-          <div class="features">
-            <div class="feature">
-              <span class="label">ORB:</span>
-              <span class="value" *ngIf="match.match_details?.orb; else noOrbData">
-                {{ match.match_details.orb.good_matches }}/{{ match.match_details.orb.total_matches }}
-              </span>
-              <ng-template #noOrbData><span class="value">N/A</span></ng-template>
-              <div class="bar" *ngIf="match.match_details?.orb">
-                <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.orb)"></div>
-              </div>
-            </div>
-          
-            <div class="feature">
-              <span class="label">SIFT:</span>
-              <span class="value" *ngIf="match.match_details?.sift; else noSiftData">
-                {{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}
-              </span>
-              <ng-template #noSiftData><span class="value">N/A</span></ng-template>
-              <div class="bar" *ngIf="match.match_details?.sift">
-                <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.sift)"></div>
-              </div>
-            </div>
-          
-            <div class="feature">
-              <span class="label">AKAZE:</span>
-              <span class="value" *ngIf="match.match_details?.akaze; else noAkazeData">
-                {{ match.match_details.akaze.good_matches }}/{{ match.match_details.akaze.total_matches }}
-              </span>
-              <ng-template #noAkazeData><span class="value">N/A</span></ng-template>
-              <div class="bar" *ngIf="match.match_details?.akaze">
-                <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.akaze)"></div>
-              </div>
-            </div>
-          
-            <div class="feature">
-              <span class="label">KAZE:</span>
-              <span class="value" *ngIf="match.match_details?.kaze; else noKazeData">
-                {{ match.match_details.kaze.good_matches }}/{{ match.match_details.kaze.total_matches }}
-              </span>
-              <ng-template #noKazeData><span class="value">N/A</span></ng-template>
-              <div class="bar" *ngIf="match.match_details?.kaze">
-                <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.kaze)"></div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Confidence Bar -->
-          <div class="confidence">
-            <div class="confidence-bar">
-              <div class="confidence-fill" 
-                   [style.width.%]="match.similarity * 100"
-                   [class.high]="match.similarity >= 0.25"
-                   [class.medium]="match.similarity >= 0.15 && match.similarity < 0.25"
-                   [class.low]="match.similarity < 0.15">
+        <!-- No Matches Message -->
+        <div class="no-matches" *ngIf="sortedMatches.length === 0">
+          <mat-icon>search_off</mat-icon>
+          <h3>No Matches Found</h3>
+          <p>No matches were found for this image.</p>
+        </div>
+
+        <!-- Compact Matches Grid -->
+        <div class="matches-grid" *ngIf="sortedMatches.length > 0">
+          <div *ngFor="let match of sortedMatches; let i = index" 
+               class="match-card" 
+               [class.best]="i === 0"
+               (click)="selectMatch(match)">
+            
+            <div class="match-rank" [class.gold]="i === 0">#{{ i + 1 }}</div>
+            
+            <!-- Source Image Indicator for Multiple Images -->
+            <div class="source-indicator" *ngIf="getSourceImageIndicator(match)">
+              <mat-icon>image</mat-icon>
+              <span>{{ getSourceImageIndicator(match) }}</span>
+            </div>
+            
+            <div class="image-container">
+              <img [src]="match.url" 
+                   [alt]="match.comic_name" 
+                   (error)="onImageError($event)" 
+                   loading="lazy" />
+              <div class="similarity-overlay">{{ (match.similarity * 100).toFixed(1) }}%</div>
+            </div>
+            
+            <div class="match-info">
+              <h3 class="comic-title">{{ match.comic_name }}</h3>
+              <p class="issue-number">Issue #{{ match.issue_number }}</p>
+              
+              <!-- Compact Feature Bars -->
+              <div class="features-compact">
+                <div class="feature" *ngIf="match.match_details?.orb">
+                  <span class="label">ORB</span>
+                  <div class="bar">
+                    <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.orb)"></div>
+                  </div>
+                  <span class="value">{{ match.match_details.orb.good_matches }}/{{ match.match_details.orb.total_matches }}</span>
+                </div>
+                
+                <div class="feature" *ngIf="match.match_details?.sift">
+                  <span class="label">SIFT</span>
+                  <div class="bar">
+                    <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.sift)"></div>
+                  </div>
+                  <span class="value">{{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}</span>
+                </div>
+              </div>
+
+              <!-- Confidence -->
+              <div class="confidence">
+                <div class="confidence-bar">
+                  <div class="confidence-fill" 
+                       [style.width.%]="match.similarity * 100"
+                       [class.high]="match.similarity >= 0.25"
+                       [class.medium]="match.similarity >= 0.15 && match.similarity < 0.25"
+                       [class.low]="match.similarity < 0.15">
+                  </div>
+                </div>
+                <span class="confidence-text">{{ getConfidenceText(match.similarity) }}</span>
               </div>
             </div>
-            <span class="confidence-text">{{ getConfidenceText(match.similarity) }}</span>
-          </div>
-          
-          <div class="metadata" *ngIf="match.comic_vine_id">
-            <mat-icon>link</mat-icon>
-            <span>ID: {{ match.comic_vine_id }}</span>
+            
+            <button mat-raised-button 
+                    [color]="i === 0 ? 'primary' : 'accent'"
+                    class="select-btn"
+                    (click)="selectMatch(match); $event.stopPropagation()">
+              <mat-icon>check</mat-icon>
+              {{ i === 0 ? 'Select Best' : 'Select' }}
+            </button>
           </div>
         </div>
-        
-        <button mat-raised-button 
-                [color]="i === 0 ? 'primary' : 'accent'"
-                class="select-btn"
-                (click)="selectMatch(match); $event.stopPropagation()">
-          <mat-icon>check</mat-icon>
-          Select
-        </button>
       </div>
     </div>
   </div>
 
-  <!-- Actions -->
+  <!-- Compact Actions -->
   <div mat-dialog-actions class="actions">
     <button mat-button (click)="onCancel()">
-      <mat-icon>close</mat-icon>Cancel
+      <mat-icon>close</mat-icon>
+      Cancel
     </button>
     <button mat-button (click)="onNoMatch()">
       <mat-icon>block</mat-icon>
-      {{ isMultipleMode && !showAllMatches ? 'No Match for This Image' : 'None Match' }}
+      No Match
     </button>
     <button mat-raised-button color="primary" 
             *ngIf="sortedMatches.length > 0"
             (click)="selectMatch(sortedMatches[0])">
-      <mat-icon>star</mat-icon>Select Best
+      <mat-icon>star</mat-icon>
+      Select Best
     </button>
   </div>
 </div>

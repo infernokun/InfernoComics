@@ -46,13 +46,17 @@
           <mat-icon>star</mat-icon>
           Accept High Confidence ({{ getHighConfidenceCount() }})
         </button>
-        <button mat-button (click)="reviewAllMatches()" [disabled]="getNeedsReviewCount() === 0">
+        <button mat-button (click)="autoReviewAll()" [disabled]="getNeedsReviewCount() === 0">
           <mat-icon>rate_review</mat-icon>
-          Review All
+          Review All ({{ getNeedsReviewCount() }})
         </button>
         <button mat-button (click)="rejectLowConfidence()" [disabled]="getLowConfidenceCount() === 0">
           <mat-icon>block</mat-icon>
           Reject Low Confidence
+        </button>
+        <button mat-button (click)="restoreRejectedToReview()" [disabled]="getRestorableRejectedCount() === 0">
+          <mat-icon>restore</mat-icon>
+          Restore Rejected ({{ getRestorableRejectedCount() }})
         </button>
       </div>
 
@@ -72,6 +76,11 @@
                 [class.active]="currentFilter === 'needs_review'"
                 (click)="onFilterChange('needs_review')">
           Need Review <span class="count">{{ getNeedsReviewCount() }}</span>
+        </button>
+        <button class="filter-tab rejected" 
+                [class.active]="currentFilter === 'rejected'"
+                (click)="onFilterChange('rejected')">
+                Rejected <span class="count">{{ getRejectedCount() }}</span>
         </button>
         <button class="filter-tab none" 
                 [class.active]="currentFilter === 'no_match'"
