@@ -25,7 +25,6 @@ export interface ComicMatchDialogData {
   sessionId?: string;
   originalImage?: File;
   originalImages?: File[];
-  isMultiple?: boolean;
   imagePreviewUrl?: string;
   imageName?: string;
   imageSize?: number;
@@ -43,8 +42,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   imagePreviewUrls: string[] = [];
   currentImagePreview: string | null = null;
 
-  // Multiple images properties
-  isMultipleMode = false;
+  // Image groups - now always used
   groupedMatches: { [key: number]: ComicMatch[] } = {};
   imageGroups: {
     index: number;
@@ -89,21 +87,17 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   }
 
   private setCurrentImagePreview(): void {
-    if (this.isMultipleMode) {
-      if (this.showAllMatches) {
-        this.currentImagePreview = this.imagePreviewUrls[0] || null;
-      } else {
-        const currentGroup = this.imageGroups[this.selectedImageGroup];
-        if (currentGroup && currentGroup.previewUrl) {
-          this.currentImagePreview = currentGroup.previewUrl;
-        } else if (this.selectedImageGroup < this.imagePreviewUrls.length) {
-          this.currentImagePreview = this.imagePreviewUrls[this.selectedImageGroup];
-        } else {
-          this.currentImagePreview = null;
-        }
-      }
-    } else {
+    if (this.showAllMatches) {
       this.currentImagePreview = this.imagePreviewUrls[0] || null;
+    } else {
+      const currentGroup = this.imageGroups[this.selectedImageGroup];
+      if (currentGroup && currentGroup.previewUrl) {
+        this.currentImagePreview = currentGroup.previewUrl;
+      } else if (this.selectedImageGroup < this.imagePreviewUrls.length) {
+        this.currentImagePreview = this.imagePreviewUrls[this.selectedImageGroup];
+      } else {
+        this.currentImagePreview = null;
+      }
     }
 
     // Final fallback to match URLs
@@ -115,33 +109,11 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   }
 
   private setupMatchDisplay(): void {
-    this.isMultipleMode = this.data.isMultiple || this.hasMultipleSourceImages();
-
-    if (this.isMultipleMode) {
-      this.setupMultipleImagesDisplay();
-    } else {
-      this.setupSingleImageDisplay();
-    }
+    this.setupImageGroups();
   }
 
-  private hasMultipleSourceImages(): boolean {
-    const sourceIndices = new Set(
-      this.data.matches
-        .map((m) => m.sourceImageIndex)
-        .filter((i) => i !== undefined)
-    );
-    return sourceIndices.size > 1;
-  }
-
-  private setupSingleImageDisplay(): void {
-    this.sortedMatches = [...this.data.matches].sort(
-      (a, b) => b.similarity - a.similarity
-    );
-    this.totalMatchesFound = this.sortedMatches.length;
-  }
-
-  private setupMultipleImagesDisplay(): void {
-    // Group matches by source image
+  private setupImageGroups(): void {
+    // Always group matches by source image (defaulting to index 0 for single images)
     this.data.matches.forEach((match) => {
       const sourceIndex = match.sourceImageIndex ?? 0;
       if (!this.groupedMatches[sourceIndex]) {
@@ -165,7 +137,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
 
         return {
           index,
-          name: firstMatch?.sourceImageName || `Image ${index + 1}`,
+          name: firstMatch?.sourceImageName || this.getDefaultImageName(index),
           matches,
           previewUrl: null,
         };
@@ -175,6 +147,19 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     this.updateDisplayedMatches();
     this.totalImagesProcessed = this.imageGroups.length;
     this.totalMatchesFound = this.data.matches.length;
+  }
+
+  private getDefaultImageName(index: number): string {
+    // For single images, try to get name from data first
+    if (this.imageGroups.length === 1) {
+      if (this.data.imageName) {
+        return this.data.imageName;
+      }
+      if (this.data.originalImage?.name) {
+        return this.data.originalImage.name;
+      }
+    }
+    return `Image ${index + 1}`;
   }
 
   private updateDisplayedMatches(): void {
@@ -197,7 +182,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     }
 
     // Priority 2: Multiple images from files
-    if (this.isMultipleMode && this.data.originalImages) {
+    if (this.data.originalImages && this.data.originalImages.length > 0) {
       this.imagePreviewUrls = this.data.originalImages
         .map((file) => {
           try {
@@ -242,6 +227,11 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
       
       this.imagePreviewUrls = localUrls;
     }
+
+    // Ensure single images get their preview URL assigned to the group
+    if (this.imageGroups.length === 1 && this.imagePreviewUrls.length > 0) {
+      this.imageGroups[0].previewUrl = this.imagePreviewUrls[0];
+    }
   }
 
   // UI Helper Methods
@@ -277,6 +267,11 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     this.setCurrentImagePreview();
   }
 
+  // Utility methods for template
+  get hasMultipleImages(): boolean {
+    return this.imageGroups.length > 1;
+  }
+
   // Action Methods
   selectMatch(match: ComicMatch): void {
     this.dialogRef.close({
@@ -297,7 +292,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
       action: 'no_match',
       seriesId: this.data.seriesId,
       sourceImageIndex:
-        this.isMultipleMode && !this.showAllMatches
+        this.hasMultipleImages && !this.showAllMatches
           ? this.selectedImageGroup
           : undefined,
     });
@@ -309,7 +304,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   }
 
   getDisplayFileName(): string {
-    if (this.isMultipleMode) {
+    if (this.hasMultipleImages) {
       if (this.showAllMatches) {
         return `${this.totalImagesProcessed} images processed`;
       } else {
@@ -321,17 +316,9 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
       }
     }
     
-    // Single image mode - try fallback data first
-    if (this.data.imageName) {
-      return this.data.imageName;
-    }
-    
-    if (this.data.originalImage?.name) {
-      return this.data.originalImage.name;
-    }
-    
-    if (this.sortedMatches.length > 0 && this.sortedMatches[0].sourceImageName) {
-      return this.sortedMatches[0].sourceImageName;
+    // Single image mode - get name from first group
+    if (this.imageGroups.length === 1) {
+      return this.imageGroups[0].name;
     }
     
     return 'Unknown Image';
@@ -359,7 +346,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   }
 
   getSourceImageIndicator(match: ComicMatch): string {
-    if (!this.isMultipleMode || !this.showAllMatches) {
+    if (!this.hasMultipleImages || !this.showAllMatches) {
       return '';
     }
 
@@ -381,7 +368,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   }
 
   getHeaderTitle(): string {
-    if (this.isMultipleMode) {
+    if (this.hasMultipleImages) {
       if (this.showAllMatches) {
         return 'All Comic Matches';
       } else {
@@ -395,7 +382,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   }
 
   getHeaderSubtitle(): string {
-    if (this.isMultipleMode) {
+    if (this.hasMultipleImages) {
       if (this.showAllMatches) {
         return `${this.totalMatchesFound} matches from ${this.totalImagesProcessed} images`;
       } else {

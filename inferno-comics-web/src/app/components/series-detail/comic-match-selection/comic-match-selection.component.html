@@ -2,7 +2,7 @@
   <!-- Compact Header -->
   <div class="dialog-header">
     <div class="header-content">
-      <mat-icon class="header-icon">{{ isMultipleMode ? 'photo_library' : 'image_search' }}</mat-icon>
+      <mat-icon class="header-icon">{{ hasMultipleImages ? 'photo_library' : 'image_search' }}</mat-icon>
       <div class="header-text">
         <h2 mat-dialog-title>{{ getHeaderTitle() }}</h2>
         <p class="session-info">{{ getHeaderSubtitle() }}</p>
@@ -22,7 +22,7 @@
   
   <div mat-dialog-content class="content">
     <!-- Compact Navigation for Multiple Images -->
-    <div class="image-navigation" *ngIf="isMultipleMode && imageGroups.length > 1">
+    <div class="image-navigation" *ngIf="hasMultipleImages && imageGroups.length > 1">
       <div class="navigation-tabs">
         <button mat-button 
                 class="nav-tab"
@@ -74,7 +74,7 @@
         
         <div class="original-info">
           <p class="filename">{{ getDisplayFileName() }}</p>
-          <div class="match-context" *ngIf="isMultipleMode && !showAllMatches">
+          <div class="match-context" *ngIf="hasMultipleImages && !showAllMatches">
             <mat-icon>info</mat-icon>
             <span>Viewing matches for this image</span>
           </div>

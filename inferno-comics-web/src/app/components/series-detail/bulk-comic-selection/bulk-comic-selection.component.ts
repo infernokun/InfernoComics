@@ -294,6 +294,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   private openMatchSelectionDialog(result: ProcessedImageResult): void {
+    console.log('resulttts', result);
     // Get the original image file for this result
     let originalImage: File | undefined;
     
@@ -315,7 +316,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       seriesId: this.data.seriesId,
       sessionId: this.data.sessionId,
       originalImage: originalImage,
-      isMultiple: false,
       imagePreviewUrl: result.imagePreview,
       imageName: result.imageName,
       imageSize: imageSize
@@ -829,7 +829,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       seriesId: this.data.seriesId,
       sessionId: this.data.sessionId,
       originalImage: this.data.originalImages[result.imageIndex],
-      isMultiple: false,
     };
 
     const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
