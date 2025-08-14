@@ -822,15 +822,34 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       this.applyFilter();
       return;
     }
-
+  
     const result = this.reviewQueue[this.currentReviewIndex];
+    
+    // Get the original image file for this result
+    let originalImage: File | undefined;
+    if (this.data.originalImages && this.data.originalImages.length > result.imageIndex) {
+      originalImage = this.data.originalImages[result.imageIndex];
+    }
+  
+    // Get file size - try original file first, then stored image data
+    let imageSize = 0;
+    if (originalImage) {
+      imageSize = originalImage.size;
+    } else if (this.data.storedImages && this.data.storedImages[result.imageIndex]) {
+      // If you have stored image data with size information
+      imageSize = this.data.storedImages[result.imageIndex].size || 0;
+    }
+  
     const dialogData: ComicMatchDialogData = {
       matches: result.allMatches,
       seriesId: this.data.seriesId,
       sessionId: this.data.sessionId,
-      originalImage: this.data.originalImages[result.imageIndex],
+      originalImage: originalImage,
+      imagePreviewUrl: result.imagePreview,  // ← This was missing!
+      imageName: result.imageName,           // ← This was missing!
+      imageSize: imageSize                   // ← This was missing!
     };
-
+  
     const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
       width: '95vw',
       maxWidth: '1200px',
@@ -838,18 +857,22 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       data: dialogData,
       disableClose: false,
     });
-
+  
     dialogRef.afterClosed().subscribe((dialogResult) => {
       if (dialogResult && dialogResult.action === 'select') {
         result.userAction = 'manual_select';
         result.selectedMatch = dialogResult.match;
         result.status = 'auto_selected';
+        console.log(' User manually selected match for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'no_match') {
         result.userAction = 'rejected';
         result.selectedMatch = undefined;
         result.status = 'no_match';
+        console.log('❌ User rejected all matches for:', result.imageName);
+      } else if (dialogResult && dialogResult.action === 'cancel') {
+        console.log(' User cancelled match selection for:', result.imageName);
       }
-
+  
       // Move to next item
       this.currentReviewIndex++;
       this.openNextReviewDialog();
