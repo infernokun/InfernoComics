@@ -128,6 +128,7 @@ public class SeriesService {
         // Update series with new metadata
         series.setIssueCount(totalComics.get());
         series.setGcdIds(newGcdIds);
+        series.setCachedCoverUrls(new ArrayList<>());
 
         Series updatedSeries = seriesRepository.save(series);
 
