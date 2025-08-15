@@ -2,46 +2,112 @@
     <mat-card>
         <mat-card-header>
             <mat-card-title>
-                {{ isEditMode ? 'Edit Series' : 'Add New Series' }}
+                {{ getFormTitle() }}
             </mat-card-title>
+            <mat-card-subtitle *ngIf="isComicVineManagementMode">
+                Add or remove Comic Vine series associations for "{{ seriesForm.get('name')?.value }}"
+            </mat-card-subtitle>
         </mat-card-header>
 
         <mat-card-content>
+            <!-- Current Comic Vine Series (Management Mode) -->
+            <div class="current-comic-vine-series" *ngIf="isComicVineManagementMode && existingComicVineData.length > 0">
+                <h4>Current Comic Vine Series ({{ existingComicVineData.length }})</h4>
+                <div class="existing-series-grid">
+                    <mat-card *ngFor="let series of existingComicVineData" class="existing-series-card">
+                        <div class="series-header">
+                            <img *ngIf="series.imageUrl" [src]="series.imageUrl" [alt]="series.name" class="series-thumbnail">
+                            <div class="series-info">
+                                <h5>{{ series.name }}</h5>
+                                <p>{{ series.publisher }}</p>
+                                <span *ngIf="series.startYear">{{ series.startYear }}</span>
+                                <span class="issue-count" *ngIf="series.issueCount">({{ series.issueCount }} issues)</span>
+                            </div>
+                            <button mat-icon-button color="warn" 
+                                    (click)="removeExistingComicVineSeries(series.id)" 
+                                    matTooltip="Remove this series">
+                                <mat-icon>remove_circle</mat-icon>
+                            </button>
+                        </div>
+                    </mat-card>
+                </div>
+            </div>
+
+            <!-- No existing series message -->
+            <div class="no-existing-series" *ngIf="isComicVineManagementMode && existingComicVineData.length === 0 && !loading">
+                <mat-icon>info</mat-icon>
+                <h4>No Comic Vine Series Currently Associated</h4>
+                <p>Search below to add Comic Vine series to this collection.</p>
+            </div>
+
             <form [formGroup]="seriesForm" (ngSubmit)="onSubmit()">
-                <div class="form-row">
-                    <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>Series Name *</mat-label>
-                        <input matInput formControlName="name" required>
-                        <mat-error *ngIf="seriesForm.get('name')?.hasError('required')">
-                            Series name is required
-                        </mat-error>
-                        <mat-error *ngIf="seriesForm.get('name')?.hasError('maxlength')">
-                            Series name must not exceed 255 characters
-                        </mat-error>
-                    </mat-form-field>
+                <!-- Basic form fields (only show in non-management mode or for reference) -->
+                <div *ngIf="!isComicVineManagementMode">
+                    <div class="form-row">
+                        <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Series Name *</mat-label>
+                            <input matInput formControlName="name" required>
+                            <mat-error *ngIf="seriesForm.get('name')?.hasError('required')">
+                                Series name is required
+                            </mat-error>
+                            <mat-error *ngIf="seriesForm.get('name')?.hasError('maxlength')">
+                                Series name must not exceed 255 characters
+                            </mat-error>
+                        </mat-form-field>
+                    </div>
+
+                    <div class="form-row">
+                        <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Issue Count</mat-label>
+                            <input matInput type="number" formControlName="issueCount" [disabled]="true">
+                            <mat-hint *ngIf="seriesForm.get('issueCount')?.value">
+                                {{ seriesForm.get('issueCount')?.value }} issues
+                            </mat-hint>
+                        </mat-form-field>
+                    </div>
                 </div>
 
-                <div class="form-row">
-                    <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>Issue Count</mat-label>
-                        <input matInput type="number" formControlName="issueCount" [disabled]="true">
-                        <mat-hint *ngIf="seriesForm.get('issueCount')?.value">
-                            {{ seriesForm.get('issueCount')?.value }} issues
-                        </mat-hint>
-                    </mat-form-field>
+                <!-- Series reference info in management mode -->
+                <div class="series-reference" *ngIf="isComicVineManagementMode && !loading">
+                    <div class="reference-info">
+                        <h4>{{ seriesForm.get('name')?.value }}</h4>
+                        <p>{{ seriesForm.get('publisher')?.value }} • {{ seriesForm.get('startYear')?.value }}</p>
+                        <p class="current-count">Current total: {{ getCurrentIssueCount() }} issues from {{ existingComicVineData.length }} series</p>
+                    </div>
                 </div>
 
-                <div class="comic-vine-search" *ngIf="!isEditMode">
-                    <button type="button" mat-stroked-button color="primary" (click)="searchComicVine()"
-                        [disabled]="!seriesForm.get('name')?.value || searchingComicVine">
-                        <mat-icon>search</mat-icon>
-                        Search Comic Vine
-                    </button>
-                    <mat-spinner diameter="20" *ngIf="searchingComicVine"></mat-spinner>
+                <!-- Comic Vine Search -->
+                <div class="comic-vine-search">
+                    <h4 *ngIf="isComicVineManagementMode">Add New Comic Vine Series</h4>
+                    
+                    <!-- Custom search input -->
+                    <div class="search-input-section">
+                        <mat-form-field appearance="outline" class="search-input">
+                            <mat-label>Search Term</mat-label>
+                            <input matInput 
+                                   [(ngModel)]="customSearchTerm" 
+                                   [ngModelOptions]="{standalone: true}"
+                                   (keyup.enter)="searchComicVine()">
+                            <mat-hint>Search Comic Vine for series to add</mat-hint>
+                        </mat-form-field>
+                        
+                        <button type="button" 
+                                mat-stroked-button 
+                                color="primary" 
+                                (click)="searchComicVine()"
+                                [disabled]="!customSearchTerm || customSearchTerm.length < 3 || searchingComicVine"
+                                class="search-button">
+                            <mat-icon>search</mat-icon>
+                            {{ isComicVineManagementMode ? 'Search for Additional Series' : 'Search Comic Vine' }}
+                        </button>
+                        
+                        <mat-spinner diameter="20" *ngIf="searchingComicVine"></mat-spinner>
+                    </div>
                 </div>
 
+                <!-- Comic Vine Results -->
                 <div class="comic-vine-results" *ngIf="comicVineResults.length > 0">
-                    <h4>Comic Vine Results (Select multiple series to combine):</h4>
+                    <h4>{{ isComicVineManagementMode ? 'Available Series to Add' : 'Comic Vine Results' }} ({{ comicVineResults.length }}):</h4>
                     <div class="results-grid">
                         <mat-card *ngFor="let result of comicVineResults" class="result-card"
                             [class.selected]="isSeriesSelected(result)"
@@ -66,30 +132,57 @@
                     
                     <div class="selected-series-actions" *ngIf="selectedSeries.length > 0">
                         <button type="button" mat-raised-button color="accent" (click)="combineSelectedSeries()">
-                            Combine {{ selectedSeries.length }} Selected Series
+                            <span *ngIf="!isComicVineManagementMode">
+                                {{ selectedSeries.length === 1 ? 'Add' : 'Combine' }} {{ selectedSeries.length }} Selected Series
+                            </span>
+                            <span *ngIf="isComicVineManagementMode">
+                                {{ (existingComicVineData.length + selectedSeries.length) >= 2 ? 'Configure & Add' : 'Add' }} {{ selectedSeries.length }} Selected Series
+                            </span>
                         </button>
                         <button type="button" mat-button (click)="clearSelection()">
                             Clear Selection
                         </button>
+                        
+                        <!-- Configuration hint -->
+                        <div class="config-hint" *ngIf="isComicVineManagementMode && (existingComicVineData.length + selectedSeries.length) >= 2">
+                            <mat-icon>info</mat-icon>
+                            <span>Configuration options will be shown for {{ existingComicVineData.length + selectedSeries.length }} total series</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Series Combination Configuration -->
+                <!-- No results message -->
+                <div class="no-results" *ngIf="comicVineResults.length === 0 && !searchingComicVine && customSearchTerm && customSearchTerm.length >= 3">
+                    <mat-icon>search_off</mat-icon>
+                    <h4>No Results Found</h4>
+                    <p>No Comic Vine series found for "{{ customSearchTerm }}". Try a different search term.</p>
+                </div>
+
+                <!-- Series Combination Configuration (for both create/edit mode AND management mode) -->
                 <div class="combination-config" *ngIf="selectedSeries.length > 0 && showCombinationConfig">
                     <mat-card class="config-card">
                         <mat-card-header>
-                            <mat-card-title>Configure Combined Series</mat-card-title>
+                            <mat-card-title>
+                                {{ isComicVineManagementMode ? 'Configure Added Series' : 'Configure Combined Series' }}
+                            </mat-card-title>
+                            <mat-card-subtitle *ngIf="isComicVineManagementMode">
+                                Choose how to integrate the selected series with your existing collection
+                            </mat-card-subtitle>
                         </mat-card-header>
                         <mat-card-content>
                             <!-- Cover Selection -->
                             <div class="cover-selection">
                                 <h4>Choose Cover Image:</h4>
                                 <div class="cover-options">
-                                    <div *ngFor="let series of selectedSeries" class="cover-option"
+                                    <!-- Show covers from all available series (existing + new) -->
+                                    <div *ngFor="let series of allAvailableSeries" class="cover-option"
                                          [class.selected]="selectedCover === series.imageUrl"
+                                         [class.existing]="isExistingSeries(series.id)"
                                          (click)="selectCover(series.imageUrl!)">
                                         <img [src]="series.imageUrl" [alt]="series.name" class="cover-thumbnail">
                                         <span>{{ series.name }}</span>
+                                        <div class="series-badge" *ngIf="isExistingSeries(series.id)">Current</div>
+                                        <div class="series-badge new" *ngIf="!isExistingSeries(series.id)">New</div>
                                     </div>
                                 </div>
                             </div>
@@ -97,17 +190,47 @@
                             <!-- Details Selection -->
                             <div class="details-selection">
                                 <h4>Choose Primary Details From:</h4>
-                                <mat-radio-group [(ngModel)]="selectedPrimarySeries" [ngModelOptions]="{standalone: true}">
-                                    <mat-radio-button *ngFor="let series of selectedSeries" [value]="series" class="series-option">
-                                        <div class="series-details">
-                                            <strong>{{ series.name }}</strong>
-                                            <p>{{ series.publisher }} ({{ series.startYear }})</p>
-                                            <p class="description" *ngIf="series.description">
-                                                {{ series.description | slice:0:150 }}...
-                                            </p>
-                                        </div>
-                                    </mat-radio-button>
-                                </mat-radio-group>
+                                <div class="primary-series-form">
+                                    <mat-form-field appearance="outline" class="full-width">
+                                        <mat-label>Primary Series</mat-label>
+                                        <mat-select formControlName="selectedPrimarySeries">
+                                            <mat-option *ngFor="let series of allAvailableSeries" [value]="series">
+                                                <div class="series-option-content">
+                                                    <div class="series-main-info">
+                                                        <strong>{{ series.name }}</strong>
+                                                        <span class="series-meta">{{ series.publisher }} ({{ series.startYear }})</span>
+                                                        <span class="series-status" [class.existing]="isExistingSeries(series.id)" [class.new]="!isExistingSeries(series.id)">
+                                                            {{ isExistingSeries(series.id) ? 'Current Series' : 'New Addition' }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="series-description" *ngIf="series.description">
+                                                        {{ series.description | slice:0:100 }}{{ series.description.length > 100 ? '...' : '' }}
+                                                    </div>
+                                                </div>
+                                            </mat-option>
+                                        </mat-select>
+                                    </mat-form-field>
+                                </div>
+                            </div>
+
+                            <!-- Current Series Info (Management Mode Only) -->
+                            <div class="current-series-preview" *ngIf="isComicVineManagementMode">
+                                <h4>Current Series Info:</h4>
+                                <div class="current-info-card">
+                                    <div class="current-details">
+                                        <strong>{{ seriesForm.get('name')?.value }}</strong>
+                                        <p>{{ seriesForm.get('publisher')?.value }} ({{ seriesForm.get('startYear')?.value }})</p>
+                                        <p class="current-description" *ngIf="seriesForm.get('description')?.value">
+                                            {{ seriesForm.get('description')?.value | slice:0:150 }}{{ seriesForm.get('description')?.value?.length > 150 ? '...' : '' }}
+                                        </p>
+                                        <p class="issue-info">{{ getCurrentIssueCount() }} issues from {{ existingComicVineData.length }} series</p>
+                                    </div>
+                                </div>
+                                <div class="metadata-toggle-container">
+                                    <mat-slide-toggle formControlName="updateMetadataOnAdd" class="metadata-toggle">
+                                        Update series metadata with primary series details
+                                    </mat-slide-toggle>
+                                </div>
                             </div>
 
                             <!-- Selected Series Summary -->
@@ -125,11 +248,31 @@
                                 </mat-chip-set>
                             </div>
 
+                            <!-- Preview of Combined Data -->
+                            <div class="preview-section" *ngIf="selectedPrimarySeries">
+                                <h4>{{ isComicVineManagementMode ? 'Preview After Adding' : 'Preview Combined Series' }}:</h4>
+                                <div class="preview-card">
+                                    <div class="preview-image" *ngIf="selectedCover">
+                                        <img [src]="selectedCover" [alt]="selectedPrimarySeries.name" class="preview-thumbnail">
+                                    </div>
+                                    <div class="preview-details">
+                                        <strong>{{ isComicVineManagementMode && !updateMetadataOnAdd ? seriesForm.get('name')?.value : selectedPrimarySeries.name }}</strong>
+                                        <p>{{ isComicVineManagementMode && !updateMetadataOnAdd ? seriesForm.get('publisher')?.value : selectedPrimarySeries.publisher }} • {{ getPreviewDateRange() }}</p>
+                                        <p class="preview-description" *ngIf="getPreviewDescription()">
+                                            {{ getPreviewDescription() | slice:0:150 }}{{ getPreviewDescription().length > 150 ? '...' : '' }}
+                                        </p>
+                                        <p class="preview-issues">
+                                            Total: {{ getPreviewIssueCount() }} issues from {{ getPreviewSeriesCount() }} series
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="config-actions">
                                 <button type="button" mat-raised-button color="primary" 
                                         (click)="applyCombinedConfiguration()"
                                         [disabled]="!selectedPrimarySeries || !selectedCover">
-                                    Apply Configuration
+                                    {{ isComicVineManagementMode ? 'Add to Collection' : 'Apply Configuration' }}
                                 </button>
                                 <button type="button" mat-button (click)="cancelCombination()">
                                     Cancel
@@ -139,43 +282,46 @@
                     </mat-card>
                 </div>
 
-                <div class="form-row">
-                    <mat-form-field appearance="outline" class="half-width">
-                        <mat-label>Publisher</mat-label>
-                        <input matInput formControlName="publisher">
-                    </mat-form-field>
+                <!-- Regular form fields (hidden in management mode) -->
+                <div *ngIf="!isComicVineManagementMode">
+                    <div class="form-row">
+                        <mat-form-field appearance="outline" class="half-width">
+                            <mat-label>Publisher</mat-label>
+                            <input matInput formControlName="publisher">
+                        </mat-form-field>
 
-                    <mat-form-field appearance="outline" class="quarter-width">
-                        <mat-label>Start Year</mat-label>
-                        <input matInput type="number" formControlName="startYear">
-                    </mat-form-field>
+                        <mat-form-field appearance="outline" class="quarter-width">
+                            <mat-label>Start Year</mat-label>
+                            <input matInput type="number" formControlName="startYear">
+                        </mat-form-field>
 
-                    <mat-form-field appearance="outline" class="quarter-width">
-                        <mat-label>End Year</mat-label>
-                        <input matInput type="number" formControlName="endYear">
-                    </mat-form-field>
-                </div>
+                        <mat-form-field appearance="outline" class="quarter-width">
+                            <mat-label>End Year</mat-label>
+                            <input matInput type="number" formControlName="endYear">
+                        </mat-form-field>
+                    </div>
 
-                <div class="form-row">
-                    <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>Description</mat-label>
-                        <textarea matInput formControlName="description" rows="4" maxlength="10000"></textarea>
-                        <mat-hint align="end">
-                            {{ seriesForm.get('description')?.value?.length || 0 }}/10000
-                        </mat-hint>
-                    </mat-form-field>
-                </div>
+                    <div class="form-row">
+                        <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Description</mat-label>
+                            <textarea matInput formControlName="description" rows="4" maxlength="10000"></textarea>
+                            <mat-hint align="end">
+                                {{ seriesForm.get('description')?.value?.length || 0 }}/10000
+                            </mat-hint>
+                        </mat-form-field>
+                    </div>
 
-                <div class="form-row">
-                    <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>Image URL</mat-label>
-                        <input matInput formControlName="imageUrl">
-                    </mat-form-field>
+                    <div class="form-row">
+                        <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Image URL</mat-label>
+                            <input matInput formControlName="imageUrl">
+                        </mat-form-field>
+                    </div>
                 </div>
 
                 <!-- Combined Series IDs Display -->
                 <div class="combined-series-info" *ngIf="seriesForm.get('comicVineIds')?.value?.length > 0">
-                    <h4>Combined Series IDs:</h4>
+                    <h4>{{ isComicVineManagementMode ? 'Associated' : 'Combined' }} Series IDs:</h4>
                     <mat-chip-set>
                         <mat-chip *ngFor="let id of seriesForm.get('comicVineIds')?.value">
                             {{ id }}
@@ -183,7 +329,8 @@
                     </mat-chip-set>
                 </div>
 
-                <div class="image-preview" *ngIf="seriesForm.get('imageUrl')?.value">
+                <!-- Image preview (only in non-management mode) -->
+                <div class="image-preview" *ngIf="!isComicVineManagementMode && seriesForm.get('imageUrl')?.value">
                     <h4>Image Preview:</h4>
                     <img [src]="seriesForm.get('imageUrl')?.value" [alt]="seriesForm.get('name')?.value"
                         class="preview-image"
@@ -195,9 +342,9 @@
         <mat-card-actions align="end">
             <button mat-button type="button" (click)="cancel()">Cancel</button>
             <button mat-raised-button color="primary" type="submit" (click)="onSubmit()"
-                [disabled]="!seriesForm.valid || loading">
+                [disabled]="!seriesForm.valid || loading || (isComicVineManagementMode && !hasChanges())">
                 <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
-                {{ isEditMode ? 'Update' : 'Create' }} Series
+                {{ isComicVineManagementMode ? 'Save Changes' : (isEditMode ? 'Update' : 'Create') }} {{ isComicVineManagementMode ? '' : 'Series' }}
             </button>
         </mat-card-actions>
     </mat-card>

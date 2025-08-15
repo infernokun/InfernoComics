@@ -51,10 +51,15 @@
   }
 
   .series-info {
-    flex: 1;
-
+    .series-title-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
     h1 {
-      margin: 0 0 12px 0;
+      margin: 0;
       font-size: 2.75rem;
       font-weight: 800;
       color: var(--text-primary);
@@ -64,27 +69,43 @@
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-
+    
     h2 {
       margin: 0 0 24px 0;
       font-size: 1.5rem;
       color: var(--text-secondary);
       font-weight: 500;
     }
-
+    
+    .title-edit-btn {
+      opacity: 0.7;
+      transition: opacity 0.2s ease;
+      flex-shrink: 0;
+      
+      &:hover {
+        opacity: 1;
+      }
+      
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+    
     .series-meta {
       display: flex;
       flex-direction: column;
       gap: 12px;
       margin-bottom: 24px;
-
+      
       .meta-item {
         display: flex;
         align-items: center;
         gap: 12px;
         color: var(--text-secondary);
         font-weight: 500;
-
+        
         mat-icon {
           font-size: 22px;
           width: 22px;
@@ -93,7 +114,7 @@
         }
       }
     }
-
+    
     .description {
       margin-bottom: 24px;
       line-height: 1.7;
@@ -104,12 +125,12 @@
       border-radius: 8px;
       border-left: 4px solid var(--primary-color);
     }
-
+    
     .value-info {
       display: flex;
       gap: 24px;
       margin-bottom: 32px;
-
+      
       .value-card {
         display: flex;
         flex-direction: column;
@@ -120,16 +141,18 @@
         min-width: 160px;
         box-shadow: var(--shadow-md);
         transition: transform 0.2s ease-in-out;
-
-        &:hover { transform: translateY(-2px); }
-
+        
+        &:hover { 
+          transform: translateY(-2px); 
+        }
+        
         .value-label {
           font-size: 0.9rem;
           margin-bottom: 8px;
           opacity: 0.9;
           font-weight: 500;
         }
-
+        
         .value-amount {
           font-size: 1.75rem;
           font-weight: 700;
@@ -137,12 +160,12 @@
         }
       }
     }
-
+    
     .action-buttons {
       display: flex;
       gap: 16px;
       flex-wrap: wrap;
-
+      
       button {
         display: flex;
         align-items: center;
@@ -150,15 +173,15 @@
         padding: 12px 24px;
         font-weight: 600;
         border-radius: 8px;
-
+        
         &.mat-mdc-raised-button {
           @include button-gradient;
         }
-
+        
         &.mat-mdc-stroked-button {
           border: 2px solid var(--primary-color) !important;
           color: var(--primary-color) !important;
-
+          
           &:hover {
             background-color: var(--primary-color) !important;
             color: white !important;

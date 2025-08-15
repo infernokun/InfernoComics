@@ -148,7 +148,7 @@ public class ComicVineService {
     }
 
     @Cacheable(value = "comic_vine_issues", key = "#comicVineId", unless = "#result == null")
-    public ComicVineIssueDto getIssueById(Long comicVineId) {
+    public ComicVineIssueDto getComicVineIssueById(Long comicVineId) {
         String apiKey = infernoComicsConfig.getComicVineAPIKey();
         if (apiKey == null || apiKey.isEmpty()) {
             log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
@@ -182,7 +182,7 @@ public class ComicVineService {
     }
 
     @Cacheable(value = "comic_vine_series", key = "#comicVineId", unless = "#result == null")
-    public ComicVineSeriesDto getSeriesById(Long comicVineId) {
+    public ComicVineSeriesDto getComicVineSeriesById(Long comicVineId) {
         // https://comicvine.gamespot.com/green-lanterns/4050-91285/
 
         String apiKey = infernoComicsConfig.getComicVineAPIKey();
@@ -666,6 +666,7 @@ public class ComicVineService {
         private Integer issueCount;
         private String publisher;
         private Integer startYear;
+        private Integer endYear;
         private String imageUrl;
         private boolean generatedDescription;
     }

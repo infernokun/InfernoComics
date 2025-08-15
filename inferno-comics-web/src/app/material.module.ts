@@ -26,6 +26,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatSlideToggle } from '@angular/material/slide-toggle';
 
 @NgModule({
   imports: [
@@ -57,7 +58,8 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
     MatChipsModule,
     MatAutocompleteModule,
     MatProgressBarModule,
-    MatButtonToggleModule
+    MatButtonToggleModule,
+    MatSlideToggle
   ],
   exports: [
     DragDropModule,
@@ -87,7 +89,8 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle';
     MatChipsModule,
     MatAutocompleteModule,
     MatProgressBarModule,
-    MatButtonToggleModule
+    MatButtonToggleModule,
+    MatSlideToggle
   ],
   declarations: [],
   providers: [

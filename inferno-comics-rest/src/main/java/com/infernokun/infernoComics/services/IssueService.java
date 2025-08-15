@@ -119,7 +119,7 @@ public class IssueService {
     }
 
     public ComicVineService.ComicVineIssueDto getComicVineIssueById(Long comicVineId) {
-        return comicVineService.getIssueById(comicVineId);
+        return comicVineService.getComicVineIssueById(comicVineId);
     }
 
     private Double extractNumericPart(String issueNumber) {
@@ -214,7 +214,7 @@ public class IssueService {
         if (request.getComicVineId() != null && !request.getComicVineId().trim().isEmpty()) {
             log.info("Processing Comic Vine ID: {}", request.getComicVineId());
             try {
-                ComicVineService.ComicVineIssueDto dto = comicVineService.getIssueById(Long.valueOf(request.getComicVineId()));
+                ComicVineService.ComicVineIssueDto dto = comicVineService.getComicVineIssueById(Long.valueOf(request.getComicVineId()));
                 log.info("Comic Vine API response: dto={}", dto != null ? "found" : "null");
 
                 if (dto != null && series.get().getGcdIds() != null) {

@@ -53,6 +53,11 @@ public class SeriesController {
         }
     }
 
+    @GetMapping("/get-comic-vine/{comicVineId}")
+    public ResponseEntity<ComicVineService.ComicVineSeriesDto> getComicVineSeriesById(@PathVariable Long comicVineId) {
+        return ResponseEntity.ok(seriesService.getComicVineSeriesById(comicVineId));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<Series>> searchSeries(@RequestParam String query) {
         try {

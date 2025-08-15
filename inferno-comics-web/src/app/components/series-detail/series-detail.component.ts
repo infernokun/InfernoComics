@@ -1198,4 +1198,15 @@ export class SeriesDetailComponent implements OnInit {
         );
       });
   }
+
+  manageComicVineSeries(): void {
+    if (!this.series?.id) {
+      this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.router.navigate(['/series', this.series.id, 'edit'], {
+      queryParams: { mode: 'comic-vine-management' }
+    });
+  }
 }

@@ -106,6 +106,11 @@ public class SeriesService {
         return seriesRepository.findByIdWithIssues(id).orElse(null);
     }
 
+    public ComicVineService.ComicVineSeriesDto getComicVineSeriesById(Long comicVineId) {
+        log.debug("Fetching Comic Vine series with ID: {}", comicVineId);
+        return comicVineService.getComicVineSeriesById(comicVineId);
+    }
+
     @Cacheable(value = "series-search", key = "#query", unless = "#result.isEmpty()")
     public List<Series> searchSeries(String query) {
         log.info("Searching series with query: {}", query);
@@ -170,7 +175,7 @@ public class SeriesService {
         if (request.getComicVineIds() != null) {
             for (String comicVineId : request.getComicVineIds()) {
                 try {
-                    ComicVineService.ComicVineSeriesDto dto = comicVineService.getSeriesById(Long.valueOf(comicVineId));
+                    ComicVineService.ComicVineSeriesDto dto = comicVineService.getComicVineSeriesById(Long.valueOf(comicVineId));
                     if (dto != null) {
                         Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
                                 .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), dto.getIssueCount());
@@ -197,28 +202,221 @@ public class SeriesService {
         return savedSeries;
     }
 
-    // Fixed: Proper update with cache management
     @CachePut(value = "series", key = "#id", condition = "#result != null")
     @Transactional
     public Series updateSeries(Long id, SeriesUpdateRequest request) {
         log.info("Updating series with ID: {}", id);
 
-        Series existingSeries = seriesRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Series with ID " + id + " not found"));
+        try {
+            Series existingSeries = seriesRepository.findById(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Series with ID " + id + " not found"));
 
-        // Update existing series object instead of creating new one
-        modelMapper.map(request, existingSeries);
+            List<String> originalComicVineIds = new ArrayList<>(existingSeries.getComicVineIds() != null ?
+                    existingSeries.getComicVineIds() : List.of());
+            List<String> originalGcdIds = new ArrayList<>(existingSeries.getGcdIds() != null ?
+                    existingSeries.getGcdIds() : List.of());
 
-        Series updatedSeries = seriesRepository.save(existingSeries);
+            log.info("Original Comic Vine IDs: {}", originalComicVineIds);
+            log.info("Original GCD IDs: {}", originalGcdIds);
 
-        // Evict list caches since series data changed
-        evictListCaches();
+            existingSeries.setName(request.getName());
+            existingSeries.setDescription(request.getDescription());
+            existingSeries.setPublisher(request.getPublisher());
+            existingSeries.setStartYear(request.getStartYear());
+            existingSeries.setEndYear(request.getEndYear());
+            existingSeries.setImageUrl(request.getImageUrl());
 
-        // Evict description cache if series details changed
-        descriptionGeneratorService.evictSeriesCache(updatedSeries);
+            if (request instanceof SeriesController.SeriesUpdateRequestDto) {
+                SeriesController.SeriesUpdateRequestDto dto = (SeriesController.SeriesUpdateRequestDto) request;
 
-        log.info("Updated series: {}", updatedSeries.getName());
-        return updatedSeries;
+                List<String> requestComicVineIds = dto.getComicVineIds() != null ?
+                        new ArrayList<>(dto.getComicVineIds()) : new ArrayList<>();
+
+                log.info("Request Comic Vine IDs: {}", requestComicVineIds);
+
+                existingSeries.setComicVineIds(new ArrayList<>(requestComicVineIds));
+
+                if (dto.getComicVineId() != null) {
+                    existingSeries.setComicVineId(dto.getComicVineId());
+                }
+            }
+
+            List<String> newComicVineIds = existingSeries.getComicVineIds() != null ?
+                    new ArrayList<>(existingSeries.getComicVineIds()) : new ArrayList<>();
+
+            log.info("New Comic Vine IDs after manual mapping: {}", newComicVineIds);
+
+            if (newComicVineIds.isEmpty()) {
+                log.info("No Comic Vine IDs remaining, clearing primary Comic Vine ID");
+                existingSeries.setComicVineId(null);
+            } else if (existingSeries.getComicVineId() == null || !newComicVineIds.contains(existingSeries.getComicVineId())) {
+                String newPrimary = newComicVineIds.get(0);
+                log.info("Updating primary Comic Vine ID from {} to {}", existingSeries.getComicVineId(), newPrimary);
+                existingSeries.setComicVineId(newPrimary);
+            }
+
+            // ALWAYS update GCD mappings when Comic Vine IDs change
+            if (!originalComicVineIds.equals(newComicVineIds)) {
+                log.info("Comic Vine IDs changed for series {}: {} -> {}", id, originalComicVineIds, newComicVineIds);
+
+                if (newComicVineIds.isEmpty()) {
+                    // If no Comic Vine IDs left, clear GCD mappings
+                    log.info("No Comic Vine IDs remaining, clearing GCD mappings for series {}", id);
+                    existingSeries.setGcdIds(new ArrayList<>());
+                } else {
+                    // Update GCD mappings for remaining Comic Vine IDs
+                    log.info("Updating GCD mappings for {} remaining Comic Vine IDs", newComicVineIds.size());
+                    updateGcdMappings(existingSeries, newComicVineIds);
+                }
+
+                // Recalculate metadata if we have Comic Vine associations
+                if (!newComicVineIds.isEmpty()) {
+                    log.info("Recalculating metadata for {} Comic Vine IDs", newComicVineIds.size());
+                    recalculateSeriesMetadataFromComicVine(existingSeries, newComicVineIds);
+                }
+            } else {
+                log.info("Comic Vine IDs unchanged, skipping GCD mapping update");
+            }
+
+            log.info("Before save - Comic Vine IDs: {}, GCD IDs: {}",
+                    existingSeries.getComicVineIds(), existingSeries.getGcdIds());
+
+            // Save the updated series
+            Series updatedSeries = seriesRepository.save(existingSeries);
+
+            log.info("After save - Comic Vine IDs: {}, GCD IDs: {}",
+                    updatedSeries.getComicVineIds(), updatedSeries.getGcdIds());
+
+            evictListCaches();
+            descriptionGeneratorService.evictSeriesCache(updatedSeries);
+
+            if (!originalComicVineIds.equals(newComicVineIds)) {
+                evictCacheValue("comic-vine-issues", id.toString());
+            }
+
+            log.info("Successfully updated series: {} (Comic Vine IDs: {}, GCD IDs: {})",
+                    updatedSeries.getName(), updatedSeries.getComicVineIds(), updatedSeries.getGcdIds());
+
+            return updatedSeries;
+
+        } catch (Exception e) {
+            log.error("Error updating series {}: {}", id, e.getMessage(), e);
+            throw e;
+        }
+    }
+
+    private void updateGcdMappings(Series series, List<String> comicVineIds) {
+        try {
+            // Create a completely NEW list to avoid any reference issues
+            List<String> newGcdIds = new ArrayList<>();
+
+            for (String comicVineId : comicVineIds) {
+                try {
+                    log.info("Processing Comic Vine ID: {}", comicVineId);
+
+                    ComicVineService.ComicVineSeriesDto dto = comicVineService.getComicVineSeriesById(Long.valueOf(comicVineId));
+
+                    if (dto != null) {
+                        log.info("Found Comic Vine data: name='{}', startYear={}, issueCount={}",
+                                dto.getName(), dto.getStartYear(), dto.getIssueCount());
+
+                        Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
+                                .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), dto.getIssueCount());
+
+                        if (gcdSeriesOptional.isPresent()) {
+                            String gcdId = String.valueOf(gcdSeriesOptional.get().getId());
+                            newGcdIds.add(gcdId);
+                            log.info("✅ Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
+                        } else {
+                            log.warn("❌ No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                        }
+                    } else {
+                        log.warn("❌ No Comic Vine data found for ID: {}", comicVineId);
+                    }
+                } catch (Exception e) {
+                    log.error("❌ Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    // Continue with other IDs even if one fails
+                }
+            }
+
+            log.info("New GCD IDs calculated: {}", newGcdIds);
+
+            series.setGcdIds(new ArrayList<>(newGcdIds));
+        } catch (Exception e) {
+            log.error("❌ Error updating GCD mappings for series {}: {}", series.getId(), e.getMessage(), e);
+        }
+    }
+
+    // Fixed recalculate method using your correct method name
+    private void recalculateSeriesMetadataFromComicVine(Series series, List<String> comicVineIds) {
+        try {
+            List<ComicVineService.ComicVineSeriesDto> comicVineData = new ArrayList<>();
+
+            for (String comicVineId : comicVineIds) {
+                try {
+                    log.info("Fetching metadata for Comic Vine ID: {}", comicVineId);
+
+                    // Use your renamed method
+                    ComicVineService.ComicVineSeriesDto dto = comicVineService.getComicVineSeriesById(Long.valueOf(comicVineId));
+
+                    if (dto != null) {
+                        comicVineData.add(dto);
+                        log.info("✅ Got metadata: name='{}', startYear={}, endYear={}, issueCount={}",
+                                dto.getName(), dto.getStartYear(), dto.getEndYear(), dto.getIssueCount());
+                    } else {
+                        log.warn("❌ No Comic Vine data found for ID: {}", comicVineId);
+                    }
+                } catch (Exception e) {
+                    log.error("❌ Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                }
+            }
+
+            if (comicVineData.isEmpty()) {
+                log.warn("No valid Comic Vine data found for metadata recalculation for series {}", series.getId());
+                return;
+            }
+
+            log.info("Successfully fetched {} Comic Vine series data objects", comicVineData.size());
+
+            // Recalculate date range
+            List<Integer> startYears = comicVineData.stream()
+                    .map(ComicVineService.ComicVineSeriesDto::getStartYear)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            List<Integer> endYears = comicVineData.stream()
+                    .map(ComicVineService.ComicVineSeriesDto::getEndYear)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            if (!startYears.isEmpty()) {
+                Integer earliestStart = Collections.min(startYears);
+                if (!earliestStart.equals(series.getStartYear())) {
+                    log.info("Updating start year from {} to {}", series.getStartYear(), earliestStart);
+                    series.setStartYear(earliestStart);
+                }
+            }
+
+            if (!endYears.isEmpty()) {
+                Integer latestEnd = Collections.max(endYears);
+                if (!latestEnd.equals(series.getEndYear())) {
+                    log.info("Updating end year from {} to {}", series.getEndYear(), latestEnd);
+                    series.setEndYear(latestEnd);
+                }
+            }
+
+            // Recalculate total issue count
+            int totalIssueCount = comicVineData.stream()
+                    .mapToInt(data -> data.getIssueCount() != null ? data.getIssueCount() : 0)
+                    .sum();
+
+            if (totalIssueCount != series.getIssueCount()) {
+                log.info("Updating issue count from {} to {}", series.getIssueCount(), totalIssueCount);
+                series.setIssueCount(totalIssueCount);
+            }
+        } catch (Exception e) {
+            log.error("❌ Error recalculating series metadata from Comic Vine for series {}: {}", series.getId(), e.getMessage(), e);
+        }
     }
 
     @CacheEvict(value = "series", key = "#id")
@@ -686,7 +884,6 @@ public class SeriesService {
         String getComicVineId();
     }
 
-    // Update request
     public interface SeriesUpdateRequest extends SeriesRequest {
     }
 }

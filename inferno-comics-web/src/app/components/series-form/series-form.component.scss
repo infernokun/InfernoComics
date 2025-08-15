@@ -926,3 +926,58 @@ html.light-theme,
     flex-direction: column;
   }
 }
+
+.preview-section {
+  margin-top: 20px;
+
+  .preview-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 350px;
+    padding: 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-color) !important;
+    box-shadow: var(--shadow-md);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    margin: 0 auto;
+    overflow: hidden; // Prevents anything spilling outside
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .preview-image {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 12px;
+
+      img {
+        max-width: 100%;
+        max-height: 220px;
+        object-fit: cover;
+        border-radius: 8px;
+      }
+    }
+
+    .preview-details {
+      text-align: center;
+      padding: 0 8px;
+
+      strong {
+        display: block;
+        font-size: 1.1rem;
+        margin-bottom: 4px;
+      }
+
+      p {
+        margin: 2px 0;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+      }
+    }
+  }
+}

@@ -15,6 +15,7 @@ export interface Series {
   updatedAt?: Date;
   comicBooks?: Issue[];
   generatedDescription: boolean;
+  gcdIds?: string[];
 }
 
 // Additional interfaces for dashboard features
