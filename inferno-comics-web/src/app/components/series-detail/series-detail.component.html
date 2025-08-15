@@ -76,6 +76,10 @@
           <mat-icon>delete</mat-icon>
           Delete Series
         </button>
+        <button mat-stroked-button color="accent" (click)="reverifySeries()">
+          <mat-icon>refresh</mat-icon>
+          Reverify Series
+        </button>
         @if (series.generatedDescription) {
         <button mat-stroked-button color="warn" (click)="generateNewDescription(series.id!)">
           <mat-icon>key</mat-icon>

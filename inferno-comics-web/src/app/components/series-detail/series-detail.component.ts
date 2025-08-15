@@ -9,11 +9,6 @@ import { ComicVineService } from '../../services/comic-vine.service';
 import { Series } from '../../models/series.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
 import { RangeSelectionDialog } from './range-selection-dialog/range-selection-dialog';
-import {
-  ComicMatchDialogData,
-  ComicMatchSelectionComponent,
-  ImageMatcherResponse,
-} from './comic-match-selection/comic-match-selection.component';
 import { IssueViewDialog } from './issue-view-dialog/issue-view-dialog.component';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
@@ -1207,6 +1202,28 @@ export class SeriesDetailComponent implements OnInit {
 
     this.router.navigate(['/series', this.series.id, 'edit'], {
       queryParams: { mode: 'comic-vine-management' }
+    });
+  }
+
+  reverifySeries() {
+    if (!this.series?.id) {
+      this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.seriesService.reverifySeries(this.series.id).subscribe({
+      next: (updatedSeries) => {
+        this.series = updatedSeries;
+        this.snackBar.open('Series reverified successfully', 'Close', {
+          duration: 3000,
+        });
+      },
+      error: (error) => {
+        console.error('Error re-verifying series:', error);
+        this.snackBar.open('Error re-verifying series', 'Close', {
+          duration: 3000,
+        });
+      },
     });
   }
 }

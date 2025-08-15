@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.controllers;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
@@ -64,7 +65,7 @@ public class SeriesController {
             List<Series> results = seriesService.searchSeries(query);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
-            log.error("Error searching series: {}", e.getMessage());
+            log.error("Error searching series with query '{}': {}", query, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -78,7 +79,8 @@ public class SeriesController {
             List<Series> results = seriesService.searchSeriesByPublisherAndYear(publisher, startYear, endYear);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
-            log.error("Error in advanced series search: {}", e.getMessage());
+            log.error("Error in advanced series search (publisher: {}, years: {}-{}): {}",
+                    publisher, startYear, endYear, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -123,7 +125,7 @@ public class SeriesController {
             List<ComicVineService.ComicVineSeriesDto> results = seriesService.searchComicVineSeries(query);
             return ResponseEntity.ok(results);
         } catch (Exception e) {
-            log.error("Error searching Comic Vine series: {}", e.getMessage());
+            log.error("Error searching Comic Vine series with query '{}': {}", query, e.getMessage());
             return ResponseEntity.ok(List.of()); // Return empty list instead of error for UX
         }
     }
@@ -145,7 +147,7 @@ public class SeriesController {
             Series series = seriesService.createSeries(request);
             return ResponseEntity.ok(series);
         } catch (Exception e) {
-            log.error("Error creating series: {}", e.getMessage());
+            log.error("Error creating series '{}': {}", request.getName(), e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -158,7 +160,8 @@ public class SeriesController {
             Series series = seriesService.createSeriesFromComicVine(comicVineId, comicVineData);
             return ResponseEntity.ok(series);
         } catch (Exception e) {
-            log.error("Error creating series from Comic Vine: {}", e.getMessage());
+            log.error("Error creating series '{}' from Comic Vine ID {}: {}",
+                    comicVineData.getName(), comicVineId, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -168,39 +171,23 @@ public class SeriesController {
             @RequestBody List<ComicVineService.ComicVineSeriesDto> comicVineSeriesList) {
         try {
             List<Series> series = seriesService.createMultipleSeriesFromComicVine(comicVineSeriesList);
+            log.info("Successfully batch created {} series from Comic Vine", series.size());
             return ResponseEntity.ok(series);
         } catch (Exception e) {
-            log.error("Error batch creating series from Comic Vine: {}", e.getMessage());
+            log.error("Error batch creating {} series from Comic Vine: {}",
+                    comicVineSeriesList.size(), e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
 
-    @CrossOrigin(origins = "*", allowCredentials = "false")
-    @GetMapping(value = "{seriesId}/add-comic-by-image/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter getImageProcessingProgress(
-            @PathVariable Long seriesId,
-            @RequestParam String sessionId) {
-
-        log.info("Client connecting to SSE progress stream for session: {} (series: {})", sessionId, seriesId);
-
+    @PostMapping("/reverify-metadata/{seriesId}")
+    public ResponseEntity<Series> reverifyMetadata(@PathVariable Long seriesId) {
         try {
-            SseEmitter emitter = progressService.createProgressEmitter(sessionId);
-            log.info("SSE emitter created successfully for session: {}", sessionId);
-            return emitter;
+            Series series = seriesService.reverifyMetadata(seriesId);
+            return ResponseEntity.ok(series);
         } catch (Exception e) {
-            log.error("Failed to create SSE emitter for session {}: {}", sessionId, e.getMessage(), e);
-
-            // Return a failed emitter
-            SseEmitter errorEmitter = new SseEmitter(1000L);
-            try {
-                errorEmitter.send(SseEmitter.event()
-                        .name("error")
-                        .data("{\"error\":\"Failed to create progress stream\"}"));
-                errorEmitter.complete();
-            } catch (Exception sendError) {
-                log.error("Failed to send error via SSE: {}", sendError.getMessage());
-            }
-            return errorEmitter;
+            log.error("Error reverifying metadata for series {}: {}", seriesId, e.getMessage());
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -210,14 +197,13 @@ public class SeriesController {
             @PathVariable Long seriesId,
             @RequestParam String sessionId) {
 
-        log.info("Client connecting to SSE progress stream for multiple images session: {} (series: {})", sessionId, seriesId);
+        log.debug("SSE connection requested for multiple images session: {} (series: {})", sessionId, seriesId);
 
         try {
             SseEmitter emitter = progressService.createProgressEmitter(sessionId);
-            log.info("SSE emitter created successfully for multiple images session: {}", sessionId);
             return emitter;
         } catch (Exception e) {
-            log.error("Failed to create SSE emitter for session {}: {}", sessionId, e.getMessage(), e);
+            log.error("Failed to create SSE emitter for multiple images session {}: {}", sessionId, e.getMessage());
 
             // Return a failed emitter
             SseEmitter errorEmitter = new SseEmitter(1000L);
@@ -253,8 +239,9 @@ public class SeriesController {
                 }
             }
 
-            // IMPORTANT: Read all image bytes immediately before async processing
+            // Read all image bytes immediately before async processing
             List<ImageData> imageDataList = new ArrayList<>();
+            long totalBytes = 0;
             try {
                 for (MultipartFile file : imageFiles) {
                     byte[] imageBytes = file.getBytes();
@@ -263,7 +250,7 @@ public class SeriesController {
                             file.getOriginalFilename(),
                             file.getContentType()
                     ));
-                    log.info("Read {} bytes from uploaded file: {}", imageBytes.length, file.getOriginalFilename());
+                    totalBytes += imageBytes.length;
                 }
             } catch (IOException e) {
                 log.error("Failed to read image bytes: {}", e.getMessage());
@@ -273,10 +260,9 @@ public class SeriesController {
             // Generate unique session ID
             String sessionId = UUID.randomUUID().toString();
 
-            log.info("Starting multiple images processing session: {} for series: {} with {} images",
-                    sessionId, seriesId, imageDataList.size());
+            log.info("Starting image processing session {} for series {}: {} images ({} MB total)",
+                    sessionId, seriesId, imageDataList.size(), totalBytes / (1024 * 1024));
 
-            // IMPORTANT: Initialize the session in progress service BEFORE starting async processing
             progressService.initializeSession(sessionId, seriesId);
 
             // Start async processing with image data list
@@ -285,12 +271,11 @@ public class SeriesController {
             return ResponseEntity.ok(Map.of("sessionId", sessionId));
 
         } catch (Exception e) {
-            log.error("Error starting multiple images processing: {}", e.getMessage(), e);
+            log.error("Error starting image processing for series {}: {}", seriesId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Error starting images processing: " + e.getMessage()));
         }
     }
-
 
     @PutMapping("/{id}")
     public ResponseEntity<Series> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesUpdateRequestDto request) {
@@ -298,7 +283,7 @@ public class SeriesController {
             Series series = seriesService.updateSeries(id, request);
             return ResponseEntity.ok(series);
         } catch (IllegalArgumentException e) {
-            log.warn("Invalid request for updating series {}: {}", id, e.getMessage());
+            log.warn("Series {} not found for update", id);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             log.error("Error updating series {}: {}", id, e.getMessage());
@@ -324,6 +309,7 @@ public class SeriesController {
     public ResponseEntity<Void> clearSeriesCaches() {
         try {
             seriesService.clearAllSeriesCaches();
+            log.info("Successfully cleared all series caches");
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Error clearing series caches: {}", e.getMessage());
@@ -335,6 +321,7 @@ public class SeriesController {
     public ResponseEntity<Void> refreshComicVineCache() {
         try {
             seriesService.refreshComicVineCache();
+            log.info("Successfully refreshed Comic Vine cache");
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Error refreshing Comic Vine cache: {}", e.getMessage());

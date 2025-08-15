@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { EnvironmentService } from './environment.service';
 import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
+import { Series } from '../models/series.model';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -246,5 +247,9 @@ export class SeriesService {
     return this.http.get<any[]>(
       `${this.progressUrl}/json/${sessionId}`
     );
+  }
+
+  reverifySeries(seriesId: number): Observable<Series> {
+    return this.http.post<Series>(`${this.apiUrl}/reverify-metadata/${seriesId}`, {});
   }
 }
