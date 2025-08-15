@@ -233,10 +233,6 @@ public class ComicVineService {
         }
 
         try {
-            String url = String.format("%s/search/?api_key=%s&format=json&query=%s&resources=volume&limit=10",
-                    BASE_URL, apiKey, query);
-            log.info("Calling Comic Vine API: {}", url.replace(apiKey, "***"));
-
             String response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/search/")
@@ -244,7 +240,7 @@ public class ComicVineService {
                             .queryParam("format", "json")
                             .queryParam("query", query)
                             .queryParam("resources", "volume")
-                            .queryParam("limit", "10")
+                            .queryParam("limit", "25")
                             .build())
                     .header("User-Agent", "ComicBookCollectionApp/1.0")
                     .retrieve()
@@ -278,7 +274,7 @@ public class ComicVineService {
                             .queryParam("api_key", apiKey)
                             .queryParam("format", "json")
                             .queryParam("filter", "volume:" + seriesId)
-                            .queryParam("limit", "100")
+                            .queryParam("limit", "200")
                             .queryParam("sort", "issue_number:asc") // API sorting might not work properly
                             .build())
                     .header("User-Agent", "ComicBookCollectionApp/1.0")
