@@ -70,159 +70,6 @@ class ImageMatcherService:
                 logger.warning(f"⚠️ Progress callback error: {e}")
                 pass  # Continue execution even if progress fails
 
-    def process_image_with_centralized_progress(self, session_id, query_image, candidate_covers, query_filename=None):
-        """Process image matching with CENTRALIZED progress reporting to Java"""
-        
-        # Create Java progress reporter - this is the SINGLE source of truth
-        java_reporter = JavaProgressReporter(session_id)
-        logger.info(f" Starting centralized image processing for session: {session_id}")
-        
-        # Convert query image to base64 for storage
-        query_image_base64 = image_to_base64(query_image)
-        
-        try:
-            # Continue from where Java left off (10%)
-            java_reporter.update_progress('processing_data', 12, 'Decoding uploaded image...')
-            
-            # Stage 1: Processing candidate data (12% -> 20%)
-            java_reporter.update_progress('processing_data', 15, 'Processing candidate cover data...')
-            
-            # Extract URLs and create mapping
-            candidate_urls, url_to_cover_map = self._prepare_candidates(candidate_covers)
-            
-            java_reporter.update_progress('processing_data', 20, f'Prepared {len(candidate_urls)} candidate images for comparison')
-            logger.info(f" Prepared {len(candidate_urls)} candidate URLs from {len(candidate_covers)} covers")
-            
-            if not candidate_urls:
-                raise ValueError("No valid URLs found in candidate covers")
-            
-            # Stage 2: Initializing image analysis (20% -> 25%)
-            java_reporter.update_progress('initializing_matcher', 22, 'Initializing image matching engine...')
-            
-            # Initialize matcher
-            matcher = self.get_global_matcher()
-            logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers")
-            
-            # Create a safe progress callback wrapper for the matcher
-            def safe_matcher_progress(current_item, message=""):
-                try:
-                    # Map the matcher's progress (0 to total_items) to our range (35 to 85)
-                    progress_range = 85 - 35
-                    if len(candidate_urls) > 0:
-                        item_progress = (current_item / len(candidate_urls)) * progress_range
-                        actual_progress = 35 + item_progress
-                        java_reporter.update_progress('comparing_images', int(actual_progress), 
-                                                    f"Processing candidate {current_item}/{len(candidate_urls)}... {message}")
-                except Exception as e:
-                    logger.warning(f"⚠️ Progress callback error: {e}")
-            
-            java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready')
-            
-            # Stage 3: Feature extraction from query image (25% -> 35%)
-            java_reporter.update_progress('extracting_features', 30, 'Extracting features from uploaded image...')
-            logger.debug(" Extracting features from query image...")
-            
-            # Stage 4: Heavy image comparison work (35% -> 85%)
-            java_reporter.update_progress('comparing_images', 35, 'Starting image feature comparison...')
-            logger.info("⚡ Starting intensive image comparison process...")
-            
-            # Run matching with progress callback - this is the time-consuming part
-            results, query_elements = matcher.find_matches_img(
-                query_image, 
-                candidate_urls, 
-                progress_callback=safe_matcher_progress
-            )
-            
-            java_reporter.update_progress('comparing_images', 85, 'Image comparison complete')
-            logger.success("✅ Image comparison completed successfully")
-            
-            # Stage 5: Processing and ranking results (85% -> 95%)
-            java_reporter.update_progress('processing_results', 90, 'Processing and ranking match results...')
-            
-            # Enhance results with comic names and cover information
-            enhanced_results = self._enhance_results(results, url_to_cover_map, session_id)
-            
-            # Stage 6: Finalizing results (95% -> 98%)
-            java_reporter.update_progress('finalizing', 95, f'Finalizing top {min(5, len(enhanced_results))} matches...')
-            
-            # Return top 5 matches as JSON
-            top_matches = enhanced_results[:5]
-            
-            # Log top matches for debugging
-            logger.info(f" Top {len(top_matches)} matches for session {session_id}:")
-            for i, match in enumerate(top_matches[:3], 1):
-                logger.info(f"   {i}. {match['comic_name']} #{match['issue_number']} - Similarity: {match['similarity']:.3f}")
-            
-            final_result = {
-                'top_matches': top_matches,
-                'total_matches': len(enhanced_results),
-                'total_covers_processed': len(candidate_covers),
-                'total_urls_processed': len(candidate_urls),
-                'session_id': session_id,
-                
-                # Add enhanced fields for database consistency (same as multiple images)
-                'percentageComplete': 100,
-                'currentStage': 'complete',
-                'statusMessage': f'Image processing completed successfully - {len(top_matches)} matches found',
-                'totalItems': 1,
-                'processedItems': 1,
-                'successfulItems': 1 if len(top_matches) > 0 else 0,
-                'failedItems': 0 if len(top_matches) > 0 else 1
-            }
-            
-            # Save result to JSON file
-            save_image_matcher_result(session_id, final_result, query_filename, query_image)
-            
-            java_reporter.send_complete(final_result)
-            logger.success(f"✅ Centralized image processing completed and saved for session: {session_id}")
-            
-            return final_result
-            
-        except Exception as e:
-            traceback.print_exc()
-            error_msg = f'Image matching failed: {str(e)}'
-            java_reporter.send_error(error_msg)
-            logger.error(f"❌ Error in centralized image processing for session {session_id}: {error_msg}")
-            
-            # Save error state as well with enhanced fields
-            error_result = {
-                'top_matches': [],
-                'total_matches': 0,
-                'total_covers_processed': len(candidate_covers) if candidate_covers else 0,
-                'total_urls_processed': 0,
-                'session_id': session_id,
-                'error': error_msg,
-                'percentageComplete': 0,
-                'currentStage': 'error',
-                'statusMessage': error_msg,
-                'totalItems': 1,
-                'processedItems': 0,
-                'successfulItems': 0,
-                'failedItems': 1
-            }
-            save_image_matcher_result(session_id, error_result, query_filename, query_image)
-            
-            raise
-
-    def process_image_with_progress(self, session_id, query_image, candidate_covers, query_filename=None):
-        """Process image matching with progress updates via SSE (fallback for /start endpoint)"""
-        with self.session_lock:
-            if session_id not in self.sse_sessions:
-                logger.warning(f"⚠️ Session {session_id} not found in SSE sessions")
-                return
-            tracker = self.sse_sessions[session_id]['tracker']
-        
-        logger.info(f" Starting SSE image processing for session: {session_id}")
-        
-        try:
-            # Use the centralized processing but also send to SSE tracker
-            result = self.process_image_with_centralized_progress(session_id, query_image, candidate_covers, query_filename)
-            tracker.send_complete(result)
-            
-        except Exception as e:
-            logger.error(f"❌ SSE processing failed for session {session_id}: {e}")
-            tracker.send_error(str(e))
-
     def cleanup_old_sessions(self):
         """Clean up sessions older than 2 hours"""
         with self.session_lock:
@@ -297,7 +144,7 @@ class ImageMatcherService:
             successful_images = final_result.get('summary', {}).get('successful_images', 0)
             total_matches_all_images = final_result.get('summary', {}).get('total_matches_all_images', 0)
 
-            # Save result to JSON file - FIXED: Pass all required arguments
+            # Save result to JSON file
             sanitized_result = self.save_multiple_images_matcher_result(session_id, final_result, query_images_data, all_results)
             
             # Print cache stats
@@ -520,7 +367,7 @@ class ImageMatcherService:
                 enhanced_results.append(enhanced_result)
             
             # Get top 5 matches for this image
-            top_matches = enhanced_results[:5]
+            top_matches = enhanced_results[:10]
             
             # Create result for this image
             image_result = {
@@ -722,16 +569,6 @@ def get_service():
     if _service_instance is None:
         _service_instance = ImageMatcherService()
     return _service_instance
-
-# Backward compatibility functions that delegate to the service
-def process_image_with_centralized_progress(session_id, query_image, candidate_covers, query_filename=None):
-    return get_service().process_image_with_centralized_progress(session_id, query_image, candidate_covers, query_filename)
-
-def process_image_with_progress(session_id, query_image, candidate_covers, query_filename=None):
-    return get_service().process_image_with_progress(session_id, query_image, candidate_covers, query_filename)
-
-def process_multiple_images_with_centralized_progress(session_id, query_images_data, candidate_covers):
-    return get_service().process_multiple_images_with_centralized_progress(session_id, query_images_data, candidate_covers)
 
 def cleanup_old_sessions():
     return get_service().cleanup_old_sessions()

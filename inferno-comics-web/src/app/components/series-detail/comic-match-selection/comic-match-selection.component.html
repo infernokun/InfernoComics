@@ -140,6 +140,22 @@
                   </div>
                   <span class="value">{{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}</span>
                 </div>
+
+                <div class="feature" *ngIf="match.match_details?.akaze">
+                  <span class="label">AKAZE</span>
+                  <div class="bar">
+                    <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.akaze)"></div>
+                  </div>
+                  <span class="value">{{ match.match_details.akaze.good_matches }}/{{ match.match_details.akaze.total_matches }}</span>
+                </div>
+
+                <div class="feature" *ngIf="match.match_details?.kaze">
+                  <span class="label">KAZE</span>
+                  <div class="bar">
+                    <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.kaze)"></div>
+                  </div>
+                  <span class="value">{{ match.match_details.kaze.good_matches }}/{{ match.match_details.kaze.total_matches }}</span>
+                </div>
               </div>
 
               <!-- Confidence -->
