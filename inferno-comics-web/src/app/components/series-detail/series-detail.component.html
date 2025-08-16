@@ -14,6 +14,10 @@
                 class="title-edit-btn">
           <mat-icon>edit</mat-icon>
         </button>
+        <a mat-stroked-button color="accent" [routerLink]="['/series', series.id, 'admin']">
+        <mat-icon>admin_panel_settings</mat-icon>
+        Admin View
+        </a>
       </div>
       <h2>{{ series.publisher }}</h2>
       <div class="series-meta">

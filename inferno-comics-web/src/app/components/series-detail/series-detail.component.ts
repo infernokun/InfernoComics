@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SeriesService, SSEProgressData } from '../../services/series.service';
@@ -28,7 +28,7 @@ import { ComicMatch } from '../../models/comic-match.model';
   selector: 'app-series-detail',
   templateUrl: './series-detail.component.html',
   styleUrls: ['./series-detail.component.scss'],
-  imports: [CommonModule, MaterialModule, AgGridModule, ProgressDataTable],
+  imports: [CommonModule, MaterialModule, AgGridModule, ProgressDataTable, RouterModule],
 })
 export class SeriesDetailComponent implements OnInit {
   series: Series | null = null;
@@ -68,7 +68,7 @@ export class SeriesDetailComponent implements OnInit {
     this.loading = true;
     this.seriesService.getSeriesById(id).subscribe({
       next: (series) => {
-        this.series = series;
+        this.series = new Series(series);
         this.loading = false;
         // Auto-load Comic Vine issues if we have a Comic Vine ID
         if (series.comicVineId) {
@@ -85,8 +85,8 @@ export class SeriesDetailComponent implements OnInit {
 
   loadIssues(seriesId: number): void {
     this.issueService.getIssuesBySeries(seriesId).subscribe({
-      next: (books) => {
-        this.issues = books;
+      next: (books: Issue[]) => {
+        this.issues = books.map((issue) => new Issue(issue));
         // Re-filter Comic Vine issues after loading collection issues
         this.filterComicVineIssues();
       },

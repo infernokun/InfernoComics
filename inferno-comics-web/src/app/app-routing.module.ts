@@ -5,6 +5,7 @@ import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { SeriesListComponent } from './components/series-list/series-list.component';
 import { SeriesDetailComponent } from './components/series-detail/series-detail.component';
 import { SeriesFormComponent } from './components/series-form/series-form.component';
+import { SeriesAdminComponent } from './components/series-admin/series-admin.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
@@ -13,6 +14,7 @@ const routes: Routes = [
   { path: 'series/new', component: SeriesFormComponent },
   { path: 'series/:id', component: SeriesDetailComponent },
   { path: 'series/:id/edit', component: SeriesFormComponent },
+  { path: 'series/:id/admin', component: SeriesAdminComponent },
   { path: '**', redirectTo: '/dashboard' }
 ];
 

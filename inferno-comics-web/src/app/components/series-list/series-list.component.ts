@@ -48,7 +48,7 @@ export class SeriesListComponent implements OnInit {
   onSearch(): void {
     if (this.searchTerm.trim()) {
       this.filteredSeries = this.series.filter(s =>
-        s.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        s.name!.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
         (s.publisher && s.publisher.toLowerCase().includes(this.searchTerm.toLowerCase()))
       );
     } else {
