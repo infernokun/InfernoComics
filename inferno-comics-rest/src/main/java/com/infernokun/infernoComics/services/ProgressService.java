@@ -49,7 +49,6 @@ public class ProgressService {
     private final WebClient webClient;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    // SSE timeout: 90 minutes (should be enough for image processing)
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
 
@@ -393,14 +392,11 @@ public class ProgressService {
                 log.info("Sending SSE event to session {}: type={}, stage={}, progress={}",
                         sessionId, data.getType(), data.getStage(), data.getProgress());
                 sendEvent(emitter, data);
-                storeProgressInRedis(sessionId, data);
                 log.info("SSE event sent successfully to session: {}", sessionId);
             } catch (Exception e) {
-                log.error("Failed to send SSE event to session {}: {}", sessionId, e.getMessage());
+                log.warn("Failed to send SSE event to session {}: {}", sessionId, e.getMessage());
                 cleanupSession(sessionId);
             }
-        } else {
-            //storeProgressInRedis(sessionId, data);
         }
 
         storeProgressInRedis(sessionId, data);
@@ -419,7 +415,7 @@ public class ProgressService {
             // Also maintain a list of recent progress updates
             String listKey = "sse:progress:list:" + sessionId;
             redisTemplate.opsForList().leftPush(listKey, jsonData);
-            redisTemplate.opsForList().trim(listKey, 0, 99); // Keep last 100 updates - FIXED: Uncommented to prevent unbounded growth
+            redisTemplate.opsForList().trim(listKey, 0, 99);
             redisTemplate.expire(listKey, PROGRESS_TTL);
 
         } catch (Exception e) {
