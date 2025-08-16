@@ -517,7 +517,6 @@
     }
 
     .key-issue-badge,
-    .owned-badge,
     .selection-indicator {
       position: absolute;
       top: 12px;
@@ -539,11 +538,6 @@
 
     .key-issue-badge {
       right: 12px;
-    }
-
-    .owned-badge {
-      right: 12px;
-      background: var(--success-color);
     }
 
     .selection-indicator {
@@ -641,21 +635,6 @@
         margin-right: 4px;
       }
     }
-
-    .owned-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--success-color);
-      font-weight: 600;
-      font-size: 0.9rem;
-
-      mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-      }
-    }
   }
 }
 
@@ -673,21 +652,6 @@
     &:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 30px rgba(59, 130, 246, 0.3);
-    }
-  }
-
-  &.owned {
-    border-color: var(--success-color);
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.1));
-
-    &:hover {
-      border-color: var(--success-color);
-      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
-    }
-
-    &.selected {
-      border-color: var(--primary-color) !important;
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
     }
   }
 }

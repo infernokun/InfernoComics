@@ -117,22 +117,14 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  // New helper method to filter Comic Vine issues
   private filterComicVineIssues(): void {
     if (!this.comicVineIssues || !this.issues) return;
 
     this.comicVineIssues = this.comicVineIssues.filter((cvIssue) => {
-      return !this.issues.some((ownedIssue) => {
-        if (ownedIssue.comicVineId && cvIssue.id) {
-          return (
-            ownedIssue.comicVineId === cvIssue.id.toString() ||
-            ownedIssue.comicVineId === cvIssue.id
-          );
-        }
-
-        // Fallback to issue number if Comic Vine ID not available
-        return ownedIssue.issueNumber === cvIssue.issueNumber;
-      });
+      return !this.issues.some((ownedIssue) => 
+        ownedIssue.comicVineId === cvIssue.id || 
+        ownedIssue.issueNumber === cvIssue.issueNumber
+      );
     });
   }
 
@@ -269,13 +261,6 @@ export class SeriesDetailComponent implements OnInit {
           duration: 3000,
         });
       });
-  }
-
-  isIssueOwned(issue: any): boolean {
-    return this.issues.some(
-      (book) =>
-        book.comicVineId === issue.id || book.issueNumber === issue.issueNumber
-    );
   }
 
   isIssueSelected(issueId: string): boolean {
