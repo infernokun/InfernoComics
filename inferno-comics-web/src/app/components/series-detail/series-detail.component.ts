@@ -625,8 +625,8 @@ export class SeriesDetailComponent implements OnInit {
     results: ProcessedImageResult[],
     seriesId: number
   ): void {
-    console.log(' Processing bulk add for', results.length, 'comics');
-
+    console.log('🎯 Processing bulk add for', results.length, 'comics');
+    
     // Show loading indicator
     this.snackBar.open(`Adding ${results.length} comics to collection...`, '', {
       duration: 0,
@@ -634,12 +634,13 @@ export class SeriesDetailComponent implements OnInit {
 
     // Process each accepted result
     const addPromises = results.map(async (result) => {
+      // Check if result is accepted (either auto or manually) and has a selected match
       if (
-        (result.userAction === 'accepted' ||
-          result.userAction === 'manual_select') &&
+        (result.status === 'auto_accepted' || result.status === 'manually_accepted') &&
         result.selectedMatch
       ) {
         const match = result.selectedMatch;
+        
         try {
           // Fetch Comic Vine details for the match
           const issue = await this.comicVineService
@@ -672,15 +673,20 @@ export class SeriesDetailComponent implements OnInit {
               keyIssue: false,
               generatedDescription: issue.generatedDescription || false,
               variant: issue.variant || false,
-              uploadedImageUrl: result.imagePreview.includes("blob") ? result.liveStoredImage : result.imagePreview,
+              uploadedImageUrl: result.imagePreview.includes("blob") 
+                ? result.liveStoredImage 
+                : result.imagePreview,
             };
 
             console.log(
               '✅ Creating issue for:',
               result.imageName,
               'with comic vine ID:',
-              issue.id
+              issue.id,
+              'status:',
+              result.status
             );
+
             return this.issueService.createIssue(issueData).toPromise();
           }
         } catch (error) {
@@ -694,10 +700,12 @@ export class SeriesDetailComponent implements OnInit {
         }
       } else {
         console.log(
-          '⚠️ Skipping result - userAction:',
-          result.userAction,
+          '⚠️ Skipping result - status:',
+          result.status,
           'hasSelectedMatch:',
-          !!result.selectedMatch
+          !!result.selectedMatch,
+          'imageName:',
+          result.imageName
         );
         return Promise.resolve(null);
       }
@@ -706,6 +714,7 @@ export class SeriesDetailComponent implements OnInit {
     Promise.allSettled(addPromises)
       .then((results) => {
         this.snackBar.dismiss();
+        
         const successful = results.filter(
           (r) => r.status === 'fulfilled' && r.value !== null
         ).length;
@@ -719,6 +728,7 @@ export class SeriesDetailComponent implements OnInit {
             'Close',
             { duration: 5000 }
           );
+          
           // Refresh the issues list
           this.loadIssues(seriesId);
         } else {

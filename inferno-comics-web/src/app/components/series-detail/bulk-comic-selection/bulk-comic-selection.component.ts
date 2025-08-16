@@ -19,9 +19,8 @@ export interface ProcessedImageResult {
   bestMatch: ComicMatch | null;
   liveStoredImage?: any;
   allMatches: ComicMatch[];
-  status: 'auto_selected' | 'needs_review' | 'no_match' | 'skipped';
+  status: 'pending' | 'auto_accepted' | 'manually_accepted' | 'rejected' | 'no_match' | 'skipped';
   confidence: 'high' | 'medium' | 'low';
-  userAction?: 'accepted' | 'rejected' | 'manual_select';
   selectedMatch?: ComicMatch;
 }
 
@@ -47,13 +46,14 @@ export interface BulkSelectionDialogData {
 export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   processedResults: ProcessedImageResult[] = [];
   filteredResults: ProcessedImageResult[] = [];
-  currentFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match' | 'rejected' = 'all';
-
+  currentFilter: 'all' | 'auto_selected' | 'manually_selected' | 'needs_review' | 'no_match' | 'rejected' = 'all';
 
   private imagePreviewUrls: string[] = [];
   private highConfidenceThreshold: number = 0.7;
   private mediumConfidenceThreshold: number = 0.55;
   private isSessionData: boolean = false;
+  private currentReviewIndex = 0;
+  private reviewQueue: ProcessedImageResult[] = [];
 
   constructor(
     public dialogRef: MatDialogRef<BulkComicSelectionComponent>,
@@ -93,7 +93,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   private createImagePreviews(): void {
     if (this.isSessionData && this.data.storedImages!.length > 0) {
-      // Use stored images from session data
       this.imagePreviewUrls = this.data.storedImages!.map(
         (storedImage) => storedImage.javaUrl
       );
@@ -102,13 +101,11 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       this.data.originalImages &&
       this.data.originalImages.length > 0
     ) {
-      // Use original uploaded files
       this.imagePreviewUrls = this.data.originalImages.map((file) =>
         URL.createObjectURL(file)
       );
       console.log('🖼️ Using original file URLs:', this.imagePreviewUrls.length);
     } else {
-      // No images available
       this.imagePreviewUrls = [];
       console.log('⚠️ No image sources available');
     }
@@ -119,7 +116,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     console.log('Data matches length:', this.data.matches.length);
     console.log('Is session data:', this.isSessionData);
 
-    // Group matches by source image
     const groupedMatches: { [key: number]: ComicMatch[] } = {};
 
     this.data.matches.forEach((match) => {
@@ -132,7 +128,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
     console.log('📊 Grouped matches:', groupedMatches);
 
-    // Determine image count
     let imageCount = 0;
     if (this.isSessionData) {
       imageCount = this.data.storedImages!.length;
@@ -144,7 +139,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
     console.log('📊 Processing', imageCount, 'images');
 
-    // Process each image
     for (let index = 0; index < imageCount; index++) {
       const matches = groupedMatches[index] || [];
       const sortedMatches = matches.sort((a, b) => b.similarity - a.similarity);
@@ -156,17 +150,16 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       if (bestMatch) {
         if (bestMatch.similarity >= this.highConfidenceThreshold) {
           confidence = 'high';
-          status = 'auto_selected';
+          status = 'pending';
         } else if (bestMatch.similarity >= this.mediumConfidenceThreshold) {
           confidence = 'medium';
-          status = 'needs_review';
+          status = 'pending';
         } else {
           confidence = 'low';
-          status = 'needs_review';
+          status = 'pending';
         }
       }
 
-      // Get image name and preview URL
       let imageName: string;
       let imagePreview: string;
 
@@ -194,6 +187,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         allMatches: sortedMatches,
         status,
         confidence,
+        selectedMatch: bestMatch || undefined,
       });
     }
 
@@ -201,7 +195,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   onFilterChange(
-    newFilter: 'all' | 'auto_selected' | 'needs_review' | 'no_match' | 'rejected'
+    newFilter: 'all' | 'auto_selected' | 'manually_selected' | 'needs_review' | 'no_match' | 'rejected'
   ): void {
     console.log('Filter changed to:', newFilter);
     this.currentFilter = newFilter;
@@ -222,17 +216,22 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         break;
       case 'auto_selected':
         this.filteredResults = this.processedResults.filter(
-          (r) => r.status === 'auto_selected'
+          (r) => r.status === 'auto_accepted'
+        );
+        break;
+      case 'manually_selected':
+        this.filteredResults = this.processedResults.filter(
+          (r) => r.status === 'manually_accepted'
         );
         break;
       case 'needs_review':
         this.filteredResults = this.processedResults.filter(
-          (r) => r.status === 'needs_review'
+          (r) => r.status === 'pending'
         );
         break;
       case 'rejected':
         this.filteredResults = this.processedResults.filter(
-          (r) => r.userAction === 'rejected'
+          (r) => r.status === 'rejected'
         );
         break;
       case 'no_match':
@@ -246,13 +245,13 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   acceptMatch(result: ProcessedImageResult): void {
-    result.userAction = 'accepted';
+    result.status = 'manually_accepted';
     result.selectedMatch = result.selectedMatch || (result.bestMatch ?? undefined);
-    console.log('✅ Accepted match for:', result.imageName);
+    console.log('✅ Manually accepted match for:', result.imageName);
   }
 
   rejectMatch(result: ProcessedImageResult): void {
-    result.userAction = 'rejected';
+    result.status = 'rejected';
     result.selectedMatch = undefined;
     console.log('❌ Rejected match for:', result.imageName);
   }
@@ -266,25 +265,17 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   manualAdd(result: ProcessedImageResult): void {
-    result.userAction = 'rejected';
-    result.selectedMatch = undefined;
     result.status = 'skipped';
-
+    result.selectedMatch = undefined;
     console.log('📝 Manual add requested for:', result.imageName);
     this.applyFilter();
   }
 
   resetUserAction(result: ProcessedImageResult): void {
-    result.userAction = undefined;
     result.selectedMatch = result.bestMatch ?? undefined;
 
-    // Reset to original status based on confidence
     if (result.bestMatch) {
-      if (result.bestMatch.similarity >= this.highConfidenceThreshold) {
-        result.status = 'auto_selected';
-      } else {
-        result.status = 'needs_review';
-      }
+      result.status = 'pending';
     } else {
       result.status = 'no_match';
     }
@@ -294,20 +285,16 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   private openMatchSelectionDialog(result: ProcessedImageResult): void {
-    console.log('resulttts', result);
-    // Get the original image file for this result
     let originalImage: File | undefined;
     
     if (this.data.originalImages && this.data.originalImages.length > result.imageIndex) {
       originalImage = this.data.originalImages[result.imageIndex];
     }
 
-    // Get file size - try original file first, then stored image data
     let imageSize = 0;
     if (originalImage) {
       imageSize = originalImage.size;
     } else if (this.data.storedImages && this.data.storedImages[result.imageIndex]) {
-      // If you have stored image data with size information
       imageSize = this.data.storedImages[result.imageIndex].size || 0;
     }
 
@@ -331,14 +318,12 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe((dialogResult) => {
       if (dialogResult && dialogResult.action === 'select') {
-        result.userAction = 'manual_select';
+        result.status = 'manually_accepted';
         result.selectedMatch = dialogResult.match;
-        result.status = 'auto_selected';
         console.log('👆 User manually selected match for:', result.imageName);
-      } else if (dialogResult && dialogResult.action === 'no_match') {
-        result.userAction = 'rejected';
+      } else if (dialogResult && dialogResult.action === 'rejected') {
+        result.status = 'rejected';
         result.selectedMatch = undefined;
-        result.status = 'no_match';
         console.log('❌ User rejected all matches for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'cancel') {
         console.log('🚫 User cancelled match selection for:', result.imageName);
@@ -350,14 +335,15 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   acceptAll(): void {
     const acceptableResults = this.processedResults.filter(
-      (r) => r.bestMatch && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+      (r) => r.bestMatch && r.status === 'pending'
     );
 
     acceptableResults.forEach((result) => {
-      this.acceptMatch(result);
+      result.status = 'auto_accepted';
+      result.selectedMatch = result.bestMatch ?? undefined;
     });
 
-    console.log('✅ Accepted all acceptable matches:', acceptableResults.length);
+    console.log('✅ Auto-accepted all acceptable matches:', acceptableResults.length);
     this.applyFilter();
   }
 
@@ -369,11 +355,11 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   rejectLowConfidence(): void {
     const lowConfidenceResults = this.processedResults.filter(
-      (r) => r.confidence === 'low' && r.userAction !== 'rejected'
+      (r) => r.confidence === 'low' && r.status === 'pending'
     );
 
     lowConfidenceResults.forEach((result) => {
-      result.userAction = 'rejected';
+      result.status = 'rejected';
       result.selectedMatch = undefined;
     });
 
@@ -383,7 +369,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   addAllAccepted(): void {
     const acceptedResults = this.processedResults.filter(
-      (r) => r.userAction === 'accepted' || r.userAction === 'manual_select'
+      (r) => r.status === 'auto_accepted' || r.status === 'manually_accepted'
     );
 
     console.log('🎯 Adding accepted results:', acceptedResults.length);
@@ -410,12 +396,16 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     this.dialogRef.close({ action: 'cancel' });
   }
 
-  getAutoSelectedCount(): number {
-    return this.processedResults.filter((r) => r.status === 'auto_selected').length;
+  getAutoAcceptedCount(): number {
+    return this.processedResults.filter((r) => r.status === 'auto_accepted').length;
+  }
+
+  getManuallyAcceptedCount(): number {
+    return this.processedResults.filter((r) => r.status === 'manually_accepted').length;
   }
 
   getNeedsReviewCount(): number {
-    return this.processedResults.filter((r) => r.status === 'needs_review').length;
+    return this.getPendingCount();
   }
 
   getNoMatchCount(): number {
@@ -424,40 +414,39 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   getAcceptedCount(): number {
     return this.processedResults.filter(
-      (r) => r.userAction === 'accepted' || r.userAction === 'manual_select'
+      (r) => r.status === 'auto_accepted' || r.status === 'manually_accepted'
     ).length;
   }
 
   getRejectedCount(): number {
-    return this.processedResults.filter((r) => r.userAction === 'rejected').length;
+    return this.processedResults.filter((r) => r.status === 'rejected').length;
   }
 
   getPendingCount(): number {
-    return this.processedResults.filter((r) => !r.userAction).length;
+    return this.processedResults.filter((r) => r.status === 'pending').length;
   }
 
   getAcceptableCount(): number {
     return this.processedResults.filter(
-      (r) => r.bestMatch && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+      (r) => r.bestMatch && r.status === 'pending'
     ).length;
   }
 
   getHighConfidenceCount(): number {
     return this.processedResults.filter(
-      (r) => r.confidence === 'high' && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+      (r) => r.confidence === 'high' && r.status === 'pending'
     ).length;
   }
 
   getLowConfidenceCount(): number {
     return this.processedResults.filter(
-      (r) => r.confidence === 'low' && r.userAction !== 'rejected'
+      (r) => r.confidence === 'low' && r.status === 'pending'
     ).length;
   }
 
-  // Helper method to count how many rejected items can be restored
   getRestorableRejectedCount(): number {
     return this.processedResults.filter(
-      (r) => r.userAction === 'rejected' && r.bestMatch
+      (r) => r.status === 'rejected' && r.bestMatch
     ).length;
   }
 
@@ -466,7 +455,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   hasAnyChanges(): boolean {
-    return this.processedResults.some((r) => r.userAction);
+    return this.processedResults.some((r) => r.status !== 'pending' && r.status !== 'no_match');
   }
 
   canReviewMatch(result: ProcessedImageResult): boolean {
@@ -479,10 +468,14 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   getStatusText(status: string): string {
     switch (status) {
-      case 'auto_selected':
-        return 'Auto-Selected';
-      case 'needs_review':
-        return 'Needs Review';
+      case 'auto_accepted':
+        return 'Auto-Accepted';
+      case 'manually_accepted':
+        return 'Manually Accepted';
+      case 'pending':
+        return 'Pending Review';
+      case 'rejected':
+        return 'Rejected';
       case 'no_match':
         return 'No Match';
       case 'skipped':
@@ -494,10 +487,14 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   getStatusIcon(status: string): string {
     switch (status) {
-      case 'auto_selected':
+      case 'auto_accepted':
         return 'auto_awesome';
-      case 'needs_review':
-        return 'rate_review';
+      case 'manually_accepted':
+        return 'touch_app';
+      case 'pending':
+        return 'schedule';
+      case 'rejected':
+        return 'cancel';
       case 'no_match':
         return 'block';
       case 'skipped':
@@ -538,16 +535,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   getUserActionText(result: ProcessedImageResult): string {
-    switch (result.userAction) {
-      case 'accepted':
-        return 'Accepted';
-      case 'rejected':
-        return 'Rejected';
-      case 'manual_select':
-        return 'Manually Selected';
-      default:
-        return 'Pending';
-    }
+    return this.getStatusText(result.status);
   }
 
   getMatchCountText(result: ProcessedImageResult): string {
@@ -573,18 +561,16 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     console.log('Filter:', this.currentFilter);
     console.log('Total results:', this.processedResults.length);
     console.log('Filtered results:', this.filteredResults.length);
-    console.log('Auto-selected:', this.getAutoSelectedCount());
-    console.log('Needs review:', this.getNeedsReviewCount());
-    console.log('No match:', this.getNoMatchCount());
-    console.log('Accepted:', this.getAcceptedCount());
-    console.log('Rejected:', this.getRejectedCount());
+    console.log('Auto-accepted:', this.getAutoAcceptedCount());
+    console.log('Manually-accepted:', this.getManuallyAcceptedCount());
     console.log('Pending:', this.getPendingCount());
+    console.log('No match:', this.getNoMatchCount());
+    console.log('Rejected:', this.getRejectedCount());
     console.log('Results breakdown:',
       this.processedResults.map(r => ({
         name: r.imageName,
         status: r.status,
         confidence: r.confidence,
-        userAction: r.userAction,
         hasMatch: !!r.bestMatch,
         similarity: r.bestMatch?.similarity
       }))
@@ -594,11 +580,12 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   acceptAllHighConfidence(): void {
     const highConfidenceResults = this.processedResults.filter(
-      (r) => r.confidence === 'high' && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+      (r) => r.confidence === 'high' && r.status === 'pending'
     );
 
     highConfidenceResults.forEach((result) => {
-      this.acceptMatch(result);
+      result.status = 'auto_accepted';
+      result.selectedMatch = result.bestMatch ?? undefined;
     });
 
     console.log('✅ Auto-accepted high confidence matches:', highConfidenceResults.length);
@@ -607,24 +594,25 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   acceptAllMediumConfidence(): void {
     const mediumConfidenceResults = this.processedResults.filter(
-      (r) => r.confidence === 'medium' && r.userAction !== 'accepted' && r.userAction !== 'rejected'
+      (r) => r.confidence === 'medium' && r.status === 'pending'
     );
 
     mediumConfidenceResults.forEach((result) => {
-      this.acceptMatch(result);
+      result.status = 'auto_accepted';
+      result.selectedMatch = result.bestMatch ?? undefined;
     });
 
-    console.log('✅ Accepted medium confidence matches:', mediumConfidenceResults.length);
+    console.log('✅ Auto-accepted medium confidence matches:', mediumConfidenceResults.length);
     this.applyFilter();
   }
 
   rejectAllNoMatch(): void {
     const noMatchResults = this.processedResults.filter(
-      (r) => r.status === 'no_match' && r.userAction !== 'rejected'
+      (r) => r.status === 'no_match'
     );
 
     noMatchResults.forEach((result) => {
-      result.userAction = 'rejected';
+      result.status = 'rejected';
       result.selectedMatch = undefined;
     });
 
@@ -642,21 +630,18 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   onKeyDown(event: KeyboardEvent): void {
-    // Ctrl/Cmd + A: Accept all
     if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
       event.preventDefault();
       this.acceptAll();
       return;
     }
 
-    // Ctrl/Cmd + R: Review all
     if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
       event.preventDefault();
       this.reviewAllMatches();
       return;
     }
 
-    // Ctrl/Cmd + S: Save
     if ((event.ctrlKey || event.metaKey) && event.key === 's') {
       event.preventDefault();
       if (this.hasAnyChanges()) {
@@ -665,21 +650,18 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Enter: Add accepted comics
     if (event.key === 'Enter' && this.hasAcceptedMatches()) {
       event.preventDefault();
       this.addAllAccepted();
       return;
     }
 
-    // Escape: Cancel
     if (event.key === 'Escape') {
       event.preventDefault();
       this.onCancel();
       return;
     }
 
-    // Number keys for filter switching
     switch (event.key) {
       case '1':
         event.preventDefault();
@@ -716,9 +698,8 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       selections: this.processedResults.map(result => ({
         imageIndex: result.imageIndex,
         imageName: result.imageName,
-        userAction: result.userAction,
-        selectedMatchIdentifier: result.selectedMatch ? this.getMatchIdentifier(result.selectedMatch) : null,
         status: result.status,
+        selectedMatchIdentifier: result.selectedMatch ? this.getMatchIdentifier(result.selectedMatch) : null,
         confidence: result.confidence
       }))
     };
@@ -735,11 +716,10 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         return false;
       }
 
-      // Apply imported selections
       importData.selections.forEach((selection: any) => {
         const result = this.processedResults.find(r => r.imageIndex === selection.imageIndex);
-        if (result) {
-          result.userAction = selection.userAction;
+        if (result && selection.status) {
+          result.status = selection.status;
           if (selection.selectedMatchIdentifier) {
             result.selectedMatch = result.allMatches.find(m =>
               this.getMatchIdentifier(m) === selection.selectedMatchIdentifier
@@ -761,21 +741,20 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     const totalImages = this.processedResults.length;
     const stats = {
       totalImages,
-      autoSelected: this.getAutoSelectedCount(),
-      needsReview: this.getNeedsReviewCount(),
-      noMatch: this.getNoMatchCount(),
-      userAccepted: this.getAcceptedCount(),
-      userRejected: this.getRejectedCount(),
+      autoAccepted: this.getAutoAcceptedCount(),
+      manuallyAccepted: this.getManuallyAcceptedCount(),
       pending: this.getPendingCount(),
+      noMatch: this.getNoMatchCount(),
+      rejected: this.getRejectedCount(),
+      totalAccepted: this.getAcceptedCount(),
       averageConfidence: 0,
       highConfidencePercentage: 0,
       mediumConfidencePercentage: 0,
       lowConfidencePercentage: 0,
-      processingTime: 0, // Would need to track this
+      processingTime: 0,
       autoAcceptanceRate: 0
     };
 
-    // Calculate confidence statistics
     const highConf = this.processedResults.filter(r => r.confidence === 'high').length;
     const mediumConf = this.processedResults.filter(r => r.confidence === 'medium').length;
     const lowConf = this.processedResults.filter(r => r.confidence === 'low').length;
@@ -784,22 +763,20 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     stats.mediumConfidencePercentage = totalImages > 0 ? (mediumConf / totalImages) * 100 : 0;
     stats.lowConfidencePercentage = totalImages > 0 ? (lowConf / totalImages) * 100 : 0;
 
-    // Calculate average similarity
     const matchResults = this.processedResults.filter(r => r.bestMatch);
     if (matchResults.length > 0) {
       const totalSimilarity = matchResults.reduce((sum, r) => sum + (r.bestMatch?.similarity || 0), 0);
       stats.averageConfidence = totalSimilarity / matchResults.length;
     }
 
-    // Calculate auto-acceptance rate
-    stats.autoAcceptanceRate = stats.totalImages > 0 ? (stats.autoSelected / stats.totalImages) * 100 : 0;
+    stats.autoAcceptanceRate = stats.totalImages > 0 ? (stats.autoAccepted / stats.totalImages) * 100 : 0;
 
     return stats;
   }
 
   autoReviewAll(): void {
     const needsReviewResults = this.processedResults.filter(
-      (r) => r.status === 'needs_review' && !r.userAction
+      (r) => r.status === 'pending'
     );
 
     if (needsReviewResults.length === 0) {
@@ -807,14 +784,10 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Start with the first item
     this.currentReviewIndex = 0;
     this.reviewQueue = needsReviewResults;
     this.openNextReviewDialog();
   }
-
-  private currentReviewIndex = 0;
-  private reviewQueue: ProcessedImageResult[] = [];
 
   private openNextReviewDialog(): void {
     if (this.currentReviewIndex >= this.reviewQueue.length) {
@@ -825,18 +798,15 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   
     const result = this.reviewQueue[this.currentReviewIndex];
     
-    // Get the original image file for this result
     let originalImage: File | undefined;
     if (this.data.originalImages && this.data.originalImages.length > result.imageIndex) {
       originalImage = this.data.originalImages[result.imageIndex];
     }
   
-    // Get file size - try original file first, then stored image data
     let imageSize = 0;
     if (originalImage) {
       imageSize = originalImage.size;
     } else if (this.data.storedImages && this.data.storedImages[result.imageIndex]) {
-      // If you have stored image data with size information
       imageSize = this.data.storedImages[result.imageIndex].size || 0;
     }
   
@@ -845,9 +815,9 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       seriesId: this.data.seriesId,
       sessionId: this.data.sessionId,
       originalImage: originalImage,
-      imagePreviewUrl: result.imagePreview,  // ← This was missing!
-      imageName: result.imageName,           // ← This was missing!
-      imageSize: imageSize                   // ← This was missing!
+      imagePreviewUrl: result.imagePreview,
+      imageName: result.imageName,
+      imageSize: imageSize
     };
   
     const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
@@ -860,20 +830,17 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   
     dialogRef.afterClosed().subscribe((dialogResult) => {
       if (dialogResult && dialogResult.action === 'select') {
-        result.userAction = 'manual_select';
+        result.status = 'manually_accepted';
         result.selectedMatch = dialogResult.match;
-        result.status = 'auto_selected';
-        console.log(' User manually selected match for:', result.imageName);
-      } else if (dialogResult && dialogResult.action === 'no_match') {
-        result.userAction = 'rejected';
+        console.log('👆 User manually selected match for:', result.imageName);
+      } else if (dialogResult && dialogResult.action === 'rejected') {
+        result.status = 'rejected';
         result.selectedMatch = undefined;
-        result.status = 'no_match';
         console.log('❌ User rejected all matches for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'cancel') {
-        console.log(' User cancelled match selection for:', result.imageName);
+        console.log('🚫 User cancelled match selection for:', result.imageName);
       }
-  
-      // Move to next item
+
       this.currentReviewIndex++;
       this.openNextReviewDialog();
     });
@@ -881,24 +848,12 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   restoreRejectedToReview(): void {
     const rejectedResults = this.processedResults.filter(
-      (r) => r.userAction === 'rejected' && r.bestMatch
+      (r) => r.status === 'rejected' && r.bestMatch
     );
 
     rejectedResults.forEach((result) => {
-      // Clear the user action
-      result.userAction = undefined;
       result.selectedMatch = result.bestMatch ?? undefined;
-
-      // Reset status based on original confidence
-      if (result.bestMatch) {
-        if (result.bestMatch.similarity >= this.highConfidenceThreshold) {
-          result.status = 'auto_selected';
-        } else {
-          result.status = 'needs_review';
-        }
-      } else {
-        result.status = 'no_match';
-      }
+      result.status = 'pending';
     });
 
     console.log('🔄 Restored rejected items to review:', rejectedResults.length);

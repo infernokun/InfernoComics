@@ -8,6 +8,8 @@
   --danger-dark: #ef5350;
   --primary: #1976d2;
   --primary-dark: #42a5f5;
+  --info: #2196f3;
+  --info-dark: #64b5f6;
   
   // Light theme
   --bg-primary: #ffffff;
@@ -28,6 +30,7 @@
     --warning: #ffb74d;
     --danger: #ef5350;
     --primary: #42a5f5;
+    --info: #64b5f6;
     
     --bg-primary: #1e1e1e;
     --bg-secondary: #2d2d2d;
@@ -73,6 +76,7 @@
   --warning: #ffb74d;
   --danger: #ef5350;
   --primary: #42a5f5;
+  --info: #64b5f6;
   
   --bg-primary: #1e1e1e;
   --bg-secondary: #2d2d2d;
@@ -136,6 +140,7 @@
       .label { display: block; font-size: 11px; opacity: 0.9; text-transform: uppercase; margin-top: 4px; color: white !important; }
 
       &.auto { border-left: 3px solid var(--success); }
+      &.manual { border-left: 3px solid var(--info); }
       &.review { border-left: 3px solid var(--warning); }
       &.none { border-left: 3px solid var(--danger); }
     }
@@ -257,6 +262,7 @@
 
         &.auto .count { background: var(--success); color: white !important; }
         &.review .count { background: var(--warning); color: white !important; }
+        &.rejected .count { background: var(--text-secondary); color: white !important; }
         &.none .count { background: var(--danger); color: white !important; }
       }
     }
@@ -306,18 +312,36 @@
     transition: background-color 0.2s ease;
 
     &:hover { background: var(--bg-secondary); }
-    &.accepted { 
+    
+    // New status-based styling
+    &.auto-accepted { 
       background: rgba(102, 187, 106, 0.1); 
       border-left: 4px solid var(--success); 
     }
+    
+    &.manually-accepted { 
+      background: rgba(33, 150, 243, 0.1); 
+      border-left: 4px solid var(--info); 
+    }
+    
     &.rejected { 
       background: var(--bg-tertiary); 
       opacity: 0.7; 
       border-left: 4px solid var(--text-tertiary); 
     }
-    &.auto-selected:not(.accepted):not(.rejected) { border-left: 4px solid var(--success); }
-    &.needs-review:not(.accepted):not(.rejected) { border-left: 4px solid var(--warning); }
-    &.no-match:not(.accepted):not(.rejected) { border-left: 4px solid var(--danger); }
+    
+    &.pending { 
+      border-left: 4px solid var(--warning); 
+    }
+    
+    &.no-match { 
+      border-left: 4px solid var(--danger); 
+    }
+    
+    &.skipped { 
+      background: rgba(158, 158, 158, 0.1); 
+      border-left: 4px solid var(--text-tertiary); 
+    }
 
     .selected-match-indicator {
       grid-column: 1 / -1;
@@ -335,6 +359,21 @@
         font-weight: 600;
         color: var(--primary);
       }
+    }
+
+    .status-change-indicator {
+      grid-column: 1 / -1;
+      background: rgba(33, 150, 243, 0.1);
+      border: 1px solid var(--info);
+      border-radius: 4px;
+      padding: 6px 12px;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--info);
     }
   }
 }
@@ -428,17 +467,37 @@
     color: var(--danger); 
     border: 1px solid rgba(239, 83, 80, 0.3);
   }
-  &.auto-selected { 
+  
+  // New status badge styles
+  &.auto-accepted { 
     background: rgba(102, 187, 106, 0.2); 
     color: var(--success); 
+    border: 1px solid rgba(102, 187, 106, 0.3);
   }
-  &.needs-review { 
+  &.manually-accepted { 
+    background: rgba(33, 150, 243, 0.2); 
+    color: var(--info); 
+    border: 1px solid rgba(33, 150, 243, 0.3);
+  }
+  &.pending { 
     background: rgba(255, 183, 77, 0.2); 
     color: var(--warning); 
+    border: 1px solid rgba(255, 183, 77, 0.3);
+  }
+  &.rejected { 
+    background: rgba(158, 158, 158, 0.2); 
+    color: var(--text-secondary); 
+    border: 1px solid rgba(158, 158, 158, 0.3);
   }
   &.no-match { 
     background: rgba(239, 83, 80, 0.2); 
     color: var(--danger); 
+    border: 1px solid rgba(239, 83, 80, 0.3);
+  }
+  &.skipped { 
+    background: rgba(158, 158, 158, 0.2); 
+    color: var(--text-tertiary); 
+    border: 1px solid rgba(158, 158, 158, 0.3);
   }
 }
 
@@ -447,20 +506,24 @@
   font-size: 14px;
 }
 
-.user-action {
+// Accepted indicator styling
+.accepted-indicator {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10px;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 8px;
-  margin-top: 4px;
+  background: rgba(102, 187, 106, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(102, 187, 106, 0.3);
 
-  &.accepted { background: rgba(102, 187, 106, 0.2); color: var(--success); }
-  &.rejected { background: rgba(128, 128, 128, 0.2); color: var(--text-secondary); }
-  &.manual_select { background: rgba(66, 165, 245, 0.2); color: var(--primary); }
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
 }
 
 .action-buttons {
@@ -546,7 +609,9 @@
     .stat {
       font-size: 14px;
       font-weight: 500;
-      &.accepted { color: var(--success); }
+      
+      &.auto-accepted { color: var(--success); }
+      &.manually-accepted { color: var(--info); }
       &.rejected { color: var(--text-secondary); }
       &.pending { color: var(--warning); }
     }

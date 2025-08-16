@@ -287,9 +287,9 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     this.dialogRef.close({ action: 'cancel' });
   }
 
-  onNoMatch(): void {
+  onReject(): void {
     this.dialogRef.close({
-      action: 'no_match',
+      action: 'rejected',
       seriesId: this.data.seriesId,
       sourceImageIndex:
         this.hasMultipleImages && !this.showAllMatches
