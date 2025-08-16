@@ -46,7 +46,9 @@ export interface BulkSelectionDialogData {
 export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   processedResults: ProcessedImageResult[] = [];
   filteredResults: ProcessedImageResult[] = [];
-  currentFilter: 'all' | 'auto_selected' | 'manually_selected' | 'needs_review' | 'no_match' | 'rejected' = 'all';
+  currentStatusFilter: 'all' | 'auto_selected' | 'manually_selected' | 'needs_review' | 'no_match' | 'rejected' = 'all';
+  currentConfidenceFilter: 'all' | 'high' | 'medium' | 'low' = 'all';
+
 
   private imagePreviewUrls: string[] = [];
   private highConfidenceThreshold: number = 0.7;
@@ -78,7 +80,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.createImagePreviews();
     this.processMatches();
-    this.applyFilter();
+    this.applyFilters();
   }
 
   ngOnDestroy(): void {
@@ -194,54 +196,83 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     console.log('✅ Processed results:', this.processedResults);
   }
 
-  onFilterChange(
+  onStatusFilterChange(
     newFilter: 'all' | 'auto_selected' | 'manually_selected' | 'needs_review' | 'no_match' | 'rejected'
   ): void {
-    console.log('Filter changed to:', newFilter);
-    this.currentFilter = newFilter;
-    this.applyFilter();
+    console.log('Status filter changed to:', newFilter);
+    this.currentStatusFilter = newFilter;
+    this.applyFilters();
   }
 
-  applyFilter(): void {
-    console.log('Applying filter:', this.currentFilter);
-    console.log('ProcessedResults count:', this.processedResults.length);
-    console.log(
-      'ProcessedResults statuses:',
-      this.processedResults.map((r) => `${r.imageName}: ${r.status}`)
-    );
+  // New method for confidence filter changes
+  onConfidenceFilterChange(
+    newFilter: 'all' | 'high' | 'medium' | 'low'
+  ): void {
+    console.log('Confidence filter changed to:', newFilter);
+    this.currentConfidenceFilter = newFilter;
+    this.applyFilters();
+  }
 
-    switch (this.currentFilter) {
-      case 'all':
-        this.filteredResults = [...this.processedResults];
-        break;
-      case 'auto_selected':
-        this.filteredResults = this.processedResults.filter(
-          (r) => r.status === 'auto_accepted'
-        );
-        break;
-      case 'manually_selected':
-        this.filteredResults = this.processedResults.filter(
-          (r) => r.status === 'manually_accepted'
-        );
-        break;
-      case 'needs_review':
-        this.filteredResults = this.processedResults.filter(
-          (r) => r.status === 'pending'
-        );
-        break;
-      case 'rejected':
-        this.filteredResults = this.processedResults.filter(
-          (r) => r.status === 'rejected'
-        );
-        break;
-      case 'no_match':
-        this.filteredResults = this.processedResults.filter(
-          (r) => r.status === 'no_match'
-        );
-        break;
+  applyFilters(): void {
+    console.log('Applying filters - Status:', this.currentStatusFilter, 'Confidence:', this.currentConfidenceFilter);
+    console.log('ProcessedResults count:', this.processedResults.length);
+
+    let results = [...this.processedResults];
+
+    // Apply status filter
+    if (this.currentStatusFilter !== 'all') {
+      switch (this.currentStatusFilter) {
+        case 'auto_selected':
+          results = results.filter((r) => r.status === 'auto_accepted');
+          break;
+        case 'manually_selected':
+          results = results.filter((r) => r.status === 'manually_accepted');
+          break;
+        case 'needs_review':
+          results = results.filter((r) => r.status === 'pending');
+          break;
+        case 'rejected':
+          results = results.filter((r) => r.status === 'rejected');
+          break;
+        case 'no_match':
+          results = results.filter((r) => r.status === 'no_match');
+          break;
+      }
     }
 
+    // Apply confidence filter
+    if (this.currentConfidenceFilter !== 'all') {
+      results = results.filter((r) => r.confidence === this.currentConfidenceFilter);
+    }
+
+    this.filteredResults = results;
     console.log('Filtered results count:', this.filteredResults.length);
+  }
+
+  getFilteredByStatusCount(): number {
+    if (this.currentStatusFilter === 'all') {
+      return this.processedResults.length;
+    }
+
+    let results = [...this.processedResults];
+    switch (this.currentStatusFilter) {
+      case 'auto_selected':
+        results = results.filter((r) => r.status === 'auto_accepted');
+        break;
+      case 'manually_selected':
+        results = results.filter((r) => r.status === 'manually_accepted');
+        break;
+      case 'needs_review':
+        results = results.filter((r) => r.status === 'pending');
+        break;
+      case 'rejected':
+        results = results.filter((r) => r.status === 'rejected');
+        break;
+      case 'no_match':
+        results = results.filter((r) => r.status === 'no_match');
+        break;
+    }
+    return results.length;
   }
 
   acceptMatch(result: ProcessedImageResult): void {
@@ -268,7 +299,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     result.status = 'skipped';
     result.selectedMatch = undefined;
     console.log('📝 Manual add requested for:', result.imageName);
-    this.applyFilter();
+    this.applyFilters();
   }
 
   resetUserAction(result: ProcessedImageResult): void {
@@ -281,7 +312,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     }
 
     console.log('🔄 Reset user action for:', result.imageName);
-    this.applyFilter();
+    this.applyFilters();
   }
 
   private openMatchSelectionDialog(result: ProcessedImageResult): void {
@@ -329,7 +360,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         console.log('🚫 User cancelled match selection for:', result.imageName);
       }
 
-      this.applyFilter();
+      this.applyFilters();
     });
   }
 
@@ -344,12 +375,12 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     });
 
     console.log('✅ Auto-accepted all acceptable matches:', acceptableResults.length);
-    this.applyFilter();
+    this.applyFilters();
   }
 
   reviewAllMatches(): void {
-    this.currentFilter = 'needs_review';
-    this.applyFilter();
+    this.currentStatusFilter = 'needs_review';
+    this.applyFilters();
     console.log('👀 Switched to review view');
   }
 
@@ -364,7 +395,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     });
 
     console.log('❌ Rejected low confidence matches:', lowConfidenceResults.length);
-    this.applyFilter();
+    this.applyFilters();
   }
 
   addAllAccepted(): void {
@@ -433,14 +464,89 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   getHighConfidenceCount(): number {
-    return this.processedResults.filter(
-      (r) => r.confidence === 'high' && r.status === 'pending'
-    ).length;
+    let results = [...this.processedResults];
+    
+    // Apply status filter first
+    if (this.currentStatusFilter !== 'all') {
+      switch (this.currentStatusFilter) {
+        case 'auto_selected':
+          results = results.filter((r) => r.status === 'auto_accepted');
+          break;
+        case 'manually_selected':
+          results = results.filter((r) => r.status === 'manually_accepted');
+          break;
+        case 'needs_review':
+          results = results.filter((r) => r.status === 'pending');
+          break;
+        case 'rejected':
+          results = results.filter((r) => r.status === 'rejected');
+          break;
+        case 'no_match':
+          results = results.filter((r) => r.status === 'no_match');
+          break;
+      }
+    }
+    
+    return results.filter((r) => r.confidence === 'high').length;
+  }
+
+  getMediumConfidenceCount(): number {
+    let results = [...this.processedResults];
+    
+    // Apply status filter first
+    if (this.currentStatusFilter !== 'all') {
+      switch (this.currentStatusFilter) {
+        case 'auto_selected':
+          results = results.filter((r) => r.status === 'auto_accepted');
+          break;
+        case 'manually_selected':
+          results = results.filter((r) => r.status === 'manually_accepted');
+          break;
+        case 'needs_review':
+          results = results.filter((r) => r.status === 'pending');
+          break;
+        case 'rejected':
+          results = results.filter((r) => r.status === 'rejected');
+          break;
+        case 'no_match':
+          results = results.filter((r) => r.status === 'no_match');
+          break;
+      }
+    }
+    
+    return results.filter((r) => r.confidence === 'medium').length;
   }
 
   getLowConfidenceCount(): number {
+    let results = [...this.processedResults];
+    
+    // Apply status filter first
+    if (this.currentStatusFilter !== 'all') {
+      switch (this.currentStatusFilter) {
+        case 'auto_selected':
+          results = results.filter((r) => r.status === 'auto_accepted');
+          break;
+        case 'manually_selected':
+          results = results.filter((r) => r.status === 'manually_accepted');
+          break;
+        case 'needs_review':
+          results = results.filter((r) => r.status === 'pending');
+          break;
+        case 'rejected':
+          results = results.filter((r) => r.status === 'rejected');
+          break;
+        case 'no_match':
+          results = results.filter((r) => r.status === 'no_match');
+          break;
+      }
+    }
+    
+    return results.filter((r) => r.confidence === 'low').length;
+  }
+
+  getPendingHighConfidenceCount(): number {
     return this.processedResults.filter(
-      (r) => r.confidence === 'low' && r.status === 'pending'
+      (r) => r.confidence === 'high' && r.status === 'pending'
     ).length;
   }
 
@@ -556,28 +662,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     event.target.src = 'assets/images/no-cover-placeholder.png';
   }
 
-  logCurrentState(): void {
-    console.log('=== CURRENT STATE DEBUG ===');
-    console.log('Filter:', this.currentFilter);
-    console.log('Total results:', this.processedResults.length);
-    console.log('Filtered results:', this.filteredResults.length);
-    console.log('Auto-accepted:', this.getAutoAcceptedCount());
-    console.log('Manually-accepted:', this.getManuallyAcceptedCount());
-    console.log('Pending:', this.getPendingCount());
-    console.log('No match:', this.getNoMatchCount());
-    console.log('Rejected:', this.getRejectedCount());
-    console.log('Results breakdown:',
-      this.processedResults.map(r => ({
-        name: r.imageName,
-        status: r.status,
-        confidence: r.confidence,
-        hasMatch: !!r.bestMatch,
-        similarity: r.bestMatch?.similarity
-      }))
-    );
-    console.log('========================');
-  }
-
   acceptAllHighConfidence(): void {
     const highConfidenceResults = this.processedResults.filter(
       (r) => r.confidence === 'high' && r.status === 'pending'
@@ -589,7 +673,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     });
 
     console.log('✅ Auto-accepted high confidence matches:', highConfidenceResults.length);
-    this.applyFilter();
+    this.applyFilters();
   }
 
   acceptAllMediumConfidence(): void {
@@ -603,7 +687,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     });
 
     console.log('✅ Auto-accepted medium confidence matches:', mediumConfidenceResults.length);
-    this.applyFilter();
+    this.applyFilters();
   }
 
   rejectAllNoMatch(): void {
@@ -617,7 +701,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     });
 
     console.log('❌ Rejected all no-match items:', noMatchResults.length);
-    this.applyFilter();
+    this.applyFilters();
   }
 
   resetAllActions(): void {
@@ -626,64 +710,23 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     });
 
     console.log('🔄 Reset all user actions');
-    this.applyFilter();
+    this.applyFilters();
   }
 
-  onKeyDown(event: KeyboardEvent): void {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
-      event.preventDefault();
-      this.acceptAll();
-      return;
-    }
+  resetStatusFilter(): void {
+    this.currentStatusFilter = 'all';
+    this.applyFilters();
+  }
 
-    if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
-      event.preventDefault();
-      this.reviewAllMatches();
-      return;
-    }
+  resetConfidenceFilter(): void {
+    this.currentConfidenceFilter = 'all';
+    this.applyFilters();
+  }
 
-    if ((event.ctrlKey || event.metaKey) && event.key === 's') {
-      event.preventDefault();
-      if (this.hasAnyChanges()) {
-        this.saveSelections();
-      }
-      return;
-    }
-
-    if (event.key === 'Enter' && this.hasAcceptedMatches()) {
-      event.preventDefault();
-      this.addAllAccepted();
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      this.onCancel();
-      return;
-    }
-
-    switch (event.key) {
-      case '1':
-        event.preventDefault();
-        this.onFilterChange('all');
-        break;
-      case '2':
-        event.preventDefault();
-        this.onFilterChange('auto_selected');
-        break;
-      case '3':
-        event.preventDefault();
-        this.onFilterChange('needs_review');
-        break;
-      case '4':
-        event.preventDefault();
-        this.onFilterChange('rejected');
-        break;
-      case '5':
-        event.preventDefault();
-        this.onFilterChange('no_match');
-        break;
-    }
+  resetAllFilters(): void {
+    this.currentStatusFilter = 'all';
+    this.currentConfidenceFilter = 'all';
+    this.applyFilters();
   }
 
   private getMatchIdentifier(match: ComicMatch): string {
@@ -728,7 +771,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         }
       });
 
-      this.applyFilter();
+      this.applyFilters();
       console.log('✅ Successfully imported selections');
       return true;
     } catch (error) {
@@ -792,7 +835,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   private openNextReviewDialog(): void {
     if (this.currentReviewIndex >= this.reviewQueue.length) {
       console.log('✅ Finished reviewing all items');
-      this.applyFilter();
+      this.applyFilters();
       return;
     }
   
@@ -857,6 +900,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     });
 
     console.log('🔄 Restored rejected items to review:', rejectedResults.length);
-    this.applyFilter();
+    this.applyFilters();
   }
 }

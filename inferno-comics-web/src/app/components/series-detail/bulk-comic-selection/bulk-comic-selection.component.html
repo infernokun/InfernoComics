@@ -30,12 +30,10 @@
         <span class="number">{{ getRejectedCount() }}</span>
         <span class="label">Rejected</span>
       </div>
-      <!-- TODO -->
       <div class="summary-item none" *ngIf="getNoMatchCount() > 0">
         <span class="number">{{ getNoMatchCount() }}</span>
         <span class="label">No Match</span>
       </div>
-      <!-- TODO -->
     </div>
   </div>
 
@@ -52,18 +50,14 @@
         </button>
         <button mat-button 
                 (click)="acceptAllHighConfidence()" 
-                [disabled]="getHighConfidenceCount() === 0"
+                [disabled]="getPendingHighConfidenceCount() === 0"
                 class="accept-high-btn">
           <mat-icon>star</mat-icon>
-          Accept High Confidence ({{ getHighConfidenceCount() }})
+          Accept High Confidence ({{ getPendingHighConfidenceCount() }})
         </button>
         <button mat-button (click)="autoReviewAll()" [disabled]="getPendingCount() === 0">
           <mat-icon>rate_review</mat-icon>
           Review All ({{ getPendingCount() }})
-        </button>
-        <button mat-button (click)="rejectLowConfidence()" [disabled]="getLowConfidenceCount() === 0">
-          <mat-icon>block</mat-icon>
-          Reject Low Confidence
         </button>
         <button mat-button (click)="restoreRejectedToReview()" [disabled]="getRestorableRejectedCount() === 0">
           <mat-icon>restore</mat-icon>
@@ -72,37 +66,73 @@
       </div>
 
       <!-- Filter Tabs -->
-      <div class="filter-tabs">
-        <button class="filter-tab" 
-                [class.active]="currentFilter === 'all'"
-                (click)="onFilterChange('all')">
-          All <span class="count">{{ processedResults.length }}</span>
-        </button>
-        <button class="filter-tab auto" 
-                [class.active]="currentFilter === 'auto_selected'"
-                (click)="onFilterChange('auto_selected')">
-          Auto-Accepted <span class="count">{{ getAutoAcceptedCount() }}</span>
-        </button>
-        <button class="filter-tab manual" 
-                [class.active]="currentFilter === 'manually_selected'"
-                (click)="onFilterChange('manually_selected')">
-          Manually Accepted <span class="count">{{ getManuallyAcceptedCount() }}</span>
-        </button>
-        <button class="filter-tab review" 
-                [class.active]="currentFilter === 'needs_review'"
-                (click)="onFilterChange('needs_review')">
-          Pending Review <span class="count">{{ getPendingCount() }}</span>
-        </button>
-        <button class="filter-tab rejected" 
-                [class.active]="currentFilter === 'rejected'"
-                (click)="onFilterChange('rejected')">
-                Rejected <span class="count">{{ getRejectedCount() }}</span>
-        </button>
-        <button class="filter-tab none" 
-                [class.active]="currentFilter === 'no_match'"
-                (click)="onFilterChange('no_match')">
-          No Match <span class="count">{{ getNoMatchCount() }}</span>
-        </button>
+      <div class="filter-container">
+        <!-- Status Filters -->
+        <div class="filter-section">
+          <label class="filter-section-label">Status:</label>
+          <div class="filter-tabs status-filters">
+            <button class="filter-tab" 
+                    [class.active]="currentStatusFilter === 'all'"
+                    (click)="onStatusFilterChange('all')">
+              All <span class="count">{{ processedResults.length }}</span>
+            </button>
+            <button class="filter-tab auto" 
+                    [class.active]="currentStatusFilter === 'auto_selected'"
+                    (click)="onStatusFilterChange('auto_selected')">
+              Auto-Accepted <span class="count">{{ getAutoAcceptedCount() }}</span>
+            </button>
+            <button class="filter-tab manual" 
+                    [class.active]="currentStatusFilter === 'manually_selected'"
+                    (click)="onStatusFilterChange('manually_selected')">
+              Manually Accepted <span class="count">{{ getManuallyAcceptedCount() }}</span>
+            </button>
+            <button class="filter-tab review" 
+                    [class.active]="currentStatusFilter === 'needs_review'"
+                    (click)="onStatusFilterChange('needs_review')">
+              Pending Review <span class="count">{{ getPendingCount() }}</span>
+            </button>
+            <button class="filter-tab rejected" 
+                    [class.active]="currentStatusFilter === 'rejected'"
+                    (click)="onStatusFilterChange('rejected')">
+                    Rejected <span class="count">{{ getRejectedCount() }}</span>
+            </button>
+            <button class="filter-tab none" 
+                    [class.active]="currentStatusFilter === 'no_match'"
+                    (click)="onStatusFilterChange('no_match')">
+              No Match <span class="count">{{ getNoMatchCount() }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confidence Filters -->
+        <div class="filter-section">
+          <label class="filter-section-label">Confidence:</label>
+          <div class="filter-tabs confidence-filters">
+            <button class="filter-tab" 
+                    [class.active]="currentConfidenceFilter === 'all'"
+                    (click)="onConfidenceFilterChange('all')">
+              All <span class="count">{{ getFilteredByStatusCount() }}</span>
+            </button>
+            <button class="filter-tab high-confidence" 
+                    [class.active]="currentConfidenceFilter === 'high'"
+                    (click)="onConfidenceFilterChange('high')">
+              <mat-icon>star</mat-icon>
+              High <span class="count">{{ getHighConfidenceCount() }}</span>
+            </button>
+            <button class="filter-tab medium-confidence" 
+                    [class.active]="currentConfidenceFilter === 'medium'"
+                    (click)="onConfidenceFilterChange('medium')">
+              <mat-icon>star_half</mat-icon>
+              Medium <span class="count">{{ getMediumConfidenceCount() }}</span>
+            </button>
+            <button class="filter-tab low-confidence" 
+                    [class.active]="currentConfidenceFilter === 'low'"
+                    (click)="onConfidenceFilterChange('low')">
+              <mat-icon>star_border</mat-icon>
+              Low <span class="count">{{ getLowConfidenceCount() }}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
