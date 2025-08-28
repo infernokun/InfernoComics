@@ -621,10 +621,10 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  private handleBulkAddResults(
+  private async handleBulkAddResults(
     results: ProcessedImageResult[],
     seriesId: number
-  ): void {
+  ): Promise<void> {
     console.log('🎯 Processing bulk add for', results.length, 'comics');
     
     // Show loading indicator
@@ -632,14 +632,24 @@ export class SeriesDetailComponent implements OnInit {
       duration: 0,
     });
 
-    // Process each accepted result
-    const addPromises = results.map(async (result) => {
-      // Check if result is accepted (either auto or manually) and has a selected match
-      if (
+    try {
+      // Filter and prepare accepted results
+      const acceptedResults = results.filter(result => 
         (result.status === 'auto_accepted' || result.status === 'manually_accepted') &&
         result.selectedMatch
-      ) {
-        const match = result.selectedMatch;
+      );
+
+      if (acceptedResults.length === 0) {
+        this.snackBar.dismiss();
+        this.snackBar.open('No comics selected for addition', 'Close', { duration: 3000 });
+        return;
+      }
+
+      console.log(`Processing ${acceptedResults.length} accepted results out of ${results.length} total`);
+
+      // Fetch Comic Vine details for all accepted results
+      const issueDataPromises = acceptedResults.map(async (result) => {
+        const match = result.selectedMatch!;
         
         try {
           // Fetch Comic Vine details for the match
@@ -658,7 +668,6 @@ export class SeriesDetailComponent implements OnInit {
               issue.variant = true;
             }
 
-            // Create the issue
             const issueData = {
               seriesId: seriesId,
               issueNumber: issue.issueNumber,
@@ -679,71 +688,77 @@ export class SeriesDetailComponent implements OnInit {
             };
 
             console.log(
-              '✅ Creating issue for:',
+              '✅ Prepared issue data for:',
               result.imageName,
               'with comic vine ID:',
-              issue.id,
-              'status:',
-              result.status
+              issue.id
             );
 
-            return this.issueService.createIssue(issueData).toPromise();
+            return issueData;
+          } else {
+            console.warn('No Comic Vine issue found for match:', match);
+            return null;
           }
         } catch (error) {
           console.error(
-            'Error processing match for',
+            'Error fetching Comic Vine details for',
             result.imageName,
             ':',
             error
           );
-          return Promise.reject(error);
+          return null;
         }
-      } else {
-        console.log(
-          '⚠️ Skipping result - status:',
-          result.status,
-          'hasSelectedMatch:',
-          !!result.selectedMatch,
-          'imageName:',
-          result.imageName
-        );
-        return Promise.resolve(null);
-      }
-    });
+      });
 
-    Promise.allSettled(addPromises)
-      .then((results) => {
-        this.snackBar.dismiss();
-        
-        const successful = results.filter(
-          (r) => r.status === 'fulfilled' && r.value !== null
-        ).length;
-        const failed = results.filter((r) => r.status === 'rejected').length;
+      // Wait for all Comic Vine data to be fetched
+      const allIssueData = await Promise.all(issueDataPromises);
+      
+      // Filter out null results
+      const validIssueData = allIssueData.filter(data => data !== null);
 
-        if (successful > 0) {
-          this.snackBar.open(
-            `Successfully added ${successful} comics to collection${
-              failed > 0 ? ` (${failed} failed)` : ''
-            }`,
-            'Close',
-            { duration: 5000 }
-          );
-          
-          // Refresh the issues list
-          this.loadIssues(seriesId);
-        } else {
-          this.snackBar.open('Failed to add comics to collection', 'Close', {
-            duration: 3000,
-          });
-        }
-      })
-      .catch((error) => {
+      if (validIssueData.length === 0) {
         this.snackBar.dismiss();
-        console.error('Error in bulk add:', error);
-        this.snackBar.open('Error adding comics to collection', 'Close', {
+        this.snackBar.open('Failed to fetch comic details for any issues', 'Close', {
           duration: 3000,
         });
+        return;
+      }
+
+      console.log(`Creating ${validIssueData.length} issues via bulk endpoint`);
+
+      // Use the bulk creation endpoint
+      const createdIssues = await this.issueService.createIssuesBulk(validIssueData).toPromise();
+
+      this.snackBar.dismiss();
+
+      const successful = createdIssues?.length || 0;
+      const failed = acceptedResults.length - successful;
+
+      if (successful > 0) {
+        this.snackBar.open(
+          `Successfully added ${successful} comics to collection${
+            failed > 0 ? ` (${failed} failed)` : ''
+          }`,
+          'Close',
+          { duration: 5000 }
+        );
+        
+        // Refresh both issues and series data
+        this.loadIssues(seriesId);
+        this.loadSeries(seriesId); // This will update the issuesOwnedCount
+      } else {
+        this.snackBar.open('Failed to add comics to collection', 'Close', {
+          duration: 3000,
+        });
+      }
+
+    } catch (error) {
+      this.snackBar.dismiss();
+      console.error('Error in bulk add:', error);
+      this.snackBar.open('Error adding comics to collection', 'Close', {
+        duration: 3000,
       });
+    }
   }
 
   private getStageDisplayName(stage: string): string {
@@ -1107,7 +1122,7 @@ export class SeriesDetailComponent implements OnInit {
   private performBulkDelete(): void {
     const totalIssues = this.issues.length;
     const seriesId = this.series?.id;
-
+    
     if (!seriesId) {
       this.snackBar.open('Error: Series ID not found', 'Close', {
         duration: 3000,
@@ -1123,22 +1138,13 @@ export class SeriesDetailComponent implements OnInit {
     // Get all issue IDs
     const issueIds = this.issues.map((issue) => issue.id);
 
-    // Create deletion promises for all issues
-    const deletePromises = issueIds.map((id) =>
-      this.issueService.deleteIssue(id).toPromise()
-    );
-
-    // Execute all deletions
-    Promise.allSettled(deletePromises)
-      .then((results) => {
+    // Use bulk delete endpoint instead of individual calls
+    this.issueService.deleteIssuesBulk(issueIds).subscribe({
+      next: (result) => {
         this.snackBar.dismiss();
-
-        const successful = results.filter(
-          (result) => result.status === 'fulfilled'
-        ).length;
-        const failed = results.filter(
-          (result) => result.status === 'rejected'
-        ).length;
+        
+        const successful = result.successful || 0;
+        const failed = result.failed || 0;
 
         if (successful === totalIssues) {
           // All deletions successful
@@ -1147,10 +1153,11 @@ export class SeriesDetailComponent implements OnInit {
             'Close',
             { duration: 5000 }
           );
-
-          // Clear the local issues array and refresh
+          
+          // Clear local issues and refresh both issues and series data
           this.issues = [];
-          this.loadIssues(seriesId); // Refresh from server to be sure
+          this.loadIssues(seriesId);
+          this.loadSeries(seriesId); // This will update issuesOwnedCount
         } else if (successful > 0) {
           // Partial success
           this.snackBar.open(
@@ -1158,9 +1165,10 @@ export class SeriesDetailComponent implements OnInit {
             'Close',
             { duration: 5000 }
           );
-
-          // Refresh the issues list to show current state
+          
+          // Refresh both issues and series data
           this.loadIssues(seriesId);
+          this.loadSeries(seriesId);
         } else {
           // All failed
           this.snackBar.open(
@@ -1172,13 +1180,10 @@ export class SeriesDetailComponent implements OnInit {
 
         // Log any failures for debugging
         if (failed > 0) {
-          console.error(
-            `${failed} issue deletions failed:`,
-            results.filter((r) => r.status === 'rejected')
-          );
+          console.error(`${failed} issue deletions failed`);
         }
-      })
-      .catch((error) => {
+      },
+      error: (error) => {
         this.snackBar.dismiss();
         console.error('Error during bulk delete:', error);
         this.snackBar.open(
@@ -1186,7 +1191,8 @@ export class SeriesDetailComponent implements OnInit {
           'Close',
           { duration: 5000 }
         );
-      });
+      }
+    });
   }
 
   manageComicVineSeries(): void {

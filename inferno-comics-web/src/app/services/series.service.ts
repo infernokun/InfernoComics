@@ -31,11 +31,11 @@ export class SeriesService {
     this.progressUrl = `${this.environmentService.settings?.restUrl}/progress`;
   }
 
-  getAllSeries(): Observable<any[]> {
+  getAllSeries(): Observable<Series[]> {
     return this.http.get<any[]>(this.apiUrl);
   }
 
-  getSeriesById(id: number): Observable<any> {
+  getSeriesById(id: number): Observable<Series> {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 

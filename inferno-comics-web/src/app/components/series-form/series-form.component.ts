@@ -87,7 +87,8 @@ export class SeriesFormComponent implements OnInit {
       startYear: [''],
       endYear: [''],
       imageUrl: [''],
-      issueCount: [{ value: 0, disabled: true }],
+      issuesAvailableCount: [{ value: 0, disabled: true }],
+      issuesOwnedCount: [{ value: 0, disabled: true }],
       comicVineId: [''], 
       comicVineIds: [[]],
       selectedPrimarySeries: [null],
@@ -149,7 +150,7 @@ export class SeriesFormComponent implements OnInit {
       this.seriesForm.patchValue({
         comicVineIds: [],
         comicVineId: null,
-        issueCount: 0
+        issuesAvailableCount: 0
       });
       return;
     }
@@ -171,7 +172,7 @@ export class SeriesFormComponent implements OnInit {
 
     const earliestStart = startYears.length > 0 ? Math.min(...startYears) : null;
     const latestEnd = endYears.length > 0 ? Math.max(...endYears) : null;
-    const totalIssueCount = this.existingComicVineData
+    const totalAvailableCount = this.existingComicVineData
       .map(s => s.issueCount || 0)
       .reduce((sum, count) => sum + count, 0);
 
@@ -181,7 +182,7 @@ export class SeriesFormComponent implements OnInit {
       comicVineId: primaryId,
       startYear: earliestStart,
       endYear: latestEnd,
-      issueCount: totalIssueCount
+      issuesAvailableCount: totalAvailableCount
     });
   }
 
@@ -368,7 +369,7 @@ export class SeriesFormComponent implements OnInit {
 
     const earliestStart = startYears.length > 0 ? Math.min(...startYears) : null;
     const latestEnd = endYears.length > 0 ? Math.max(...endYears) : null;
-    const totalIssueCount = this.selectedSeries
+    const totalAvailableCount = this.selectedSeries
       .map(s => s.issueCount || 0)
       .reduce((sum, count) => sum + count, 0);
 
@@ -379,7 +380,7 @@ export class SeriesFormComponent implements OnInit {
       startYear: earliestStart,
       endYear: latestEnd,
       imageUrl: this.selectedCover,
-      issueCount: totalIssueCount,
+      issuesAvailableCount: totalAvailableCount,
       comicVineId: this.selectedPrimarySeries!.id,
       comicVineIds: this.selectedSeries.map(s => s.id)
     });
@@ -413,7 +414,7 @@ export class SeriesFormComponent implements OnInit {
       startYear: comicVineSeries.startYear,
       endYear: comicVineSeries.endYear,
       imageUrl: comicVineSeries.imageUrl,
-      issueCount: comicVineSeries.issueCount || 0,
+      issuesAvailableCount: comicVineSeries.issueCount || 0,
       comicVineId: comicVineSeries.id,
       comicVineIds: [comicVineSeries.id]
     });
@@ -447,10 +448,12 @@ export class SeriesFormComponent implements OnInit {
 
     this.loading = true;
 
-    // Enable issueCount temporarily to get its value
-    this.seriesForm.get('issueCount')?.enable();
+    // Enable fields temporarily to get their values
+    this.seriesForm.get('issuesAvailableCount')?.enable();
+    this.seriesForm.get('issuesOwnedCount')?.enable();
     const formData = this.seriesForm.value;
-    this.seriesForm.get('issueCount')?.disable();
+    this.seriesForm.get('issuesAvailableCount')?.disable();
+    this.seriesForm.get('issuesOwnedCount')?.disable();
 
     // Build clean series object with only the data we need
     const seriesData: Series = {
@@ -460,7 +463,8 @@ export class SeriesFormComponent implements OnInit {
       startYear: formData.startYear,
       endYear: formData.endYear,
       imageUrl: formData.imageUrl,
-      issueCount: formData.issueCount,
+      issuesAvailableCount: formData.issuesAvailableCount,
+      issuesOwnedCount: formData.issuesOwnedCount,
       generatedDescription: false,
       comicVineId: formData.comicVineId,
       comicVineIds: formData.comicVineIds || []
@@ -512,10 +516,14 @@ export class SeriesFormComponent implements OnInit {
   }
 
   // Helper methods for display
-  getCurrentIssueCount(): number {
+  getCurrentAvailableCount(): number {
     return this.existingComicVineData
       .map(s => s.issueCount || 0)
       .reduce((sum, count) => sum + count, 0);
+  }
+
+  getCurrentOwnedCount(): number {
+    return this.seriesForm.get('issuesOwnedCount')?.value || 0;
   }
 
   getPreviewDateRange(): string {
@@ -546,7 +554,7 @@ export class SeriesFormComponent implements OnInit {
     return this.selectedPrimarySeries?.description || '';
   }
 
-  getPreviewIssueCount(): number {
+  getPreviewAvailableCount(): number {
     if (!this.allAvailableSeries.length) return 0;
     
     return this.allAvailableSeries

@@ -1,6 +1,5 @@
 package com.infernokun.infernoComics.controllers;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
@@ -47,7 +46,7 @@ public class SeriesController {
     @GetMapping("/{id}")
     public ResponseEntity<Series> getSeriesById(@PathVariable Long id) {
         try {
-            return ResponseEntity.ok( seriesService.getSeriesById(id));
+            return ResponseEntity.ok(seriesService.getSeriesById(id));
         } catch (Exception e) {
             log.error("Error fetching series {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -339,7 +338,7 @@ public class SeriesController {
         private Integer endYear;
         private String imageUrl;
         private List<String> comicVineIds;
-        private int issueCount;
+        private int issuesAvailableCount;
         private boolean generatedDescription;
         private String comicVineId;
     }

@@ -41,7 +41,7 @@
             </div>
 
             <form [formGroup]="seriesForm" (ngSubmit)="onSubmit()">
-                <!-- Basic form fields (only show in non-management mode or for reference) -->
+                <!-- Basic form fields (only show in non-management mode) -->
                 <div *ngIf="!isComicVineManagementMode">
                     <div class="form-row">
                         <mat-form-field appearance="outline" class="full-width">
@@ -57,11 +57,19 @@
                     </div>
 
                     <div class="form-row">
-                        <mat-form-field appearance="outline" class="full-width">
-                            <mat-label>Issue Count</mat-label>
-                            <input matInput type="number" formControlName="issueCount" [disabled]="true">
-                            <mat-hint *ngIf="seriesForm.get('issueCount')?.value">
-                                {{ seriesForm.get('issueCount')?.value }} issues
+                        <mat-form-field appearance="outline" class="half-width">
+                            <mat-label>Issues Available</mat-label>
+                            <input matInput type="number" formControlName="issuesAvailableCount" [disabled]="true">
+                            <mat-hint *ngIf="seriesForm.get('issuesAvailableCount')?.value">
+                                {{ seriesForm.get('issuesAvailableCount')?.value }} issues available
+                            </mat-hint>
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline" class="half-width">
+                            <mat-label>Issues Owned</mat-label>
+                            <input matInput type="number" formControlName="issuesOwnedCount" [disabled]="true">
+                            <mat-hint *ngIf="seriesForm.get('issuesOwnedCount')?.value">
+                                {{ seriesForm.get('issuesOwnedCount')?.value }} issues in collection
                             </mat-hint>
                         </mat-form-field>
                     </div>
@@ -72,7 +80,10 @@
                     <div class="reference-info">
                         <h4>{{ seriesForm.get('name')?.value }}</h4>
                         <p>{{ seriesForm.get('publisher')?.value }} • {{ seriesForm.get('startYear')?.value }}</p>
-                        <p class="current-count">Current total: {{ getCurrentIssueCount() }} issues from {{ existingComicVineData.length }} series</p>
+                        <div class="count-info">
+                            <p class="available-count">Available: {{ getCurrentAvailableCount() }} issues from {{ existingComicVineData.length }} series</p>
+                            <p class="owned-count">Owned: {{ getCurrentOwnedCount() }} issues in collection</p>
+                        </div>
                     </div>
                 </div>
 
@@ -158,7 +169,7 @@
                     <p>No Comic Vine series found for "{{ customSearchTerm }}". Try a different search term.</p>
                 </div>
 
-                <!-- Series Combination Configuration (for both create/edit mode AND management mode) -->
+                <!-- Series Combination Configuration -->
                 <div class="combination-config" *ngIf="selectedSeries.length > 0 && showCombinationConfig">
                     <mat-card class="config-card">
                         <mat-card-header>
@@ -174,7 +185,6 @@
                             <div class="cover-selection">
                                 <h4>Choose Cover Image:</h4>
                                 <div class="cover-options">
-                                    <!-- Show covers from all available series (existing + new) -->
                                     <div *ngFor="let series of allAvailableSeries" class="cover-option"
                                          [class.selected]="selectedCover === series.imageUrl"
                                          [class.existing]="isExistingSeries(series.id)"
@@ -223,7 +233,10 @@
                                         <p class="current-description" *ngIf="seriesForm.get('description')?.value">
                                             {{ seriesForm.get('description')?.value | slice:0:150 }}{{ seriesForm.get('description')?.value?.length > 150 ? '...' : '' }}
                                         </p>
-                                        <p class="issue-info">{{ getCurrentIssueCount() }} issues from {{ existingComicVineData.length }} series</p>
+                                        <div class="issue-info">
+                                            <p>Available: {{ getCurrentAvailableCount() }} issues from {{ existingComicVineData.length }} series</p>
+                                            <p>Owned: {{ getCurrentOwnedCount() }} issues in collection</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="metadata-toggle-container">
@@ -261,9 +274,10 @@
                                         <p class="preview-description" *ngIf="getPreviewDescription()">
                                             {{ getPreviewDescription() | slice:0:150 }}{{ getPreviewDescription().length > 150 ? '...' : '' }}
                                         </p>
-                                        <p class="preview-issues">
-                                            Total: {{ getPreviewIssueCount() }} issues from {{ getPreviewSeriesCount() }} series
-                                        </p>
+                                        <div class="preview-issues">
+                                            <p>Total available: {{ getPreviewAvailableCount() }} issues from {{ getPreviewSeriesCount() }} series</p>
+                                            <p *ngIf="isComicVineManagementMode">Owned: {{ getCurrentOwnedCount() }} issues in collection</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

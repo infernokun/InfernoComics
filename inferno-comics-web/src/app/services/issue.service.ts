@@ -32,12 +32,20 @@ export class IssueService {
     return this.http.post<any>(this.apiUrl, issue);
   }
 
+  createIssuesBulk(issues: any[]): Observable<any[]> {
+    return this.http.post<any[]>(`${this.apiUrl}/bulk`, issues);
+  }
+
   updateIssue(id: number, issue: any): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/${id}`, issue);
   }
 
   deleteIssue(id: number): Observable<any> {
     return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  }
+
+  deleteIssuesBulk(issueIds: number[]): Observable<{successful: number, failed: number}> {
+    return this.http.post<{successful: number, failed: number}>(`${this.apiUrl}/bulk-delete`, issueIds);
   }
 
   // Search methods

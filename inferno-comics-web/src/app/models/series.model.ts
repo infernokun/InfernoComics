@@ -11,7 +11,8 @@ export class Series {
   imageUrl?: string;
   comicVineId?: string;
   comicVineIds?: string[];
-  issueCount?: number;
+  issuesOwnedCount?: number;
+  issuesAvailableCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
   issues?: Issue[];
@@ -31,7 +32,8 @@ export class Series {
       this.imageUrl = data.imageUrl;
       this.comicVineId = data.comicVineId;
       this.comicVineIds = data.comicVineIds || [];
-      this.issueCount = data.issueCount;
+      this.issuesOwnedCount = data.issuesOwnedCount || 0;
+      this.issuesAvailableCount = data.issuesAvailableCount || 0;
       this.createdAt = data.createdAt ? DateUtils.parseArrayDate(data.createdAt) : undefined;
       this.updatedAt = data.updatedAt ? DateUtils.parseArrayDate(data.updatedAt) : undefined;
       this.issues = data.issues || [];

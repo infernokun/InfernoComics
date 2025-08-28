@@ -2,6 +2,7 @@ package com.infernokun.infernoComics.repositories;
 
 import com.infernokun.infernoComics.models.Series;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -37,4 +38,8 @@ public interface SeriesRepository extends JpaRepository<Series, Long> {
 
     @Query("SELECT s FROM Series s WHERE s.comicVineId IS NOT NULL")
     List<Series> findSeriesWithComicVineId();
+
+    @Modifying
+    @Query("UPDATE Series s SET s.issuesOwnedCount = :count WHERE s.id = :seriesId")
+    void updateIssuesOwnedCount(@Param("seriesId") Long seriesId, @Param("count") int count);
 }

@@ -6,12 +6,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
+import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
+import com.infernokun.infernoComics.utils.CacheConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.Cacheable;
@@ -85,7 +87,7 @@ public class SeriesService {
 
         List<String> originalComicVineIds = new ArrayList<>(series.getComicVineIds() != null ?
                 series.getComicVineIds() : List.of());
-        Integer originalIssueCount = series.getIssueCount();
+        Integer originalIssuesAvailableCount = series.getIssuesAvailableCount();
 
         log.info("Reverifying metadata for series '{}' (ID: {})", series.getName(), seriesId);
 
@@ -126,7 +128,7 @@ public class SeriesService {
         }
 
         // Update series with new metadata
-        series.setIssueCount(totalComics.get());
+        series.setIssuesAvailableCount(totalComics.get());
         series.setGcdIds(newGcdIds);
         series.setCachedCoverUrls(new ArrayList<>());
 
@@ -142,7 +144,7 @@ public class SeriesService {
             evictCacheValue("series-stats", "global");
 
             // Evict search caches if series data changed significantly
-            if (!originalComicVineIds.equals(newGcdIds) || !originalIssueCount.equals(totalComics.get())) {
+            if (!originalComicVineIds.equals(newGcdIds) || !originalIssuesAvailableCount.equals(totalComics.get())) {
                 Arrays.asList("series-search", "series-advanced-search").forEach(cacheName -> {
                     try {
                         Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
@@ -163,30 +165,32 @@ public class SeriesService {
     }
 
     public List<Series> getAllSeries() {
-        // Try to get from cache first
-        String cacheKey = "all-series-with-counts";
-        List<Series> cachedSeries = getCachedValue(cacheKey);
+        List<Series> cachedSeries = getCachedValue(CacheConstants.CacheKeys.ALL_SERIES_LIST);
 
         if (cachedSeries != null) {
             log.debug("Returning cached series list with {} items", cachedSeries.size());
             return cachedSeries;
         }
 
-        // Fetch from database and compute issue counts
         List<Series> seriesList = seriesRepository.findAll();
-        seriesList.forEach(series ->
-                series.setIssueCount(issueService.getIssuesBySeriesId(series.getId()).size()));
+        seriesList.forEach(series -> {
+            List<Issue> issues = issueService.getIssuesBySeriesId(series.getId());
+            series.setIssuesOwnedCount(issues.size());
+        });
 
-        // Cache the result for 30 minutes
-        putCacheValue(cacheKey, seriesList);
-
+        putCacheValue(CacheConstants.CacheKeys.ALL_SERIES_LIST, seriesList);
         return seriesList;
     }
 
     @Cacheable(value = "series", key = "#id", unless = "#result == null")
     @Transactional(readOnly = true)
     public Series getSeriesById(Long id) {
-        return seriesRepository.findByIdWithIssues(id).orElse(null);
+        Series series = seriesRepository.findByIdWithIssues(id).orElse(null);
+        if (series == null) {
+            return null;
+        }
+        series.setIssuesOwnedCount(series.getIssues().size());
+        return series;
     }
 
     public ComicVineService.ComicVineSeriesDto getComicVineSeriesById(Long comicVineId) {
@@ -450,14 +454,14 @@ public class SeriesService {
                 }
             }
 
-            // Recalculate total issue count
+            // Recalculate total available issue count from Comic Vine
             int totalIssueCount = comicVineData.stream()
                     .mapToInt(data -> data.getIssueCount() != null ? data.getIssueCount() : 0)
                     .sum();
 
-            if (totalIssueCount != series.getIssueCount()) {
-                log.debug("Updating issue count from {} to {}", series.getIssueCount(), totalIssueCount);
-                series.setIssueCount(totalIssueCount);
+            if (totalIssueCount != series.getIssuesAvailableCount()) {
+                log.debug("Updating available issue count from {} to {}", series.getIssuesAvailableCount(), totalIssueCount);
+                series.setIssuesAvailableCount(totalIssueCount);
             }
         } catch (Exception e) {
             log.error("❌ Error recalculating series metadata from Comic Vine for series {}: {}", series.getId(), e.getMessage(), e);
@@ -627,7 +631,7 @@ public class SeriesService {
         });
     }
 
-    // Get popular series (most comic books)
+    // Get popular series (most comic books owned)
     @Cacheable(value = "popular-series", key = "#limit")
     public List<Series> getPopularSeries(int limit) {
         return seriesRepository.findAll().stream()
@@ -638,7 +642,7 @@ public class SeriesService {
 
     // Helper method to evict list-based caches when series data changes
     private void evictListCaches() {
-        Arrays.asList("series-list", "recent-series", "popular-series", "series-stats")
+        Arrays.asList(CacheConstants.CacheNames.SERIES_LIST, "recent-series", "popular-series", "series-stats")
                 .forEach(cacheName -> {
                     try {
                         Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
