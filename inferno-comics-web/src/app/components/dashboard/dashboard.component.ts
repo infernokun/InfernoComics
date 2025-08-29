@@ -58,6 +58,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   publisherStats: PublisherStat[] = [];
   showAllPublishers = false;
   
+  // Completion tracking
+  completedSeriesCount = 0;
+  completionPercentage = 0;
+  
   // Series display
   favoriteSeriesIds: Set<number> = new Set();
   viewMode: 'grid' | 'list' = 'grid';
@@ -94,6 +98,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
           // Sort all series by name
           this.allSeries = series.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
           this.calculatePublisherStats(series);
+          this.calculateCompletionStats(series);
         },
         error: (error) => console.error('Error loading series:', error)
       });
@@ -137,6 +142,37 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .sort((a, b) => b.count - a.count);
     
     this.favoritePublisher = this.publisherStats[0]?.name || '';
+  }
+
+  // Completion Statistics
+  private calculateCompletionStats(series: Series[]): void {
+    const seriesWithIssues = series.filter(s => 
+      (s.issuesAvailableCount || 0) > 0
+    );
+    
+    this.completedSeriesCount = seriesWithIssues.filter(s => 
+      this.isSeriesComplete(s)
+    ).length;
+    
+    this.completionPercentage = seriesWithIssues.length > 0 
+      ? Math.round((this.completedSeriesCount / seriesWithIssues.length) * 100)
+      : 0;
+  }
+
+  // Series Completion Logic
+  isSeriesComplete(series: Series): boolean {
+    const owned = series.issuesOwnedCount || 0;
+    const available = series.issuesAvailableCount || 0;
+    
+    return available > 0 && owned === available;
+  }
+
+  getCompletionPercentage(series: Series): number {
+    const owned = series.issuesOwnedCount || 0;
+    const available = series.issuesAvailableCount || 0;
+    
+    if (available === 0) return 0;
+    return Math.round((owned / available) * 100);
   }
 
   toggleView(): void {

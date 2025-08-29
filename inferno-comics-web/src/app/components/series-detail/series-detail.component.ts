@@ -1022,6 +1022,23 @@ export class SeriesDetailComponent implements OnInit {
     }
   }
 
+  isSeriesComplete(): boolean {
+    if (!this.series) return false;
+    const owned = this.series.issuesOwnedCount || 0;
+    const available = this.series.issuesAvailableCount || 0;
+    
+    return available > 0 && owned === available;
+  }
+  
+  getCompletionPercentage(): number {
+    if (!this.series) return 0;
+    const owned = this.series.issuesOwnedCount || 0;
+    const available = this.series.issuesAvailableCount || 0;
+    
+    if (available === 0) return 0;
+    return Math.round((owned / available) * 100);
+  }
+  
   handleProgressDataResult(result: any): void {
     if (!result || result.action !== 'open_match_dialog') {
       console.log('No valid match data received');

@@ -25,10 +25,33 @@
           <mat-icon>calendar_today</mat-icon>
           <span>Started: {{ series.startYear }}</span>
         </div>
-        <div class="meta-item">
+        
+        <!-- Enhanced collection status item -->
+        <div class="meta-item collection-item">
           <mat-icon>library_books</mat-icon>
-          <span>{{ series.issuesOwnedCount }} / {{ series.issuesAvailableCount }} issues in collection</span>
+          <div class="collection-details">
+            <div class="collection-count">
+              <span>{{ series.issuesOwnedCount }} / {{ series.issuesAvailableCount }} issues in collection</span>
+              <span class="completion-badge" *ngIf="isSeriesComplete()">
+                <mat-icon>check_circle</mat-icon>
+                Complete!
+              </span>
+            </div>
+            
+            <div class="collection-progress" *ngIf="(series.issuesAvailableCount || 0) > 0">
+              <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" 
+                     [style.width.%]="getCompletionPercentage()"
+                     [class.complete]="isSeriesComplete()">
+                </div>
+              </div>
+              <span class="progress-text" [class.complete]="isSeriesComplete()">
+                {{ getCompletionPercentage() }}%
+              </span>
+            </div>
+          </div>
         </div>
+        
         <div class="meta-item">
           <mat-icon>description</mat-icon>
           Comic Vine Series Identification:
@@ -36,6 +59,7 @@
             {{ id }}<span *ngIf="!last">, </span>
           </span>
         </div>
+        
         <div class="meta-item">
           <mat-icon>description</mat-icon>
           GCD Identification:

@@ -1,3 +1,8 @@
+:root {
+  --success-color: #10b981;
+  --success-gradient: linear-gradient(135deg, #10b981, #059669);
+}
+
 // ===== VARIABLES & MIXINS =====
 @mixin card-hover {
   transition: all 0.3s ease-in-out;
@@ -1076,6 +1081,100 @@
           width: 16px;
           height: 16px;
         }
+      }
+    }
+  }
+}
+
+// Enhanced collection meta item
+.meta-item.collection-item {
+  display: flex;
+  flex-direction: row; // Keep row direction like other meta items
+  align-items: flex-start;
+  gap: 12px; // Standard gap between icon and content
+  
+  mat-icon {
+    flex-shrink: 0; // Prevent icon from shrinking
+    margin-top: 2px; // Fine-tune vertical alignment
+  }
+  
+  .collection-details {
+    flex: 1;
+    min-width: 0; // Prevent overflow issues
+  }
+  
+  .collection-count {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-wrap: wrap; // Allow wrapping on smaller screens
+    
+    .completion-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--success-gradient, linear-gradient(135deg, #10b981, #059669));
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      animation: pulse 2s infinite;
+      flex-shrink: 0; // Prevent badge from shrinking
+      
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+  
+  .collection-progress {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    max-width: 300px; // Constrain the progress bar width
+    
+    .progress-bar-wrapper {
+      flex: 1;
+      height: 6px;
+      background: var(--border-color, #e5e7eb);
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 100px; // Minimum width for progress bar
+      
+      .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(135deg, var(--primary-color, #3b82f6), var(--secondary-color, #8b5cf6));
+        border-radius: 3px;
+        transition: all 0.3s ease;
+        
+        &.complete {
+          background: linear-gradient(90deg, 
+            #10b981 0%, 
+            #34d399 25%, 
+            #6ee7b7 50%, 
+            #34d399 75%, 
+            #10b981 100%) !important;
+          background-size: 200% 100% !important;
+          animation: shimmer 2s ease-in-out infinite !important;
+        }
+      }
+    }
+    
+    .progress-text {
+      font-size: 0.8rem;
+      color: var(--text-muted, #6b7280);
+      font-weight: 600;
+      min-width: 35px;
+      text-align: right;
+      flex-shrink: 0; // Keep percentage text from shrinking
+      
+      &.complete {
+        color: #10b981;
+        font-weight: 700;
       }
     }
   }
