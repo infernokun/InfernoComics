@@ -121,10 +121,17 @@ export class SeriesDetailComponent implements OnInit {
     if (!this.comicVineIssues || !this.issues) return;
 
     this.comicVineIssues = this.comicVineIssues.filter((cvIssue) => {
-      return !this.issues.some((ownedIssue) => 
-        ownedIssue.comicVineId === cvIssue.id || 
-        ownedIssue.issueNumber === cvIssue.issueNumber
-      );
+      return !this.issues.some((ownedIssue) => {
+        // Convert to strings for comparison to handle type mismatches
+        const comicVineIdMatch = ownedIssue.comicVineId && 
+          String(ownedIssue.comicVineId) === String(cvIssue.id);
+        
+        // Only match issue numbers if comic vine IDs aren't available
+        const issueNumberMatch = !ownedIssue.comicVineId && 
+          ownedIssue.issueNumber === cvIssue.issueNumber;
+        
+        return comicVineIdMatch || issueNumberMatch;
+      });
     });
   }
 
