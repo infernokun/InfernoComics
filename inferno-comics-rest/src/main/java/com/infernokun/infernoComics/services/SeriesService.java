@@ -740,27 +740,37 @@ public class SeriesService {
                         String.format("Found %d ComicVine issues for %d input images",
                                 results.size(), imageDataList.size())));
 
+                Set<String> existingComicVineIds = issueService.getIssuesBySeriesId(seriesId)
+                        .stream()
+                        .map(Issue::getComicVineId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
                 candidateCovers = results.stream()
                         .flatMap(issue -> {
                             List<GCDCover> covers = new ArrayList<>();
 
-                            // Main cover from the issue
-                            GCDCover mainCover = new GCDCover();
-                            mainCover.setName(issue.getName());
-                            mainCover.setIssueNumber(issue.getIssueNumber());
-                            mainCover.setComicVineId(issue.getId());
-                            mainCover.setUrls(Collections.singletonList(issue.getImageUrl()));
-                            covers.add(mainCover);
+                            // Main cover from the issue - only add if not already owned
+                            if (!existingComicVineIds.contains(issue.getId())) {
+                                GCDCover mainCover = new GCDCover();
+                                mainCover.setName(issue.getName());
+                                mainCover.setIssueNumber(issue.getIssueNumber());
+                                mainCover.setComicVineId(issue.getId());
+                                mainCover.setUrls(Collections.singletonList(issue.getImageUrl()));
+                                covers.add(mainCover);
+                            }
 
-                            // Variant covers from the issue
-                            issue.getVariants().forEach(i -> {
-                                GCDCover variantCover = new GCDCover();
-                                variantCover.setName(issue.getName());
-                                variantCover.setIssueNumber(issue.getIssueNumber());
-                                variantCover.setComicVineId(i.getId());
-                                variantCover.setUrls(Collections.singletonList(i.getOriginalUrl()));
-                                variantCover.setParentComicVineId(issue.getId());
-                                covers.add(variantCover);
+                            // Variant covers from the issue - only add if not already owned
+                            issue.getVariants().forEach(variant -> {
+                                if (!existingComicVineIds.contains(variant.getId())) {
+                                    GCDCover variantCover = new GCDCover();
+                                    variantCover.setName(issue.getName());
+                                    variantCover.setIssueNumber(issue.getIssueNumber());
+                                    variantCover.setComicVineId(variant.getId());
+                                    variantCover.setUrls(Collections.singletonList(variant.getOriginalUrl()));
+                                    variantCover.setParentComicVineId(issue.getId());
+                                    covers.add(variantCover);
+                                }
                             });
 
                             return covers.stream();
