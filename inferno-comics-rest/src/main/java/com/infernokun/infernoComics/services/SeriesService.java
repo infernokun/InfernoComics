@@ -740,29 +740,35 @@ public class SeriesService {
                         String.format("Found %d ComicVine issues for %d input images",
                                 results.size(), imageDataList.size())));
 
-                Set<String> existingComicVineIds = issueService.getIssuesBySeriesId(seriesId)
+                Set<Long> existingComicVineIds = issueService.getIssuesBySeriesId(seriesId)
                         .stream()
                         .map(Issue::getComicVineId)
                         .filter(Objects::nonNull)
+                        .map(Long::parseLong)
                         .collect(Collectors.toSet());
+
+                log.info("Found {} existing Comic Vine IDs in collection: {}", existingComicVineIds.size(), existingComicVineIds);
+                log.info("Processing {} Comic Vine issues for filtering", results.size());
 
                 candidateCovers = results.stream()
                         .flatMap(issue -> {
                             List<GCDCover> covers = new ArrayList<>();
+                            Long issueId = Long.parseLong(issue.getId());
 
                             // Main cover from the issue - only add if not already owned
-                            if (!existingComicVineIds.contains(issue.getId())) {
+                            if (!existingComicVineIds.contains(issueId)) {
+                                log.debug("Adding main cover for issue {} ({})", issue.getIssueNumber(), issueId);
                                 GCDCover mainCover = new GCDCover();
                                 mainCover.setName(issue.getName());
                                 mainCover.setIssueNumber(issue.getIssueNumber());
                                 mainCover.setComicVineId(issue.getId());
                                 mainCover.setUrls(Collections.singletonList(issue.getImageUrl()));
                                 covers.add(mainCover);
-                            }
 
-                            // Variant covers from the issue - only add if not already owned
-                            issue.getVariants().forEach(variant -> {
-                                if (!existingComicVineIds.contains(variant.getId())) {
+                                // Only add variants if the parent issue is not owned
+                                issue.getVariants().forEach(variant -> {
+                                    log.debug("Adding variant cover for issue {} variant {} (parent: {})",
+                                            issue.getIssueNumber(), variant.getId(), issueId);
                                     GCDCover variantCover = new GCDCover();
                                     variantCover.setName(issue.getName());
                                     variantCover.setIssueNumber(issue.getIssueNumber());
@@ -770,12 +776,17 @@ public class SeriesService {
                                     variantCover.setUrls(Collections.singletonList(variant.getOriginalUrl()));
                                     variantCover.setParentComicVineId(issue.getId());
                                     covers.add(variantCover);
-                                }
-                            });
+                                });
+                            }
 
                             return covers.stream();
                         })
                         .collect(Collectors.toList());
+
+                log.info("Filtered to {} candidate covers from {} original issues", candidateCovers.size(), results.size());
+                log.info("Breakdown: {} main covers + {} variant covers",
+                        candidateCovers.stream().mapToLong(c -> c.getParentComicVineId() == null ? 1 : 0).sum(),
+                        candidateCovers.stream().mapToLong(c -> c.getParentComicVineId() != null ? 1 : 0).sum());
 
                 log.info("Generated {} candidate covers for session: {}", candidateCovers.size(), sessionId);
 
