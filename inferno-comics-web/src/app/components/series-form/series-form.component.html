@@ -114,7 +114,14 @@
                         
                         <mat-spinner diameter="20" *ngIf="searchingComicVine"></mat-spinner>
                     </div>
-                </div>
+                    
+                    <div class="append-mode-control" *ngIf="isEditMode && existingComicVineData.length > 0 && !isComicVineManagementMode">
+                        <mat-slide-toggle formControlName="appendMode" (change)="toggleAppendMode()" class="append-toggle">
+                            {{ getAppendModeLabel() }}
+                        </mat-slide-toggle>
+                        <p class="mode-description">{{ getOperationModeMessage() }}</p>
+                        </div>
+                    </div>
 
                 <!-- Comic Vine Results -->
                 <div class="comic-vine-results" *ngIf="comicVineResults.length > 0">

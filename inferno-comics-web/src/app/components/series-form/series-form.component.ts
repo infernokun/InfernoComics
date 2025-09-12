@@ -92,7 +92,8 @@ export class SeriesFormComponent implements OnInit {
       comicVineId: [''], 
       comicVineIds: [[]],
       selectedPrimarySeries: [null],
-      updateMetadataOnAdd: [false]
+      updateMetadataOnAdd: [false],
+      appendMode: [true]
     });
   }
 
@@ -104,7 +105,7 @@ export class SeriesFormComponent implements OnInit {
           this.seriesForm.patchValue(series);
           this.customSearchTerm = series.name || '';
           
-          if (this.isComicVineManagementMode) {
+          if (this.isComicVineManagementMode || this.isEditMode) {
             this.loadExistingComicVineData(series.comicVineIds || []);
           }
           
@@ -203,11 +204,9 @@ export class SeriesFormComponent implements OnInit {
             return 0; 
           });
 
-          // Filter out already associated series in management mode
-          if (this.isComicVineManagementMode) {
-            const currentIds = this.existingComicVineData.map(s => s.id);
-            results = results.filter(r => !currentIds.includes(r.id));
-          }
+          // Filter out already associated series
+          const currentIds = this.existingComicVineData.map(s => s.id);
+          results = results.filter(r => !currentIds.includes(r.id));
 
           this.comicVineResults = results;
           this.searchingComicVine = false;
@@ -241,6 +240,9 @@ export class SeriesFormComponent implements OnInit {
       return;
     }
 
+    const addedNames = this.selectedSeries.map(s => s.name).join(', ');
+    const beforeCount = this.existingComicVineData.length;
+    
     this.existingComicVineData.push(...this.selectedSeries);
     this.updateFormFromCurrentData();
     
@@ -249,7 +251,13 @@ export class SeriesFormComponent implements OnInit {
     
     this.clearSelection();
     this.comicVineResults = [];
-    this.snackBar.open(`Added ${this.selectedSeries.length} new Comic Vine series`, 'Close', { duration: 3000 });
+    
+    const afterCount = this.existingComicVineData.length;
+    this.snackBar.open(
+      `Added ${this.selectedSeries.length} series (${beforeCount} → ${afterCount} total): ${addedNames}`, 
+      'Close', 
+      { duration: 5000 }
+    );
   }
 
   isSeriesSelected(series: ComicVineSeries): boolean {
@@ -287,7 +295,11 @@ export class SeriesFormComponent implements OnInit {
       return;
     }
 
-    if (this.isComicVineManagementMode) {
+    // Check if we're in append mode for existing series
+    const hasExistingSeries = this.existingComicVineData.length > 0;
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+
+    if (this.isComicVineManagementMode || (this.isEditMode && hasExistingSeries && isAppendMode)) {
       const totalSeriesAfterAdd = this.existingComicVineData.length + this.selectedSeries.length;
       
       if (totalSeriesAfterAdd >= 2) {
@@ -302,9 +314,9 @@ export class SeriesFormComponent implements OnInit {
       }
     }
 
-    // Regular mode
-    if (this.selectedSeries.length === 1) {
-      this.selectSingleSeries(this.selectedSeries[0]);
+    // Regular mode or replace mode
+    if (this.selectedSeries.length === 1 && !hasExistingSeries) {
+      this.selectSingleSeries(this.selectedSeries[0], false); // false = don't append
       return;
     }
 
@@ -324,7 +336,10 @@ export class SeriesFormComponent implements OnInit {
       return;
     }
 
-    if (this.isComicVineManagementMode) {
+    const hasExistingSeries = this.existingComicVineData.length > 0;
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+
+    if (this.isComicVineManagementMode || (this.isEditMode && hasExistingSeries && isAppendMode)) {
       this.addToExistingSeriesWithConfig();
     } else {
       this.applyRegularCombinedConfiguration();
@@ -332,6 +347,9 @@ export class SeriesFormComponent implements OnInit {
   }
 
   private addToExistingSeriesWithConfig(): void {
+    const beforeCount = this.existingComicVineData.length;
+    const addedNames = this.selectedSeries.map(s => s.name).join(', ');
+    
     // Add new series to existing data
     this.existingComicVineData.push(...this.selectedSeries);
     
@@ -357,6 +375,13 @@ export class SeriesFormComponent implements OnInit {
     this.clearSelection();
     this.comicVineResults = [];
     this.showCombinationConfig = false;
+    
+    const afterCount = this.existingComicVineData.length;
+    this.snackBar.open(
+      `Added ${this.selectedSeries.length} series (${beforeCount} → ${afterCount} total): ${addedNames}`, 
+      'Close', 
+      { duration: 5000 }
+    );
   }
 
   private applyRegularCombinedConfiguration(): void {
@@ -400,13 +425,17 @@ export class SeriesFormComponent implements OnInit {
     this.allAvailableSeries = [];
   }
 
-  selectSingleSeries(comicVineSeries: ComicVineSeries): void {
-    if (this.isComicVineManagementMode) {
+  selectSingleSeries(comicVineSeries: ComicVineSeries, appendToExisting: boolean = true): void {
+    const hasExistingSeries = this.existingComicVineData.length > 0;
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+
+    if (this.isComicVineManagementMode || (this.isEditMode && hasExistingSeries && appendToExisting && isAppendMode)) {
       this.selectedSeries = [comicVineSeries];
       this.addToExistingSeries();
       return;
     }
 
+    // Replace mode or new series
     this.seriesForm.patchValue({
       name: comicVineSeries.name,
       description: comicVineSeries.description,
@@ -418,8 +447,29 @@ export class SeriesFormComponent implements OnInit {
       comicVineId: comicVineSeries.id,
       comicVineIds: [comicVineSeries.id]
     });
+    
+    // Clear existing data since we're replacing
+    this.existingComicVineData = [comicVineSeries];
+    
     this.comicVineResults = [];
     this.clearSelection();
+    
+    if (hasExistingSeries && !isAppendMode) {
+      this.snackBar.open(`Replaced series data with "${comicVineSeries.name}"`, 'Close', { duration: 3000 });
+    } else {
+      this.snackBar.open(`Selected "${comicVineSeries.name}"`, 'Close', { duration: 3000 });
+    }
+  }
+
+  // Toggle between append and replace modes
+  toggleAppendMode(): void {
+    const currentMode = this.seriesForm.get('appendMode')?.value;
+    this.seriesForm.patchValue({ appendMode: !currentMode });
+  }
+
+  getAppendModeLabel(): string {
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+    return isAppendMode ? 'Append to existing' : 'Replace existing';
   }
 
   // Form validation: prevent submission if no Comic Vine data in management mode
@@ -576,5 +626,23 @@ export class SeriesFormComponent implements OnInit {
       return 'At least one Comic Vine series is required';
     }
     return '';
+  }
+
+  // Get status message for current operation mode
+  getOperationModeMessage(): string {
+    const hasExisting = this.existingComicVineData.length > 0;
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+    
+    if (!hasExisting) {
+      return 'No existing Comic Vine series - new selections will be added';
+    }
+    
+    if (this.isComicVineManagementMode) {
+      return `Managing ${hasExisting} existing series - new selections will be added`;
+    }
+    
+    return isAppendMode 
+      ? `Append mode: New selections will be added to ${hasExisting} existing series`
+      : `Replace mode: New selections will replace ${hasExisting} existing series`;
   }
 }

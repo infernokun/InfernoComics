@@ -587,6 +587,25 @@ $shadow-color: rgba(0, 0, 0, 0.4);
       color: var(--primary-color);
     }
   }
+
+  .append-mode-control {
+    margin: 16px 0;
+    padding: 16px;
+    background: var(--background-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+
+    .append-toggle {
+        margin-bottom: 8px;
+    }
+
+    .mode-description {
+        margin: 8px 0 0 0;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        font-style: italic;
+    }
+  }
 }
 
 // Comic Vine Results
