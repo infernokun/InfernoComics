@@ -79,9 +79,11 @@ services:
       FLASK_ENV: "production"
       PERFORMANCE_LEVEL: "akaze_focused"
     volumes:
-      - /var/tmp/inferno-comics:/var/tmp/inferno-comics
       - /var/tmp/inferno-comics/results:/app/results
       - /var/tmp/inferno-comics/stored_images:/app/src/stored_images
+      - /var/tmp/inferno-comics/image_cache:/var/tmp/inferno-comics/image_cache
+      - /var/tmp/inferno-comics/comic_cache.db:/var/tmp/inferno-comics/comic_cache.db
+      - /var/tmp/inferno-comics/config.yml:/var/tmp/inferno-comics/config.yml
     networks:
       - inferno-comics-network
 
