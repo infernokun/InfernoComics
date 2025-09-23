@@ -1,7 +1,7 @@
 <div class="dashboard-container">
   <!-- Header Section -->
   <div class="header-section">
-    <h1 class="main-title">Comic Collection Hub</h1>
+    <h1 class="main-title">Inferno Comics</h1>
     <p class="subtitle">Discover, track, and explore your comic universe</p>
     
     <!-- Quick Actions -->
@@ -52,6 +52,17 @@
           <div class="stat-number">{{ uniquePublishers }}</div>
           <div class="stat-label">Publishers</div>
           <div class="stat-detail">{{ favoritePublisher || 'Various' }}</div>
+        </div>
+      </div>
+
+      <div class="stat-card complete-series" [@slideInUp]>
+        <div class="stat-icon">
+          <mat-icon>check_circle</mat-icon>
+        </div>
+        <div class="stat-content">
+          <div class="stat-number">{{ completedSeriesCount | number }}</div>
+          <div class="stat-label">Completed Series</div>
+          <div class="stat-detail">{{ completionPercentage }}% Complete</div>
         </div>
       </div>
     </div>
@@ -114,6 +125,10 @@
               <div class="series-badges">
                 <span class="badge publisher">{{ series.publisher }}</span>
                 <span class="badge year" *ngIf="series.startYear">{{ series.startYear }}</span>
+                <span class="badge complete" *ngIf="isSeriesComplete(series)">
+                  <mat-icon>check_circle</mat-icon>
+                  Complete
+                </span>
               </div>
               <div class="series-actions">
                 <button mat-icon-button (click)="toggleFavorite(series, $event)">
@@ -126,13 +141,30 @@
           </div>
           
           <div class="series-content">
-            <h3>{{ series.name }}</h3>
+            <div class="series-title-section">
+              <h3>{{ series.name }}</h3>
+              <div class="completion-badge" *ngIf="isSeriesComplete(series)">
+                <mat-icon>check_circle</mat-icon>
+                <span>Complete</span>
+              </div>
+            </div>
             <p class="series-publisher">{{ series.publisher }}</p>
             <div class="series-meta">
               <span class="issue-count">
                 <mat-icon>library_books</mat-icon>
-                {{ series.issueCount || 0 }} issues
+                {{ series.issuesOwnedCount || 0 }} / {{ series.issuesAvailableCount || 0 }} issues
               </span>
+              <div class="completion-progress" *ngIf="(series.issuesAvailableCount || 0) > 0">
+                <div class="progress-bar-wrapper">
+                  <div class="progress-bar-fill" 
+                       [style.width.%]="getCompletionPercentage(series)"
+                       [class.complete]="isSeriesComplete(series)">
+                  </div>
+                </div>
+                <span class="progress-text" [class.complete]="isSeriesComplete(series)">
+                  {{ getCompletionPercentage(series) }}%
+                </span>
+              </div>
             </div>
           </div>
         </div>

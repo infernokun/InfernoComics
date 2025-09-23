@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-inferno-comics}
       POSTGRES_DB: ${POSTGRES_DB:-inferno-comics}
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:
@@ -22,7 +22,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${POSTGRES_USER:-inferno-comics}@${POSTGRES_USER:-inferno-comics}.com
       PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD:-inferno-comics}
     ports:
-      - "5051:80"
+      - "5050:80"
     networks:
       - inferno-comics-network
 
@@ -31,7 +31,7 @@ services:
     image: redis:latest
     restart: unless-stopped
     ports:
-      - "6380:6379"
+      - "6379:6379"
     volumes:
       - redis_data:/data
     networks:

@@ -1,3 +1,4 @@
+import { DateUtils } from "../utils/date-utils";
 import { Series } from "./series.model";
 
 export enum IssueCondition {
@@ -11,9 +12,9 @@ export enum IssueCondition {
   POOR = 'POOR',
 }
 
-export interface Issue {
+export class Issue {
   id?: number;
-  issueNumber: string;
+  issueNumber?: string;
   title?: string;
   description?: string;
   coverDate?: Date;
@@ -29,6 +30,41 @@ export interface Issue {
   createdAt?: Date;
   updatedAt?: Date;
   series?: Series;
-  generatedDescription: boolean;
+  generatedDescription?: boolean;
   uploadedImageUrl?: string;
+  gcdIds?: string[];
+  variantCovers?: VariantCover[];
+
+  constructor(data?: any) {
+    if (data) {
+      this.id = data.id;
+      this.issueNumber = data.issueNumber;
+      this.title = data.title;
+      this.description = data.description;
+      this.coverDate = data.coverDate ? DateUtils.parseArrayDate(data.coverDate) : undefined;
+      this.imageUrl = data.imageUrl;
+      this.condition = data.condition;
+      this.purchasePrice = data.purchasePrice;
+      this.currentValue = data.currentValue;
+      this.purchaseDate = data.purchaseDate ? DateUtils.parseArrayDate(data.purchaseDate) : undefined;
+      this.notes = data.notes;
+      this.comicVineId = data.comicVineId;
+      this.keyIssue = data.keyIssue || false;
+      this.variant = data.variant || false;
+      this.createdAt = data.createdAt ? DateUtils.parseArrayDate(data.createdAt) : undefined;
+      this.updatedAt = data.updatedAt ? DateUtils.parseArrayDate(data.updatedAt) : undefined;
+      this.series = data.series ? new Series(data.series) : undefined;
+      this.generatedDescription = data.generatedDescription || false;
+      this.uploadedImageUrl = data.uploadedImageUrl;
+      this.gcdIds = data.gcdIds || [];
+      this.variantCovers = data.variantCovers || [];
+    }
+  }
+}
+
+export interface VariantCover {
+  id?: string;
+  originalUrl?: string;
+  caption?: string;
+  imageTags?: string;
 }

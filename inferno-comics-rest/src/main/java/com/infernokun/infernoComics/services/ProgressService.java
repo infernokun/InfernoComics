@@ -1,16 +1,22 @@
 package com.infernokun.infernoComics.services;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.controllers.ProgressController;
 import com.infernokun.infernoComics.models.ProgressData;
+import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
@@ -18,13 +24,17 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.PreDestroy;
 import java.io.IOException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -33,14 +43,16 @@ public class ProgressService {
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
     private final ProgressDataRepository progressDataRepository;
     private final WebClient webClient;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    // SSE timeout: 30 minutes (should be enough for image processing)
-    private static final long SSE_TIMEOUT = 30 * 60 * 1000L;
+    private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
+    private static final Duration PROGRESS_TTL = Duration.ofHours(2);
 
-    public ProgressService(ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig) {
+    public ProgressService(ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig, RedisTemplate<String, Object> redisTemplate) {
         this.progressDataRepository = progressDataRepository;
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
@@ -50,6 +62,20 @@ public class ProgressService {
                                 .maxInMemorySize(500 * 1024 * 1024))
                         .build())
                 .build();
+        this.redisTemplate = redisTemplate;
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        scheduler.shutdown();
+        try {
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     public boolean emitterIsPresent(String sessionId) {
@@ -83,7 +109,7 @@ public class ProgressService {
         });
 
         emitter.onError((throwable) -> {
-            log.error("SSE emitter error for session {}: {}", sessionId, throwable.getMessage(), throwable);
+            log.error("SSE emitter error for session {}: {}", sessionId, throwable.getMessage());
             cleanupSession(sessionId);
         });
 
@@ -135,21 +161,23 @@ public class ProgressService {
         return progressDataRepository.save(progressData);
     }
 
-    public void updateProgress(String sessionId, String stage, int progress, String message) {
+    public void updateProgress(ProgressUpdateRequest request) {
         log.debug("Updating progress for session {}: stage={}, progress={}%, message={}",
-                sessionId, stage, progress, message);
+                request.getSessionId(), request.getStage(), request.getProgress(), request.getMessage());
 
+        // Create SSE progress data - FIXED: using request.getStage() instead of request.getSessionId()
         SSEProgressData progressData = SSEProgressData.builder()
                 .type("progress")
-                .sessionId(sessionId)
-                .stage(stage)
-                .progress(progress)
-                .message(message)
+                .sessionId(request.getSessionId())
+                .stage(request.getStage())
+                .progress(request.getProgress())
+                .message(request.getMessage())
                 .timestamp(Instant.now().toEpochMilli())
+                .data(request)
                 .build();
 
-        sessionStatus.put(sessionId, progressData);
-        sendToEmitter(sessionId, progressData);
+        sessionStatus.put(request.getSessionId(), progressData);
+        sendToEmitter(request.getSessionId(), progressData);
     }
 
     public void sendComplete(String sessionId, JsonNode result) {
@@ -199,13 +227,44 @@ public class ProgressService {
             }
         }
 
-        Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
+        try {
+            Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
 
-        if (progressDataOptional.isPresent()) {
-            ProgressData progressData = progressDataOptional.get();
-            progressData.setTimeFinished(LocalDateTime.now());
-            progressData.setState(ProgressData.State.COMPLETE);
-            progressDataRepository.save(progressData);
+            if (progressDataOptional.isPresent()) {
+                ProgressData progressData = progressDataOptional.get();
+                progressData.setTimeFinished(LocalDateTime.now());
+                progressData.setState(ProgressData.State.COMPLETE);
+
+                // Extract and save the enhanced fields from the result
+                if (result != null) {
+                    if (result.has("percentageComplete")) {
+                        progressData.setPercentageComplete(result.get("percentageComplete").asInt());
+                    }
+                    if (result.has("currentStage")) {
+                        progressData.setCurrentStage(result.get("currentStage").asText());
+                    }
+                    if (result.has("statusMessage")) {
+                        progressData.setStatusMessage(result.get("statusMessage").asText());
+                    }
+                    if (result.has("totalItems")) {
+                        progressData.setTotalItems(result.get("totalItems").asInt());
+                    }
+                    if (result.has("processedItems")) {
+                        progressData.setProcessedItems(result.get("processedItems").asInt());
+                    }
+                    if (result.has("successfulItems")) {
+                        progressData.setSuccessfulItems(result.get("successfulItems").asInt());
+                    }
+                    if (result.has("failedItems")) {
+                        progressData.setFailedItems(result.get("failedItems").asInt());
+                    }
+                }
+
+                progressDataRepository.save(progressData);
+                log.info("✅ Database updated with completion data for session: {}", sessionId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update database with completion for session {}: {}", sessionId, e.getMessage());
         }
 
         SSEProgressData completeData = SSEProgressData.builder()
@@ -216,6 +275,7 @@ public class ProgressService {
                 .message("Image processing completed successfully")
                 .result(result)
                 .timestamp(Instant.now().toEpochMilli())
+                .data(result)
                 .build();
 
         sessionStatus.put(sessionId, completeData);
@@ -234,6 +294,20 @@ public class ProgressService {
     public void sendError(String sessionId, String errorMessage) {
         log.error("Sending error event for session {}: {}", sessionId, errorMessage);
 
+        try {
+            Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
+            if (progressDataOptional.isPresent()) {
+                ProgressData progressData = progressDataOptional.get();
+                progressData.setState(ProgressData.State.ERROR);
+                progressData.setErrorMessage(errorMessage);
+                progressData.setTimeFinished(LocalDateTime.now());
+                progressDataRepository.save(progressData);
+                log.info("✅ Database updated with error state for session: {}", sessionId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update database with error for session {}: {}", sessionId, e.getMessage());
+        }
+
         SSEProgressData errorData = SSEProgressData.builder()
                 .type("error")
                 .sessionId(sessionId)
@@ -249,23 +323,65 @@ public class ProgressService {
     }
 
     public Map<String, Object> getSessionStatus(String sessionId) {
-        SSEProgressData status = sessionStatus.get(sessionId);
-        if (status == null) {
+        SSEProgressData redisStatus = getLatestProgressFromRedis(sessionId);
+
+        if (redisStatus != null) {
+            log.debug("📊 Retrieved status from Redis for session: {}", sessionId);
             return Map.of(
                     "sessionId", sessionId,
-                    "status", "not_found",
-                    "message", "Session not found"
+                    "type", redisStatus.getType(),
+                    "stage", redisStatus.getStage() != null ? redisStatus.getStage() : "",
+                    "progress", redisStatus.getProgress() != null ? redisStatus.getProgress() : 0,
+                    "message", redisStatus.getMessage() != null ? redisStatus.getMessage() : "",
+                    "timestamp", redisStatus.getTimestamp(),
+                    "hasEmitter", activeEmitters.containsKey(sessionId),
+                    "source", "redis"
             );
+        }
+
+        // ✅ FALLBACK to in-memory sessionStatus
+        SSEProgressData status = sessionStatus.get(sessionId);
+        if (status != null) {
+            log.debug("📊 Retrieved status from memory for session: {}", sessionId);
+            return Map.of(
+                    "sessionId", sessionId,
+                    "type", status.getType(),
+                    "stage", status.getStage() != null ? status.getStage() : "",
+                    "progress", status.getProgress() != null ? status.getProgress() : 0,
+                    "message", status.getMessage() != null ? status.getMessage() : "",
+                    "timestamp", status.getTimestamp(),
+                    "hasEmitter", activeEmitters.containsKey(sessionId),
+                    "source", "memory"
+            );
+        }
+
+        // ✅ FINAL FALLBACK to database for completed/error sessions
+        try {
+            Optional<ProgressData> dbData = progressDataRepository.findBySessionId(sessionId);
+            if (dbData.isPresent()) {
+                ProgressData progressData = dbData.get();
+                log.debug("📊 Retrieved status from database for session: {}", sessionId);
+                return Map.of(
+                        "sessionId", sessionId,
+                        "type", progressData.getState().toString().toLowerCase(),
+                        "stage", progressData.getCurrentStage() != null ? progressData.getCurrentStage() : "",
+                        "progress", progressData.getPercentageComplete() != null ? progressData.getPercentageComplete() : 0,
+                        "message", progressData.getStatusMessage() != null ? progressData.getStatusMessage() : "",
+                        "timestamp", progressData.getLastUpdated() != null ?
+                                progressData.getLastUpdated().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() : 0,
+                        "hasEmitter", activeEmitters.containsKey(sessionId),
+                        "source", "database"
+                );
+            }
+        } catch (Exception e) {
+            log.warn("Failed to retrieve status from database for session {}: {}", sessionId, e.getMessage());
         }
 
         return Map.of(
                 "sessionId", sessionId,
-                "type", status.getType(),
-                "stage", status.getStage() != null ? status.getStage() : "",
-                "progress", status.getProgress() != null ? status.getProgress() : 0,
-                "message", status.getMessage() != null ? status.getMessage() : "",
-                "timestamp", status.getTimestamp(),
-                "hasEmitter", activeEmitters.containsKey(sessionId)
+                "status", "not_found",
+                "message", "Session not found",
+                "source", "none"
         );
     }
 
@@ -278,12 +394,215 @@ public class ProgressService {
                 sendEvent(emitter, data);
                 log.info("SSE event sent successfully to session: {}", sessionId);
             } catch (Exception e) {
-                log.error("Failed to send SSE event to session {}: {}", sessionId, e.getMessage(), e);
+                log.warn("Failed to send SSE event to session {}: {}", sessionId, e.getMessage());
                 cleanupSession(sessionId);
             }
-        } else {
-            log.warn("No active emitter found for session: {}", sessionId);
         }
+
+        storeProgressInRedis(sessionId, data);
+    }
+
+    private void storeProgressInRedis(String sessionId, SSEProgressData data) {
+        try {
+            String redisKey = "sse:progress:" + sessionId;
+
+            // Store as JSON string
+            String jsonData = objectMapper.writeValueAsString(data);
+            redisTemplate.opsForValue().set(redisKey, jsonData, PROGRESS_TTL);
+
+            log.info("Progress data stored in Redis for session: {}", sessionId);
+
+            // Also maintain a list of recent progress updates
+            String listKey = "sse:progress:list:" + sessionId;
+            redisTemplate.opsForList().leftPush(listKey, jsonData);
+            redisTemplate.opsForList().trim(listKey, 0, 99);
+            redisTemplate.expire(listKey, PROGRESS_TTL);
+
+        } catch (Exception e) {
+            log.error("Failed to store progress data in Redis for session {}: {}", sessionId, e.getMessage(), e);
+        }
+    }
+
+    public SSEProgressData getLatestProgressFromRedis(String sessionId) {
+        try {
+            String redisKey = "sse:progress:" + sessionId;
+            String jsonData = (String) redisTemplate.opsForValue().get(redisKey);
+
+            if (jsonData != null) {
+                SSEProgressData progressData = objectMapper.readValue(jsonData, SSEProgressData.class);
+
+                // Check if the progress data is recent (e.g., within last 5 minutes)
+                if (isProgressDataRecent(progressData)) {
+                    return progressData;
+                } else {
+                    log.debug("Progress data for session {} is stale", sessionId);
+                    return null;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to retrieve progress data from Redis for session {}: {}", sessionId, e.getMessage());
+        }
+        return null;
+    }
+
+    private boolean isProgressDataRecent(SSEProgressData progressData) {
+        // Check if progress data has a timestamp and is recent
+        if (progressData.getTimestamp() != 0) {
+            long ageMinutes = (System.currentTimeMillis() - progressData.getTimestamp()) / (1000 * 60);
+            return ageMinutes <= 5; // Consider data stale after 5 minutes
+        }
+        return false; // No timestamp, assume stale
+    }
+
+    public List<SSEProgressData> getProgressHistoryFromRedis(String sessionId) {
+        try {
+            String listKey = "sse:progress:list:" + sessionId;
+            List<Object> progressList = redisTemplate.opsForList().range(listKey, 0, -1);
+
+            if (progressList != null) {
+                return progressList.stream()
+                        .map(obj -> {
+                            try {
+                                return objectMapper.readValue((String) obj, SSEProgressData.class);
+                            } catch (Exception e) {
+                                log.warn("Failed to parse progress data: {}", e.getMessage());
+                                return null;
+                            }
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.error("Failed to retrieve progress history from Redis for session {}: {}", sessionId, e.getMessage(), e);
+        }
+        return Collections.emptyList();
+    }
+
+    private void updateInMemoryProgressFromRedis(ProgressData progressData, SSEProgressData latestProgress) {
+        try {
+            // Update progress percentage
+            if (latestProgress.getProgress() != null) {
+                progressData.setPercentageComplete(latestProgress.getProgress());
+            }
+
+            // Update current stage
+            if (latestProgress.getStage() != null) {
+                progressData.setCurrentStage(latestProgress.getStage());
+            }
+
+            // Update status message
+            if (latestProgress.getMessage() != null) {
+                progressData.setStatusMessage(latestProgress.getMessage());
+            }
+
+            // Parse additional data from Redis if available
+            if (latestProgress.getData() != null) {
+                updateProgressFromAdditionalDataInMemory(progressData, latestProgress.getData());
+            }
+
+            // Update last updated timestamp
+            progressData.setLastUpdated(LocalDateTime.ofInstant(
+                    Instant.ofEpochMilli(latestProgress.getTimestamp()),
+                    java.time.ZoneId.systemDefault()));
+
+            log.debug("Updated in-memory progress data from Redis for session {}", progressData.getSessionId());
+
+        } catch (Exception e) {
+            log.error("Failed to update in-memory progress data from Redis for session {}: {}",
+                    progressData.getSessionId(), e.getMessage());
+        }
+    }
+
+    // ✅ NEW METHOD: Update additional data in memory only
+    private void updateProgressFromAdditionalDataInMemory(ProgressData progressData, Object additionalData) {
+        try {
+            if (additionalData instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> dataMap = (Map<String, Object>) additionalData;
+
+                // Update total items
+                if (dataMap.containsKey("totalItems")) {
+                    Integer totalItems = getIntegerFromMap(dataMap, "totalItems");
+                    if (totalItems != null) {
+                        progressData.setTotalItems(totalItems);
+                    }
+                }
+
+                // Update processed items
+                if (dataMap.containsKey("processedItems")) {
+                    Integer processedItems = getIntegerFromMap(dataMap, "processedItems");
+                    if (processedItems != null) {
+                        progressData.setProcessedItems(processedItems);
+                    }
+                }
+
+                // Update successful items
+                if (dataMap.containsKey("successfulItems")) {
+                    Integer successfulItems = getIntegerFromMap(dataMap, "successfulItems");
+                    if (successfulItems != null) {
+                        progressData.setSuccessfulItems(successfulItems);
+                    }
+                }
+
+                // Update failed items
+                if (dataMap.containsKey("failedItems")) {
+                    Integer failedItems = getIntegerFromMap(dataMap, "failedItems");
+                    if (failedItems != null) {
+                        progressData.setFailedItems(failedItems);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse additional progress data in memory: {}", e.getMessage());
+        }
+    }
+
+    public List<ProgressData> getSessionsBySeriesId(Long seriesId) {
+        List<ProgressData> sessions = progressDataRepository.findBySeriesId(seriesId);
+
+        sessions.forEach(progressData -> {
+            if (progressData.getState() == ProgressData.State.PROCESSING) {
+                try {
+                    // Check if session has recent progress data in Redis
+                    SSEProgressData latestProgress = getLatestProgressFromRedis(progressData.getSessionId());
+
+                    if (latestProgress != null) {
+                        // Session exists and has recent activity - update in-memory copy (NOT database)
+                        log.debug("Session {} found in Redis with latest progress: {} - {}%",
+                                progressData.getSessionId(), latestProgress.getStage(), latestProgress.getProgress());
+
+                        // FIXED: Added the missing method call
+                        updateInMemoryProgressFromRedis(progressData, latestProgress);
+
+                    } else if (progressData.isStale()) {
+                        log.debug("Session {} appears stale but leaving as PROCESSING - will be updated on next complete/error event",
+                                progressData.getSessionId());
+                    }
+
+                } catch (Exception e) {
+                    log.error("Failed to check Redis status for session {}: {}",
+                            progressData.getSessionId(), e.getMessage());
+                }
+            }
+        });
+
+        return sessions;
+    }
+
+    private Integer getIntegerFromMap(Map<String, Object> map, String... keys) {
+        for (String key : keys) {
+            Object value = map.get(key);
+            if (value instanceof Number) {
+                return ((Number) value).intValue();
+            } else if (value instanceof String) {
+                try {
+                    return Integer.parseInt((String) value);
+                } catch (NumberFormatException e) {
+                    // Continue to next key
+                }
+            }
+        }
+        return null;
     }
 
     private void sendEvent(SseEmitter emitter, SSEProgressData data) throws IOException {
@@ -300,21 +619,18 @@ public class ProgressService {
                 .reconnectTime(1000)); // Reconnect time in ms
     }
 
+    // FIXED: Using ScheduledExecutorService instead of creating new threads
     private void scheduleEmitterCompletion(String sessionId, long delayMs) {
-        new Thread(() -> {
-            try {
-                Thread.sleep(delayMs);
-                SseEmitter emitter = activeEmitters.get(sessionId);
-                if (emitter != null) {
+        scheduler.schedule(() -> {
+            SseEmitter emitter = activeEmitters.get(sessionId);
+            if (emitter != null) {
+                try {
                     emitter.complete();
+                } catch (Exception e) {
+                    log.error("Error completing emitter for session {}: {}", sessionId, e.getMessage());
                 }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("Emitter completion scheduling interrupted for session: {}", sessionId);
-            } catch (Exception e) {
-                log.error("Error completing emitter for session {}: {}", sessionId, e.getMessage());
             }
-        }).start();
+        }, delayMs, TimeUnit.MILLISECONDS);
     }
 
     private void cleanupSession(String sessionId) {
@@ -328,9 +644,6 @@ public class ProgressService {
                 log.debug("Error completing emitter during cleanup for session {}: {}", sessionId, e.getMessage());
             }
         }
-
-        // Keep session status for a while in case client wants to check it
-        // Could implement cleanup after a certain time if needed
     }
 
     public int getActiveSessionCount() {
@@ -354,50 +667,6 @@ public class ProgressService {
         });
     }
 
-    public List<ProgressData> getSessionsBySeriesId(Long seriesId) {
-        progressDataRepository.findBySeriesId(seriesId).forEach(progressData -> {
-            if (progressData.getState() == ProgressData.State.PROCESSING) { // Only check processing sessions
-
-                try {
-                    JsonNode node = webClient.get()
-                            .uri(uriBuilder -> uriBuilder
-                                    .path("/image-matcher/status")
-                                    .queryParam("sessionId", progressData.getSessionId())
-                                    .build())
-                            .retrieve()
-                            .onStatus(status -> status.value() == 404, clientResponse -> {
-                                // Session not found in Python service - this is expected for orphaned sessions
-                                return Mono.error(new SessionNotFoundException("Session not found in processing service"));
-                            })
-                            .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> clientResponse.bodyToMono(String.class)
-                                    .flatMap(errorBody -> Mono.error(
-                                            new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody))))
-                            .bodyToMono(JsonNode.class)
-                            .block();
-                } catch (SessionNotFoundException e) {
-                    // Session doesn't exist in Python service anymore
-                    log.info("Session {} not found in processing service, marking as ERROR",
-                            progressData.getSessionId());
-                    progressData.setState(ProgressData.State.ERROR);
-                    progressDataRepository.save(progressData);
-
-                } catch (Exception e) {
-                    // Other errors (network, server error, etc.)
-                    log.error("Failed to check status for session {}: {}",
-                            progressData.getSessionId(), e.getMessage());
-                }
-            }
-        });
-
-        return progressDataRepository.findBySeriesId(seriesId);
-    }
-
-    public static class SessionNotFoundException extends RuntimeException {
-        public SessionNotFoundException(String message) {
-            super(message);
-        }
-    }
-
     public JsonNode getSessionJSON(String sessionId) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -416,6 +685,7 @@ public class ProgressService {
                                     new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
                 })
                 .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
                 .block();
     }
 
@@ -428,11 +698,21 @@ public class ProgressService {
                 .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
                         Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
                 .bodyToMono(Resource.class)
+                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
                 .block();
+    }
+
+    public static class SessionNotFoundException extends RuntimeException {
+        public SessionNotFoundException(String message) {
+            super(message);
+        }
     }
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class SSEProgressData {
         private String type; // "progress", "complete", "error"
         private String sessionId;
@@ -442,5 +722,6 @@ public class ProgressService {
         private JsonNode result;
         private String error;
         private long timestamp;
+        private Object data; // Additional progress data
     }
 }

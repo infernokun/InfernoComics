@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +16,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -42,9 +42,7 @@ public class IssueController {
     @GetMapping("/{id}")
     public ResponseEntity<Issue> getIssueById(@PathVariable Long id) {
         try {
-            Optional<Issue> comicBook = issueService.getIssueById(id);
-            return comicBook.map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
+            return ResponseEntity.ok(issueService.getIssueById(id));
         } catch (Exception e) {
             log.error("Error fetching issue {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -134,6 +132,29 @@ public class IssueController {
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("Error creating issue: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/bulk")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<List<Issue>> createIssuesBulk(@RequestBody @Valid List<IssueCreateRequestDto> requests) {
+        try {
+            List<Issue> createdIssues = issueService.createIssuesBulk(requests);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdIssues);
+        } catch (Exception e) {
+            log.error("Error creating issues in bulk: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/bulk-delete")
+    public ResponseEntity<IssueService.BulkDeleteResult> deleteIssuesBulk(@RequestBody List<Long> issueIds) {
+        try {
+            IssueService.BulkDeleteResult result = issueService.deleteIssuesBulk(issueIds);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Error in bulk delete: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }

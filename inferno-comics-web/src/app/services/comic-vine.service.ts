@@ -3,6 +3,7 @@ import { EnvironmentService } from './environment.service';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Issue } from '../models/issue.model';
+import { Series } from '../models/series.model';
 
 @Injectable({
   providedIn: 'root',
@@ -33,6 +34,10 @@ export class ComicVineService {
     );
   }
 
+  getSeriesById(seriesId: string): Observable<ComicVineSeriesDto> {
+    return this.http.get<ComicVineSeriesDto>(`${this.apiUrl}/series/get-comic-vine/${seriesId}`);
+  }
+
   getIssueById(issueId: string): Observable<Issue> {
     return this.http.get<any>(`${this.apiUrl}/issues/get-comic-vine/${issueId}`);
   }
@@ -43,6 +48,7 @@ export interface ComicVineSeriesDto {
   id: string;
   name: string;
   description: string;
+  issueCount: number;
   publisher: string;
   startYear: number;
   imageUrl: string;

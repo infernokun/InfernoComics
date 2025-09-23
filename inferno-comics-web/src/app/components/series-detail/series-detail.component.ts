@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SeriesService, SSEProgressData } from '../../services/series.service';
@@ -9,11 +9,6 @@ import { ComicVineService } from '../../services/comic-vine.service';
 import { Series } from '../../models/series.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
 import { RangeSelectionDialog } from './range-selection-dialog/range-selection-dialog';
-import {
-  ComicMatchDialogData,
-  ComicMatchSelectionComponent,
-  ImageMatcherResponse,
-} from './comic-match-selection/comic-match-selection.component';
 import { IssueViewDialog } from './issue-view-dialog/issue-view-dialog.component';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
@@ -33,7 +28,7 @@ import { ComicMatch } from '../../models/comic-match.model';
   selector: 'app-series-detail',
   templateUrl: './series-detail.component.html',
   styleUrls: ['./series-detail.component.scss'],
-  imports: [CommonModule, MaterialModule, AgGridModule, ProgressDataTable],
+  imports: [CommonModule, MaterialModule, AgGridModule, ProgressDataTable, RouterModule],
 })
 export class SeriesDetailComponent implements OnInit {
   series: Series | null = null;
@@ -50,7 +45,7 @@ export class SeriesDetailComponent implements OnInit {
   readonly DESCRIPTION_LIMIT = 100;
   readonly ISSUE_DESCRIPTION_LIMIT = 150;
   expandedIssues: Set<number> = new Set();
-
+  
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -73,7 +68,7 @@ export class SeriesDetailComponent implements OnInit {
     this.loading = true;
     this.seriesService.getSeriesById(id).subscribe({
       next: (series) => {
-        this.series = series;
+        this.series = new Series(series);
         this.loading = false;
         // Auto-load Comic Vine issues if we have a Comic Vine ID
         if (series.comicVineId) {
@@ -90,8 +85,8 @@ export class SeriesDetailComponent implements OnInit {
 
   loadIssues(seriesId: number): void {
     this.issueService.getIssuesBySeries(seriesId).subscribe({
-      next: (books) => {
-        this.issues = books;
+      next: (books: Issue[]) => {
+        this.issues = books.map((issue) => new Issue(issue));
         // Re-filter Comic Vine issues after loading collection issues
         this.filterComicVineIssues();
       },
@@ -122,21 +117,20 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  // New helper method to filter Comic Vine issues
   private filterComicVineIssues(): void {
     if (!this.comicVineIssues || !this.issues) return;
 
     this.comicVineIssues = this.comicVineIssues.filter((cvIssue) => {
       return !this.issues.some((ownedIssue) => {
-        if (ownedIssue.comicVineId && cvIssue.id) {
-          return (
-            ownedIssue.comicVineId === cvIssue.id.toString() ||
-            ownedIssue.comicVineId === cvIssue.id
-          );
-        }
-
-        // Fallback to issue number if Comic Vine ID not available
-        return ownedIssue.issueNumber === cvIssue.issueNumber;
+        // Convert to strings for comparison to handle type mismatches
+        const comicVineIdMatch = ownedIssue.comicVineId && 
+          String(ownedIssue.comicVineId) === String(cvIssue.id);
+        
+        // Only match issue numbers if comic vine IDs aren't available
+        const issueNumberMatch = !ownedIssue.comicVineId && 
+          ownedIssue.issueNumber === cvIssue.issueNumber;
+        
+        return comicVineIdMatch || issueNumberMatch;
       });
     });
   }
@@ -276,13 +270,6 @@ export class SeriesDetailComponent implements OnInit {
       });
   }
 
-  isIssueOwned(issue: any): boolean {
-    return this.issues.some(
-      (book) =>
-        book.comicVineId === issue.id || book.issueNumber === issue.issueNumber
-    );
-  }
-
   isIssueSelected(issueId: string): boolean {
     return this.selectedIssues.has(issueId);
   }
@@ -419,25 +406,6 @@ export class SeriesDetailComponent implements OnInit {
     this.isCompactView = !this.isCompactView;
   }
 
-  // ENHANCED IMAGE PROCESSING - Main entry point with SSE/fallback logic
-  addComicByImage(seriesId: number): void {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (event: any) => {
-      const file = event.target.files[0];
-      if (file) {
-        // Check if SSE is supported and use enhanced version, otherwise fallback
-        if (this.seriesService.isSSESupported()) {
-          this.processImageWithSSE(seriesId, file);
-        } else {
-          this.processImageFallback(seriesId, file);
-        }
-      }
-    };
-    input.click();
-  }
-
   addComicsByImage(seriesId: number): void {
     const input = document.createElement('input');
     input.type = 'file';
@@ -451,44 +419,10 @@ export class SeriesDetailComponent implements OnInit {
         // Check if SSE is supported and use enhanced version, otherwise fallback
         if (this.seriesService.isSSESupported()) {
           this.processMultipleImagesWithSSE(seriesId, fileArray);
-        } else {
-          this.processMultipleImagesFallback(seriesId, fileArray);
         }
       }
     };
     input.click();
-  }
-
-  private handleSSEProgress(
-    seriesId: number,
-    data: SSEProgressData,
-    dialogComponent: ImageProcessingDialogComponent,
-    originalImage: File
-  ): void {
-    switch (data.type) {
-      case 'progress':
-        const stageName = this.getStageDisplayName(data.stage || '');
-        dialogComponent.updateProgress(
-          stageName,
-          data.progress || 0,
-          data.message
-        );
-        break;
-
-      case 'complete':
-        dialogComponent.setComplete(data.result);
-
-        break;
-
-      case 'error':
-        console.error('SSE Error received:', data.error);
-        dialogComponent.setError(data.error || 'Unknown error occurred');
-        break;
-
-      default:
-        console.log('Unknown SSE event type:', data.type);
-        break;
-    }
   }
 
   private handleMultipleSSEProgress(
@@ -546,69 +480,6 @@ export class SeriesDetailComponent implements OnInit {
     }
   }
 
-  private processImageWithSSE(seriesId: number, file: File): void {
-    const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
-      width: '600px',
-      maxWidth: '90vw',
-      disableClose: true,
-      data: {
-        file: file,
-        seriesId: seriesId,
-      },
-    });
-
-    const dialogComponent = progressDialogRef.componentInstance;
-
-    progressDialogRef.afterClosed().subscribe((dialogResult) => {
-      if (dialogResult && dialogResult.action === 'proceed_to_matcher') {
-        console.log(
-          '🎯 User clicked Next, opening matcher with result:',
-          dialogResult.result
-        );
-
-        // Cast the result to ImageMatcherResponse for proper typing
-        const imageMatcherResponse =
-          dialogResult.result as ImageMatcherResponse;
-
-        if (
-          imageMatcherResponse &&
-          imageMatcherResponse.top_matches &&
-          imageMatcherResponse.top_matches.length > 0
-        ) {
-          console.log('Opening match selection dialog');
-          this.openMatchSelectionDialog(
-            imageMatcherResponse.top_matches,
-            seriesId,
-            file,
-            imageMatcherResponse.session_id
-          );
-        } else {
-          console.log('No matches found in result');
-          this.snackBar.open('No matching comics found', 'Close', {
-            duration: 3000,
-          });
-        }
-      } else {
-        console.log('Dialog closed without proceeding to matcher');
-      }
-    });
-
-    // Start SSE-based processing
-    this.seriesService.addComicByImageWithSSE(seriesId, file).subscribe({
-      next: (progressData: SSEProgressData) => {
-        this.handleSSEProgress(seriesId, progressData, dialogComponent, file);
-      },
-      error: (error) => {
-        console.error('SSE Error:', error);
-        const errorMessage = this.getErrorMessage(error);
-        dialogComponent.setError(errorMessage);
-      },
-      complete: () => {
-        console.log('SSE stream completed');
-      },
-    });
-  }
-
   // Updated processMultipleImagesWithSSE method to handle dialog result
   private processMultipleImagesWithSSE(seriesId: number, files: File[]): void {
     const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
@@ -635,19 +506,6 @@ export class SeriesDetailComponent implements OnInit {
         if (result && result.results && Array.isArray(result.results)) {
           console.log('✅ Processing multiple images result format');
           this.openBulkSelectionDialog(result, seriesId, files);
-        } else if (
-          result &&
-          result.top_matches &&
-          Array.isArray(result.top_matches)
-        ) {
-          // Single image result format (fallback)
-          console.log('✅ Processing single image result format (fallback)');
-          this.openMatchSelectionDialog(
-            result.top_matches,
-            seriesId,
-            files.length > 0 ? files[0] : undefined,
-            result.session_id
-          );
         } else {
           console.log('❌ No valid results to display');
           this.snackBar.open(
@@ -770,25 +628,36 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  private handleBulkAddResults(
+  private async handleBulkAddResults(
     results: ProcessedImageResult[],
     seriesId: number
-  ): void {
-    console.log(' Processing bulk add for', results.length, 'comics');
-
+  ): Promise<void> {
+    console.log('🎯 Processing bulk add for', results.length, 'comics');
+    
     // Show loading indicator
     this.snackBar.open(`Adding ${results.length} comics to collection...`, '', {
       duration: 0,
     });
 
-    // Process each accepted result
-    const addPromises = results.map(async (result) => {
-      if (
-        (result.userAction === 'accepted' ||
-          result.userAction === 'manual_select') &&
+    try {
+      // Filter and prepare accepted results
+      const acceptedResults = results.filter(result => 
+        (result.status === 'auto_accepted' || result.status === 'manually_accepted') &&
         result.selectedMatch
-      ) {
-        const match = result.selectedMatch;
+      );
+
+      if (acceptedResults.length === 0) {
+        this.snackBar.dismiss();
+        this.snackBar.open('No comics selected for addition', 'Close', { duration: 3000 });
+        return;
+      }
+
+      console.log(`Processing ${acceptedResults.length} accepted results out of ${results.length} total`);
+
+      // Fetch Comic Vine details for all accepted results
+      const issueDataPromises = acceptedResults.map(async (result) => {
+        const match = result.selectedMatch!;
+        
         try {
           // Fetch Comic Vine details for the match
           const issue = await this.comicVineService
@@ -806,7 +675,6 @@ export class SeriesDetailComponent implements OnInit {
               issue.variant = true;
             }
 
-            // Create the issue
             const issueData = {
               seriesId: seriesId,
               issueNumber: issue.issueNumber,
@@ -821,152 +689,80 @@ export class SeriesDetailComponent implements OnInit {
               keyIssue: false,
               generatedDescription: issue.generatedDescription || false,
               variant: issue.variant || false,
-              uploadedImageUrl: result.imagePreview.includes("blob") ? result.liveStoredImage : result.imagePreview,
+              uploadedImageUrl: result.imagePreview.includes("blob") 
+                ? result.liveStoredImage 
+                : result.imagePreview,
             };
 
             console.log(
-              '✅ Creating issue for:',
+              '✅ Prepared issue data for:',
               result.imageName,
               'with comic vine ID:',
               issue.id
             );
-            return this.issueService.createIssue(issueData).toPromise();
+
+            return issueData;
+          } else {
+            console.warn('No Comic Vine issue found for match:', match);
+            return null;
           }
         } catch (error) {
           console.error(
-            'Error processing match for',
+            'Error fetching Comic Vine details for',
             result.imageName,
             ':',
             error
           );
-          return Promise.reject(error);
+          return null;
         }
-      } else {
-        console.log(
-          '⚠️ Skipping result - userAction:',
-          result.userAction,
-          'hasSelectedMatch:',
-          !!result.selectedMatch
+      });
+
+      // Wait for all Comic Vine data to be fetched
+      const allIssueData = await Promise.all(issueDataPromises);
+      
+      // Filter out null results
+      const validIssueData = allIssueData.filter(data => data !== null);
+
+      if (validIssueData.length === 0) {
+        this.snackBar.dismiss();
+        this.snackBar.open('Failed to fetch comic details for any issues', 'Close', {
+          duration: 3000,
+        });
+        return;
+      }
+
+      console.log(`Creating ${validIssueData.length} issues via bulk endpoint`);
+
+      // Use the bulk creation endpoint
+      const createdIssues = await this.issueService.createIssuesBulk(validIssueData).toPromise();
+
+      this.snackBar.dismiss();
+
+      const successful = createdIssues?.length || 0;
+      const failed = acceptedResults.length - successful;
+
+      if (successful > 0) {
+        this.snackBar.open(
+          `Successfully added ${successful} comics to collection${
+            failed > 0 ? ` (${failed} failed)` : ''
+          }`,
+          'Close',
+          { duration: 5000 }
         );
-        return Promise.resolve(null);
-      }
-    });
-
-    Promise.allSettled(addPromises)
-      .then((results) => {
-        this.snackBar.dismiss();
-        const successful = results.filter(
-          (r) => r.status === 'fulfilled' && r.value !== null
-        ).length;
-        const failed = results.filter((r) => r.status === 'rejected').length;
-
-        if (successful > 0) {
-          this.snackBar.open(
-            `Successfully added ${successful} comics to collection${
-              failed > 0 ? ` (${failed} failed)` : ''
-            }`,
-            'Close',
-            { duration: 5000 }
-          );
-          // Refresh the issues list
-          this.loadIssues(seriesId);
-        } else {
-          this.snackBar.open('Failed to add comics to collection', 'Close', {
-            duration: 3000,
-          });
-        }
-      })
-      .catch((error) => {
-        this.snackBar.dismiss();
-        console.error('Error in bulk add:', error);
-        this.snackBar.open('Error adding comics to collection', 'Close', {
+        
+        // Refresh both issues and series data
+        this.loadIssues(seriesId);
+        this.loadSeries(seriesId); // This will update the issuesOwnedCount
+      } else {
+        this.snackBar.open('Failed to add comics to collection', 'Close', {
           duration: 3000,
         });
-      });
-  }
-
-  private processMultipleImagesFallback(seriesId: number, files: File[]): void {
-    this.snackBar.open(`Analyzing ${files.length} images...`, '', {
-      duration: 0,
-    });
-
-    const processPromises = files.map((file) =>
-      this.seriesService.addComicByImage(seriesId, file).toPromise()
-    );
-
-    Promise.allSettled(processPromises)
-      .then((results) => {
-        this.snackBar.dismiss();
-
-        const successfulResults = results
-          .filter((result) => result.status === 'fulfilled')
-          .map(
-            (result) =>
-              (result as PromiseFulfilledResult<ImageMatcherResponse>).value
-          );
-
-        const failedCount = results.filter(
-          (result) => result.status === 'rejected'
-        ).length;
-
-        if (successfulResults.length > 0) {
-          this.handleMultipleImageResults(
-            successfulResults,
-            seriesId,
-            failedCount,
-            files
-          );
-        } else {
-          this.snackBar.open(
-            'No matching comics found in any images',
-            'Close',
-            {
-              duration: 3000,
-            }
-          );
-        }
-      })
-      .catch((error) => {
-        this.snackBar.dismiss();
-        console.error('Error analyzing images:', error);
-        this.snackBar.open('Error analyzing images', 'Close', {
-          duration: 3000,
-        });
-      });
-  }
-
-  private handleMultipleImageResults(
-    results: ImageMatcherResponse[],
-    seriesId: number,
-    failedCount: number,
-    originalImages?: File[]
-  ): void {
-    const allMatches: ComicMatch[] = [];
-
-    results.forEach((response, index) => {
-      if (response?.top_matches?.length > 0) {
-        response.top_matches.forEach((match) => {
-          (match as any).sourceImageIndex = index;
-          allMatches.push(match);
-        });
       }
-    });
 
-    if (allMatches.length > 0) {
-      this.openMatchSelectionDialog(
-        allMatches,
-        seriesId,
-        originalImages,
-        results[0]?.session_id
-      );
-
-      let message = `Found matches in ${results.length} images`;
-      if (failedCount > 0) {
-        message += `, ${failedCount} failed to process`;
-      }
-      this.snackBar.open(message, 'Close', { duration: 5000 });
-    } else {
-      this.snackBar.open('No matching comics found in any images', 'Close', {
+    } catch (error) {
+      this.snackBar.dismiss();
+      console.error('Error in bulk add:', error);
+      this.snackBar.open('Error adding comics to collection', 'Close', {
         duration: 3000,
       });
     }
@@ -992,43 +788,6 @@ export class SeriesDetailComponent implements OnInit {
     );
   }
 
-  // FALLBACK PROCESSING - Original method with simulated progress (backward compatibility)
-  private processImageFallback(seriesId: number, file: File): void {
-    this.snackBar.open('Analyzing image...', '', {
-      duration: 0,
-    });
-
-    this.seriesService.addComicByImage(seriesId, file).subscribe({
-      next: (response: ImageMatcherResponse) => {
-        this.snackBar.dismiss();
-
-        if (
-          response &&
-          response.top_matches &&
-          response.top_matches.length > 0
-        ) {
-          this.openMatchSelectionDialog(
-            response.top_matches,
-            seriesId,
-            file,
-            response.session_id
-          );
-        } else {
-          this.snackBar.open('No matching comics found', 'Close', {
-            duration: 3000,
-          });
-        }
-      },
-      error: (error) => {
-        this.snackBar.dismiss();
-        console.error('Error adding comic by image:', error);
-        this.snackBar.open('Error analyzing image', 'Close', {
-          duration: 3000,
-        });
-      },
-    });
-  }
-
   private getErrorMessage(error: any): string {
     if (error.status === 400) {
       return 'Invalid image file or format';
@@ -1044,55 +803,6 @@ export class SeriesDetailComponent implements OnInit {
       return error.message;
     }
     return 'Failed to analyze image';
-  }
-
-  // Fixed method signature to handle all the different ways it's called
-  private openMatchSelectionDialog(
-    matches: ComicMatch[],
-    seriesId: number,
-    originalImage?: File | File[],
-    sessionId?: string
-  ): void {
-    console.log('🎭 Opening match selection dialog');
-    console.log('Matches:', matches.length);
-    console.log(
-      'Original image type:',
-      Array.isArray(originalImage) ? 'multiple' : 'single'
-    );
-    console.log('Session ID:', sessionId);
-
-    const dialogData: ComicMatchDialogData = {
-      matches: matches,
-      seriesId: seriesId,
-      sessionId: sessionId || undefined,
-      isMultiple: Array.isArray(originalImage) && originalImage.length > 1,
-      originalImages: Array.isArray(originalImage) ? originalImage : undefined,
-      originalImage: Array.isArray(originalImage)
-        ? originalImage[0]
-        : originalImage,
-    };
-
-    console.log('📋 Dialog data:', dialogData);
-
-    const dialogRef = this.dialog.open(ComicMatchSelectionComponent, {
-      width: '95vw',
-      maxWidth: '1200px',
-      maxHeight: '90vh',
-      data: dialogData,
-      disableClose: false,
-    });
-
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result && result.action === 'select') {
-        console.log('✅ User selected match:', result.match);
-        this.handleSelectedMatch(result.match, seriesId);
-      } else if (result && result.action === 'no_match') {
-        console.log('❌ User selected no match');
-        this.openManualAddDialog(seriesId);
-      } else {
-        console.log('🚫 User cancelled match selection');
-      }
-    });
   }
 
   private handleExistingIssue(
@@ -1312,6 +1022,23 @@ export class SeriesDetailComponent implements OnInit {
     }
   }
 
+  isSeriesComplete(): boolean {
+    if (!this.series) return false;
+    const owned = this.series.issuesOwnedCount || 0;
+    const available = this.series.issuesAvailableCount || 0;
+    
+    return available > 0 && owned === available;
+  }
+  
+  getCompletionPercentage(): number {
+    if (!this.series) return 0;
+    const owned = this.series.issuesOwnedCount || 0;
+    const available = this.series.issuesAvailableCount || 0;
+    
+    if (available === 0) return 0;
+    return Math.round((owned / available) * 100);
+  }
+  
   handleProgressDataResult(result: any): void {
     if (!result || result.action !== 'open_match_dialog') {
       console.log('No valid match data received');
@@ -1419,7 +1146,7 @@ export class SeriesDetailComponent implements OnInit {
   private performBulkDelete(): void {
     const totalIssues = this.issues.length;
     const seriesId = this.series?.id;
-
+    
     if (!seriesId) {
       this.snackBar.open('Error: Series ID not found', 'Close', {
         duration: 3000,
@@ -1435,22 +1162,13 @@ export class SeriesDetailComponent implements OnInit {
     // Get all issue IDs
     const issueIds = this.issues.map((issue) => issue.id);
 
-    // Create deletion promises for all issues
-    const deletePromises = issueIds.map((id) =>
-      this.issueService.deleteIssue(id).toPromise()
-    );
-
-    // Execute all deletions
-    Promise.allSettled(deletePromises)
-      .then((results) => {
+    // Use bulk delete endpoint instead of individual calls
+    this.issueService.deleteIssuesBulk(issueIds).subscribe({
+      next: (result) => {
         this.snackBar.dismiss();
-
-        const successful = results.filter(
-          (result) => result.status === 'fulfilled'
-        ).length;
-        const failed = results.filter(
-          (result) => result.status === 'rejected'
-        ).length;
+        
+        const successful = result.successful || 0;
+        const failed = result.failed || 0;
 
         if (successful === totalIssues) {
           // All deletions successful
@@ -1459,10 +1177,11 @@ export class SeriesDetailComponent implements OnInit {
             'Close',
             { duration: 5000 }
           );
-
-          // Clear the local issues array and refresh
+          
+          // Clear local issues and refresh both issues and series data
           this.issues = [];
-          this.loadIssues(seriesId); // Refresh from server to be sure
+          this.loadIssues(seriesId);
+          this.loadSeries(seriesId); // This will update issuesOwnedCount
         } else if (successful > 0) {
           // Partial success
           this.snackBar.open(
@@ -1470,9 +1189,10 @@ export class SeriesDetailComponent implements OnInit {
             'Close',
             { duration: 5000 }
           );
-
-          // Refresh the issues list to show current state
+          
+          // Refresh both issues and series data
           this.loadIssues(seriesId);
+          this.loadSeries(seriesId);
         } else {
           // All failed
           this.snackBar.open(
@@ -1484,13 +1204,10 @@ export class SeriesDetailComponent implements OnInit {
 
         // Log any failures for debugging
         if (failed > 0) {
-          console.error(
-            `${failed} issue deletions failed:`,
-            results.filter((r) => r.status === 'rejected')
-          );
+          console.error(`${failed} issue deletions failed`);
         }
-      })
-      .catch((error) => {
+      },
+      error: (error) => {
         this.snackBar.dismiss();
         console.error('Error during bulk delete:', error);
         this.snackBar.open(
@@ -1498,6 +1215,40 @@ export class SeriesDetailComponent implements OnInit {
           'Close',
           { duration: 5000 }
         );
-      });
+      }
+    });
+  }
+
+  manageComicVineSeries(): void {
+    if (!this.series?.id) {
+      this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.router.navigate(['/series', this.series.id, 'edit'], {
+      queryParams: { mode: 'comic-vine-management' }
+    });
+  }
+
+  reverifySeries() {
+    if (!this.series?.id) {
+      this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.seriesService.reverifySeries(this.series.id).subscribe({
+      next: (updatedSeries) => {
+        this.series = updatedSeries;
+        this.snackBar.open('Series reverified successfully', 'Close', {
+          duration: 3000,
+        });
+      },
+      error: (error) => {
+        console.error('Error re-verifying series:', error);
+        this.snackBar.open('Error re-verifying series', 'Close', {
+          duration: 3000,
+        });
+      },
+    });
   }
 }

@@ -18,6 +18,9 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     @Query("SELECT c FROM Issue c WHERE c.isKeyIssue = true")
     List<Issue> findKeyIssues();
 
+    @Query("SELECT COUNT(i) FROM Issue i WHERE i.series.id = :seriesId")
+    int countBySeriesId(@Param("seriesId") Long seriesId);
+
     Optional<Issue> findByComicVineId(String comicVineId);
 
     List<Issue> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
@@ -44,8 +47,6 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     @Query("SELECT c FROM Issue c WHERE c.currentValue > c.purchasePrice")
     List<Issue> findProfitableIssues();
-
-    long countBySeriesId(Long seriesId);
 
     List<Issue> findBySeriesIdAndDescriptionIsNull(Long seriesId);
 

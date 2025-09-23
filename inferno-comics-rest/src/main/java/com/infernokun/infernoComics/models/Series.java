@@ -75,7 +75,11 @@ public class Series {
 
     private boolean generatedDescription = false;
 
-    private int issueCount = 0;
+    @Column(name = "issues_available_count")
+    private int issuesAvailableCount = 0;
+
+    @Column(name = "issues_owned_count")
+    private int issuesOwnedCount = 0;
 
     public Series(String name, String description, String publisher) {
         this.name = name;

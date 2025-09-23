@@ -1,9 +1,8 @@
-import { CommonModule } from "@angular/common";
-import { Component, Inject, OnInit, OnDestroy } from "@angular/core";
-import { MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
-import { MaterialModule } from "../../../material.module";
-import { ComicMatch } from "../../../models/comic-match.model";
-
+import { CommonModule } from '@angular/common';
+import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MaterialModule } from '../../../material.module';
+import { ComicMatch } from '../../../models/comic-match.model';
 
 export interface ImageMatcherResponse {
   session_id: string;
@@ -11,7 +10,7 @@ export interface ImageMatcherResponse {
   total_matches: number;
   total_covers_processed: number;
   total_urls_processed: number;
-  results?: ImageMatcherResponse[]; 
+  results?: ImageMatcherResponse[];
   summary?: {
     total_images_processed: number;
     successful_images: number;
@@ -26,7 +25,9 @@ export interface ComicMatchDialogData {
   sessionId?: string;
   originalImage?: File;
   originalImages?: File[];
-  isMultiple?: boolean;
+  imagePreviewUrl?: string;
+  imageName?: string;
+  imageSize?: number;
 }
 
 @Component({
@@ -38,15 +39,20 @@ export interface ComicMatchDialogData {
 export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   sessionId: string = '';
   sortedMatches: ComicMatch[] = [];
-  private imagePreviewUrls: string[] = [];
-  
-  // Multiple images properties
-  isMultipleMode = false;
+  imagePreviewUrls: string[] = [];
+  currentImagePreview: string | null = null;
+
+  // Image groups - now always used
   groupedMatches: { [key: number]: ComicMatch[] } = {};
-  imageGroups: { index: number; name: string; matches: ComicMatch[]; previewUrl: string | null }[] = [];
+  imageGroups: {
+    index: number;
+    name: string;
+    matches: ComicMatch[];
+    previewUrl: string | null;
+  }[] = [];
   selectedImageGroup = 0;
   showAllMatches = true;
-  
+
   // Statistics
   totalImagesProcessed = 0;
   totalMatchesFound = 0;
@@ -61,44 +67,54 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.setupMatchDisplay();
     this.createImagePreviews();
+    this.setCurrentImagePreview();
     
-    // Scroll to top
     setTimeout(() => this.scrollToTop(), 0);
   }
 
   ngOnDestroy(): void {
-    // Clean up all image preview URLs
-    this.imagePreviewUrls.forEach(url => {
-      if (url) {
-        URL.revokeObjectURL(url);
+    // Clean up blob URLs only
+    this.imagePreviewUrls.forEach((url) => {
+      if (url && url.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.warn('Failed to revoke URL:', url, error);
+        }
       }
     });
+    this.imagePreviewUrls = [];
   }
 
-  private setupMatchDisplay(): void {
-    this.isMultipleMode = this.data.isMultiple || this.hasMultipleSourceImages();
-    
-    if (this.isMultipleMode) {
-      this.setupMultipleImagesDisplay();
+  private setCurrentImagePreview(): void {
+    if (this.showAllMatches) {
+      this.currentImagePreview = this.imagePreviewUrls[0] || null;
     } else {
-      this.setupSingleImageDisplay();
+      const currentGroup = this.imageGroups[this.selectedImageGroup];
+      if (currentGroup && currentGroup.previewUrl) {
+        this.currentImagePreview = currentGroup.previewUrl;
+      } else if (this.selectedImageGroup < this.imagePreviewUrls.length) {
+        this.currentImagePreview = this.imagePreviewUrls[this.selectedImageGroup];
+      } else {
+        this.currentImagePreview = null;
+      }
+    }
+
+    // Final fallback to match URLs
+    if (!this.currentImagePreview && this.sortedMatches.length > 0) {
+      this.currentImagePreview = this.sortedMatches[0].local_url || 
+                                this.sortedMatches[0].url || 
+                                null;
     }
   }
 
-  private hasMultipleSourceImages(): boolean {
-    // Check if matches have different sourceImageIndex values
-    const sourceIndices = new Set(this.data.matches.map(m => m.sourceImageIndex).filter(i => i !== undefined));
-    return sourceIndices.size > 1;
+  private setupMatchDisplay(): void {
+    this.setupImageGroups();
   }
 
-  private setupSingleImageDisplay(): void {
-    this.sortedMatches = [...this.data.matches].sort((a, b) => b.similarity - a.similarity);
-    this.totalMatchesFound = this.sortedMatches.length;
-  }
-
-  private setupMultipleImagesDisplay(): void {
-    // Group matches by source image
-    this.data.matches.forEach(match => {
+  private setupImageGroups(): void {
+    // Always group matches by source image (defaulting to index 0 for single images)
+    this.data.matches.forEach((match) => {
       const sourceIndex = match.sourceImageIndex ?? 0;
       if (!this.groupedMatches[sourceIndex]) {
         this.groupedMatches[sourceIndex] = [];
@@ -107,112 +123,128 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     });
 
     // Sort matches within each group and create image groups
-    Object.keys(this.groupedMatches).forEach(indexStr => {
+    Object.keys(this.groupedMatches).forEach((indexStr) => {
       const index = parseInt(indexStr);
       this.groupedMatches[index].sort((a, b) => b.similarity - a.similarity);
     });
 
     // Create image groups for display
-    this.imageGroups = Object.keys(this.groupedMatches).map(indexStr => {
-      const index = parseInt(indexStr);
-      const matches = this.groupedMatches[index];
-      const firstMatch = matches[0];
-      
-      return {
-        index,
-        name: firstMatch?.sourceImageName || `Image ${index + 1}`,
-        matches,
-        previewUrl: null 
-      };
-    }).sort((a, b) => a.index - b.index);
+    this.imageGroups = Object.keys(this.groupedMatches)
+      .map((indexStr) => {
+        const index = parseInt(indexStr);
+        const matches = this.groupedMatches[index];
+        const firstMatch = matches[0];
 
-    // Set up initial display (show all matches or first group)
+        return {
+          index,
+          name: firstMatch?.sourceImageName || this.getDefaultImageName(index),
+          matches,
+          previewUrl: null,
+        };
+      })
+      .sort((a, b) => a.index - b.index);
+
     this.updateDisplayedMatches();
-    
     this.totalImagesProcessed = this.imageGroups.length;
     this.totalMatchesFound = this.data.matches.length;
   }
 
-  private createImagePreviews(): void {
-    if (this.isMultipleMode && this.data.originalImages) {
-      // Create previews for all images
-      this.imagePreviewUrls = this.data.originalImages.map(file => URL.createObjectURL(file));
-      
-      // Assign preview URLs to image groups
-      this.imageGroups.forEach(group => {
-        if (group.index < this.imagePreviewUrls.length) {
-          group.previewUrl = this.imagePreviewUrls[group.index];
-        }
-      });
-    } else if (this.data.originalImage) {
-      // Single image preview
-      this.imagePreviewUrls = [URL.createObjectURL(this.data.originalImage)];
+  private getDefaultImageName(index: number): string {
+    // For single images, try to get name from data first
+    if (this.imageGroups.length === 1) {
+      if (this.data.imageName) {
+        return this.data.imageName;
+      }
+      if (this.data.originalImage?.name) {
+        return this.data.originalImage.name;
+      }
     }
+    return `Image ${index + 1}`;
   }
 
   private updateDisplayedMatches(): void {
     if (this.showAllMatches) {
-      // Show all matches sorted by similarity
-      this.sortedMatches = [...this.data.matches].sort((a, b) => b.similarity - a.similarity);
+      this.sortedMatches = [...this.data.matches].sort(
+        (a, b) => b.similarity - a.similarity
+      );
     } else if (this.selectedImageGroup < this.imageGroups.length) {
-      // Show matches for selected image group
-      this.sortedMatches = [...this.imageGroups[this.selectedImageGroup].matches];
+      this.sortedMatches = [
+        ...this.imageGroups[this.selectedImageGroup].matches,
+      ];
+    }
+  }
+
+  private createImagePreviews(): void {
+    // Priority 1: Use provided preview URL (from bulk component)
+    if (this.data.imagePreviewUrl) {
+      this.imagePreviewUrls = [this.data.imagePreviewUrl];
+      return;
+    }
+
+    // Priority 2: Multiple images from files
+    if (this.data.originalImages && this.data.originalImages.length > 0) {
+      this.imagePreviewUrls = this.data.originalImages
+        .map((file) => {
+          try {
+            if (file && file instanceof File) {
+              return URL.createObjectURL(file);
+            }
+            return null;
+          } catch (error) {
+            console.warn('Failed to create preview for file:', file?.name || 'unknown');
+            return null;
+          }
+        })
+        .filter((url) => url !== null) as string[];
+
+      // Assign preview URLs to image groups
+      this.imageGroups.forEach((group) => {
+        if (group.index < this.imagePreviewUrls.length) {
+          group.previewUrl = this.imagePreviewUrls[group.index];
+        }
+      });
+    } 
+    // Priority 3: Single image from file
+    else if (this.data.originalImage) {
+      try {
+        if (this.data.originalImage instanceof File) {
+          const url = URL.createObjectURL(this.data.originalImage);
+          this.imagePreviewUrls = [url];
+        } else {
+          this.imagePreviewUrls = [];
+        }
+      } catch (error) {
+        console.warn('Failed to create preview for single file:', error);
+        this.imagePreviewUrls = [];
+      }
+    } 
+    // Priority 4: Fallback to match local URLs
+    else {
+      const localUrls = this.data.matches
+        .map(match => match.local_url)
+        .filter((url): url is string => !!url)
+        .slice(0, 5);
+      
+      this.imagePreviewUrls = localUrls;
+    }
+
+    // Ensure single images get their preview URL assigned to the group
+    if (this.imageGroups.length === 1 && this.imagePreviewUrls.length > 0) {
+      this.imageGroups[0].previewUrl = this.imagePreviewUrls[0];
     }
   }
 
   // UI Helper Methods
-  getImagePreview(): string | null {
-    return this.imagePreviewUrls[0] || null;
-  }
-
-  getCurrentImagePreview(): string | null {
-    if (this.isMultipleMode && this.imageGroups.length > 0) {
-      const currentGroup = this.imageGroups[this.selectedImageGroup];
-      return currentGroup?.previewUrl || null;
-    }
-    return this.getImagePreview();
-  }
-
-  getDisplayFileName(): string {
-    if (this.isMultipleMode) {
-      if (this.showAllMatches) {
-        return `${this.totalImagesProcessed} images`;
-      } else {
-        const currentGroup = this.imageGroups[this.selectedImageGroup];
-        return currentGroup?.name || 'Unknown';
-      }
-    }
-    return this.data.originalImage?.name || 'Unknown';
-  }
-
-  getDisplayFileSize(): number {
-    if (this.isMultipleMode && this.data.originalImages) {
-      if (this.showAllMatches) {
-        return this.data.originalImages.reduce((total, file) => total + file.size, 0);
-      } else {
-        const currentGroup = this.imageGroups[this.selectedImageGroup];
-        if (currentGroup && currentGroup.index < this.data.originalImages.length) {
-          return this.data.originalImages[currentGroup.index].size;
-        }
-      }
-    }
-    return this.data.originalImage?.size || 0;
-  }
-
-  formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  }
-
   getBestMatchPercentage(): number {
-    return this.sortedMatches.length > 0 ? Math.round(this.sortedMatches[0].similarity * 100) : 0;
+    return this.sortedMatches.length > 0
+      ? Math.round(this.sortedMatches[0].similarity * 100)
+      : 0;
   }
 
   getFeaturePercent(feature: any): number {
-    return feature.total_matches > 0 ? (feature.good_matches / feature.total_matches) * 100 : 0;
+    return feature.total_matches > 0
+      ? (feature.good_matches / feature.total_matches) * 100
+      : 0;
   }
 
   getConfidenceText(similarity: number): string {
@@ -221,44 +253,33 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     return 'Low Confidence';
   }
 
-  // Multiple Images Specific Methods
+  // Navigation Methods
   selectImageGroup(index: number): void {
     this.selectedImageGroup = index;
     this.showAllMatches = false;
     this.updateDisplayedMatches();
+    this.setCurrentImagePreview();
   }
 
   showAllMatchesView(): void {
     this.showAllMatches = true;
     this.updateDisplayedMatches();
+    this.setCurrentImagePreview();
   }
 
-  getImageGroupStats(group: any): string {
-    const bestMatch = group.matches[0];
-    const matchCount = group.matches.length;
-    const bestPercentage = bestMatch ? Math.round(bestMatch.similarity * 100) : 0;
-    return `${matchCount} matches, best: ${bestPercentage}%`;
-  }
-
-  getSourceImageIndicator(match: ComicMatch): string {
-    if (!this.isMultipleMode || this.showAllMatches) {
-      const sourceIndex = match.sourceImageIndex;
-      const sourceName = match.sourceImageName;
-      if (sourceIndex !== undefined) {
-        return sourceName ? `From: ${sourceName}` : `From Image ${sourceIndex + 1}`;
-      }
-    }
-    return '';
+  // Utility methods for template
+  get hasMultipleImages(): boolean {
+    return this.imageGroups.length > 1;
   }
 
   // Action Methods
   selectMatch(match: ComicMatch): void {
-    this.dialogRef.close({ 
-      action: 'select', 
-      match, 
+    this.dialogRef.close({
+      action: 'select',
+      match,
       seriesId: this.data.seriesId,
       sourceImageIndex: match.sourceImageIndex,
-      sourceImageName: match.sourceImageName
+      sourceImageName: match.sourceImageName,
     });
   }
 
@@ -266,16 +287,15 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     this.dialogRef.close({ action: 'cancel' });
   }
 
-  onNoMatch(): void {
-    this.dialogRef.close({ 
-      action: 'no_match', 
+  onReject(): void {
+    this.dialogRef.close({
+      action: 'rejected',
       seriesId: this.data.seriesId,
-      sourceImageIndex: this.isMultipleMode && !this.showAllMatches ? this.selectedImageGroup : undefined
+      sourceImageIndex:
+        this.hasMultipleImages && !this.showAllMatches
+          ? this.selectedImageGroup
+          : undefined,
     });
-  }
-
-  onImageError(event: any): void {
-    event.target.src = 'assets/images/no-cover-placeholder.png';
   }
 
   private scrollToTop(): void {
@@ -283,20 +303,99 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     if (content) content.scrollTop = 0;
   }
 
-  // Utility methods for template
+  getDisplayFileName(): string {
+    if (this.hasMultipleImages) {
+      if (this.showAllMatches) {
+        return `${this.totalImagesProcessed} images processed`;
+      } else {
+        const currentGroup = this.imageGroups[this.selectedImageGroup];
+        if (currentGroup) {
+          return currentGroup.name || `Image ${this.selectedImageGroup + 1}`;
+        }
+        return `Image ${this.selectedImageGroup + 1}`;
+      }
+    }
+    
+    // Single image mode - get name from first group
+    if (this.imageGroups.length === 1) {
+      return this.imageGroups[0].name;
+    }
+    
+    return 'Unknown Image';
+  }
+
+  onImageError(event: any): void {
+    const img = event.target;
+    
+    // If it's the original image and we have alternatives
+    if (img.classList.contains('original-image')) {
+      const alternativePreview = this.imagePreviewUrls.find(url => url !== img.src);
+      if (alternativePreview) {
+        img.src = alternativePreview;
+        return;
+      }
+      
+      if (this.sortedMatches.length > 0 && this.sortedMatches[0].local_url) {
+        img.src = this.sortedMatches[0].local_url;
+        return;
+      }
+    }
+    
+    // Default fallback
+    img.src = 'assets/images/no-cover-placeholder.png';
+  }
+
+  getSourceImageIndicator(match: ComicMatch): string {
+    if (!this.hasMultipleImages || !this.showAllMatches) {
+      return '';
+    }
+
+    const sourceIndex = match.sourceImageIndex;
+    const sourceName = match.sourceImageName;
+
+    if (sourceIndex !== undefined) {
+      if (sourceName) {
+        const truncatedName =
+          sourceName.length > 20
+            ? sourceName.substring(0, 17) + '...'
+            : sourceName;
+        return `From: ${truncatedName}`;
+      }
+      return `From Image ${sourceIndex + 1}`;
+    }
+
+    return '';
+  }
+
   getHeaderTitle(): string {
-    if (this.isMultipleMode) {
-      return this.showAllMatches ? 'All Comic Matches' : `Matches for ${this.getDisplayFileName()}`;
+    if (this.hasMultipleImages) {
+      if (this.showAllMatches) {
+        return 'All Comic Matches';
+      } else {
+        const currentGroup = this.imageGroups[this.selectedImageGroup];
+        return currentGroup
+          ? `Matches for ${currentGroup.name}`
+          : 'Comic Matches';
+      }
     }
     return 'Comic Match Results';
   }
 
   getHeaderSubtitle(): string {
-    if (this.isMultipleMode) {
-      return this.showAllMatches 
-        ? `${this.totalMatchesFound} matches from ${this.totalImagesProcessed} images`
-        : `Image ${this.selectedImageGroup + 1} of ${this.totalImagesProcessed}`;
+    if (this.hasMultipleImages) {
+      if (this.showAllMatches) {
+        return `${this.totalMatchesFound} matches from ${this.totalImagesProcessed} images`;
+      } else {
+        return `Image ${this.selectedImageGroup + 1} of ${
+          this.totalImagesProcessed
+        } • ${this.sortedMatches.length} matches`;
+      }
     }
-    return `Session: ${this.sessionId}`;
+
+    if (this.data.sessionId) {
+      return `Session: ${this.data.sessionId} • ${this.sortedMatches.length} matches found`;
+    }
+
+    return `${this.sortedMatches.length} matches found`;
   }
 }

@@ -4,7 +4,6 @@ import {
   ViewEncapsulation,
   ChangeDetectionStrategy,
 } from '@angular/core';
-
 import { ICellRendererParams } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { MaterialModule } from '../material.module';
@@ -34,7 +33,7 @@ export interface AdminActionRendererParams extends ICellRendererParams {
         <mat-icon class="sm-icon">visibility</mat-icon>
       </button>
       <button *ngIf="!params || !params.data || (!!params.data && !!params.editClick)" mat-icon-button aria-label="Edit" class="table-action" color="primary" matToolTip="Edit" (click)="edit()">
-        <mat-icon class="sm-icon" >edit</mat-icon>
+        <mat-icon class="sm-icon">edit</mat-icon>
       </button>
       <button *ngIf="!params || !params.data || (!!params.data && !!params.deleteClick)" mat-icon-button aria-label="Delete" class="table-action" color="primary" matToolTip="Delete" (click)="delete()">
         <mat-icon class="sm-icon">delete</mat-icon>
@@ -47,16 +46,17 @@ export interface AdminActionRendererParams extends ICellRendererParams {
       height: 100%;
       width: 100%;
       flex-wrap: nowrap;
-      min-width: 120px;
+      min-width: 80px; /* Reduced from 120px */
       align-items: center;
-      justify-content: center;
-   }
+      justify-content: flex-start; /* Changed from center to start */
+      gap: 2px; /* Add small gap between buttons */
+    }
     
     .table-action {
       margin: 0;
       padding: 0;
-      min-width: 32px !important;
-      height: 32px;
+      min-width: 28px !important; /* Reduced from 32px */
+      height: 28px; /* Reduced from 32px */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -75,9 +75,9 @@ export interface AdminActionRendererParams extends ICellRendererParams {
     }
     
     .sm-icon {
-      font-size: 22px !important;
-      height: 18px;
-      color:rgb(121, 86, 84);
+      font-size: 18px !important; /* Reduced from 22px */
+      height: 16px; /* Reduced from 18px */
+      color: rgb(121, 86, 84);
     }
     
     .table-action[color="warn"] .sm-icon {
@@ -89,34 +89,35 @@ export interface AdminActionRendererParams extends ICellRendererParams {
   imports: [CommonModule, MaterialModule]
 })
 export class AdminActionsComponent implements ICellRendererAngularComp {
-    params?: AdminActionRendererParams;
-    constructor() {}
-
+  params?: AdminActionRendererParams;
+  
+  constructor() {}
+  
   agInit(params: AdminActionRendererParams): void {
-      this.params = params;
+    this.params = params;
   }
-
+  
   refresh(params: AdminActionRendererParams): boolean {
-      this.params = params;
-      return true;
+    this.params = params;
+    return true;
   }
-
+  
   view() {
     this.params?.viewClick(this.params?.data);
   }
-
+  
   edit() {
     this.params?.editClick(this.params?.data);
   }
-
+  
   delete() {
     this.params?.deleteClick(this.params?.data);
   }
-
+  
   play() {
     this.params?.playClick(this.params?.data);
   }
-
+  
   add() {
     this.params?.addClick(this.params?.data);
   }

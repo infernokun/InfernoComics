@@ -6,21 +6,64 @@
         onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
     </div>
     <div class="series-info">
-      <h1>{{ series.name }}</h1>
+      <div class="series-title-header">
+        <h1>{{ series.name }}</h1>
+        <button mat-icon-button 
+                (click)="manageComicVineSeries()" 
+                matTooltip="Manage Comic Vine Series" 
+                class="title-edit-btn">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <a mat-stroked-button color="accent" [routerLink]="['/series', series.id, 'admin']">
+        <mat-icon>admin_panel_settings</mat-icon>
+        Admin View
+        </a>
+      </div>
       <h2>{{ series.publisher }}</h2>
       <div class="series-meta">
         <div class="meta-item">
           <mat-icon>calendar_today</mat-icon>
           <span>Started: {{ series.startYear }}</span>
         </div>
-        <div class="meta-item">
+        
+        <!-- Enhanced collection status item -->
+        <div class="meta-item collection-item">
           <mat-icon>library_books</mat-icon>
-          <span>{{ issues.length }} / {{series.issueCount}} issues in collection</span>
+          <div class="collection-details">
+            <div class="collection-count">
+              <span>{{ series.issuesOwnedCount }} / {{ series.issuesAvailableCount }} issues in collection</span>
+              <span class="completion-badge" *ngIf="isSeriesComplete()">
+                <mat-icon>check_circle</mat-icon>
+                Complete!
+              </span>
+            </div>
+            
+            <div class="collection-progress" *ngIf="(series.issuesAvailableCount || 0) > 0">
+              <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" 
+                     [style.width.%]="getCompletionPercentage()"
+                     [class.complete]="isSeriesComplete()">
+                </div>
+              </div>
+              <span class="progress-text" [class.complete]="isSeriesComplete()">
+                {{ getCompletionPercentage() }}%
+              </span>
+            </div>
+          </div>
         </div>
+        
         <div class="meta-item">
           <mat-icon>description</mat-icon>
           Comic Vine Series Identification:
           <span *ngFor="let id of series.comicVineIds; let last = last">
+            {{ id }}<span *ngIf="!last">, </span>
+          </span>
+        </div>
+        
+        <div class="meta-item">
+          <mat-icon>description</mat-icon>
+          GCD Identification:
+          <span *ngFor="let id of series.gcdIds; let last = last">
             {{ id }}<span *ngIf="!last">, </span>
           </span>
         </div>
@@ -61,6 +104,10 @@
           <mat-icon>delete</mat-icon>
           Delete Series
         </button>
+        <button mat-stroked-button color="accent" (click)="reverifySeries()">
+          <mat-icon>refresh</mat-icon>
+          Reverify Series
+        </button>
         @if (series.generatedDescription) {
         <button mat-stroked-button color="warn" (click)="generateNewDescription(series.id!)">
           <mat-icon>key</mat-icon>
@@ -88,11 +135,6 @@
 
             <!-- Collection Management -->
             <div class="collection-actions">
-              <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
-                <mat-icon>photo_camera</mat-icon>
-                Add Comic By Image
-              </button>
-
               <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
                 <mat-icon>photo_library</mat-icon>
                 Add Comics By Image
@@ -111,11 +153,6 @@
 
           <!-- Single row for buttons when no issues -->
           <div class="no-issues-actions" *ngIf="issues.length === 0">
-            <button mat-stroked-button color="primary" matTooltip="Add Comic By Image" (click)="addComicByImage(series?.id!)">
-              <mat-icon>photo_camera</mat-icon>
-              Add Comic By Image
-            </button>
-
             <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
               <mat-icon>photo_library</mat-icon>
               Add Comics By Image
@@ -296,14 +333,11 @@
           <!-- Issues Grid -->
           <div class="browse-grid" *ngIf="!loadingComicVine && comicVineIssues.length > 0">
             <mat-card *ngFor="let issue of comicVineIssues; let i = index" class="browse-card"
-              [class.owned]="isIssueOwned(issue)" [class.selected]="isIssueSelected(issue.id)"
+              [class.selected]="isIssueSelected(issue.id)"
               (click)="onIssueClick($event, issue.id, i)">
               <div class="browse-image">
                 <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + issue.issueNumber"
                   onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                <div class="owned-badge" *ngIf="isIssueOwned(issue)">
-                  <mat-icon>check</mat-icon>
-                </div>
                 <div class="selection-indicator" *ngIf="isIssueSelected(issue.id)">
                   <mat-icon>check_circle</mat-icon>
                 </div>
@@ -325,15 +359,10 @@
                 <p class="cover-date" *ngIf="issue.coverDate">{{ issue.coverDate }}</p>
               </mat-card-content>
               <mat-card-actions>
-                <button mat-button color="primary" (click)="addFromComicVine(issue); $event.stopPropagation()"
-                  *ngIf="!isIssueOwned(issue)">
+                <button mat-button color="primary" (click)="addFromComicVine(issue); $event.stopPropagation()">
                   <mat-icon>add</mat-icon>
                   Add to Collection
                 </button>
-                <span class="owned-label" *ngIf="isIssueOwned(issue)">
-                  <mat-icon>check_circle</mat-icon>
-                  In Collection
-                </span>
               </mat-card-actions>
             </mat-card>
           </div>

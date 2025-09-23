@@ -54,10 +54,18 @@ public class ComicVineService {
         this.objectMapper = new ObjectMapper();
     }
 
+    private boolean validateApiKey() {
+        String apiKey = infernoComicsConfig.getComicVineAPIKey();
+        if (apiKey == null || apiKey.isEmpty()) {
+            log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
+            return false;
+        }
+        return true;
+    }
+
     // Cache series search results with annotation-based caching
     @Cacheable(value = "comic-vine-series", key = "#query")
     public List<ComicVineSeriesDto> searchSeries(String query) {
-        log.info("Fetching series from Comic Vine API for query: {}", query);
         return searchSeriesFromAPI(query);
     }
 
@@ -84,7 +92,6 @@ public class ComicVineService {
             return Collections.emptyList();
         }
 
-        // Remove duplicates based on issue ID
         List<ComicVineIssueDto> allIssues = comicVineIds.parallelStream()
                 .map(this::searchIssuesFromAPI)
                 .flatMap(List::stream)
@@ -93,11 +100,10 @@ public class ComicVineService {
                         r.setDescription(GenericTextCleaner.makeReadable(r.getDescription()));
                     }
                 })
-                .distinct()
                 .sorted(this::compareIssueNumbers)
                 .collect(Collectors.toList());
 
-        log.info("Retrieved and sorted {} total issues for series {}", allIssues.size(), series.getId());
+        log.info("Retrieved {} total issues for series {}", allIssues.size(), series.getId());
         return allIssues;
     }
 
@@ -113,11 +119,9 @@ public class ComicVineService {
     public void clearAllComicVineCache() {
         log.info("Cleared all Comic Vine caches");
 
-        // Also clear manual caches
         try {
             stringRedisTemplate.delete(stringRedisTemplate.keys(SERIES_CACHE_PREFIX + "*"));
             stringRedisTemplate.delete(stringRedisTemplate.keys(ISSUES_CACHE_PREFIX + "*"));
-            log.info("Cleared manual Comic Vine caches");
         } catch (Exception e) {
             log.warn("Error clearing manual Comic Vine caches: {}", e.getMessage());
         }
@@ -131,13 +135,9 @@ public class ComicVineService {
         String cachedResult = getCachedResult(cacheKey);
         if (cachedResult != null) {
             try {
-                // Deserialize cached result
-                List<ComicVineSeriesDto> cachedSeries = deserializeSeriesList(cachedResult);
-                log.debug("Retrieved series from manual cache for query: {}", query);
-                return cachedSeries;
+                return deserializeSeriesList(cachedResult);
             } catch (Exception e) {
                 log.warn("Error deserializing cached series result: {}", e.getMessage());
-                // Fall through to API call
             }
         }
 
@@ -148,18 +148,14 @@ public class ComicVineService {
     }
 
     @Cacheable(value = "comic_vine_issues", key = "#comicVineId", unless = "#result == null")
-    public ComicVineIssueDto getIssueById(Long comicVineId) {
-        String apiKey = infernoComicsConfig.getComicVineAPIKey();
-        if (apiKey == null || apiKey.isEmpty()) {
-            log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
-            return null;
-        }
+    public ComicVineIssueDto getComicVineIssueById(Long comicVineId) {
+        if (!validateApiKey()) return null;
 
         try {
             String response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/issue/4000-" + comicVineId + "/")
-                            .queryParam("api_key", apiKey)
+                            .queryParam("api_key", infernoComicsConfig.getComicVineAPIKey())
                             .queryParam("format", "json")
                             .build())
                     .header("User-Agent", "ComicBookCollectionApp/1.0")
@@ -172,7 +168,6 @@ public class ComicVineService {
                 return null;
             }
 
-            // Parse the single issue response (not a list)
             return parseSingleIssueResponse(response);
 
         } catch (Exception e) {
@@ -182,20 +177,14 @@ public class ComicVineService {
     }
 
     @Cacheable(value = "comic_vine_series", key = "#comicVineId", unless = "#result == null")
-    public ComicVineSeriesDto getSeriesById(Long comicVineId) {
-        // https://comicvine.gamespot.com/green-lanterns/4050-91285/
-
-        String apiKey = infernoComicsConfig.getComicVineAPIKey();
-        if (apiKey == null || apiKey.isEmpty()) {
-            log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
-            return null;
-        }
+    public ComicVineSeriesDto getComicVineSeriesById(Long comicVineId) {
+        if (!validateApiKey()) return null;
 
         try {
             String response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/volume/4050-" + comicVineId + "/")
-                            .queryParam("api_key", apiKey)
+                            .queryParam("api_key", infernoComicsConfig.getComicVineAPIKey())
                             .queryParam("format", "json")
                             .build())
                     .header("User-Agent", "ComicBookCollectionApp/1.0")
@@ -204,7 +193,7 @@ public class ComicVineService {
                     .block();
 
             if (response == null || response.isEmpty()) {
-                log.warn("Empty response from Comic Vine API for issue ID: {}", comicVineId);
+                log.warn("Empty response from Comic Vine API for series ID: {}", comicVineId);
                 return null;
             }
 
@@ -218,33 +207,17 @@ public class ComicVineService {
 
     // Internal method that does the actual API call
     private List<ComicVineSeriesDto> searchSeriesFromAPI(String query) {
-        String apiKey = infernoComicsConfig.getComicVineAPIKey();
-
-        // Debug logging
-        log.info("API Key configured: {}", apiKey != null && !apiKey.isEmpty() ? "YES" : "NO");
-        if (apiKey != null && !apiKey.isEmpty()) {
-            log.info("API Key length: {}", apiKey.length());
-            log.info("API Key starts with: {}", apiKey.substring(0, Math.min(5, apiKey.length())) + "...");
-        }
-
-        if (apiKey == null || apiKey.isEmpty()) {
-            log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
-            return new ArrayList<>();
-        }
+        if (!validateApiKey()) return new ArrayList<>();
 
         try {
-            String url = String.format("%s/search/?api_key=%s&format=json&query=%s&resources=volume&limit=10",
-                    BASE_URL, apiKey, query);
-            log.info("Calling Comic Vine API: {}", url.replace(apiKey, "***"));
-
             String response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/search/")
-                            .queryParam("api_key", apiKey)
+                            .queryParam("api_key", infernoComicsConfig.getComicVineAPIKey())
                             .queryParam("format", "json")
                             .queryParam("query", query)
                             .queryParam("resources", "volume")
-                            .queryParam("limit", "10")
+                            .queryParam("limit", "25")
                             .build())
                     .header("User-Agent", "ComicBookCollectionApp/1.0")
                     .retrieve()
@@ -253,7 +226,6 @@ public class ComicVineService {
 
             return parseSeriesSearchResponse(response);
         } catch (Exception e) {
-            log.error("Full error details: ", e);
             if (e.getMessage().contains("401")) {
                 log.error("Comic Vine API authentication failed. Please check your API key.");
             } else {
@@ -265,36 +237,52 @@ public class ComicVineService {
 
     // Internal method for issues API call
     private List<ComicVineIssueDto> searchIssuesFromAPI(String seriesId) {
-        String apiKey = infernoComicsConfig.getComicVineAPIKey();
-        if (apiKey == null || apiKey.isEmpty()) {
-            log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
-            return new ArrayList<>();
-        }
+        if (!validateApiKey()) return new ArrayList<>();
 
-        try {
-            String response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/issues/")
-                            .queryParam("api_key", apiKey)
-                            .queryParam("format", "json")
-                            .queryParam("filter", "volume:" + seriesId)
-                            .queryParam("limit", "100")
-                            .queryParam("sort", "issue_number:asc") // API sorting might not work properly
-                            .build())
-                    .header("User-Agent", "ComicBookCollectionApp/1.0")
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+        List<ComicVineIssueDto> allIssues = new ArrayList<>();
+        int offset = 0;
+        int limit = 100;
+        boolean hasMoreResults = true;
 
-            return parseIssuesResponse(response);
-        } catch (Exception e) {
-            if (e.getMessage().contains("401")) {
-                log.error("Comic Vine API authentication failed. Please check your API key.");
-            } else {
-                log.error("Error searching issues: {}", e.getMessage());
+        while (hasMoreResults) {
+            try {
+                int finalOffset = offset;
+                String response = webClient.get()
+                        .uri(uriBuilder -> uriBuilder
+                                .path("/issues/")
+                                .queryParam("api_key", infernoComicsConfig.getComicVineAPIKey())
+                                .queryParam("format", "json")
+                                .queryParam("filter", "volume:" + seriesId)
+                                .queryParam("limit", limit)
+                                .queryParam("offset", finalOffset)
+                                .build())
+                        .header("User-Agent", "ComicBookCollectionApp/1.0")
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+
+                List<ComicVineIssueDto> pageIssues = parseIssuesResponse(response);
+                allIssues.addAll(pageIssues);
+
+                hasMoreResults = pageIssues.size() == limit;
+                offset += limit;
+
+                if (hasMoreResults) {
+                    Thread.sleep(250); // 250ms delay between requests
+                }
+
+            } catch (Exception e) {
+                if (e.getMessage().contains("401")) {
+                    log.error("Comic Vine API authentication failed. Please check your API key.");
+                } else {
+                    log.error("Error searching issues at offset {}: {}", offset, e.getMessage());
+                }
+                break;
             }
-            return new ArrayList<>();
         }
+
+        log.info("Fetched {} issues for series {}", allIssues.size(), seriesId);
+        return allIssues;
     }
 
     // Cache utility methods
@@ -310,7 +298,6 @@ public class ComicVineService {
     private void cacheResult(String cacheKey, String result) {
         try {
             stringRedisTemplate.opsForValue().set(cacheKey, result, CACHE_TTL_HOURS, TimeUnit.HOURS);
-            log.debug("Cached result with key: {}", cacheKey);
         } catch (Exception e) {
             log.warn("Error caching result with key {}: {}", cacheKey, e.getMessage());
         }
@@ -366,18 +353,10 @@ public class ComicVineService {
         List<ComicVineSeriesDto> series = new ArrayList<>();
         try {
             JsonNode root = objectMapper.readTree(response);
-
-            // Debug logging
-            log.info("Comic Vine API Response Status: {}", root.path("status_code").asText());
-            log.info("Number of results: {}", root.path("number_of_total_results").asText());
-
             JsonNode results = root.path("results");
 
             for (JsonNode result : results) {
-                // Only process volume resources
                 String resourceType = result.path("resource_type").asText();
-                log.debug("Processing resource type: {}", resourceType);
-
                 if (!"volume".equals(resourceType)) {
                     continue;
                 }
@@ -400,28 +379,10 @@ public class ComicVineService {
                     dto.setImageUrl(image.path("medium_url").asText());
                 }
 
-                log.debug("Added series: {}", dto.getName());
                 series.add(dto);
-                log.debug("Original description: {}", dto.getDescription());
-
-                // Generate description if missing, using cached generation
-                /*if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
-                    DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
-                            dto.getName(),
-                            "Series",
-                            dto.getPublisher(),
-                            dto.getStartYear() != null ? dto.getStartYear().toString() : null,
-                            dto.getDescription()
-                    );
-                    dto.setDescription(generatedDescription.getDescription());
-                    dto.setGeneratedDescription(generatedDescription.isGenerated());
-                    log.debug("Generated description: {}", dto.getDescription());
-                }*/
             }
-
-            log.info("Total series parsed: {}", series.size());
         } catch (Exception e) {
-            log.error("Error parsing series search response: {}", e.getMessage(), e);
+            log.error("Error parsing series search response: {}", e.getMessage());
         }
         return series;
     }
@@ -448,7 +409,7 @@ public class ComicVineService {
                 series.add(dto);
             }
         } catch (Exception e) {
-            log.error("Error parsing series response: {}", e.getMessage(), e);
+            log.error("Error parsing series response: {}", e.getMessage());
         }
         return series;
     }
@@ -462,7 +423,6 @@ public class ComicVineService {
             dto.setId(result.path("id").asText());
             dto.setName(result.path("name").asText());
             dto.setDescription(GenericTextCleaner.makeReadable(result.path("description").asText()));
-
             dto.setIssueCount(result.path("count_of_issues").asInt());
 
             JsonNode publisher = result.path("publisher");
@@ -477,7 +437,7 @@ public class ComicVineService {
                 dto.setImageUrl(image.path("medium_url").asText());
             }
         } catch (Exception e) {
-            log.error("Error parsing series response: {}", e.getMessage(), e);
+            log.error("Error parsing series response: {}", e.getMessage());
         }
         return dto;
     }
@@ -486,56 +446,48 @@ public class ComicVineService {
         List<ComicVineIssueDto> issues = new ArrayList<>();
         try {
             JsonNode root = objectMapper.readTree(response);
-
             JsonNode results = root.path("results");
 
             for (JsonNode result : results) {
-                ComicVineIssueDto dto = new ComicVineIssueDto();
-                dto.setId(result.path("id").asText());
-                dto.setIssueNumber(result.path("issue_number").asText());
-                dto.setName(result.path("name").asText());
-                dto.setDescription(GenericTextCleaner.makeReadable(result.path("description").asText()));
-                dto.setCoverDate(result.path("cover_date").asText());
+                try {
+                    ComicVineIssueDto dto = new ComicVineIssueDto();
+                    dto.setId(result.path("id").asText());
+                    dto.setIssueNumber(result.path("issue_number").asText());
+                    dto.setName(result.path("name").asText());
+                    dto.setDescription(GenericTextCleaner.makeReadable(result.path("description").asText()));
+                    dto.setCoverDate(result.path("cover_date").asText());
 
-                JsonNode image = result.path("image");
-                if (!image.isMissingNode()) {
-                    dto.setImageUrl(image.path("medium_url").asText());
-                }
-
-                JsonNode associatedImages = result.path("associated_images");
-                if (!associatedImages.isMissingNode() && associatedImages.isArray()) {
-                    List<ComicVineIssueDto.VariantCover> variants = new ArrayList<>();
-
-                    for (JsonNode imageNode : associatedImages) {
-                        ComicVineIssueDto.VariantCover variant = new ComicVineIssueDto.VariantCover();
-                        variant.setId(imageNode.path("id").asText());
-                        variant.setOriginalUrl(imageNode.path("original_url").asText());
-                        variant.setCaption(imageNode.path("caption").asText());
-                        variant.setImageTags(imageNode.path("image_tags").asText());
-                        variants.add(variant);
+                    JsonNode image = result.path("image");
+                    if (!image.isMissingNode()) {
+                        dto.setImageUrl(image.path("medium_url").asText());
                     }
 
-                    dto.setVariants(variants);
-                }
+                    JsonNode associatedImages = result.path("associated_images");
+                    if (!associatedImages.isMissingNode() && associatedImages.isArray()) {
+                        List<ComicVineIssueDto.VariantCover> variants = new ArrayList<>();
 
-                // Generate description if missing, using cached generation
-                /*if (dto.getDescription() == null || dto.getDescription().equals("null") || dto.getDescription().trim().isEmpty()) {
-                    String seriesName = "Unknown Series"; // You might want to pass this as a parameter
-                    DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
-                            seriesName,
-                            dto.getIssueNumber(),
-                            dto.getName(),
-                            dto.getCoverDate(),
-                            dto.getDescription()
-                    );
-                    dto.setDescription(generatedDescription.getDescription());
-                    dto.setGeneratedDescription(generatedDescription.isGenerated());
-                }*/
-                issues.add(dto);
+                        for (JsonNode imageNode : associatedImages) {
+                            ComicVineIssueDto.VariantCover variant = new ComicVineIssueDto.VariantCover();
+                            variant.setId(imageNode.path("id").asText());
+                            variant.setOriginalUrl(imageNode.path("original_url").asText());
+                            variant.setCaption(imageNode.path("caption").asText());
+                            variant.setImageTags(imageNode.path("image_tags").asText());
+                            variants.add(variant);
+                        }
+
+                        dto.setVariants(variants);
+                    }
+
+                    issues.add(dto);
+
+                } catch (Exception e) {
+                    log.error("Error processing individual issue: {}", e.getMessage());
+                }
             }
         } catch (Exception e) {
-            log.error("Error parsing issues response: {}", e.getMessage(), e);
+            log.error("Error parsing issues response: {}", e.getMessage());
         }
+
         return issues;
     }
 
@@ -544,7 +496,6 @@ public class ComicVineService {
 
         try {
             JsonNode root = objectMapper.readTree(response);
-
             JsonNode result = root.path("results");
 
             dto.setId(result.path("id").asText());
@@ -670,6 +621,7 @@ public class ComicVineService {
         private Integer issueCount;
         private String publisher;
         private Integer startYear;
+        private Integer endYear;
         private String imageUrl;
         private boolean generatedDescription;
     }

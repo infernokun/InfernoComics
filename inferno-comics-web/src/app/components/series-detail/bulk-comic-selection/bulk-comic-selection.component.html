@@ -7,21 +7,30 @@
         <h2 mat-dialog-title>Bulk Comic Selection</h2>
         <p class="session-info">
           {{ processedResults.length }} images • 
-          {{ getAutoSelectedCount() }} auto-selected • 
-          {{ getNeedsReviewCount() }} need review
+          {{ getAutoAcceptedCount() }} auto-accepted • 
+          {{ getManuallyAcceptedCount() }} manually accepted •
+          {{ getPendingCount() }} pending review
         </p>
       </div>
     </div>
     <div class="results-summary">
       <div class="summary-item auto">
-        <span class="number">{{ getAutoSelectedCount() }}</span>
+        <span class="number">{{ getAutoAcceptedCount() }}</span>
         <span class="label">Auto</span>
       </div>
-      <div class="summary-item review">
-        <span class="number">{{ getNeedsReviewCount() }}</span>
-        <span class="label">Review</span>
+      <div class="summary-item manual">
+        <span class="number">{{ getManuallyAcceptedCount() }}</span>
+        <span class="label">Manual</span>
       </div>
-      <div class="summary-item none">
+      <div class="summary-item review">
+        <span class="number">{{ getPendingCount() }}</span>
+        <span class="label">Pending</span>
+      </div>
+      <div class="summary-item rejected">
+        <span class="number">{{ getRejectedCount() }}</span>
+        <span class="label">Rejected</span>
+      </div>
+      <div class="summary-item none" *ngIf="getNoMatchCount() > 0">
         <span class="number">{{ getNoMatchCount() }}</span>
         <span class="label">No Match</span>
       </div>
@@ -41,43 +50,89 @@
         </button>
         <button mat-button 
                 (click)="acceptAllHighConfidence()" 
-                [disabled]="getHighConfidenceCount() === 0"
+                [disabled]="getPendingHighConfidenceCount() === 0"
                 class="accept-high-btn">
           <mat-icon>star</mat-icon>
-          Accept High Confidence ({{ getHighConfidenceCount() }})
+          Accept High Confidence ({{ getPendingHighConfidenceCount() }})
         </button>
-        <button mat-button (click)="reviewAllMatches()" [disabled]="getNeedsReviewCount() === 0">
+        <button mat-button (click)="autoReviewAll()" [disabled]="getPendingCount() === 0">
           <mat-icon>rate_review</mat-icon>
-          Review All
+          Review All ({{ getPendingCount() }})
         </button>
-        <button mat-button (click)="rejectLowConfidence()" [disabled]="getLowConfidenceCount() === 0">
-          <mat-icon>block</mat-icon>
-          Reject Low Confidence
+        <button mat-button (click)="restoreRejectedToReview()" [disabled]="getRestorableRejectedCount() === 0">
+          <mat-icon>restore</mat-icon>
+          Restore Rejected ({{ getRestorableRejectedCount() }})
         </button>
       </div>
 
       <!-- Filter Tabs -->
-      <div class="filter-tabs">
-        <button class="filter-tab" 
-                [class.active]="currentFilter === 'all'"
-                (click)="onFilterChange('all')">
-          All <span class="count">{{ processedResults.length }}</span>
-        </button>
-        <button class="filter-tab auto" 
-                [class.active]="currentFilter === 'auto_selected'"
-                (click)="onFilterChange('auto_selected')">
-          Auto-Selected <span class="count">{{ getAutoSelectedCount() }}</span>
-        </button>
-        <button class="filter-tab review" 
-                [class.active]="currentFilter === 'needs_review'"
-                (click)="onFilterChange('needs_review')">
-          Need Review <span class="count">{{ getNeedsReviewCount() }}</span>
-        </button>
-        <button class="filter-tab none" 
-                [class.active]="currentFilter === 'no_match'"
-                (click)="onFilterChange('no_match')">
-          No Match <span class="count">{{ getNoMatchCount() }}</span>
-        </button>
+      <div class="filter-container">
+        <!-- Status Filters -->
+        <div class="filter-section">
+          <label class="filter-section-label">Status:</label>
+          <div class="filter-tabs status-filters">
+            <button class="filter-tab" 
+                    [class.active]="currentStatusFilter === 'all'"
+                    (click)="onStatusFilterChange('all')">
+              All <span class="count">{{ processedResults.length }}</span>
+            </button>
+            <button class="filter-tab auto" 
+                    [class.active]="currentStatusFilter === 'auto_selected'"
+                    (click)="onStatusFilterChange('auto_selected')">
+              Auto-Accepted <span class="count">{{ getAutoAcceptedCount() }}</span>
+            </button>
+            <button class="filter-tab manual" 
+                    [class.active]="currentStatusFilter === 'manually_selected'"
+                    (click)="onStatusFilterChange('manually_selected')">
+              Manually Accepted <span class="count">{{ getManuallyAcceptedCount() }}</span>
+            </button>
+            <button class="filter-tab review" 
+                    [class.active]="currentStatusFilter === 'needs_review'"
+                    (click)="onStatusFilterChange('needs_review')">
+              Pending Review <span class="count">{{ getPendingCount() }}</span>
+            </button>
+            <button class="filter-tab rejected" 
+                    [class.active]="currentStatusFilter === 'rejected'"
+                    (click)="onStatusFilterChange('rejected')">
+                    Rejected <span class="count">{{ getRejectedCount() }}</span>
+            </button>
+            <button class="filter-tab none" 
+                    [class.active]="currentStatusFilter === 'no_match'"
+                    (click)="onStatusFilterChange('no_match')">
+              No Match <span class="count">{{ getNoMatchCount() }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confidence Filters -->
+        <div class="filter-section">
+          <label class="filter-section-label">Confidence:</label>
+          <div class="filter-tabs confidence-filters">
+            <button class="filter-tab" 
+                    [class.active]="currentConfidenceFilter === 'all'"
+                    (click)="onConfidenceFilterChange('all')">
+              All <span class="count">{{ getFilteredByStatusCount() }}</span>
+            </button>
+            <button class="filter-tab high-confidence" 
+                    [class.active]="currentConfidenceFilter === 'high'"
+                    (click)="onConfidenceFilterChange('high')">
+              <mat-icon>star</mat-icon>
+              High <span class="count">{{ getHighConfidenceCount() }}</span>
+            </button>
+            <button class="filter-tab medium-confidence" 
+                    [class.active]="currentConfidenceFilter === 'medium'"
+                    (click)="onConfidenceFilterChange('medium')">
+              <mat-icon>star_half</mat-icon>
+              Medium <span class="count">{{ getMediumConfidenceCount() }}</span>
+            </button>
+            <button class="filter-tab low-confidence" 
+                    [class.active]="currentConfidenceFilter === 'low'"
+                    (click)="onConfidenceFilterChange('low')">
+              <mat-icon>star_border</mat-icon>
+              Low <span class="count">{{ getLowConfidenceCount() }}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -94,11 +149,12 @@
       <div class="table-body">
         <div *ngFor="let result of filteredResults; let i = index" 
              class="table-row" 
-             [class.accepted]="result.userAction === 'accepted'"
-             [class.rejected]="result.userAction === 'rejected'"
-             [class.auto-selected]="result.status === 'auto_selected'"
-             [class.needs-review]="result.status === 'needs_review'"
-             [class.no-match]="result.status === 'no_match'">
+             [class.auto-accepted]="result.status === 'auto_accepted'"
+             [class.manually-accepted]="result.status === 'manually_accepted'"
+             [class.rejected]="result.status === 'rejected'"
+             [class.pending]="result.status === 'pending'"
+             [class.no-match]="result.status === 'no_match'"
+             [class.skipped]="result.status === 'skipped'">
           
           <!-- Original Image Column -->
           <div class="col-image">
@@ -154,10 +210,6 @@
                 <mat-icon>{{ getStatusIcon(result.status) }}</mat-icon>
                 <span>{{ getStatusText(result.status) }}</span>
               </div>
-              <div class="user-action" *ngIf="result.userAction" [class]="result.userAction">
-                <mat-icon>{{ getUserActionIcon(result.userAction) }}</mat-icon>
-                <span>{{ getUserActionText(result) }}</span>
-              </div>
             </div>
           </div>
 
@@ -168,7 +220,7 @@
               <button mat-raised-button 
                       color="primary"
                       size="small"
-                      *ngIf="result.bestMatch && result.userAction !== 'accepted'"
+                      *ngIf="result.bestMatch && result.status === 'pending'"
                       (click)="acceptMatch(result)"
                       class="accept-btn">
                 <mat-icon>check</mat-icon>
@@ -186,7 +238,7 @@
                 </button>
 
                 <button mat-icon-button 
-                        *ngIf="!result.bestMatch"
+                        *ngIf="!result.bestMatch && result.status !== 'skipped'"
                         (click)="manualAdd(result)"
                         matTooltip="Add manually"
                         class="icon-btn manual-btn">
@@ -194,7 +246,7 @@
                 </button>
 
                 <button mat-icon-button 
-                        *ngIf="result.userAction !== 'rejected'"
+                        *ngIf="result.status !== 'rejected'"
                         (click)="rejectMatch(result)"
                         matTooltip="Reject"
                         class="icon-btn reject-btn">
@@ -202,9 +254,9 @@
                 </button>
 
                 <button mat-icon-button 
-                        *ngIf="result.userAction"
+                        *ngIf="result.status !== 'pending' && result.status !== 'no_match'"
                         (click)="resetUserAction(result)"
-                        matTooltip="Reset"
+                        matTooltip="Reset to pending"
                         class="icon-btn reset-btn">
                   <mat-icon>refresh</mat-icon>
                 </button>
@@ -212,13 +264,20 @@
             </div>
           </div>
 
-          <!-- Selected Match Indicator (when different) -->
+          <!-- Selected Match Indicator (when different from best match) -->
           <div class="selected-match-indicator" 
                *ngIf="result.selectedMatch && result.selectedMatch !== result.bestMatch">
             <div class="selected-label">
               <mat-icon>check_circle</mat-icon>
               <span>Selected: {{ result.selectedMatch.comic_name }} #{{ result.selectedMatch.issue_number }}</span>
             </div>
+          </div>
+
+          <!-- Status Change Indicator -->
+          <div class="status-change-indicator" 
+               *ngIf="result.status === 'manually_accepted'">
+            <mat-icon>touch_app</mat-icon>
+            <span>Manually selected</span>
           </div>
         </div>
       </div>
@@ -235,7 +294,8 @@
   <!-- Footer -->
   <div mat-dialog-actions class="footer">
     <div class="progress-info">
-      <span class="stat accepted">{{ getAcceptedCount() }} accepted</span>
+      <span class="stat auto-accepted">{{ getAutoAcceptedCount() }} auto-accepted</span>
+      <span class="stat manually-accepted">{{ getManuallyAcceptedCount() }} manually accepted</span>
       <span class="stat rejected">{{ getRejectedCount() }} rejected</span>
       <span class="stat pending">{{ getPendingCount() }} pending</span>
     </div>

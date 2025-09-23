@@ -10,7 +10,7 @@ import { Observable, Subscription } from 'rxjs';
   standalone: false
 })
 export class AppComponent implements OnInit, OnDestroy {
-  title = 'Comic Book Collection';
+  title = 'Inferno Comics';
   isDarkMode$: Observable<boolean>;
   private themeSubscription: Subscription = new Subscription();
 
