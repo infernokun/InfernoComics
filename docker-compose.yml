@@ -79,7 +79,7 @@ services:
     volumes:
       - /var/tmp/inferno-comics:/var/tmp/inferno-comics
     networks:
-      - production
+      - inferno-comics-network
 
   inferno-comics-redis:
     image: redis:latest
