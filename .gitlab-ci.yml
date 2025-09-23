@@ -16,6 +16,13 @@ build-rest:
     - npm run docker:build
   tags:
     - docker
+  rules:
+    - changes:
+        - inferno-comics-rest/**/*
+        - docker-compose.yml
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
 
 build-recog:
   stage: build
@@ -28,6 +35,13 @@ build-recog:
     - npm run docker:build
   tags:
     - docker
+  rules:
+    - changes:
+        - inferno-comics-recog/**/*
+        - docker-compose.yml
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
 
 build-web:
   stage: build
@@ -36,13 +50,20 @@ build-web:
     - name: docker:dind
       command: ["--host=tcp://0.0.0.0:2375", "--mtu=1500"]
   before_script:
-    - echo $DOCKER_HUB_ACCESS_TOKEN  | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
+    - echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
     - apk add --no-cache nodejs npm bash jq
   script:
     - cd inferno-comics-web
     - npm run docker:build
   tags:
     - docker
+  rules:
+    - changes:
+        - inferno-comics-web/**/*
+        - docker-compose.yml
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
 
 deploy:
   stage: deploy
@@ -73,8 +94,13 @@ deploy:
     - rm -rf ~/.ssh
   tags:
     - docker
-  dependencies:
-    - build-rest
-    - build-recog
-    - build-web
-#  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  # Dynamic dependencies based on what was built
+  needs:
+    - job: build-rest
+      optional: true
+    - job: build-recog
+      optional: true
+    - job: build-web
+      optional: true
