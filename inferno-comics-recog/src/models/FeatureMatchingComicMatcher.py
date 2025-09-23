@@ -7,10 +7,13 @@ import pickle
 import requests
 import hashlib
 import numpy as np
+import threading
+import queue
 from datetime import datetime
-from util.Logger import get_logger
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from util.Logger import get_logger
 from config.ComicMatcherConfig import ComicMatcherConfig
 
 logger = get_logger(__name__)
@@ -25,53 +28,506 @@ DB_PATH = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_c
 DB_IMAGE_CACHE = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
 
 
+@dataclass
+class CacheItem:
+    """Represents a cache item with metadata"""
+    data: any
+    created_at: datetime
+    last_accessed: datetime
+    access_count: int = 0
+
+
 def safe_progress_callback(callback, current_item, message=""):
     """Safely call progress callback, handling None case"""
     if callback is not None:
         try:
             callback(current_item, message)
         except Exception as e:
-            logger.warning(f"⚠️ Progress callback error: {e}")
+            logger.warning(f"Progress callback error: {e}")
             pass
+
+
+class FastCacheManager:
+    """High-performance cache manager with in-memory storage and async persistence"""
+    
+    def __init__(self, db_path: str, max_memory_items: int = 1000):
+        self.db_path = db_path
+        self.max_memory_items = max_memory_items
+        
+        # In-memory caches
+        self.image_cache: Dict[str, CacheItem] = {}
+        self.feature_cache: Dict[str, CacheItem] = {}
+        
+        # Thread-safe locks
+        self.image_lock = threading.RLock()
+        self.feature_lock = threading.RLock()
+        
+        # Async write queue and worker
+        self.write_queue = queue.Queue()
+        self.write_worker_running = True
+        self.write_worker = threading.Thread(target=self._async_writer, daemon=True)
+        self.write_worker.start()
+        
+        # Cache statistics
+        self.stats = {
+            'memory_hits': 0,
+            'memory_misses': 0,
+            'db_hits': 0,
+            'db_misses': 0,
+            'evictions': 0,
+            'writes_queued': 0,
+            'processing_time_saved': 0.0
+        }
+        
+        # Load existing cache from database on startup
+        self._warm_cache_from_db()
+        
+    def _warm_cache_from_db(self):
+        """Load most recent items from database into memory on startup"""
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=10.0)
+            cursor = conn.cursor()
+            
+            # Load recent feature cache entries
+            cursor.execute('''
+                SELECT url_hash, url, sift_keypoints, sift_descriptors, sift_count,
+                       orb_keypoints, orb_descriptors, orb_count,
+                       akaze_keypoints, akaze_descriptors, akaze_count,
+                       kaze_keypoints, kaze_descriptors, kaze_count,
+                       processing_time, image_shape, was_cropped, last_accessed
+                FROM cached_features 
+                ORDER BY last_accessed DESC 
+                LIMIT ?
+            ''', (self.max_memory_items // 2,))
+            
+            rows = cursor.fetchall()
+            conn.close()
+            
+            loaded_count = 0
+            for row in rows:
+                try:
+                    url_hash = row[0]
+                    features = self._deserialize_features_from_row_simple(row)
+                    if features:
+                        cache_item = CacheItem(
+                            data=features,
+                            created_at=datetime.now(),
+                            last_accessed=datetime.fromisoformat(row[17]) if row[17] else datetime.now()
+                        )
+                        with self.feature_lock:
+                            self.feature_cache[url_hash] = cache_item
+                        loaded_count += 1
+                except Exception as e:
+                    logger.debug(f"Failed to load cache entry: {e}")
+                    continue
+            
+            logger.info(f"Warmed cache with {loaded_count} feature entries from {len(rows)} database entries")
+            
+        except Exception as e:
+            logger.warning(f"Failed to warm cache from database: {e}")
+    
+    def _deserialize_features_from_row_simple(self, row) -> Optional[Dict]:
+        """Simplified deserialization that doesn't cause circular imports"""
+        try:
+            features = {
+                'sift': {
+                    'keypoints': self._deserialize_keypoints_simple(row[2]) if row[2] else [],
+                    'descriptors': pickle.loads(row[3]) if row[3] else None,
+                    'count': row[4] or 0
+                },
+                'orb': {
+                    'keypoints': self._deserialize_keypoints_simple(row[5]) if row[5] else [],
+                    'descriptors': pickle.loads(row[6]) if row[6] else None,
+                    'count': row[7] or 0
+                },
+                'akaze': {
+                    'keypoints': self._deserialize_keypoints_simple(row[8]) if row[8] else [],
+                    'descriptors': pickle.loads(row[9]) if row[9] else None,
+                    'count': row[10] or 0
+                },
+                'kaze': {
+                    'keypoints': self._deserialize_keypoints_simple(row[11]) if row[11] else [],
+                    'descriptors': pickle.loads(row[12]) if row[12] else None,
+                    'count': row[13] or 0
+                },
+                'processing_time': row[14] or 0.0,
+                'image_shape': json.loads(row[15]) if row[15] else None,
+                'was_cropped': bool(row[16]) if row[16] is not None else False
+            }
+            return features
+        except Exception as e:
+            logger.debug(f"Failed to deserialize features: {e}")
+            return None
+    
+    def _deserialize_keypoints_simple(self, data: bytes):
+        """Simple keypoint deserialization"""
+        if not data:
+            return []
+        
+        try:
+            kp_data = pickle.loads(data)
+            keypoints = []
+            for kp_dict in kp_data:
+                kp = cv2.KeyPoint(
+                    x=kp_dict['pt'][0],
+                    y=kp_dict['pt'][1],
+                    size=kp_dict['size'],
+                    angle=kp_dict['angle'],
+                    response=kp_dict['response'],
+                    octave=kp_dict['octave'],
+                    class_id=kp_dict['class_id']
+                )
+                keypoints.append(kp)
+            return keypoints
+        except Exception:
+            return []
+    
+    def _deserialize_features_from_row(self, row) -> Optional[Dict]:
+        """Helper to deserialize features from database row"""
+        try:
+            from FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
+            matcher = FeatureMatchingComicMatcher()
+            
+            features = {
+                'sift': {
+                    'keypoints': matcher._deserialize_keypoints(row[2]) if row[2] else [],
+                    'descriptors': pickle.loads(row[3]) if row[3] else None,
+                    'count': row[4] or 0
+                },
+                'orb': {
+                    'keypoints': matcher._deserialize_keypoints(row[5]) if row[5] else [],
+                    'descriptors': pickle.loads(row[6]) if row[6] else None,
+                    'count': row[7] or 0
+                },
+                'akaze': {
+                    'keypoints': matcher._deserialize_keypoints(row[8]) if row[8] else [],
+                    'descriptors': pickle.loads(row[9]) if row[9] else None,
+                    'count': row[10] or 0
+                },
+                'kaze': {
+                    'keypoints': matcher._deserialize_keypoints(row[11]) if row[11] else [],
+                    'descriptors': pickle.loads(row[12]) if row[12] else None,
+                    'count': row[13] or 0
+                },
+                'processing_time': row[14],
+                'image_shape': json.loads(row[15]) if row[15] else None,
+                'was_cropped': bool(row[16])
+            }
+            return features
+        except Exception as e:
+            logger.debug(f"Failed to deserialize features: {e}")
+            return None
+    
+    def _async_writer(self):
+        """Background thread that handles database writes"""
+        batch = []
+        last_write = time.time()
+        
+        while self.write_worker_running:
+            try:
+                # Collect items for batching (max 10 items or 2 seconds)
+                timeout = max(0.1, 2.0 - (time.time() - last_write))
+                
+                try:
+                    item = self.write_queue.get(timeout=timeout)
+                    batch.append(item)
+                    
+                    # Continue collecting until batch full or timeout
+                    while len(batch) < 10:
+                        try:
+                            item = self.write_queue.get(timeout=0.1)
+                            batch.append(item)
+                        except queue.Empty:
+                            break
+                            
+                except queue.Empty:
+                    pass
+                
+                # Write batch if we have items and enough time has passed
+                if batch and (len(batch) >= 10 or time.time() - last_write >= 2.0):
+                    self._write_batch_to_db(batch)
+                    batch.clear()
+                    last_write = time.time()
+                    
+            except Exception as e:
+                logger.error(f"Async writer error: {e}")
+                time.sleep(1)
+    
+    def _write_batch_to_db(self, batch: List[Tuple]):
+        """Write a batch of items to database efficiently"""
+        if not batch:
+            return
+            
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            conn.execute('PRAGMA journal_mode=WAL')
+            conn.execute('PRAGMA synchronous=NORMAL')
+            cursor = conn.cursor()
+            
+            # Group by operation type
+            image_inserts = []
+            feature_inserts = []
+            
+            for item_type, data in batch:
+                if item_type == 'image':
+                    image_inserts.append(data)
+                elif item_type == 'features':
+                    feature_inserts.append(data)
+            
+            # Batch insert images
+            if image_inserts:
+                cursor.executemany('''
+                    INSERT OR REPLACE INTO cached_images 
+                    (url_hash, url, file_path, file_size, created_at, last_accessed)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', image_inserts)
+            
+            # Batch insert features
+            if feature_inserts:
+                cursor.executemany('''
+                    INSERT OR REPLACE INTO cached_features 
+                    (url_hash, url, sift_keypoints, sift_descriptors, sift_count,
+                     orb_keypoints, orb_descriptors, orb_count, 
+                     akaze_keypoints, akaze_descriptors, akaze_count,
+                     kaze_keypoints, kaze_descriptors, kaze_count,
+                     processing_time, image_shape, was_cropped, created_at, last_accessed)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', feature_inserts)
+            
+            conn.commit()
+            conn.close()
+            
+            logger.debug(f"Batch wrote {len(image_inserts)} images, {len(feature_inserts)} features")
+            
+        except Exception as e:
+            logger.error(f"Batch write failed: {e}")
+    
+    def get_image(self, url_hash: str) -> Optional[np.ndarray]:
+        """Get image from cache (memory first, then database)"""
+        # Check memory cache first
+        with self.image_lock:
+            if url_hash in self.image_cache:
+                item = self.image_cache[url_hash]
+                item.last_accessed = datetime.now()
+                item.access_count += 1
+                self.stats['memory_hits'] += 1
+                return item.data
+        
+        # Check database
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            cursor = conn.cursor()
+            cursor.execute('SELECT file_path FROM cached_images WHERE url_hash = ?', (url_hash,))
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result and os.path.exists(result[0]):
+                image = cv2.imread(result[0])
+                if image is not None:
+                    # Store in memory for future access
+                    cache_item = CacheItem(
+                        data=image,
+                        created_at=datetime.now(),
+                        last_accessed=datetime.now()
+                    )
+                    with self.image_lock:
+                        self._add_to_memory_cache(self.image_cache, url_hash, cache_item, self.image_lock)
+                    
+                    self.stats['db_hits'] += 1
+                    return image
+        except Exception as e:
+            logger.debug(f"Database image lookup failed: {e}")
+        
+        self.stats['db_misses'] += 1
+        return None
+    
+    def cache_image(self, url_hash: str, url: str, image: np.ndarray, file_path: str):
+        """Cache image to memory and queue for database write"""
+        file_size = os.path.getsize(file_path)
+        
+        # Store in memory immediately
+        cache_item = CacheItem(
+            data=image,
+            created_at=datetime.now(),
+            last_accessed=datetime.now()
+        )
+        
+        with self.image_lock:
+            self._add_to_memory_cache(self.image_cache, url_hash, cache_item, self.image_lock)
+        
+        # Queue for database write
+        write_data = (url_hash, url, file_path, file_size, datetime.now(), datetime.now())
+        self.write_queue.put(('image', write_data))
+        self.stats['writes_queued'] += 1
+    
+    def get_features(self, url_hash: str) -> Optional[Dict]:
+        """Get features from cache (memory first, then database)"""
+        # Check memory cache first
+        with self.feature_lock:
+            if url_hash in self.feature_cache:
+                item = self.feature_cache[url_hash]
+                item.last_accessed = datetime.now()
+                item.access_count += 1
+                self.stats['memory_hits'] += 1
+                # Track processing time saved from cached features
+                processing_time = item.data.get('processing_time', 0.0)
+                self.stats['processing_time_saved'] += processing_time
+                logger.debug(f"Memory cache hit for {url_hash[:8]}... (saved {processing_time:.2f}s)")
+                return item.data
+        
+        self.stats['memory_misses'] += 1
+        
+        # Check database
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT url_hash, url, sift_keypoints, sift_descriptors, sift_count,
+                       orb_keypoints, orb_descriptors, orb_count,
+                       akaze_keypoints, akaze_descriptors, akaze_count,
+                       kaze_keypoints, kaze_descriptors, kaze_count,
+                       processing_time, image_shape, was_cropped, last_accessed
+                FROM cached_features WHERE url_hash = ?
+            ''', (url_hash,))
+            
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                features = self._deserialize_features_from_row_simple(result)
+                if features:
+                    # Store in memory for future access
+                    cache_item = CacheItem(
+                        data=features,
+                        created_at=datetime.now(),
+                        last_accessed=datetime.now()
+                    )
+                    
+                    with self.feature_lock:
+                        self._add_to_memory_cache(self.feature_cache, url_hash, cache_item, self.feature_lock)
+                    
+                    self.stats['db_hits'] += 1
+                    # Track processing time saved from database features
+                    processing_time = features.get('processing_time', 0.0)
+                    self.stats['processing_time_saved'] += processing_time
+                    logger.debug(f"Database cache hit for {url_hash[:8]}... (saved {processing_time:.2f}s)")
+                    return features
+        except Exception as e:
+            logger.debug(f"Database feature lookup failed: {e}")
+        
+        self.stats['db_misses'] += 1
+        return None
+    
+    def cache_features(self, url_hash: str, url: str, features: Dict, processing_time: float, 
+                      image_shape: Tuple, was_cropped: bool, serializer_func):
+        """Cache features to memory and queue for database write"""
+        # Store in memory immediately
+        cache_item = CacheItem(
+            data=features,
+            created_at=datetime.now(),
+            last_accessed=datetime.now()
+        )
+        
+        with self.feature_lock:
+            self._add_to_memory_cache(self.feature_cache, url_hash, cache_item, self.feature_lock)
+        
+        # Prepare serialized data for database write
+        sift_kp_data = serializer_func(features['sift']['keypoints'])
+        sift_desc_data = pickle.dumps(features['sift']['descriptors']) if features['sift']['descriptors'] is not None else b''
+        orb_kp_data = serializer_func(features['orb']['keypoints'])
+        orb_desc_data = pickle.dumps(features['orb']['descriptors']) if features['orb']['descriptors'] is not None else b''
+        akaze_kp_data = serializer_func(features['akaze']['keypoints'])
+        akaze_desc_data = pickle.dumps(features['akaze']['descriptors']) if features['akaze']['descriptors'] is not None else b''
+        kaze_kp_data = serializer_func(features['kaze']['keypoints'])
+        kaze_desc_data = pickle.dumps(features['kaze']['descriptors']) if features['kaze']['descriptors'] is not None else b''
+        
+        write_data = (
+            url_hash, url,
+            sift_kp_data, sift_desc_data, features['sift']['count'],
+            orb_kp_data, orb_desc_data, features['orb']['count'],
+            akaze_kp_data, akaze_desc_data, features['akaze']['count'],
+            kaze_kp_data, kaze_desc_data, features['kaze']['count'],
+            processing_time, json.dumps(image_shape), was_cropped,
+            datetime.now(), datetime.now()
+        )
+        
+        self.write_queue.put(('features', write_data))
+        self.stats['writes_queued'] += 1
+    
+    def _add_to_memory_cache(self, cache_dict: Dict, key: str, item: CacheItem, lock):
+        """Add item to memory cache with LRU eviction"""
+        cache_dict[key] = item
+        
+        # Evict least recently used items if cache is full
+        if len(cache_dict) > self.max_memory_items:
+            # Sort by last_accessed and remove oldest 10%
+            sorted_items = sorted(cache_dict.items(), key=lambda x: x[1].last_accessed)
+            evict_count = max(1, len(sorted_items) // 10)
+            
+            for i in range(evict_count):
+                del cache_dict[sorted_items[i][0]]
+                self.stats['evictions'] += 1
+    
+    def get_stats(self) -> Dict:
+        """Get comprehensive cache statistics"""
+        with self.image_lock, self.feature_lock:
+            total_requests = (self.stats['memory_hits'] + self.stats['memory_misses'] + 
+                            self.stats['db_hits'] + self.stats['db_misses'])
+            hit_rate = ((self.stats['memory_hits'] + self.stats['db_hits']) / total_requests * 100) if total_requests > 0 else 0
+            memory_hit_rate = (self.stats['memory_hits'] / total_requests * 100) if total_requests > 0 else 0
+            
+            return {
+                **self.stats,
+                'memory_image_count': len(self.image_cache),
+                'memory_feature_count': len(self.feature_cache),
+                'total_hit_rate': hit_rate,
+                'memory_hit_rate': memory_hit_rate,
+                'queue_size': self.write_queue.qsize()
+            }
+    
+    def shutdown(self):
+        """Gracefully shutdown the cache manager"""
+        logger.info("Shutting down cache manager...")
+        self.write_worker_running = False
+        
+        # Wait for queue to empty
+        while not self.write_queue.empty():
+            time.sleep(0.1)
+        
+        self.write_worker.join(timeout=5.0)
+        logger.info("Cache manager shutdown complete")
+
 
 class FeatureMatchingComicMatcher:
     def __init__(self, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH):
-
         self.config = ComicMatcherConfig()
-
         self.cache_dir = cache_dir
         self.db_path = db_path
         self.max_workers = self.config.get('max_workers', 4)
         
-        logger.info(f" Initializing Configurable FeatureMatchingComicMatcher")
-        logger.debug(f" Cache directory: {cache_dir}")
-        logger.debug(f"️ Database path: {db_path}")
-        logger.debug(f"️ Image size: {self.config.get('image_size')}")
-        logger.debug(f" Workers: {self.max_workers}")
+        logger.info(f"Initializing Fast Comic Matcher")
+        logger.debug(f"Cache directory: {cache_dir}")
+        logger.debug(f"Database path: {db_path}")
+        logger.debug(f"Image size: {self.config.get('image_size')}")
+        logger.debug(f"Workers: {self.max_workers}")
         
         os.makedirs(cache_dir, exist_ok=True)
         self._init_database()
         self._setup_detectors()
         self._setup_settings()
         
+        # Initialize fast cache manager
+        self.cache_manager = FastCacheManager(db_path, max_memory_items=2000)
+        
         # Initialize session for downloads
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
-        
-        # Cache statistics
-        self.cache_stats = {
-            'image_cache_hits': 0,
-            'image_cache_misses': 0,
-            'feature_cache_hits': 0,
-            'feature_cache_misses': 0,
-            'processing_time_saved': 0.0
-        }
 
         self.print_config_summary()
-        
-        logger.success("✅ Configurable Comic Matcher initialization complete")
+        logger.success("Fast Comic Matcher initialization complete")
         
     def _setup_detectors(self):
         """Setup feature detectors based on config with configurable weights"""
@@ -85,39 +541,39 @@ class FeatureMatchingComicMatcher:
         if sift_features > 0:
             self.detectors['sift'] = cv2.SIFT_create(nfeatures=sift_features)
             self.feature_weights['sift'] = weights_config.get('sift', 0.25)
-            logger.info(f"🔍 SIFT: {sift_features} features (weight: {self.feature_weights['sift']:.2f})")
+            logger.info(f"SIFT: {sift_features} features (weight: {self.feature_weights['sift']:.2f})")
         
         # ORB  
         orb_features = detector_config.get('orb', 0)
         if orb_features > 0:
             self.detectors['orb'] = cv2.ORB_create(nfeatures=orb_features)
             self.feature_weights['orb'] = weights_config.get('orb', 0.25)
-            logger.info(f"⚡ ORB: {orb_features} features (weight: {self.feature_weights['orb']:.2f})")
+            logger.info(f"ORB: {orb_features} features (weight: {self.feature_weights['orb']:.2f})")
         
         # AKAZE - The star performer!
         akaze_features = detector_config.get('akaze', 0)
         if akaze_features > 0:
             self.detectors['akaze'] = cv2.AKAZE_create()
             self.feature_weights['akaze'] = weights_config.get('akaze', 0.40)
-            logger.info(f"⭐ AKAZE: enabled (weight: {self.feature_weights['akaze']:.2f} - star performer!)")
+            logger.info(f"AKAZE: enabled (weight: {self.feature_weights['akaze']:.2f} - star performer!)")
         
         # KAZE
         kaze_features = detector_config.get('kaze', 0)
         if kaze_features > 0:
             self.detectors['kaze'] = cv2.KAZE_create()
             self.feature_weights['kaze'] = weights_config.get('kaze', 0.10)
-            logger.info(f"🌊 KAZE: enabled (weight: {self.feature_weights['kaze']:.2f})")
+            logger.info(f"KAZE: enabled (weight: {self.feature_weights['kaze']:.2f})")
         
         # Normalize weights to ensure they sum to 1.0
         if self.feature_weights:
             total = sum(self.feature_weights.values())
             if total > 0:
                 self.feature_weights = {k: v/total for k, v in self.feature_weights.items()}
-                logger.info(f"⚖️ Normalized weights: {', '.join([f'{k}:{v:.2f}' for k, v in self.feature_weights.items()])}")
+                logger.info(f"Normalized weights: {', '.join([f'{k}:{v:.2f}' for k, v in self.feature_weights.items()])}")
             else:
-                logger.warning("⚠️ All feature weights are zero!")
+                logger.warning("All feature weights are zero!")
         
-        # Setup matchers (same as before)
+        # Setup matchers
         self.matchers = {}
         if 'sift' in self.detectors:
             FLANN_INDEX_KDTREE = 1
@@ -140,15 +596,22 @@ class FeatureMatchingComicMatcher:
         self.use_advanced_matching = options.get('use_advanced_matching', True)
         self.cache_only = options.get('cache_only', False)
         
-        logger.info(f" Comic detection: {self.use_comic_detection}")
-        logger.info(f" Advanced matching: {self.use_advanced_matching}")
-        logger.info(f" Cache only: {self.cache_only}")
+        logger.info(f"Comic detection: {self.use_comic_detection}")
+        logger.info(f"Advanced matching: {self.use_advanced_matching}")
+        logger.info(f"Cache only: {self.cache_only}")
 
     def _init_database(self):
-        """Initialize SQLite database with proper schema including KAZE"""
-        logger.debug("️ Initializing SQLite database...")
+        """Initialize SQLite database with WAL mode for better concurrency"""
+        logger.debug("Initializing SQLite database...")
         
         conn = sqlite3.connect(self.db_path)
+        
+        # Enable WAL mode for better concurrent access
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA synchronous=NORMAL') 
+        conn.execute('PRAGMA cache_size=10000')
+        conn.execute('PRAGMA temp_store=MEMORY')
+        
         cursor = conn.cursor()
         
         # Table for cached images
@@ -194,22 +657,10 @@ class FeatureMatchingComicMatcher:
             cursor.execute('ALTER TABLE cached_features ADD COLUMN kaze_keypoints BLOB')
             cursor.execute('ALTER TABLE cached_features ADD COLUMN kaze_descriptors BLOB')
             cursor.execute('ALTER TABLE cached_features ADD COLUMN kaze_count INTEGER')
-            logger.debug("✅ Added KAZE columns to existing database")
+            logger.debug("Added KAZE columns to existing database")
         except sqlite3.OperationalError:
             # Columns already exist
             pass
-        
-        # Table for match results cache
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS cached_matches (
-                query_hash TEXT,
-                candidate_hash TEXT,
-                similarity REAL,
-                match_details TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (query_hash, candidate_hash)
-            )
-        ''')
         
         # Create indexes for performance
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_images_url ON cached_images(url)')
@@ -220,7 +671,7 @@ class FeatureMatchingComicMatcher:
         conn.commit()
         conn.close()
         
-        logger.success("✅ Database initialization complete")
+        logger.success("Database initialization complete")
 
     def _get_url_hash(self, url: str) -> str:
         """Generate consistent hash for URL"""
@@ -264,240 +715,18 @@ class FeatureMatchingComicMatcher:
             keypoints.append(kp)
         return keypoints
     
-    def _get_cached_image(self, url: str) -> Optional[np.ndarray]:
-        """Get cached image from database"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        url_hash = self._get_url_hash(url)
-        cursor.execute('''
-            SELECT file_path FROM cached_images 
-            WHERE url_hash = ?
-        ''', (url_hash,))
-        
-        result = cursor.fetchone()
-        conn.close()
-        
-        if result and os.path.exists(result[0]):
-            # Update last accessed time
-            self._update_access_time('cached_images', url_hash)
-            self.cache_stats['image_cache_hits'] += 1
-            logger.debug(f"✅ Cache hit for image: {url[:50]}...")
-            return cv2.imread(result[0])
-        
-        self.cache_stats['image_cache_misses'] += 1
-        logger.debug(f"❌ Cache miss for image: {url[:50]}...")
-        return None
-    
-    def _cache_image(self, url: str, image: np.ndarray) -> str:
-        """Cache image to database and filesystem"""
-        url_hash = self._get_url_hash(url)
-        file_path = os.path.join(self.cache_dir, f"{url_hash}.jpg")
-        
-        # Save image to filesystem
-        cv2.imwrite(file_path, image)
-        file_size = os.path.getsize(file_path)
-        
-        # Save metadata to database
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT OR REPLACE INTO cached_images 
-            (url_hash, url, file_path, file_size, created_at, last_accessed)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (url_hash, url, file_path, file_size, datetime.now(), datetime.now()))
-        
-        conn.commit()
-        conn.close()
-        
-        logger.debug(f" Cached image: {file_size} bytes at {file_path}")
-        return file_path
-    
-    def _get_cached_features(self, url: str) -> Optional[Dict]:
-        """Get cached features from database - handles all 4 detectors"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        url_hash = self._get_url_hash(url)
-        
-        # Try to get full 4-detector features first
-        try:
-            cursor.execute('''
-                SELECT sift_keypoints, sift_descriptors, sift_count,
-                    orb_keypoints, orb_descriptors, orb_count,
-                    akaze_keypoints, akaze_descriptors, akaze_count,
-                    kaze_keypoints, kaze_descriptors, kaze_count,
-                    processing_time, image_shape, was_cropped
-                FROM cached_features 
-                WHERE url_hash = ?
-            ''', (url_hash,))
-            
-            result = cursor.fetchone()
-            
-            if result and len(result) >= 15:  # Full 4-detector result
-                self._update_access_time('cached_features', url_hash)
-                self.cache_stats['feature_cache_hits'] += 1
-                self.cache_stats['processing_time_saved'] += result[12]  # processing_time
-                
-                logger.debug(f"✅ 4-detector cache hit: {url[:50]}... (saved {result[12]:.2f}s)")
-                
-                # Deserialize all features
-                features = {
-                    'sift': {
-                        'keypoints': self._deserialize_keypoints(result[0]),
-                        'descriptors': pickle.loads(result[1]) if result[1] else None,
-                        'count': result[2] or 0
-                    },
-                    'orb': {
-                        'keypoints': self._deserialize_keypoints(result[3]),
-                        'descriptors': pickle.loads(result[4]) if result[4] else None,
-                        'count': result[5] or 0
-                    },
-                    'akaze': {
-                        'keypoints': self._deserialize_keypoints(result[6]),
-                        'descriptors': pickle.loads(result[7]) if result[7] else None,
-                        'count': result[8] or 0
-                    },
-                    'kaze': {
-                        'keypoints': self._deserialize_keypoints(result[9]),
-                        'descriptors': pickle.loads(result[10]) if result[10] else None,
-                        'count': result[11] or 0
-                    },
-                    'processing_time': result[12],
-                    'image_shape': json.loads(result[13]) if result[13] else None,
-                    'was_cropped': bool(result[14])
-                }
-                
-                conn.close()
-                return features
-                
-        except sqlite3.OperationalError:
-            # KAZE columns don't exist yet
-            pass
-        
-        # Fallback: try to get legacy 3-detector features
-        try:
-            cursor.execute('''
-                SELECT sift_keypoints, sift_descriptors, sift_count,
-                    orb_keypoints, orb_descriptors, orb_count,
-                    akaze_keypoints, akaze_descriptors, akaze_count,
-                    processing_time, image_shape, was_cropped
-                FROM cached_features 
-                WHERE url_hash = ?
-            ''', (url_hash,))
-            
-            result = cursor.fetchone()
-            
-            if result:
-                self._update_access_time('cached_features', url_hash)
-                self.cache_stats['feature_cache_hits'] += 1
-                self.cache_stats['processing_time_saved'] += result[9]  # processing_time
-                
-                logger.debug(f"✅ Legacy 3-detector cache hit: {url[:50]}... (saved {result[9]:.2f}s)")
-                
-                features = {
-                    'sift': {
-                        'keypoints': self._deserialize_keypoints(result[0]),
-                        'descriptors': pickle.loads(result[1]) if result[1] else None,
-                        'count': result[2] or 0
-                    },
-                    'orb': {
-                        'keypoints': self._deserialize_keypoints(result[3]),
-                        'descriptors': pickle.loads(result[4]) if result[4] else None,
-                        'count': result[5] or 0
-                    },
-                    'akaze': {
-                        'keypoints': self._deserialize_keypoints(result[6]),
-                        'descriptors': pickle.loads(result[7]) if result[7] else None,
-                        'count': result[8] or 0
-                    },
-                    'kaze': {
-                        'keypoints': [],
-                        'descriptors': None,
-                        'count': 0
-                    },
-                    'processing_time': result[9],
-                    'image_shape': json.loads(result[10]) if result[10] else None,
-                    'was_cropped': bool(result[11])
-                }
-                
-                conn.close()
-                return features
-                
-        except sqlite3.OperationalError:
-            pass
-        
-        conn.close()
-        self.cache_stats['feature_cache_misses'] += 1
-        logger.debug(f"❌ Feature cache miss: {url[:50]}...")
-        return None
-
-    def _cache_features(self, url: str, features: Dict, processing_time: float, 
-                       image_shape: Tuple, was_cropped: bool):
-        """Cache features to database including all 4 detectors"""
-        url_hash = self._get_url_hash(url)
-        
-        # Serialize all features
-        sift_kp_data = self._serialize_keypoints(features['sift']['keypoints'])
-        sift_desc_data = pickle.dumps(features['sift']['descriptors']) if features['sift']['descriptors'] is not None else b''
-        orb_kp_data = self._serialize_keypoints(features['orb']['keypoints'])
-        orb_desc_data = pickle.dumps(features['orb']['descriptors']) if features['orb']['descriptors'] is not None else b''
-        akaze_kp_data = self._serialize_keypoints(features['akaze']['keypoints'])
-        akaze_desc_data = pickle.dumps(features['akaze']['descriptors']) if features['akaze']['descriptors'] is not None else b''
-        kaze_kp_data = self._serialize_keypoints(features['kaze']['keypoints'])
-        kaze_desc_data = pickle.dumps(features['kaze']['descriptors']) if features['kaze']['descriptors'] is not None else b''
-        
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute('''
-            INSERT OR REPLACE INTO cached_features 
-            (url_hash, url, sift_keypoints, sift_descriptors, sift_count,
-            orb_keypoints, orb_descriptors, orb_count, 
-            akaze_keypoints, akaze_descriptors, akaze_count,
-            kaze_keypoints, kaze_descriptors, kaze_count,
-            processing_time, image_shape, was_cropped, created_at, last_accessed)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            url_hash, url, 
-            sift_kp_data, sift_desc_data, features['sift']['count'],
-            orb_kp_data, orb_desc_data, features['orb']['count'],
-            akaze_kp_data, akaze_desc_data, features['akaze']['count'],
-            kaze_kp_data, kaze_desc_data, features['kaze']['count'],
-            processing_time, json.dumps(image_shape), was_cropped, 
-            datetime.now(), datetime.now()
-        ))
-        
-        conn.commit()
-        conn.close()
-        
-        logger.debug(f" Cached 4-detector features: SIFT={features['sift']['count']}, ORB={features['orb']['count']}, AKAZE={features['akaze']['count']}, KAZE={features['kaze']['count']} ({processing_time:.2f}s)")
-    
-    def _update_access_time(self, table: str, url_hash: str):
-        """Update last accessed time for cache entry"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        cursor.execute(f'''
-            UPDATE {table} 
-            SET last_accessed = ? 
-            WHERE url_hash = ?
-        ''', (datetime.now(), url_hash))
-        
-        conn.commit()
-        conn.close()
-    
     def download_image(self, url: str, timeout: int = 10) -> Optional[np.ndarray]:
-        """Download image with caching support"""
-        # Check cache first
-        cached_image = self._get_cached_image(url)
+        """Download image with fast caching support"""
+        url_hash = self._get_url_hash(url)
+        
+        # Check fast cache first
+        cached_image = self.cache_manager.get_image(url_hash)
         if cached_image is not None:
             return cached_image
         
         # Download if not cached
         try:
-            logger.debug(f"⬇️ Downloading image: {url[:50]}...")
+            logger.debug(f"Downloading image: {url[:50]}...")
             response = self.session.get(url, timeout=timeout)
             response.raise_for_status()
             
@@ -505,17 +734,57 @@ class FeatureMatchingComicMatcher:
             image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
             
             if image is not None:
-                # Cache the downloaded image
-                self._cache_image(url, image)
-                logger.success(f"✅ Downloaded and cached: {url[:50]}...")
+                # Save to filesystem and cache
+                file_path = os.path.join(self.cache_dir, f"{url_hash}.jpg")
+                cv2.imwrite(file_path, image)
+                
+                # Cache using fast cache manager
+                self.cache_manager.cache_image(url_hash, url, image, file_path)
+                logger.success(f"Downloaded and cached: {url[:50]}...")
             else:
-                logger.warning(f"⚠️ Failed to decode image: {url[:50]}...")
+                logger.warning(f"Failed to decode image: {url[:50]}...")
             
             return image
             
         except Exception as e:
-            logger.error(f"❌ Download error for {url[:50]}...: {e}")
+            logger.error(f"Download error for {url[:50]}...: {e}")
             return None
+    
+    def extract_features_cached(self, url: str) -> Optional[Dict]:
+        """Extract features with fast caching support"""
+        url_hash = self._get_url_hash(url)
+        
+        # Check fast cache first
+        cached_features = self.cache_manager.get_features(url_hash)
+        if cached_features is not None:
+            return cached_features
+        
+        # If cache-only mode, return None instead of processing
+        if self.cache_only:
+            logger.debug(f"Cache-only mode: skipping processing for {url[:50]}...")
+            return None
+        
+        # Download image
+        image = self.download_image(url)
+        if image is None:
+            return None
+        
+        # Process image
+        start_time = time.time()
+        cropped_image, was_cropped = self.detect_comic_area(image)
+        features = self.extract_features(cropped_image)
+        processing_time = time.time() - start_time
+        
+        logger.debug(f"Feature extraction took {processing_time:.2f}s")
+        
+        if features is not None:
+            # Cache using fast cache manager
+            self.cache_manager.cache_features(
+                url_hash, url, features, processing_time, 
+                cropped_image.shape, was_cropped, self._serialize_keypoints
+            )
+        
+        return features
     
     def detect_comic_area(self, image):
         """Simple or enhanced comic detection based on config"""
@@ -523,10 +792,8 @@ class FeatureMatchingComicMatcher:
             return image, False
             
         if self.use_advanced_matching:
-            # Enhanced comic detection with multiple approaches
             return self._detect_comic_enhanced(image)
         else:
-            # Simple and fast comic detection
             return self._detect_comic_simple(image)
     
     def _detect_comic_simple(self, image):
@@ -534,7 +801,6 @@ class FeatureMatchingComicMatcher:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
         edges = cv2.Canny(gray, 50, 150)
         
-        # Find largest contour
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if contours:
@@ -542,10 +808,8 @@ class FeatureMatchingComicMatcher:
             area = cv2.contourArea(largest)
             h, w = image.shape[:2]
             
-            # If contour is significant portion of image
             if area > (w * h * 0.1):
                 x, y, cw, ch = cv2.boundingRect(largest)
-                # Add some padding
                 pad = 20
                 x = max(0, x - pad)
                 y = max(0, y - pad)
@@ -562,9 +826,6 @@ class FeatureMatchingComicMatcher:
         original = image.copy()
         h, w = image.shape[:2]
         
-        logger.debug(f" Enhanced comic detection in image: {w}x{h}")
-        
-        # Multi-approach comic detection
         approaches = [
             self._detect_comic_contour_based,
             self._detect_comic_color_based,
@@ -585,10 +846,9 @@ class FeatureMatchingComicMatcher:
                 continue
         
         if best_crop is not None and best_score > 0.15:
-            logger.success(f"✅ Enhanced comic detected: {original.shape} -> {best_crop.shape} (score: {best_score:.3f})")
+            logger.success(f"Enhanced comic detected: {original.shape} -> {best_crop.shape} (score: {best_score:.3f})")
             return best_crop, True
         
-        logger.debug(" No reliable comic detection, using full image")
         return original, False
     
     def _detect_comic_contour_based(self, image):
@@ -603,10 +863,8 @@ class FeatureMatchingComicMatcher:
             edges = cv2.Canny(blurred, 30, 90)
             edges_list.append(edges)
         
-        # Combine edges
         combined_edges = np.maximum.reduce(edges_list)
         
-        # Enhanced morphological operations
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (8, 8))
         combined_edges = cv2.morphologyEx(combined_edges, cv2.MORPH_CLOSE, kernel)
         combined_edges = cv2.morphologyEx(combined_edges, cv2.MORPH_DILATE, kernel)
@@ -629,7 +887,6 @@ class FeatureMatchingComicMatcher:
             fill_ratio = area / rect_area if rect_area > 0 else 0
             aspect_ratio = ch / cw if cw > 0 else 0
             
-            # Enhanced scoring with position consideration
             if 0.6 <= aspect_ratio <= 3.5 and fill_ratio > 0.4:
                 center_x, center_y = x + cw/2, y + ch/2
                 image_center_x, image_center_y = w/2, h/2
@@ -658,15 +915,12 @@ class FeatureMatchingComicMatcher:
         """Color-based comic detection"""
         h, w = image.shape[:2]
         
-        # Convert to HSV for better color analysis
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         
-        # Create mask for likely comic colors (avoid pure white backgrounds)
         lower_bound = np.array([0, 20, 20])
         upper_bound = np.array([180, 255, 255])
         color_mask = cv2.inRange(hsv, lower_bound, upper_bound)
         
-        # Find the largest connected component
         contours, _ = cv2.findContours(color_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
@@ -675,7 +929,6 @@ class FeatureMatchingComicMatcher:
         largest_contour = max(contours, key=cv2.contourArea)
         x, y, cw, ch = cv2.boundingRect(largest_contour)
         
-        # Score based on size and aspect ratio
         area_ratio = (cw * ch) / (w * h)
         aspect_ratio = ch / cw if cw > 0 else 0
         
@@ -696,12 +949,10 @@ class FeatureMatchingComicMatcher:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         h, w = gray.shape
         
-        # Adaptive threshold
         adaptive_thresh = cv2.adaptiveThreshold(
             gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
         )
         
-        # Find contours
         contours, _ = cv2.findContours(adaptive_thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
@@ -741,45 +992,35 @@ class FeatureMatchingComicMatcher:
         if image is None:
             return None
         
-        # Resize based on config
         h, w = image.shape[:2]
         target_size = self.config.get('image_size', 800)
         
         if max(h, w) > target_size:
             scale = target_size / max(h, w)
             new_w, new_h = int(w * scale), int(h * scale)
-            # Use faster interpolation for speed, better for quality
             interpolation = cv2.INTER_LINEAR if not self.use_advanced_matching else cv2.INTER_LANCZOS4
             image = cv2.resize(image, (new_w, new_h), interpolation=interpolation)
-            logger.debug(f"️ Resized image from {w}x{h} to {new_w}x{new_h}")
+            logger.debug(f"Resized image from {w}x{h} to {new_w}x{new_h}")
         
-        # Convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
         
-        # Configurable preprocessing based on use_advanced_matching
         if self.use_advanced_matching:
             # High quality preprocessing
-            # Adaptive histogram equalization with optimized parameters
             clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(12, 12))
             enhanced = clahe.apply(gray)
             
-            # Edge-preserving denoising
             denoised = cv2.bilateralFilter(enhanced, 5, 50, 50)
             
-            # Subtle sharpening for better feature detection
             kernel = np.array([[-0.5, -0.5, -0.5],
                             [-0.5,  5.0, -0.5],
                             [-0.5, -0.5, -0.5]])
             sharpened = cv2.filter2D(denoised, -1, kernel)
             
-            # Blend original and sharpened (70% sharpened, 30% original)
             processed = cv2.addWeighted(sharpened, 0.7, denoised, 0.3, 0)
-            
-            logger.debug(" Applied advanced preprocessing")
+            logger.debug("Applied advanced preprocessing")
         else:
-            # Fast preprocessing for speed
             processed = cv2.equalizeHist(gray)
-            logger.debug(" Applied fast preprocessing")
+            logger.debug("Applied fast preprocessing")
         
         return processed
 
@@ -794,7 +1035,6 @@ class FeatureMatchingComicMatcher:
         
         features = {}
         
-        # Extract features for each enabled detector
         for detector_name, detector in self.detectors.items():
             try:
                 kp, desc = detector.detectAndCompute(processed, None)
@@ -803,58 +1043,24 @@ class FeatureMatchingComicMatcher:
                     'descriptors': desc,
                     'count': len(kp) if kp else 0
                 }
-                logger.debug(f" {detector_name.upper()} features: {features[detector_name]['count']}")
+                logger.debug(f"{detector_name.upper()} features: {features[detector_name]['count']}")
                 
-                # Early termination for speed if ORB finds very few features and not in advanced mode
                 if (not self.use_advanced_matching and detector_name == 'orb' and 
                     features[detector_name]['count'] < 10):
-                    logger.debug(f" Early termination: Only {features[detector_name]['count']} ORB features found")
-                    # Still initialize other detectors with empty results for compatibility
+                    logger.debug(f"Early termination: Only {features[detector_name]['count']} ORB features found")
                     for other_detector in ['sift', 'akaze', 'kaze']:
                         if other_detector not in features:
                             features[other_detector] = {'keypoints': [], 'descriptors': None, 'count': 0}
                     break
                     
             except Exception as e:
-                logger.warning(f"⚠️ {detector_name.upper()} extraction failed: {e}")
+                logger.warning(f"{detector_name.upper()} extraction failed: {e}")
                 features[detector_name] = {'keypoints': [], 'descriptors': None, 'count': 0}
         
         # Ensure all detector types have entries for compatibility
         for detector_type in ['sift', 'orb', 'akaze', 'kaze']:
             if detector_type not in features:
                 features[detector_type] = {'keypoints': [], 'descriptors': None, 'count': 0}
-        
-        return features
-    
-    def extract_features_cached(self, url: str) -> Optional[Dict]:
-        """Extract features with caching support"""
-        # Check cache first
-        cached_features = self._get_cached_features(url)
-        if cached_features is not None:
-            return cached_features
-        
-        # If cache-only mode, return None instead of processing
-        if self.cache_only:
-            logger.debug(f" Cache-only mode: skipping processing for {url[:50]}...")
-            return None
-        
-        # Download image
-        image = self.download_image(url)
-        if image is None:
-            return None
-        
-        # Process image
-        start_time = time.time()
-        cropped_image, was_cropped = self.detect_comic_area(image)
-        features = self.extract_features(cropped_image)
-        processing_time = time.time() - start_time
-        
-        logger.debug(f"⏱️ Feature extraction took {processing_time:.2f}s")
-        
-        if features is not None:
-            # Cache the features
-            self._cache_features(url, features, processing_time, 
-                               cropped_image.shape, was_cropped)
         
         return features
     
@@ -873,24 +1079,20 @@ class FeatureMatchingComicMatcher:
         similarities = []
         match_results = {}
         
-        # Match each enabled detector
         for detector_name in self.detectors.keys():
             if (query_features.get(detector_name, {}).get('descriptors') is not None and 
                 candidate_features.get(detector_name, {}).get('descriptors') is not None):
                 
                 try:
-                    # Simple matching without ratio test
                     if detector_name in self.matchers:
                         matches = self.matchers[detector_name].match(
                             query_features[detector_name]['descriptors'], 
                             candidate_features[detector_name]['descriptors']
                         )
-                        # Simple distance filter
                         good_matches = [m for m in matches if m.distance < 50]
                     else:
                         good_matches = []
                     
-                    # Calculate similarity
                     total_features = min(
                         query_features[detector_name]['count'], 
                         candidate_features[detector_name]['count']
@@ -907,9 +1109,8 @@ class FeatureMatchingComicMatcher:
                         }
                 
                 except Exception as e:
-                    logger.debug(f"⚠️ {detector_name} matching failed: {e}")
+                    logger.debug(f"{detector_name} matching failed: {e}")
         
-        # Calculate weighted average
         if similarities:
             weighted_sum = sum(sim * weight for sim, weight in similarities)
             total_weight = sum(weight for _, weight in similarities)
@@ -925,7 +1126,6 @@ class FeatureMatchingComicMatcher:
         similarities = []
         geometric_scores = []
         
-        # Enhanced scoring parameters for advanced matching
         scoring_params = {
             'similarity_boost': 1.3,
             'geometric_weight': 0.15,
@@ -933,64 +1133,41 @@ class FeatureMatchingComicMatcher:
             'quality_threshold': 0.15
         }
         
-        # SIFT matching with FLANN and geometric verification
-        if 'sift' in self.detectors:
-            sift_similarity, sift_geometric = self._match_sift_enhanced(query_features, candidate_features, match_results)
-            if sift_similarity > 0:
-                similarities.append(('sift', sift_similarity, self.feature_weights.get('sift', 0.25)))
-                geometric_scores.append(sift_geometric)
+        # Match each detector type
+        for detector_name in ['sift', 'orb', 'akaze', 'kaze']:
+            if detector_name in self.detectors:
+                similarity, geometric = self._match_detector_enhanced(
+                    detector_name, query_features, candidate_features, match_results
+                )
+                if similarity > 0:
+                    weight = self.feature_weights.get(detector_name, 0.25)
+                    similarities.append((detector_name, similarity, weight))
+                    geometric_scores.append(geometric)
         
-        # Enhanced ORB matching
-        if 'orb' in self.detectors:
-            orb_similarity, orb_geometric = self._match_orb_enhanced(query_features, candidate_features, match_results)
-            if orb_similarity > 0:
-                similarities.append(('orb', orb_similarity, self.feature_weights.get('orb', 0.25)))
-                geometric_scores.append(orb_geometric)
-        
-        # Enhanced AKAZE matching
-        if 'akaze' in self.detectors:
-            akaze_similarity, akaze_geometric = self._match_akaze_enhanced(query_features, candidate_features, match_results)
-            if akaze_similarity > 0:
-                similarities.append(('akaze', akaze_similarity, self.feature_weights.get('akaze', 0.25)))
-                geometric_scores.append(akaze_geometric)
-        
-        # KAZE matching
-        if 'kaze' in self.detectors:
-            kaze_similarity, kaze_geometric = self._match_kaze_enhanced(query_features, candidate_features, match_results)
-            if kaze_similarity > 0:
-                similarities.append(('kaze', kaze_similarity, self.feature_weights.get('kaze', 0.15)))
-                geometric_scores.append(kaze_geometric)
-        
-        # Enhanced combination with geometric consistency
         if similarities:
-            # Calculate weighted average
             weighted_sum = sum(sim * weight for _, sim, weight in similarities)
             total_weight = sum(weight for _, _, weight in similarities)
             
             if total_weight > 0:
                 base_similarity = weighted_sum / total_weight
                 
-                # Apply similarity boost for good matches
                 if base_similarity > scoring_params['quality_threshold']:
                     boosted_similarity = base_similarity * scoring_params['similarity_boost']
                 else:
                     boosted_similarity = base_similarity
                 
-                # Add geometric consistency bonus
                 if geometric_scores:
                     avg_geometric = sum(geometric_scores) / len(geometric_scores)
                     geometric_bonus = avg_geometric * scoring_params['geometric_weight']
                     boosted_similarity += geometric_bonus
                 
-                # Multi-detector agreement bonus
                 if len(similarities) > 1:
                     agreement_bonus = scoring_params['multi_detector_bonus'] * (len(similarities) - 1)
                     boosted_similarity += agreement_bonus
                 
-                # Ensure we don't exceed 1.0 but allow high scores
-                overall_similarity = min(0.95, boosted_similarity)  # Cap at 95% to be realistic
+                overall_similarity = min(0.95, boosted_similarity)
                 
-                logger.debug(f" Advanced matching similarity: {overall_similarity:.3f} (base: {base_similarity:.3f}, {len(similarities)} detectors)")
+                logger.debug(f"Advanced matching similarity: {overall_similarity:.3f} (base: {base_similarity:.3f}, {len(similarities)} detectors)")
             else:
                 overall_similarity = 0.0
         else:
@@ -998,233 +1175,40 @@ class FeatureMatchingComicMatcher:
         
         return overall_similarity, match_results
 
-    def _match_sift_enhanced(self, query_features, candidate_features, match_results):
-        """Enhanced SIFT matching with FLANN matcher and geometric verification"""
-        if (query_features.get('sift', {}).get('descriptors') is None or 
-            candidate_features.get('sift', {}).get('descriptors') is None or
-            len(query_features['sift']['descriptors']) < 8 or
-            len(candidate_features['sift']['descriptors']) < 8):
+    def _match_detector_enhanced(self, detector_name, query_features, candidate_features, match_results):
+        """Enhanced matching for a specific detector"""
+        if (query_features.get(detector_name, {}).get('descriptors') is None or 
+            candidate_features.get(detector_name, {}).get('descriptors') is None):
+            return 0.0, 0.0
+        
+        query_desc = query_features[detector_name]['descriptors']
+        candidate_desc = candidate_features[detector_name]['descriptors']
+        
+        min_features = 8 if detector_name in ['sift', 'orb', 'kaze'] else 5
+        if len(query_desc) < min_features or len(candidate_desc) < min_features:
             return 0.0, 0.0
         
         try:
-            # Use FLANN matcher for better performance and accuracy
-            matches = self.matchers['sift'].knnMatch(
-                query_features['sift']['descriptors'], 
-                candidate_features['sift']['descriptors'], 
-                k=2
-            )
+            if detector_name in self.matchers:
+                matches = self.matchers[detector_name].knnMatch(query_desc, candidate_desc, k=2)
+            else:
+                return 0.0, 0.0
             
-            # Enhanced ratio test with adaptive threshold
             good_matches = []
             distances = []
-            for match_pair in matches:
-                if len(match_pair) >= 2:
-                    m, n = match_pair[0], match_pair[1]
-                    ratio_threshold = 0.75  # Balanced threshold
-                    if m.distance < ratio_threshold * n.distance:
-                        good_matches.append(m)
-                        distances.append(m.distance)
-            
-            geometric_score = 0.0
-            
-            # Geometric verification if we have enough matches
-            if len(good_matches) >= 8:
-                # Extract keypoint coordinates properly
-                query_kpts = query_features['sift']['keypoints']
-                candidate_kpts = candidate_features['sift']['keypoints']
-                
-                query_pts = np.float32([query_kpts[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-                candidate_pts = np.float32([candidate_kpts[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-                
-                try:
-                    # Find homography
-                    M, mask = cv2.findHomography(query_pts, candidate_pts, cv2.RANSAC, 5.0)
-                    if M is not None and mask is not None:
-                        inliers = int(np.sum(mask))  # Convert to int for JSON serialization
-                        geometric_score = float(inliers / len(good_matches))  # Ensure float
-                        logger.debug(f" SIFT geometric verification: {inliers}/{len(good_matches)} inliers")
-                except Exception as geo_e:
-                    geometric_score = 0.5  # Default modest score if homography fails
-                    logger.debug(f"Geometric verification failed: {geo_e}")
-            
-            # Enhanced similarity calculation
-            total_features = min(query_features['sift']['count'], candidate_features['sift']['count'])
-            if total_features > 0:
-                # Base similarity from match ratio
-                match_ratio = len(good_matches) / total_features
-                
-                # Quality bonus based on average distance
-                if distances:
-                    avg_distance = sum(distances) / len(distances)
-                    distance_quality = max(0, (200 - avg_distance) / 200)
-                    quality_bonus = distance_quality * 0.2
-                else:
-                    quality_bonus = 0
-                
-                # Combine with geometric score
-                similarity = match_ratio + quality_bonus + (geometric_score * 0.1)
-            else:
-                similarity = 0.0
-            
-            match_results['sift'] = {
-                'total_matches': int(len(matches)),
-                'good_matches': int(len(good_matches)),
-                'geometric_score': float(geometric_score),
-                'similarity': float(similarity)
-            }
-            
-            logger.debug(f" Enhanced SIFT: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
-            return similarity, geometric_score
-            
-        except Exception as e:
-            logger.warning(f"⚠️ Enhanced SIFT matching error: {e}")
-            match_results['sift'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
-            return 0.0, 0.0
-
-    def _match_orb_enhanced(self, query_features, candidate_features, match_results):
-        """Enhanced ORB matching with geometric verification"""
-        if (query_features.get('orb', {}).get('descriptors') is None or 
-            candidate_features.get('orb', {}).get('descriptors') is None or
-            len(query_features['orb']['descriptors']) < 8 or
-            len(candidate_features['orb']['descriptors']) < 8):
-            return 0.0, 0.0
-        
-        try:
-            matches = self.matchers['orb'].knnMatch(
-                query_features['orb']['descriptors'], 
-                candidate_features['orb']['descriptors'], 
-                k=2
-            )
-            
-            good_matches = []
-            for match_pair in matches:
-                if len(match_pair) >= 2:
-                    m, n = match_pair[0], match_pair[1]
-                    if m.distance < 0.75 * n.distance:  # Standard ratio test
-                        good_matches.append(m)
-            
-            geometric_score = 0.0
-            
-            # Geometric verification for ORB
-            if len(good_matches) >= 8:
-                # Extract keypoint coordinates properly
-                query_kpts = query_features['orb']['keypoints']
-                candidate_kpts = candidate_features['orb']['keypoints']
-                
-                query_pts = np.float32([query_kpts[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-                candidate_pts = np.float32([candidate_kpts[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
-                
-                try:
-                    M, mask = cv2.findHomography(query_pts, candidate_pts, cv2.RANSAC, 5.0)
-                    if M is not None and mask is not None:
-                        inliers = int(np.sum(mask))  # Convert to int for JSON serialization
-                        geometric_score = float(inliers / len(good_matches))  # Ensure float
-                except Exception as geo_e:
-                    geometric_score = 0.3
-                    logger.debug(f"ORB geometric verification failed: {geo_e}")
-            
-            # Enhanced ORB similarity calculation
-            total_features = min(query_features['orb']['count'], candidate_features['orb']['count'])
-            if total_features > 0:
-                match_ratio = len(good_matches) / total_features
-                similarity = match_ratio + (geometric_score * 0.15)  # Smaller geometric bonus for ORB
-            else:
-                similarity = 0.0
-            
-            match_results['orb'] = {
-                'total_matches': int(len(matches)),
-                'good_matches': int(len(good_matches)),
-                'geometric_score': float(geometric_score),
-                'similarity': float(similarity)
-            }
-            
-            logger.debug(f" Enhanced ORB: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
-            return similarity, geometric_score
-            
-        except Exception as e:
-            logger.warning(f"⚠️ Enhanced ORB matching error: {e}")
-            match_results['orb'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
-            return 0.0, 0.0
-
-    def _match_akaze_enhanced(self, query_features, candidate_features, match_results):
-        """Enhanced AKAZE matching with improved scoring"""
-        if (query_features.get('akaze', {}).get('descriptors') is None or 
-            candidate_features.get('akaze', {}).get('descriptors') is None or
-            len(query_features['akaze']['descriptors']) < 5 or
-            len(candidate_features['akaze']['descriptors']) < 5):
-            return 0.0, 0.0
-        
-        try:
-            matches = self.matchers['akaze'].knnMatch(
-                query_features['akaze']['descriptors'], 
-                candidate_features['akaze']['descriptors'], 
-                k=2
-            )
-            
-            good_matches = []
             for match_pair in matches:
                 if len(match_pair) >= 2:
                     m, n = match_pair[0], match_pair[1]
                     if m.distance < 0.75 * n.distance:
                         good_matches.append(m)
-            
-            # Simple geometric check for AKAZE
-            geometric_score = min(1.0, len(good_matches) / 20.0) if good_matches else 0.0
-            
-            # AKAZE similarity calculation
-            total_features = min(query_features['akaze']['count'], candidate_features['akaze']['count'])
-            if total_features > 0:
-                similarity = len(good_matches) / total_features
-            else:
-                similarity = 0.0
-            
-            match_results['akaze'] = {
-                'total_matches': int(len(matches)),
-                'good_matches': int(len(good_matches)),
-                'geometric_score': float(geometric_score),
-                'similarity': float(similarity)
-            }
-            
-            logger.debug(f" Enhanced AKAZE: {len(good_matches)}/{len(matches)} matches, sim: {similarity:.3f}")
-            return similarity, geometric_score
-            
-        except Exception as e:
-            logger.warning(f"⚠️ Enhanced AKAZE matching error: {e}")
-            match_results['akaze'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
-            return 0.0, 0.0
-    
-    def _match_kaze_enhanced(self, query_features, candidate_features, match_results):
-        """Enhanced KAZE matching with geometric verification"""
-        if (query_features.get('kaze', {}).get('descriptors') is None or 
-            candidate_features.get('kaze', {}).get('descriptors') is None or
-            len(query_features['kaze']['descriptors']) < 8 or
-            len(candidate_features['kaze']['descriptors']) < 8):
-            return 0.0, 0.0
-        
-        try:
-            matches = self.matchers['kaze'].knnMatch(
-                query_features['kaze']['descriptors'], 
-                candidate_features['kaze']['descriptors'], 
-                k=2
-            )
-            
-            good_matches = []
-            distances = []
-            for match_pair in matches:
-                if len(match_pair) >= 2:
-                    m, n = match_pair[0], match_pair[1]
-                    ratio_threshold = 0.75  # Standard threshold for KAZE
-                    if m.distance < ratio_threshold * n.distance:
-                        good_matches.append(m)
                         distances.append(m.distance)
             
             geometric_score = 0.0
             
-            # Geometric verification for KAZE
-            if len(good_matches) >= 8:
-                # Extract keypoint coordinates properly
-                query_kpts = query_features['kaze']['keypoints']
-                candidate_kpts = candidate_features['kaze']['keypoints']
+            # Geometric verification for SIFT, ORB, and KAZE
+            if len(good_matches) >= 8 and detector_name in ['sift', 'orb', 'kaze']:
+                query_kpts = query_features[detector_name]['keypoints']
+                candidate_kpts = candidate_features[detector_name]['keypoints']
                 
                 query_pts = np.float32([query_kpts[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
                 candidate_pts = np.float32([candidate_kpts[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
@@ -1234,54 +1218,64 @@ class FeatureMatchingComicMatcher:
                     if M is not None and mask is not None:
                         inliers = int(np.sum(mask))
                         geometric_score = float(inliers / len(good_matches))
-                except Exception as geo_e:
+                except Exception:
                     geometric_score = 0.4
-                    logger.debug(f"KAZE geometric verification failed: {geo_e}")
+            elif detector_name == 'akaze':
+                geometric_score = min(1.0, len(good_matches) / 20.0) if good_matches else 0.0
             
-            # KAZE similarity calculation with quality bonus
-            total_features = min(query_features['kaze']['count'], candidate_features['kaze']['count'])
+            # Calculate similarity
+            total_features = min(
+                query_features[detector_name]['count'], 
+                candidate_features[detector_name]['count']
+            )
+            
             if total_features > 0:
                 match_ratio = len(good_matches) / total_features
                 
-                # Quality bonus based on average distance (similar to SIFT)
-                if distances:
+                # Quality bonus for SIFT and KAZE based on distance
+                if distances and detector_name in ['sift', 'kaze']:
                     avg_distance = sum(distances) / len(distances)
-                    distance_quality = max(0, (150 - avg_distance) / 150)  # Adjusted for KAZE distances
-                    quality_bonus = distance_quality * 0.15
+                    threshold = 200 if detector_name == 'sift' else 150
+                    distance_quality = max(0, (threshold - avg_distance) / threshold)
+                    quality_bonus = distance_quality * 0.2
                 else:
                     quality_bonus = 0
                 
-                similarity = match_ratio + quality_bonus + (geometric_score * 0.1)
+                # Combine with geometric score
+                if detector_name in ['sift', 'kaze']:
+                    similarity = match_ratio + quality_bonus + (geometric_score * 0.1)
+                elif detector_name == 'orb':
+                    similarity = match_ratio + (geometric_score * 0.15)
+                else:  # akaze
+                    similarity = match_ratio
             else:
                 similarity = 0.0
             
-            match_results['kaze'] = {
+            match_results[detector_name] = {
                 'total_matches': int(len(matches)),
                 'good_matches': int(len(good_matches)),
                 'geometric_score': float(geometric_score),
                 'similarity': float(similarity)
             }
             
-            logger.debug(f" Enhanced KAZE: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
+            logger.debug(f"Enhanced {detector_name.upper()}: {len(good_matches)}/{len(matches)} matches, geo: {geometric_score:.3f}, sim: {similarity:.3f}")
             return similarity, geometric_score
             
         except Exception as e:
-            logger.warning(f"⚠️ Enhanced KAZE matching error: {e}")
-            match_results['kaze'] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
+            logger.warning(f"Enhanced {detector_name.upper()} matching error: {e}")
+            match_results[detector_name] = {'total_matches': 0, 'good_matches': 0, 'geometric_score': 0.0, 'similarity': 0.0}
             return 0.0, 0.0
 
     def find_matches_img(self, query_image, candidate_urls, threshold=0.1, progress_callback=None):
-        """Main matching function with configurable caching support and progress callback"""
-        logger.info(" Starting Configurable Feature Matching Comic Search...")
+        """Main matching function with fast caching support and progress callback"""
+        logger.info("Starting Fast Feature Matching Comic Search...")
         start_time = time.time()
         
         if query_image is None:
             raise ValueError("Query image data is None")
         
-        logger.info(f"️ Received query image: {query_image.shape}")
+        logger.info(f"Received query image: {query_image.shape}")
         
-        # Process query image (not cached since it's user input)
-        # Use safe progress callback for initial processing
         safe_progress_callback(progress_callback, 0, "Processing query image...")
         
         query_image, was_cropped = self.detect_comic_area(query_image)
@@ -1293,39 +1287,32 @@ class FeatureMatchingComicMatcher:
         enabled_detectors = [name for name in ['sift', 'orb', 'akaze', 'kaze'] if name in self.detectors]
         feature_counts = {name: query_features[name]['count'] for name in enabled_detectors}
         
-        logger.success(f"✅ Query features - {', '.join([f'{name.upper()}: {count}' for name, count in feature_counts.items()])}")
+        logger.success(f"Query features - {', '.join([f'{name.upper()}: {count}' for name, count in feature_counts.items()])}")
         
-        # Use safe progress callback for feature extraction completion
         safe_progress_callback(progress_callback, 1, f"Query features extracted - {', '.join([f'{name.upper()}: {count}' for name, count in feature_counts.items()])}")
         
-        # Process candidates with caching
-        logger.info(f"⬇️ Processing {len(candidate_urls)} candidate images (with caching)...")
+        logger.info(f"Processing {len(candidate_urls)} candidate images (with fast caching)...")
         
-        # Use safe progress callback for starting candidate analysis
         safe_progress_callback(progress_callback, 2, f"Starting analysis of {len(candidate_urls)} candidates...")
         
         results = []
         total_candidates = len(candidate_urls)
         
         if total_candidates == 0:
-            logger.warning("⚠️ No candidate URLs provided")
+            logger.warning("No candidate URLs provided")
             return results, query_features
         
-        # Determine batch size for progress updates
-        batch_size = max(1, total_candidates // 20)  # Max 20 progress updates
-        logger.debug(f" Progress batch size: {batch_size}")
+        batch_size = max(1, total_candidates // 20)
+        logger.debug(f"Progress batch size: {batch_size}")
         
-        # Use ThreadPoolExecutor for parallel processing with progress tracking
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            logger.debug(f" Using {self.max_workers} worker threads")
+            logger.debug(f"Using {self.max_workers} worker threads")
             
-            # Submit all jobs
             future_to_url = {}
             for i, url in enumerate(candidate_urls):
                 future = executor.submit(self._process_single_candidate_cached, query_features, url, i)
                 future_to_url[future] = (url, i)
             
-            # Collect results with progress updates
             completed = 0
             for future in as_completed(future_to_url):
                 url, index = future_to_url[future]
@@ -1336,20 +1323,16 @@ class FeatureMatchingComicMatcher:
                     if result:
                         results.append(result)
                         if result.get('similarity', 0) >= threshold:
-                            logger.debug(f"✅ Good match found: {url[:50]}... (similarity: {result['similarity']:.3f})")
+                            logger.debug(f"Good match found: {url[:50]}... (similarity: {result['similarity']:.3f})")
                     
-                    # Send progress update every batch_size completions or for the last few
                     if completed % batch_size == 0 or completed >= total_candidates - 5:
                         message = f"Analyzed {completed}/{total_candidates} candidates"
                         if result and 'similarity' in result:
                             message += f" (latest: {result['similarity']:.3f})"
-                        # Use safe progress callback - map completed items to progress
-                        # Add 3 to account for initial processing steps (0, 1, 2)
                         safe_progress_callback(progress_callback, completed + 3, message)
                         
                 except Exception as e:
-                    logger.error(f"❌ Error processing candidate {url[:50]}...: {e}")
-                    # Still add a failed result
+                    logger.error(f"Error processing candidate {url[:50]}...: {e}")
                     results.append({
                         'url': url,
                         'similarity': 0.0,
@@ -1359,33 +1342,28 @@ class FeatureMatchingComicMatcher:
                     })
                     continue
         
-        # Sort results by similarity
         results.sort(key=lambda x: x['similarity'], reverse=True)
         
-        # Filter by threshold
         good_matches = [r for r in results if r['similarity'] >= threshold]
         
-        # Final progress update
-        # Add 3 to account for initial processing steps
         safe_progress_callback(progress_callback, total_candidates + 3, f"Completed analysis - found {len(good_matches)} matches above threshold")
         
         total_time = time.time() - start_time
-        logger.success(f"✨ Configurable feature matching completed in {total_time:.2f}s")
-        logger.info(f" Found {len(good_matches)} matches above threshold ({threshold})")
+        logger.success(f"Fast feature matching completed in {total_time:.2f}s")
+        logger.info(f"Found {len(good_matches)} matches above threshold ({threshold})")
         
         if good_matches:
-            logger.info(f" Top match: {good_matches[0]['url'][:50]}... (similarity: {good_matches[0]['similarity']:.3f})")
+            logger.info(f"Top match: {good_matches[0]['url'][:50]}... (similarity: {good_matches[0]['similarity']:.3f})")
         
         return results, query_features
 
     def _process_single_candidate_cached(self, query_features, candidate_url, index):
-        """Process a single candidate URL with caching and return result"""
+        """Process a single candidate URL with fast caching and return result"""
         try:
-            # Extract features (cached)
             candidate_features = self.extract_features_cached(candidate_url)
             
             if not candidate_features:
-                logger.debug(f"❌ Failed to extract features for: {candidate_url[:50]}...")
+                logger.debug(f"Failed to extract features for: {candidate_url[:50]}...")
                 return {
                     'url': candidate_url,
                     'similarity': 0.0,
@@ -1394,7 +1372,6 @@ class FeatureMatchingComicMatcher:
                     'candidate_features': {}
                 }
             
-            # Match features
             similarity, match_details = self.match_features(query_features, candidate_features)
             
             return {
@@ -1411,7 +1388,7 @@ class FeatureMatchingComicMatcher:
             }
             
         except Exception as e:
-            logger.error(f"❌ Processing failed for {candidate_url[:50]}...: {e}")
+            logger.error(f"Processing failed for {candidate_url[:50]}...: {e}")
             return {
                 'url': candidate_url,
                 'similarity': 0.0,
@@ -1421,118 +1398,154 @@ class FeatureMatchingComicMatcher:
             }
         
     def get_cache_stats(self) -> Dict:
-        """Get cache performance statistics including all 4 detectors"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        """Get comprehensive cache performance statistics"""
+        cache_stats = self.cache_manager.get_stats()
         
-        # Get database stats
-        cursor.execute('SELECT COUNT(*) FROM cached_images')
-        cached_images_count = cursor.fetchone()[0]
-        
-        cursor.execute('SELECT COUNT(*) FROM cached_features')
-        cached_features_count = cursor.fetchone()[0]
-        
-        cursor.execute('SELECT SUM(file_size) FROM cached_images')
-        total_disk_usage = cursor.fetchone()[0] or 0
-        
-        cursor.execute('SELECT SUM(processing_time) FROM cached_features')
-        total_processing_time = cursor.fetchone()[0] or 0
-        
-        # Get detector-specific statistics
-        detector_stats = {}
-        for detector in ['sift', 'orb', 'akaze', 'kaze']:
-            try:
-                cursor.execute(f'SELECT COUNT(*) FROM cached_features WHERE {detector}_count > 0')
-                detector_stats[f'{detector}_features_count'] = cursor.fetchone()[0]
-            except sqlite3.OperationalError:
-                detector_stats[f'{detector}_features_count'] = 0
-        
-        conn.close()
-        
-        # Calculate cache hit rates
-        total_image_requests = self.cache_stats['image_cache_hits'] + self.cache_stats['image_cache_misses']
-        total_feature_requests = self.cache_stats['feature_cache_hits'] + self.cache_stats['feature_cache_misses']
-        
-        image_hit_rate = (self.cache_stats['image_cache_hits'] / total_image_requests * 100) if total_image_requests > 0 else 0
-        feature_hit_rate = (self.cache_stats['feature_cache_hits'] / total_feature_requests * 100) if total_feature_requests > 0 else 0
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT COUNT(*) FROM cached_images')
+            cached_images_count = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT COUNT(*) FROM cached_features')
+            cached_features_count = cursor.fetchone()[0]
+            
+            cursor.execute('SELECT SUM(file_size) FROM cached_images')
+            total_disk_usage = cursor.fetchone()[0] or 0
+            
+            detector_stats = {}
+            for detector in ['sift', 'orb', 'akaze', 'kaze']:
+                try:
+                    cursor.execute(f'SELECT COUNT(*) FROM cached_features WHERE {detector}_count > 0')
+                    detector_stats[f'{detector}_features_count'] = cursor.fetchone()[0]
+                except sqlite3.OperationalError:
+                    detector_stats[f'{detector}_features_count'] = 0
+            
+            conn.close()
+            
+        except Exception as e:
+            logger.warning(f"Failed to get database stats: {e}")
+            cached_images_count = 0
+            cached_features_count = 0
+            total_disk_usage = 0
+            detector_stats = {}
         
         stats = {
+            **cache_stats,
             'cached_images_count': cached_images_count,
             'cached_features_count': cached_features_count,
             'total_disk_usage_mb': total_disk_usage / (1024 * 1024),
-            'total_processing_time_saved': self.cache_stats['processing_time_saved'],
-            'image_cache_hit_rate': image_hit_rate,
-            'feature_cache_hit_rate': feature_hit_rate,
-            'image_cache_hits': self.cache_stats['image_cache_hits'],
-            'image_cache_misses': self.cache_stats['image_cache_misses'],
-            'feature_cache_hits': self.cache_stats['feature_cache_hits'],
-            'feature_cache_misses': self.cache_stats['feature_cache_misses']
+            **detector_stats
         }
-        
-        # Add detector-specific stats
-        stats.update(detector_stats)
         
         return stats
     
     def print_cache_stats(self):
-        """Print cache statistics for all detectors"""
+        """Print comprehensive cache statistics"""
         stats = self.get_cache_stats()
         
         logger.info("\n" + "="*60)
-        logger.info(" CONFIGURABLE CACHE PERFORMANCE STATISTICS")
+        logger.info("FAST CACHE PERFORMANCE STATISTICS")
         logger.info("="*60)
-        logger.info(f"️ Cached Images: {stats['cached_images_count']}")
-        logger.info(f" Cached Features: {stats['cached_features_count']}")
-        logger.info(f"⚡ SIFT Features: {stats.get('sift_features_count', 0)}")
-        logger.info(f" ORB Features: {stats.get('orb_features_count', 0)}")
-        logger.info(f"⚡ AKAZE Features: {stats.get('akaze_features_count', 0)}")
-        logger.info(f" KAZE Features: {stats.get('kaze_features_count', 0)}")
-        logger.info(f" Disk Usage: {stats['total_disk_usage_mb']:.1f} MB")
-        logger.info(f"⏱️ Processing Time Saved: {stats['total_processing_time_saved']:.2f} seconds")
-        logger.info(f" Image Cache Hit Rate: {stats['image_cache_hit_rate']:.1f}%")
-        logger.info(f" Feature Cache Hit Rate: {stats['feature_cache_hit_rate']:.1f}%")
-        logger.info(f"✅ Image Cache Hits: {stats['image_cache_hits']}")
-        logger.info(f"❌ Image Cache Misses: {stats['image_cache_misses']}")
-        logger.info(f"✅ Feature Cache Hits: {stats['feature_cache_hits']}")
-        logger.info(f"❌ Feature Cache Misses: {stats['feature_cache_misses']}")
+        logger.info(f"Memory Images: {stats.get('memory_image_count', 0)}")
+        logger.info(f"Memory Features: {stats.get('memory_feature_count', 0)}")
+        logger.info(f"Database Images: {stats.get('cached_images_count', 0)}")
+        logger.info(f"Database Features: {stats.get('cached_features_count', 0)}")
+        logger.info(f"Disk Usage: {stats.get('total_disk_usage_mb', 0):.1f} MB")
+        logger.info(f"Memory Hit Rate: {stats.get('memory_hit_rate', 0):.1f}%")
+        logger.info(f"Total Hit Rate: {stats.get('total_hit_rate', 0):.1f}%")
+        logger.info(f"Processing Time Saved: {stats.get('processing_time_saved', 0):.2f}s")
+        logger.info(f"Memory Hits: {stats.get('memory_hits', 0)}")
+        logger.info(f"Memory Misses: {stats.get('memory_misses', 0)}")
+        logger.info(f"DB Hits: {stats.get('db_hits', 0)}")
+        logger.info(f"DB Misses: {stats.get('db_misses', 0)}")
+        logger.info(f"Cache Evictions: {stats.get('evictions', 0)}")
+        logger.info(f"Async Writes Queued: {stats.get('writes_queued', 0)}")
+        logger.info(f"Queue Size: {stats.get('queue_size', 0)}")
         
-        if stats['total_processing_time_saved'] > 0:
-            logger.success(f" Efficiency Gained: {stats['total_processing_time_saved']:.1f}s saved with configurable system!")
+        # Detector-specific stats
+        for detector in ['sift', 'orb', 'akaze', 'kaze']:
+            count = stats.get(f'{detector}_features_count', 0)
+            logger.info(f"{detector.upper()} Features in DB: {count}")
+        
+        if stats.get('processing_time_saved', 0) > 0:
+            logger.success(f"Efficiency Gained: {stats.get('processing_time_saved', 0):.1f}s saved with fast caching!")
+        
+        logger.info("="*60)
     
     def cleanup_old_cache(self, days_old: int = 30):
         """Remove cache entries older than specified days"""
-        logger.info(f"粒 Starting cache cleanup for entries older than {days_old} days...")
+        logger.info(f"Starting cache cleanup for entries older than {days_old} days...")
         
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        # Get old entries
-        cursor.execute('''
-            SELECT url_hash, file_path FROM cached_images 
-            WHERE last_accessed < datetime('now', '-{} days')
-        '''.format(days_old))
-        
-        old_entries = cursor.fetchall()
-        
-        # Delete old files and database entries
-        cleaned_count = 0
-        for url_hash, file_path in old_entries:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                logger.debug(f"️ Removed file: {file_path}")
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=30.0)
+            cursor = conn.cursor()
             
-            cursor.execute('DELETE FROM cached_features WHERE url_hash = ?', (url_hash,))
-            cursor.execute('DELETE FROM cached_images WHERE url_hash = ?', (url_hash,))
-            cleaned_count += 1
-        
-        conn.commit()
-        conn.close()
-        
-        if cleaned_count > 0:
-            logger.success(f"粒 Cleaned up {cleaned_count} old cache entries")
-        else:
-            logger.info("粒 No old cache entries found to clean")
+            # Get old entries
+            cursor.execute('''
+                SELECT url_hash, file_path FROM cached_images 
+                WHERE last_accessed < datetime('now', '-{} days')
+            '''.format(days_old))
+            
+            old_entries = cursor.fetchall()
+            
+            # Delete old files and database entries
+            cleaned_count = 0
+            for url_hash, file_path in old_entries:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    logger.debug(f"Removed file: {file_path}")
+                
+                cursor.execute('DELETE FROM cached_features WHERE url_hash = ?', (url_hash,))
+                cursor.execute('DELETE FROM cached_images WHERE url_hash = ?', (url_hash,))
+                cleaned_count += 1
+            
+            conn.commit()
+            conn.close()
+            
+            if cleaned_count > 0:
+                logger.success(f"Cleaned up {cleaned_count} old cache entries")
+            else:
+                logger.info("No old cache entries found to clean")
+                
+        except Exception as e:
+            logger.error(f"Cache cleanup failed: {e}")
 
+    def debug_cache_lookup(self, url: str):
+        """Debug method to trace cache lookup behavior"""
+        url_hash = self._get_url_hash(url)
+        logger.info(f"DEBUG: Looking up cache for URL: {url[:50]}...")
+        logger.info(f"DEBUG: URL hash: {url_hash}")
+        
+        # Check memory
+        with self.feature_lock:
+            if url_hash in self.feature_cache:
+                item = self.feature_cache[url_hash]
+                logger.info(f"DEBUG: Found in memory cache, last accessed: {item.last_accessed}")
+                logger.info(f"DEBUG: Processing time: {item.data.get('processing_time', 0):.2f}s")
+                return "memory"
+        
+        # Check database
+        try:
+            conn = sqlite3.connect(self.db_path, timeout=5.0)
+            cursor = conn.cursor()
+            cursor.execute('SELECT url, processing_time, last_accessed FROM cached_features WHERE url_hash = ?', (url_hash,))
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                logger.info(f"DEBUG: Found in database: {result[0][:50]}...")
+                logger.info(f"DEBUG: DB processing time: {result[1]:.2f}s")
+                logger.info(f"DEBUG: DB last accessed: {result[2]}")
+                return "database"
+            else:
+                logger.info("DEBUG: Not found in database")
+                return "not_found"
+        except Exception as e:
+            logger.error(f"DEBUG: Database lookup failed: {e}")
+            return "error"
+    
     def get_config_summary(self):
         """Get a summary of current configuration"""
         enabled_detectors = list(self.detectors.keys())
@@ -1547,7 +1560,8 @@ class FeatureMatchingComicMatcher:
             'use_comic_detection': self.use_comic_detection,
             'use_advanced_matching': self.use_advanced_matching,
             'cache_only': self.cache_only,
-            'feature_weights': self.feature_weights
+            'feature_weights': self.feature_weights,
+            'cache_manager_stats': self.cache_manager.get_stats()
         }
         
         return summary
@@ -1557,18 +1571,124 @@ class FeatureMatchingComicMatcher:
         summary = self.get_config_summary()
         
         logger.info("\n" + "="*60)
-        logger.info(" CURRENT CONFIGURATION SUMMARY")
+        logger.info("FAST COMIC MATCHER CONFIGURATION")
         logger.info("="*60)
-        logger.info(f"⚡ Performance Level: {summary['performance_level']}")
-        logger.info(f"️ Image Size: {summary['image_size']}")
-        logger.info(f" Max Workers: {summary['max_workers']}")
-        logger.info(f" Enabled Detectors: {', '.join(summary['enabled_detectors'])}")
+        logger.info(f"Performance Level: {summary['performance_level']}")
+        logger.info(f"Image Size: {summary['image_size']}")
+        logger.info(f"Max Workers: {summary['max_workers']}")
+        logger.info(f"Enabled Detectors: {', '.join(summary['enabled_detectors'])}")
         
         for detector, count in summary['detector_feature_counts'].items():
             logger.info(f"   {detector.upper()}: {count} features")
         
-        logger.info(f" Comic Detection: {summary['use_comic_detection']}")
-        logger.info(f"⚡ Advanced Matching: {summary['use_advanced_matching']}")
-        logger.info(f" Cache Only: {summary['cache_only']}")
-        logger.info(f"⚖️ Feature Weights: {', '.join([f'{k}:{v:.2f}' for k, v in summary['feature_weights'].items()])}")
+        logger.info(f"Comic Detection: {summary['use_comic_detection']}")
+        logger.info(f"Advanced Matching: {summary['use_advanced_matching']}")
+        logger.info(f"Cache Only: {summary['cache_only']}")
+        logger.info(f"Feature Weights: {', '.join([f'{k}:{v:.2f}' for k, v in summary['feature_weights'].items()])}")
+        
+        cache_stats = summary['cache_manager_stats']
+        logger.info(f"Memory Cache: {cache_stats.get('memory_image_count', 0)} images, {cache_stats.get('memory_feature_count', 0)} features")
+        logger.info(f"Memory Hit Rate: {cache_stats.get('memory_hit_rate', 0):.1f}%")
         logger.info("="*60)
+    
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        if hasattr(self, 'cache_manager'):
+            self.cache_manager.shutdown()
+
+
+# Usage example and performance comparison functions
+
+def performance_comparison_test(matcher, test_urls, query_image):
+    """Compare performance with and without fast caching"""
+    logger.info("\n" + "="*60)
+    logger.info("PERFORMANCE COMPARISON TEST")
+    logger.info("="*60)
+    
+    # First run (cold cache)
+    logger.info("Cold cache run...")
+    start_time = time.time()
+    results1, _ = matcher.find_matches_img(query_image, test_urls[:10], threshold=0.1)
+    cold_time = time.time() - start_time
+    
+    # Second run (warm cache)
+    logger.info("Warm cache run...")
+    start_time = time.time()
+    results2, _ = matcher.find_matches_img(query_image, test_urls[:10], threshold=0.1)
+    warm_time = time.time() - start_time
+    
+    # Print comparison
+    logger.info(f"Cold cache time: {cold_time:.2f}s")
+    logger.info(f"Warm cache time: {warm_time:.2f}s")
+    logger.info(f"Speed improvement: {cold_time/warm_time:.1f}x faster")
+    
+    matcher.print_cache_stats()
+
+
+def stress_test(matcher, test_urls, query_image, num_workers_list=[1, 2, 4, 8]):
+    """Test concurrency performance with different worker counts"""
+    logger.info("\n" + "="*60)
+    logger.info("CONCURRENCY STRESS TEST")
+    logger.info("="*60)
+    
+    for workers in num_workers_list:
+        logger.info(f"\nTesting with {workers} workers...")
+        matcher.max_workers = workers
+        
+        start_time = time.time()
+        results, _ = matcher.find_matches_img(query_image, test_urls, threshold=0.1)
+        elapsed_time = time.time() - start_time
+        
+        logger.info(f"Workers: {workers}, Time: {elapsed_time:.2f}s, Results: {len(results)}")
+    
+    matcher.print_cache_stats()
+
+
+# Example configuration for different use cases
+
+def get_speed_optimized_config():
+    """Configuration optimized for maximum speed"""
+    return {
+        'performance_level': 'speed',
+        'image_size': 600,
+        'max_workers': 8,
+        'detectors': {
+            'orb': 500,
+            'akaze': 1
+        },
+        'feature_weights': {
+            'orb': 0.7,
+            'akaze': 0.3
+        },
+        'options': {
+            'use_comic_detection': False,
+            'use_advanced_matching': False,
+            'cache_only': False
+        }
+    }
+
+
+def get_quality_optimized_config():
+    """Configuration optimized for maximum quality"""
+    return {
+        'performance_level': 'quality',
+        'image_size': 1200,
+        'max_workers': 4,
+        'detectors': {
+            'sift': 1000,
+            'orb': 1000,
+            'akaze': 1,
+            'kaze': 1
+        },
+        'feature_weights': {
+            'sift': 0.3,
+            'orb': 0.2,
+            'akaze': 0.4,
+            'kaze': 0.1
+        },
+        'options': {
+            'use_comic_detection': True,
+            'use_advanced_matching': True,
+            'cache_only': False
+        }
+    }
