@@ -103,72 +103,7 @@
 
     <!-- All Series -->
     <section class="series-section" [@fadeInUp]>
-      <div class="section-header">
-        <h2>
-          <mat-icon>auto_stories</mat-icon>
-          All Series
-        </h2>
-      </div>
-      
-      <div class="series-container" [ngClass]="viewMode">
-        <div *ngFor="let series of allSeries; trackBy: trackBySeries" 
-             class="series-card" 
-             [routerLink]="['/series', series.id]"
-             [@cardAnimation]>
-          
-          <div class="series-image-container">
-            <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" 
-                 [alt]="series.name"
-                 onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}"
-                 loading="lazy" />
-            <div class="series-overlay">
-              <div class="series-badges">
-                <span class="badge publisher">{{ series.publisher }}</span>
-                <span class="badge year" *ngIf="series.startYear">{{ series.startYear }}</span>
-                <span class="badge complete" *ngIf="isSeriesComplete(series)">
-                  <mat-icon>check_circle</mat-icon>
-                  Complete
-                </span>
-              </div>
-              <div class="series-actions">
-                <button mat-icon-button (click)="toggleFavorite(series, $event)">
-                  <mat-icon [class.favorited]="isFavorited(series.id)">
-                    {{ isFavorited(series.id) ? 'favorite' : 'favorite_border' }}
-                  </mat-icon>
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div class="series-content">
-            <div class="series-title-section">
-              <h3>{{ series.name }}</h3>
-              <div class="completion-badge" *ngIf="isSeriesComplete(series)">
-                <mat-icon>check_circle</mat-icon>
-                <span>Complete</span>
-              </div>
-            </div>
-            <p class="series-publisher">{{ series.publisher }}</p>
-            <div class="series-meta">
-              <span class="issue-count">
-                <mat-icon>library_books</mat-icon>
-                {{ series.issuesOwnedCount || 0 }} / {{ series.issuesAvailableCount || 0 }} issues
-              </span>
-              <div class="completion-progress" *ngIf="(series.issuesAvailableCount || 0) > 0">
-                <div class="progress-bar-wrapper">
-                  <div class="progress-bar-fill" 
-                       [style.width.%]="getCompletionPercentage(series)"
-                       [class.complete]="isSeriesComplete(series)">
-                  </div>
-                </div>
-                <span class="progress-text" [class.complete]="isSeriesComplete(series)">
-                  {{ getCompletionPercentage(series) }}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <app-series-list></app-series-list>
     </section>
   </div>
 
