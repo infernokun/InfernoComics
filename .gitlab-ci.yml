@@ -61,7 +61,13 @@ deploy:
     - ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "echo Connected"
     - ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "mkdir -p $DEPLOY_PATH"
     - if [ ! -f docker-compose.yml ]; then echo "docker-compose.yml not found"; exit 1; fi
-    - scp -i ~/.ssh/id_rsa -r docker-compose.yml "$STAGE_SERVER_USER@$STAGE_SERVER_HOST:$DEPLOY_PATH/."
+    - echo "Checking if docker-compose.yml exists on server..."
+    - if ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "test -f $DEPLOY_PATH/docker-compose.yml"; then
+        echo "docker-compose.yml already exists on server, skipping copy";
+      else
+        echo "docker-compose.yml not found on server, copying...";
+        scp -i ~/.ssh/id_rsa -r docker-compose.yml "$STAGE_SERVER_USER@$STAGE_SERVER_HOST:$DEPLOY_PATH/.";
+      fi
     - ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "cd \"$DEPLOY_PATH\" && docker compose down --remove-orphans && (docker compose pull || echo 'Skipping pull (already up-to-date)') && docker compose up -d"
   after_script:
     - rm -rf ~/.ssh
