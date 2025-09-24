@@ -18,6 +18,10 @@
         <mat-icon>admin_panel_settings</mat-icon>
         Admin View
         </a>
+        <button mat-stroked-button color="warn" (click)="syncSeries(series.id!)">
+          <mat-icon>key</mat-icon>
+          Sync Series
+        </button>
       </div>
       <h2>{{ series.publisher }}</h2>
       <div class="series-meta">

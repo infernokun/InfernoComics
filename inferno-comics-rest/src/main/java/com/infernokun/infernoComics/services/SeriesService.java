@@ -5,10 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.SeriesController;
-import com.infernokun.infernoComics.models.DescriptionGenerated;
-import com.infernokun.infernoComics.models.Issue;
-import com.infernokun.infernoComics.models.ProgressUpdateRequest;
-import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
@@ -694,7 +691,7 @@ public class SeriesService {
     }
 
     @Async("imageProcessingExecutor")
-    public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId, Long seriesId, List<SeriesController.ImageData> imageDataList, String name, int year) {
+    public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId, Long seriesId, List<SeriesController.ImageData> imageDataList, StartedBy startedBy, String name, int year) {
         log.info("🚀 Starting image processing session: {} for series '{}' with {} images", sessionId, name, imageDataList.size());
 
         try {
@@ -702,12 +699,14 @@ public class SeriesService {
             int intervalMs = 2000;
             int waited = 0;
 
-            while (!progressService.emitterIsPresent(sessionId)) {
-                if (waited >= timeoutSeconds * 1000) {
-                    throw new RuntimeException("Timeout: Emitter for sessionId " + sessionId + " not found after " + timeoutSeconds + " seconds.");
+            if (startedBy == StartedBy.MANUAL) {
+                while (!progressService.emitterIsPresent(sessionId)) {
+                    if (waited >= timeoutSeconds * 1000) {
+                        throw new RuntimeException("Timeout: Emitter for sessionId " + sessionId + " not found after " + timeoutSeconds + " seconds.");
+                    }
+                    Thread.sleep(intervalMs);
+                    waited += intervalMs;
                 }
-                Thread.sleep(intervalMs);
-                waited += intervalMs;
             }
 
             // Stage 1: Series validation

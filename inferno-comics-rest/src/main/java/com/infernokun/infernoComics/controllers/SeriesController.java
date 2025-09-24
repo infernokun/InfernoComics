@@ -1,9 +1,13 @@
 package com.infernokun.infernoComics.controllers;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.StartedBy;
+import com.infernokun.infernoComics.models.sync.ProcessingResult;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
 import com.infernokun.infernoComics.services.ProgressService;
+import com.infernokun.infernoComics.services.sync.SeriesNextcloudSyncService;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.Getter;
@@ -18,6 +22,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -26,10 +31,12 @@ public class SeriesController {
 
     private final SeriesService seriesService;
     private final ProgressService progressService;
+    private final SeriesNextcloudSyncService syncService;
 
-    public SeriesController(SeriesService seriesService, ProgressService progressService) {
+    public SeriesController(SeriesService seriesService, ProgressService progressService, SeriesNextcloudSyncService syncService) {
         this.seriesService = seriesService;
         this.progressService = progressService;
+        this.syncService = syncService;
     }
 
     @GetMapping
@@ -49,6 +56,30 @@ public class SeriesController {
             return ResponseEntity.ok(seriesService.getSeriesById(id));
         } catch (Exception e) {
             log.error("Error fetching series {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/folder")
+    public ResponseEntity<List<Series.FolderMapping>> getSeriesFolderStructure() {
+        try {
+            List<Series> series = seriesService.getAllSeries();
+            List<Series.FolderMapping> folderMappings = series.stream()
+                    .map(Series::getFolderMapping)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(folderMappings);
+        } catch (Exception e) {
+            log.error("Error fetching series folder structure: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/startSync/{id}")
+    public ResponseEntity<ProcessingResult> startSeriesSync(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(syncService.manualSync(id));
+        } catch (Exception e) {
+            log.error("Error syncing series {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -265,7 +296,7 @@ public class SeriesController {
             progressService.initializeSession(sessionId, seriesId);
 
             // Start async processing with image data list
-            seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, name, year);
+            seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, StartedBy.MANUAL, name, year);
 
             return ResponseEntity.ok(Map.of("sessionId", sessionId));
 

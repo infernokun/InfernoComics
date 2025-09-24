@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Inject } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { SeriesService } from '../../services/series.service';
 import { Series } from '../../models/series.model';
@@ -9,6 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';
@@ -76,7 +77,8 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   constructor(
     private seriesService: SeriesService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
   ) {
     this.loadUserPreferences();
   }
@@ -347,5 +349,119 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       showCompletedOnly: this.showCompletedOnly
     };
     localStorage.setItem('seriesListPreferences', JSON.stringify(preferences));
+  }
+
+  getFolderStructure() {
+    this.seriesService.getSeriesFolderStructure().subscribe((info: any) => {
+      console.log(info);
+      this.openJsonDialog(info);
+    });
+  }
+
+  openJsonDialog(data: any): void {
+    const dialogRef = this.dialog.open(JsonDialogComponent, {
+      width: '90vw',
+      maxWidth: '800px',
+      maxHeight: '90vh',
+      data: data,
+      panelClass: 'json-dialog-panel'
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      console.log('Dialog closed');
+    });
+  }
+}
+
+@Component({
+  selector: 'app-json-dialog',
+  template: `
+    <div class="json-dialog">
+      <h2 mat-dialog-title>Series Folder Structure</h2>
+      
+      <mat-dialog-content class="dialog-content">
+        <div class="json-container">
+          <pre class="json-display">{{ formatJson(data) }}</pre>
+        </div>
+      </mat-dialog-content>
+      
+      <mat-dialog-actions align="end">
+        <button mat-button (click)="copyToClipboard()" color="primary">
+          <mat-icon>content_copy</mat-icon>
+          Copy JSON
+        </button>
+        <button mat-button (click)="close()" color="primary">
+          Close
+        </button>
+      </mat-dialog-actions>
+    </div>
+  `,
+  styles: [`
+    .json-dialog {
+      width: 100%;
+      max-width: 800px;
+    }
+    
+    .dialog-content {
+      max-height: 70vh;
+      overflow: auto;
+      padding: 0;
+    }
+    
+    .json-container {
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px;
+    }
+    
+    .json-display {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #333;
+      background: transparent;
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    
+    mat-dialog-actions {
+      padding: 16px 24px;
+      margin: 0;
+    }
+    
+    button {
+      margin-left: 8px;
+    }
+    
+    mat-icon {
+      margin-right: 8px;
+    }
+  `],
+  imports: [MaterialModule]
+})
+export class JsonDialogComponent {
+  constructor(
+    public dialogRef: MatDialogRef<JsonDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: any
+  ) {}
+
+  formatJson(obj: any): string {
+    return JSON.stringify(obj, null, 2);
+  }
+
+  async copyToClipboard(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(this.formatJson(this.data));
+      // You could add a snackbar notification here
+      console.log('JSON copied to clipboard');
+    } catch (err) {
+      console.error('Failed to copy JSON: ', err);
+    }
+  }
+
+  close(): void {
+    this.dialogRef.close();
   }
 }

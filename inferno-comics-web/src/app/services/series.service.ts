@@ -39,6 +39,14 @@ export class SeriesService {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
+  getSeriesFolderStructure(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/folder`);
+  }
+
+  syncSeries(id: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/startSync/${id}`, {});
+  }
+
   createSeries(series: any): Observable<any> {
     return this.http.post<any>(this.apiUrl, series);
   }

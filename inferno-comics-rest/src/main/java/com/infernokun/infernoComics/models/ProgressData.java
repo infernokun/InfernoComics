@@ -68,6 +68,9 @@ public class ProgressData {
     @JsonSerialize(using = LocalDateTimeSerializer.class)
     private LocalDateTime lastUpdated; // Last time progress was updated
 
+    @Enumerated(EnumType.STRING)
+    private StartedBy startedBy;
+
     // Auto-update lastUpdated on save
     @PrePersist
     @PreUpdate

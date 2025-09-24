@@ -79,6 +79,9 @@ inferno-comics:
   skipScrape: false
   gcdUsername: "${GCD_USERNAME}"
   gcdPassword: "${GCD_PASSWORD}"
+  nextcloudUrl: "${NEXTCLOUD_URL:none}"
+  nextcloudUsername: "${NEXTCLOUD_USERNAME:none}"
+  nextcloudPassword: "${NEXTCLOUD_PASSWORD:none}"
 
 logging:
   level:

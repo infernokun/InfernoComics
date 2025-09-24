@@ -1251,4 +1251,10 @@ export class SeriesDetailComponent implements OnInit {
       },
     });
   }
+
+  syncSeries(id: number) {
+    this.seriesService.syncSeries(id).subscribe((data: any) => {
+      console.log('sync', data);
+    })
+  }
 }

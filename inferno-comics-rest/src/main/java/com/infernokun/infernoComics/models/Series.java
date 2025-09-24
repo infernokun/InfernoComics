@@ -2,8 +2,10 @@ package com.infernokun.infernoComics.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.utils.GCDCoverListConverter;
+import com.infernokun.infernoComics.utils.InfernoComicsUtils;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -101,5 +103,20 @@ public class Series {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+
+    public FolderMapping getFolderMapping() {
+        return InfernoComicsUtils.createFolderMapping(this.id, this.comicVineIds.getFirst(), this.name);
+    }
+
+    @Data
+    public static class FolderMapping {
+        private Long id;
+        private String name;
+
+        public FolderMapping(long id, String name) {
+            this.id = id;
+            this.name = name;
+        }
     }
 }
