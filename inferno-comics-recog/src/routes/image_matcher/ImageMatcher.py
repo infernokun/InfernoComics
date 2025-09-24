@@ -18,7 +18,6 @@ from util.FileOperations import (
     load_image_matcher_result, 
     prepare_result_for_template,
     ensure_images_directory,
-    cleanup_old_stored_images,
     migrate_existing_results_to_file_storage
 )
 from services.ImageMatcherService import get_service, get_global_matcher
@@ -547,23 +546,6 @@ def serve_stored_image(session_id, filename):
         logger.error(f"❌ Error serving stored image: {e}")
         abort(500)
 
-@image_matcher_bp.route('/image-matcher/admin/cleanup', methods=['POST'])
-def admin_cleanup():
-    """Admin endpoint to trigger cleanup of old images and sessions"""
-    try:
-        cleanup_old_stored_images()
-        get_service().cleanup_old_sessions()
-        return jsonify({
-            'status': 'success',
-            'message': 'Cleanup completed successfully'
-        })
-    except Exception as e:
-        logger.error(f"❌ Error during admin cleanup: {e}")
-        return jsonify({
-            'status': 'error',
-            'message': f'Cleanup failed: {str(e)}'
-        }), 500
-
 @image_matcher_bp.route('/image-matcher/admin/migrate', methods=['POST'])
 def admin_migrate():
     """Admin endpoint to migrate existing base64 results to file storage"""
@@ -613,18 +595,3 @@ def get_json_by_session_id():
         # Log the actual error for debugging (consider using proper logging)
         logger.error(f"❌ Unexpected error reading session {session_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
-
-def run_cleanup():
-    """Run cleanup periodically"""
-    def cleanup_task():
-        logger.info("粒 Starting cleanup task thread")
-        while True:
-            time.sleep(30 * 60)  # 30 minutes
-            get_service().cleanup_old_sessions()
-            cleanup_old_stored_images()
-    
-    cleanup_thread = threading.Thread(target=cleanup_task, daemon=True)
-    cleanup_thread.start()
-    logger.info("粒 Cleanup task initialized")
-
-run_cleanup()

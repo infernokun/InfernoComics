@@ -179,33 +179,6 @@ def prepare_result_for_template(result_data, request):
     
     return result_copy
 
-def cleanup_old_stored_images():
-    """Clean up stored images older than 7 days"""
-    try:
-        images_dir = ensure_images_directory()
-        current_time = datetime.now()
-        cutoff_time = current_time - timedelta(days=7)
-        
-        cleaned_count = 0
-        for session_dir in os.listdir(images_dir):
-            session_path = os.path.join(images_dir, session_dir)
-            if os.path.isdir(session_path):
-                # Check if directory is older than cutoff
-                dir_modified = datetime.fromtimestamp(os.path.getmtime(session_path))
-                if dir_modified < cutoff_time:
-                    try:
-                        shutil.rmtree(session_path)
-                        cleaned_count += 1
-                        logger.info(f"Cleaned up old image directory: {session_path}")
-                    except Exception as e:
-                        logger.warning(f"Failed to clean up {session_path}: {e}")
-        
-        if cleaned_count > 0:
-            logger.info(f"Cleaned up {cleaned_count} old image directories")
-            
-    except Exception as e:
-        logger.error(f"Error during image cleanup: {e}")
-
 def migrate_existing_results_to_file_storage():
     """Migrate existing JSON results from base64 to file storage"""
     try:
