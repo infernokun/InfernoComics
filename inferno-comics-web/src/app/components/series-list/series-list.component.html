@@ -1,74 +1,256 @@
 <div class="series-list-container">
+    <!-- Header Section -->
     <div class="header">
-        <h1>Comic Book Series</h1>
+      <h1>Comic Book Series</h1>
+      <div class="header-actions">
+        <div class="stats-summary">
+          <span class="stat-chip">
+            <mat-icon>library_books</mat-icon>
+            {{ getTotalSeriesCount() }} Total
+          </span>
+          <span class="stat-chip completion" *ngIf="getCompletionStats().total > 0">
+            <mat-icon>check_circle</mat-icon>
+            {{ getCompletionStats().completed }}/{{ getCompletionStats().total }} Complete
+          </span>
+        </div>
         <button mat-raised-button color="primary" routerLink="/series/new">
-            <mat-icon>add</mat-icon>
-            Add New Series
+          <mat-icon>add</mat-icon>
+          Add New Series
         </button>
+      </div>
     </div>
-
-    <div class="search-bar">
+  
+    <!-- Search and Filter Bar -->
+    <div class="search-filter-container" [@slideInUp]>
+      <div class="search-bar">
         <mat-form-field appearance="outline" class="search-field">
-            <mat-label>Search series</mat-label>
-            <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" placeholder="Search by name or publisher">
-            <mat-icon matSuffix>search</mat-icon>
+          <mat-label>Search series</mat-label>
+          <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" placeholder="Search by name or publisher">
+          <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
-    </div>
-
-    <div class="series-grid" *ngIf="!loading && filteredSeries.length > 0">
-        <mat-card *ngFor="let s of filteredSeries" class="series-card" (click)="viewSeries(s.id)">
-            <div class="card-image">
-                <img [src]="s.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="s.name"
-                    onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-            </div>
-            <mat-card-header>
-                <mat-card-title>{{ s.name }}</mat-card-title>
-                <mat-card-subtitle>{{ s.publisher }}</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-                <p class="description">{{ s.description | slice:0:100 }}{{ s.description && s.description.length > 100 ?
-                    '...' : '' }}</p>
-                <div class="series-info">
-                    <span *ngIf="s.startYear" class="year-info">
-                        <mat-icon>calendar_today</mat-icon>
-                        {{ s.startYear }}{{ s.endYear ? ' - ' + s.endYear : ' - Present' }}
-                    </span>
-                    <span class="issue-count">
-                        <mat-icon>library_books</mat-icon>
-                        {{ s.issuesAvailableCount }} issues
-                    </span>
-                </div>
-            </mat-card-content>
-            <mat-card-actions>
-                <button mat-button color="primary" (click)="viewSeries(s.id)">
-                    <mat-icon>visibility</mat-icon>
-                    View
-                </button>
-                <button mat-button color="warn" (click)="deleteSeries($event, s.id)">
-                    <mat-icon>delete</mat-icon>
-                    Delete
-                </button>
-            </mat-card-actions>
-        </mat-card>
-    </div>
-
-    <div class="no-results" *ngIf="!loading && filteredSeries.length === 0 && searchTerm">
-        <mat-icon>search_off</mat-icon>
-        <h3>No series found</h3>
-        <p>Try adjusting your search terms</p>
-    </div>
-
-    <div class="empty-state" *ngIf="!loading && series.length === 0">
-        <mat-icon>library_add</mat-icon>
-        <h3>No series yet</h3>
-        <p>Start building your collection by adding your first series</p>
-        <button mat-raised-button color="primary" routerLink="/series/new">
-            Add First Series
+      </div>
+  
+      <div class="filter-controls">
+        <mat-form-field appearance="outline" class="publisher-filter">
+          <mat-label>Publisher</mat-label>
+          <mat-select [(value)]="selectedPublisher" (selectionChange)="onPublisherFilterChange()">
+            <mat-option value="">All Publishers</mat-option>
+            <mat-option *ngFor="let pub of publishers" [value]="pub">{{ pub }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+  
+        <mat-slide-toggle 
+          [(ngModel)]="showCompletedOnly" 
+          (change)="onCompletionFilterChange()"
+          class="completion-filter">
+          Show Completed Only
+        </mat-slide-toggle>
+  
+        <button mat-button class="clear-filters-btn" (click)="clearFilters()" 
+                [disabled]="!searchTerm && !selectedPublisher && !showCompletedOnly">
+          <mat-icon>clear</mat-icon>
+          Clear Filters
         </button>
+      </div>
     </div>
-
+  
+    <!-- Sorting Controls -->
+    <div class="sorting-controls" [@slideInUp]>
+      <div class="sort-label">
+        <mat-icon>sort</mat-icon>
+        Sort by:
+      </div>
+  
+      <!-- Desktop Sorting Controls -->
+      <div class="sort-dropdown" [style.display]="'none'" [style.display.gt-md]="'block'">
+        <mat-select [value]="currentSortOption" (selectionChange)="onSortChange($event.value)"
+          placeholder="Choose sort option">
+          <mat-option *ngFor="let option of sortOptions" [value]="option.value">
+            <mat-icon>{{option.icon}}</mat-icon>
+            {{option.label}}
+          </mat-option>
+        </mat-select>
+      </div>
+  
+      <button mat-stroked-button class="sort-direction-toggle" [style.display]="'none'"
+        [style.display.gt-md]="'flex'" (click)="toggleSortDirection()">
+        <mat-icon [class.desc-arrow]="currentSortDirection === 'desc'">arrow_upward</mat-icon>
+        <span class="sort-direction-text">
+          {{currentSortDirection === 'asc' ? 'Ascending' : 'Descending'}}
+        </span>
+      </button>
+  
+      <div class="current-sort-info" [style.display]="'none'" [style.display.gt-md]="'flex'">
+        <mat-icon>{{getCurrentSortDetails()?.icon}}</mat-icon>
+        {{getCurrentSortDetails()?.label}}
+        ({{currentSortDirection === 'asc' ? 'A-Z' : 'Z-A'}})
+      </div>
+  
+      <!-- Mobile Sorting Controls -->
+      <div class="sort-options-mobile">
+        <div class="sort-label">Choose sorting option:</div>
+        <button *ngFor="let option of sortOptions" mat-button class="sort-option-btn"
+          [class.active]="currentSortOption === option.value" (click)="onSortChange(option.value)">
+          <div class="option-info">
+            <mat-icon>{{option.icon}}</mat-icon>
+            <span>{{option.label}}</span>
+          </div>
+          <div class="sort-direction-indicator" *ngIf="currentSortOption === option.value">
+            <mat-icon>{{currentSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}}</mat-icon>
+            <span>{{currentSortDirection === 'asc' ? 'Asc' : 'Desc'}}</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  
+    <!-- View Controls -->
+    <div class="view-controls" [@slideInUp]>
+      <div class="controls-left">
+        <mat-button-toggle-group [(value)]="viewMode" (change)="toggleView()">
+          <mat-button-toggle value="grid">
+            <mat-icon>grid_view</mat-icon>
+            Grid
+          </mat-button-toggle>
+          <mat-button-toggle value="list">
+            <mat-icon>list</mat-icon>
+            List
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+      </div>
+  
+      <div class="controls-right">
+        <div class="series-count">
+          Showing {{ getFilteredSeriesCount() }} of {{ getTotalSeriesCount() }} series
+        </div>
+  
+        <!-- Quick Sort Buttons (Desktop Only) -->
+        <div class="quick-sort-btns">
+          <button mat-button [class.active]="currentSortOption === 'name'" (click)="onSortChange('name')">
+            Name
+          </button>
+          <button mat-button [class.active]="currentSortOption === 'completion'" (click)="onSortChange('completion')">
+            Progress
+          </button>
+          <button mat-button [class.active]="currentSortOption === 'publisher'" (click)="onSortChange('publisher')">
+            Publisher
+          </button>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Series Display -->
+    <div *ngIf="!loading" class="series-container" [class.grid]="viewMode === 'grid'" [class.list]="viewMode === 'list'" [@fadeInUp]>
+      <div *ngFor="let series of displaySeries; trackBy: trackBySeries" class="series-card" [@cardAnimation]>
+        
+        <!-- Series Image -->
+        <div class="series-image-container" (click)="viewSeries(series.id)">
+          <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name" loading="lazy"
+            onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+  
+          <div class="series-overlay">
+            <div class="series-badges">
+              <span class="badge publisher" *ngIf="series.publisher">
+                {{series.publisher}}
+              </span>
+              <span class="badge year" *ngIf="series.startYear">
+                {{series.startYear}}{{series.endYear ? ' - ' + series.endYear : ' - Present'}}
+              </span>
+              <span class="badge complete" *ngIf="isSeriesComplete(series)">
+                <mat-icon>check_circle</mat-icon>
+                Complete
+              </span>
+            </div>
+  
+            <div class="series-actions">
+              <button mat-icon-button (click)="toggleFavorite(series, $event)"
+                [attr.aria-label]="isFavorited(series.id) ? 'Remove from favorites' : 'Add to favorites'">
+                <mat-icon [class.favorited]="isFavorited(series.id)">
+                  {{isFavorited(series.id) ? 'favorite' : 'favorite_border'}}
+                </mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Series Content -->
+        <div class="series-content" (click)="viewSeries(series.id)">
+          <div class="series-title-section">
+            <h3>{{ series.name }}</h3>
+            <div class="completion-badge" *ngIf="isSeriesComplete(series)">
+              <mat-icon>check_circle</mat-icon>
+              Complete
+            </div>
+          </div>
+  
+          <p class="series-publisher" *ngIf="series.publisher">{{ series.publisher }}</p>
+  
+          <p class="description" *ngIf="series.description">
+            {{ series.description | slice:0:150 }}{{ series.description && series.description.length > 150 ? '...' : '' }}
+          </p>
+  
+          <div class="series-meta">
+            <div class="issue-count" *ngIf="series.issuesAvailableCount">
+              <mat-icon>library_books</mat-icon>
+              {{ series.issuesOwnedCount || 0 }} / {{ series.issuesAvailableCount }} issues
+            </div>
+  
+            <div class="completion-progress" *ngIf="series.issuesAvailableCount">
+              <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" [class.complete]="isSeriesComplete(series)"
+                  [style.width.%]="getCompletionPercentage(series)">
+                </div>
+              </div>
+              <span class="progress-text" [class.complete]="isSeriesComplete(series)">
+                {{ getCompletionPercentage(series) }}%
+              </span>
+            </div>
+  
+            <div class="year-info" *ngIf="series.startYear">
+              <mat-icon>calendar_today</mat-icon>
+              {{ series.startYear }}{{ series.endYear ? ' - ' + series.endYear : ' - Present' }}
+            </div>
+          </div>
+        </div>
+  
+        <!-- Action Buttons -->
+        <div class="series-card-actions">
+          <button mat-button color="primary" (click)="viewSeries(series.id)">
+            <mat-icon>visibility</mat-icon>
+            View Details
+          </button>
+          <button mat-button color="warn" (click)="deleteSeries($event, series.id)">
+            <mat-icon>delete</mat-icon>
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  
+    <!-- No Results State -->
+    <div class="no-results" *ngIf="!loading && filteredSeries.length === 0 && (searchTerm || selectedPublisher || showCompletedOnly)">
+      <mat-icon>search_off</mat-icon>
+      <h3>No series found</h3>
+      <p>Try adjusting your search terms or filters</p>
+      <button mat-button (click)="clearFilters()" class="clear-filters-btn">
+        <mat-icon>clear</mat-icon>
+        Clear All Filters
+      </button>
+    </div>
+  
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="!loading && series.length === 0">
+      <mat-icon>library_add</mat-icon>
+      <h3>No series yet</h3>
+      <p>Start building your collection by adding your first series</p>
+      <button mat-raised-button color="primary" routerLink="/series/new">
+        <mat-icon>add</mat-icon>
+        Add First Series
+      </button>
+    </div>
+  
+    <!-- Loading State -->
     <div class="loading-container" *ngIf="loading">
-        <mat-spinner></mat-spinner>
-        <p>Loading series...</p>
+      <mat-spinner diameter="60"></mat-spinner>
+      <p>Loading series...</p>
     </div>
-</div>
+  </div>

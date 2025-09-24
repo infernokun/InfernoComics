@@ -11,7 +11,6 @@ import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@a
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
 import { AuthInterceptor } from './services/auth/auth-interceptor.service';
-import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { ThemeService } from './services/theme.service';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 
@@ -37,8 +36,7 @@ export function init_app(environmentService: EnvironmentService) {
 
 @NgModule({
   declarations: [
-    AppComponent,
-    DashboardComponent
+    AppComponent
   ],
   imports: [
     BrowserModule,

@@ -5,7 +5,11 @@ import { takeUntil } from 'rxjs/operators';
 import { SeriesService } from '../../services/series.service';
 import { IssueService } from '../../services/issue.service';
 import { Series } from '../../models/series.model';
-import { Issue } from '../../models/issue.model';
+import { SeriesListComponent } from '../series-list/series-list.component';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
+import { MaterialModule } from '../../material.module';
 
 interface PublisherStat {
   name: string;
@@ -17,7 +21,6 @@ interface PublisherStat {
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],
-  standalone: false,
   animations: [
     trigger('fadeInUp', [
       transition(':enter', [
@@ -43,7 +46,8 @@ interface PublisherStat {
         animate('400ms ease-out', style({ transform: 'scale(1) translateY(0)', opacity: 1 }))
       ])
     ])
-  ]
+  ],
+  imports: [CommonModule, MaterialModule, FormsModule, RouterModule, SeriesListComponent]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   // Core data
