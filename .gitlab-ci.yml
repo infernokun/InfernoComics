@@ -14,15 +14,18 @@ build-rest:
   script:
     - cd inferno-comics-rest
     - npm run docker:build
+    - echo "BUILT_REST=true" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
   tags:
     - docker
   rules:
-    - changes:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
         - inferno-comics-rest/**/*
         - docker-compose.yml
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      when: manual
-      allow_failure: true
+  allow_failure: true
 
 build-recog:
   stage: build
@@ -33,15 +36,18 @@ build-recog:
   script:
     - cd inferno-comics-recog
     - npm run docker:build
+    - echo "BUILT_RECOG=true" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
   tags:
     - docker
   rules:
-    - changes:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
         - inferno-comics-recog/**/*
         - docker-compose.yml
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      when: manual
-      allow_failure: true
+  allow_failure: true
 
 build-web:
   stage: build
@@ -55,15 +61,18 @@ build-web:
   script:
     - cd inferno-comics-web
     - npm run docker:build
+    - echo "BUILT_WEB=true" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
   tags:
     - docker
   rules:
-    - changes:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
         - inferno-comics-web/**/*
         - docker-compose.yml
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      when: manual
-      allow_failure: true
+  allow_failure: true
 
 deploy:
   stage: deploy
@@ -89,14 +98,31 @@ deploy:
         echo "docker-compose.yml not found on server, copying...";
         scp -i ~/.ssh/id_rsa -r docker-compose.yml "$STAGE_SERVER_USER@$STAGE_SERVER_HOST:$DEPLOY_PATH/.";
       fi
-    - ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "cd \"$DEPLOY_PATH\" && docker compose down --remove-orphans && (docker compose pull || echo 'Skipping pull (already up-to-date)') && docker compose up -d"
+    # Only restart services that were actually built
+    - |
+      SERVICES_TO_RESTART=""
+      if [ -n "$BUILT_REST" ]; then
+        SERVICES_TO_RESTART="$SERVICES_TO_RESTART inferno-comics-rest"
+      fi
+      if [ -n "$BUILT_RECOG" ]; then
+        SERVICES_TO_RESTART="$SERVICES_TO_RESTART inferno-comics-recog"
+      fi
+      if [ -n "$BUILT_WEB" ]; then
+        SERVICES_TO_RESTART="$SERVICES_TO_RESTART inferno-comics-web"
+      fi
+      
+      if [ -n "$SERVICES_TO_RESTART" ]; then
+        echo "Restarting services: $SERVICES_TO_RESTART"
+        ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "cd \"$DEPLOY_PATH\" && docker compose pull $SERVICES_TO_RESTART && docker compose up -d $SERVICES_TO_RESTART"
+      else
+        echo "No services need to be restarted"
+      fi
   after_script:
     - rm -rf ~/.ssh
   tags:
     - docker
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  # Dynamic dependencies based on what was built
   needs:
     - job: build-rest
       optional: true
