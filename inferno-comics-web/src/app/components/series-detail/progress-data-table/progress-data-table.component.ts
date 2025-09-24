@@ -680,6 +680,7 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
       <div class="main-status">
         <span class="status-icon" [style.color]="getStatusColor()">{{ getStatusIcon() }}</span>
         <span class="status-text" [style.color]="getStatusColor()">{{ getMainStatusText() }}</span>
+        <span> {{params?.data?.startedBy}}</span>
       </div>
       
       <!-- Progress bar for processing items -->

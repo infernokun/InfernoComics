@@ -10,7 +10,6 @@ import com.infernokun.infernoComics.services.ProgressService;
 import com.infernokun.infernoComics.services.SeriesService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -70,11 +69,11 @@ public class SeriesNextcloudSyncService {
     public ProcessingResult processSeries(Series series) {
         String folderPath = series.getFolderMapping().getName();
         if (folderPath == null || folderPath.trim().isEmpty()) {
-            log.debug("Skipping series {} - no folder mapping", series.getId());
+            log.info("Skipping series {} - no folder mapping", series.getId());
             return ProcessingResult.noNewFiles();
         }
 
-        log.debug("Processing series {} with folder: {}", series.getId(), folderPath);
+        log.info("Processing series {} with folder: {}", series.getId(), folderPath);
 
         try {
             // Get current folder state from Nextcloud
@@ -82,36 +81,64 @@ public class SeriesNextcloudSyncService {
             List<NextcloudFile> imageFiles = nextcloudService.getImageFiles(currentFolderInfo);
 
             // Get or create sync status
-            SeriesSyncStatus syncStatus = getOrCreateSyncStatus(series.getId(), folderPath);
+            SeriesSyncStatus syncStatus = getOrCreateSyncStatus(series.getId(), folderPath, imageFiles);
 
             // Check if processing is needed
             if (!shouldProcessFolder(syncStatus, currentFolderInfo, imageFiles.size())) {
-                log.debug("Skipping series {} - no changes detected", series.getId());
+                log.info("Skipping series {} - no changes detected", series.getId());
                 return ProcessingResult.noNewFiles();
             }
 
-            // Update status to IN_PROGRESS
-            /*updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.IN_PROGRESS,
-                    imageFiles.size(), null, null);*/
+            List<NextcloudFile> filteredImageFiles = getNewFiles(imageFiles, syncStatus);
 
-            // Process images incrementally
-            return processImagesFromFolder(series.getId(), imageFiles, syncStatus, currentFolderInfo);
+            if (filteredImageFiles.isEmpty()) {
+                log.info("Skipping series {} - filtered files is empty", series.getId());
+                updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.EMPTY,
+                        0, 0, currentFolderInfo.getEtag());
+                return ProcessingResult.noNewFiles();
+            }
+
+            log.info("Processing {} new/changed images for series {} (out of {} total)",
+                    filteredImageFiles.size(), series.getId(), imageFiles.size());
+
+            // Update status to IN_PROGRESS
+            updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.IN_PROGRESS,
+                    imageFiles.size(), filteredImageFiles.size(), currentFolderInfo.getEtag());
+
+            return processNewFiles(series.getId(), filteredImageFiles, imageFiles.size(), syncStatus, currentFolderInfo);
 
         } catch (Exception e) {
-            log.error("Error processing series {}: {}", series.getId(), e.getMessage(), e);
+            log.error("Error processing series {}: {}", series.getId(), e.getMessage());
             updateSyncStatusOnError(series.getId(), folderPath, e.getMessage());
             return ProcessingResult.error(e.getMessage());
         }
     }
 
-    private SeriesSyncStatus getOrCreateSyncStatus(Long seriesId, String folderPath) {
-        return syncStatusRepository.findFirstBySeriesIdAndFolderPathAndUpdatedAtAfterOrderByUpdatedAtDesc(
-                seriesId, folderPath, LocalDateTime.now().minusHours(23))
+    private SeriesSyncStatus getOrCreateSyncStatus(Long seriesId, String folderPath, List<NextcloudFile> imageFiles) {
+        return syncStatusRepository.findFirstBySeriesIdAndFolderPathOrderByLastSyncTimestampDesc(
+                seriesId, folderPath)
                 .orElse(SeriesSyncStatus.builder()
                         .seriesId(seriesId)
                         .folderPath(folderPath)
+                        .totalFilesCount(imageFiles.size())
                         .syncStatus(SeriesSyncStatus.SyncStatus.PENDING)
                         .build());
+    }
+
+    private List<NextcloudFile> getNewFiles(List<NextcloudFile> files, SeriesSyncStatus syncStatus) {
+        if (files == null || files.isEmpty() || syncStatus == null) {
+            return Collections.emptyList();
+        }
+
+        LocalDateTime reference = syncStatus.getLastSyncTimestamp();
+
+        if (reference == null) {
+            return files;
+        }
+
+        return files.stream()
+                .filter(file -> shouldProcessFile(syncStatus.getSeriesId(), file))
+                .collect(Collectors.toList());
     }
 
     private boolean shouldProcessFolder(SeriesSyncStatus syncStatus,
@@ -120,20 +147,20 @@ public class SeriesNextcloudSyncService {
 
         // First time processing
         if (syncStatus.getId() == null) {
-            log.debug("First time processing folder - will process");
+            log.info("First time processing folder - will process");
             return true;
         }
 
         // Check if folder etag changed (folder was modified)
         if (!Objects.equals(syncStatus.getLastFolderEtag(), currentFolderInfo.getEtag())) {
-            log.debug("Folder etag changed: {} -> {}",
+            log.info("Folder etag changed: {} -> {}",
                     syncStatus.getLastFolderEtag(), currentFolderInfo.getEtag());
             return true;
         }
 
         // Check if image count changed
         if (!Objects.equals(syncStatus.getTotalFilesCount(), currentImageCount)) {
-            log.debug("Image count changed: {} -> {}",
+            log.info("Image count changed: {} -> {}",
                     syncStatus.getTotalFilesCount(), currentImageCount);
             return true;
         }
@@ -141,64 +168,14 @@ public class SeriesNextcloudSyncService {
         return false;
     }
 
-    private ProcessingResult processImagesFromFolder(Long seriesId,
-                                                     List<NextcloudFile> imageFiles,
-                                                     SeriesSyncStatus syncStatus,
-                                                     NextcloudFolderInfo folderInfo) {
-
-        if (imageFiles.isEmpty()) {
-            log.info("No images found in folder for series {}", seriesId);
-            updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.COMPLETED,
-                    0, 0, folderInfo.getEtag());
-            return ProcessingResult.noNewFiles();
-        }
-
-        // Get already processed files
-        Set<String> processedFilePaths = processedFileRepository
-                .findProcessedFilePathsBySeriesId(seriesId);
-
-        // Filter to only new/changed files
-        List<NextcloudFile> newOrChangedFiles = imageFiles.stream()
-                .filter(file -> shouldProcessFile(seriesId, file, processedFilePaths))
-                .collect(Collectors.toList());
-
-        if (newOrChangedFiles.isEmpty()) {
-            log.info("No new or changed files for series {}", seriesId);
-            updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.COMPLETED,
-                    imageFiles.size(), imageFiles.size(), folderInfo.getEtag());
-            return ProcessingResult.noNewFiles();
-        }
-
-        log.info("Processing {} new/changed images for series {} (out of {} total)",
-                newOrChangedFiles.size(), seriesId, imageFiles.size());
-
-        // Process the new files
-        return processNewFiles(seriesId, newOrChangedFiles, imageFiles.size(), syncStatus, folderInfo);
-    }
-
-    private boolean shouldProcessFile(Long seriesId, NextcloudFile file, Set<String> processedPaths) {
+    private boolean shouldProcessFile(long seriesId, NextcloudFile file) {
         String filePath = file.getPath();
-
-        // If file wasn't processed before, process it
-        if (!processedPaths.contains(filePath)) {
-            return true;
-        }
 
         // Check if file was modified since last processing
         Optional<ProcessedFile> existingRecord = processedFileRepository
                 .findBySeriesIdAndFilePath(seriesId, filePath);
 
-        if (existingRecord.isPresent()) {
-            ProcessedFile processed = existingRecord.get();
-
-            // Compare etag, size, or last modified date
-            return !Objects.equals(processed.getFileEtag(), file.getEtag()) ||
-                    !Objects.equals(processed.getFileSize(), file.getSize()) ||
-                    (processed.getFileLastModified() != null && file.getLastModified() != null &&
-                            processed.getFileLastModified().isBefore(file.getLastModified()));
-        }
-
-        return true; // Process if we can't determine
+        return existingRecord.isEmpty();
     }
 
     private ProcessingResult processNewFiles(Long seriesId,
@@ -258,7 +235,7 @@ public class SeriesNextcloudSyncService {
         // Process images if any were successfully downloaded
         if (!imageDataList.isEmpty()) {
             try {
-                progressService.initializeSession(sessionId, seriesId);
+                progressService.initializeSession(sessionId, seriesId, StartedBy.AUTOMATIC);
 
                 seriesService.startMultipleImagesProcessingWithProgress(
                         sessionId, seriesId, imageDataList, StartedBy.AUTOMATIC, null, 0);
@@ -291,6 +268,7 @@ public class SeriesNextcloudSyncService {
 
         // Update sync status
         Long currentProcessedCount = processedFileRepository.countProcessedFilesBySeriesId(seriesId);
+
         updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.COMPLETED,
                 totalFiles, currentProcessedCount.intValue(), folderInfo.getEtag());
 
@@ -303,7 +281,10 @@ public class SeriesNextcloudSyncService {
                                   Integer processedFiles,
                                   String folderEtag) {
         syncStatus.setSyncStatus(status);
-        syncStatus.setLastSyncTimestamp(LocalDateTime.now());
+
+        if (syncStatus.getSyncStatus() == SeriesSyncStatus.SyncStatus.COMPLETED) {
+            syncStatus.setLastSyncTimestamp(LocalDateTime.now());
+        }
 
         if (totalFiles != null) {
             syncStatus.setTotalFilesCount(totalFiles);
@@ -336,17 +317,5 @@ public class SeriesNextcloudSyncService {
         Series series = seriesService.getSeriesById(seriesId);
 
         return processSeries(series);
-    }
-
-    // Cleanup old processed file records (optional maintenance)
-    @Scheduled(cron = "0 0 2 * * SUN") // Every Sunday at 2 AM
-    public void cleanupOldRecords() {
-        LocalDateTime cutoffDate = LocalDateTime.now().minusMonths(3);
-        List<ProcessedFile> oldRecords = processedFileRepository.findOldProcessedFiles(cutoffDate);
-
-        if (!oldRecords.isEmpty()) {
-            processedFileRepository.deleteAll(oldRecords);
-            log.info("Cleaned up {} old processed file records", oldRecords.size());
-        }
     }
 }

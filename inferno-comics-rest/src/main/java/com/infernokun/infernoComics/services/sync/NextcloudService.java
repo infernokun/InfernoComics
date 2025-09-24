@@ -1,6 +1,7 @@
 package com.infernokun.infernoComics.services.sync;
 
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.exceptions.NextcloudFolderNotFound;
 import com.infernokun.infernoComics.models.sync.NextcloudFile;
 import com.infernokun.infernoComics.models.sync.NextcloudFolderInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -80,11 +82,10 @@ public class NextcloudService {
 
             log.info("PROPFIND response received successfully, length: {}", response != null ? response.length() : 0);
             return parseWebDavResponse(response, folderPath);
-
+        } catch (WebClientResponseException e) {
+            throw new NextcloudFolderNotFound("Nextcloud folder: " + folderPath + " not found!");
         } catch (Exception e) {
-            log.error("PROPFIND request failed for path: {} - Error: {}", folderPath, e.getMessage(), e);
-            log.error("This exact curl command works: curl -X PROPFIND -H 'Depth: 1' -u {}:*** '{}'",
-                    infernoComicsConfig.getNextcloudUsername(), fullUrl);
+            log.error("PROPFIND request failed for path: {} - Error: {}", folderPath, e.getMessage());
             throw new RuntimeException("Failed to access Nextcloud folder: " + folderPath, e);
         }
     }
@@ -191,7 +192,8 @@ public class NextcloudService {
             String etag = xpath.evaluate(".//d:getetag", resp);
             String contentLength = xpath.evaluate(".//d:getcontentlength", resp);
             String contentType = xpath.evaluate(".//d:getcontenttype", resp);
-            String lastModified = xpath.evaluate(".//d:getlastmodified", resp);
+            //String lastModified = xpath.evaluate(".//d:getlastmodified", resp);
+            String lastModified = xpath.evaluate(".//d:creationdate", resp);
 
             // Strip everything up to the Comics folder → relative path
             String relativePath = href.replaceFirst("^.*/Photos/Comics/", "");

@@ -58,6 +58,6 @@ public class SeriesSyncStatus {
     private LocalDateTime updatedAt;
 
     public enum SyncStatus {
-        PENDING, IN_PROGRESS, COMPLETED, FAILED
+        PENDING, IN_PROGRESS, COMPLETED, FAILED, EMPTY
     }
 }

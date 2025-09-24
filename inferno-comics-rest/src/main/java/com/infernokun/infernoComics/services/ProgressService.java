@@ -9,6 +9,7 @@ import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.ProgressController;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
+import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -137,7 +138,7 @@ public class ProgressService {
         return emitter;
     }
 
-    public ProgressData initializeSession(String sessionId, Long seriesId) {
+    public ProgressData initializeSession(String sessionId, Long seriesId, StartedBy startedBy) {
         log.info("Initializing processing session: {}", sessionId);
 
         SSEProgressData initialStatus = SSEProgressData.builder()
@@ -157,6 +158,7 @@ public class ProgressService {
         progressData.setSessionId(sessionId);
         progressData.setTimeStarted(LocalDateTime.now());
         progressData.setSeriesId(seriesId);
+        progressData.setStartedBy(startedBy);
 
         return progressDataRepository.save(progressData);
     }
