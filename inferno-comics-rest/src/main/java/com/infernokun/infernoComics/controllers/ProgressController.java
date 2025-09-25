@@ -108,6 +108,11 @@ public class ProgressController {
         return ResponseEntity.ok(progressService.getSessionsBySeriesId(seriesId));
     }
 
+    @GetMapping("/data/rel")
+    public ResponseEntity<List<ProgressData>> getSessionsByRelevance() {
+        return ResponseEntity.ok(progressService.getSessionsByRelevance());
+    }
+
     @GetMapping("json/{sessionId}")
     public ResponseEntity<JsonNode> getSessionJSON(@PathVariable String sessionId) {
         return ResponseEntity.ok(progressService.getSessionJSON(sessionId));

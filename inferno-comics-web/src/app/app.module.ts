@@ -13,6 +13,7 @@ import { AgGridAngular } from 'ag-grid-angular';
 import { AuthInterceptor } from './services/auth/auth-interceptor.service';
 import { ThemeService } from './services/theme.service';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
+import { ProcessingStatusIconComponent } from './components/common/sync-status-icon.component';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -36,7 +37,8 @@ export function init_app(environmentService: EnvironmentService) {
 
 @NgModule({
   declarations: [
-    AppComponent
+    AppComponent,
+    ProcessingStatusIconComponent
   ],
   imports: [
     BrowserModule,

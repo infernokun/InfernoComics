@@ -39,6 +39,13 @@ public class ProcessingResult {
                 .build();
     }
 
+    public static ProcessingResult skipped(String message) {
+        return ProcessingResult.builder()
+                .hasNewFiles(false)
+                .errorMessage(message)
+                .build();
+    }
+
     public static ProcessingResult error(String errorMessage) {
         return ProcessingResult.builder()
                 .hasNewFiles(false)

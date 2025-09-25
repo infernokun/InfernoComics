@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @Transactional
-public class SeriesNextcloudSyncService {
+public class NextcloudSyncService {
 
     private final SeriesService seriesService;
     private final NextcloudService nextcloudService;
@@ -27,11 +27,11 @@ public class SeriesNextcloudSyncService {
     private final ProcessedFileRepository processedFileRepository;
     private final ProgressService progressService;
 
-    public SeriesNextcloudSyncService(SeriesService seriesService,
-                                      NextcloudService nextcloudService,
-                                      SeriesSyncStatusRepository syncStatusRepository,
-                                      ProcessedFileRepository processedFileRepository,
-                                      ProgressService progressService) {
+    public NextcloudSyncService(SeriesService seriesService,
+                                NextcloudService nextcloudService,
+                                SeriesSyncStatusRepository syncStatusRepository,
+                                ProcessedFileRepository processedFileRepository,
+                                ProgressService progressService) {
         this.seriesService = seriesService;
         this.nextcloudService = nextcloudService;
         this.syncStatusRepository = syncStatusRepository;

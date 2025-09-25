@@ -591,6 +591,9 @@ public class ProgressService {
         return sessions;
     }
 
+    public List<ProgressData> getSessionsByRelevance() {
+        return progressDataRepository.findByStartedOrFinishedWithinLast24Hours(LocalDateTime.now().minusHours(24));
+    }
     private Integer getIntegerFromMap(Map<String, Object> map, String... keys) {
         for (String key : keys) {
             Object value = map.get(key);

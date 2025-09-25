@@ -371,6 +371,12 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       console.log('Dialog closed');
     });
   }
+
+    syncAllSeries() {
+    this.seriesService.syncAllSeries().subscribe((data: any) => {
+      console.log('sync', data);
+    })
+  }
 }
 
 @Component({

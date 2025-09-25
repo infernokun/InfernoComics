@@ -1,13 +1,12 @@
 package com.infernokun.infernoComics.controllers;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.models.sync.ProcessingResult;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
 import com.infernokun.infernoComics.services.ProgressService;
-import com.infernokun.infernoComics.services.sync.SeriesNextcloudSyncService;
+import com.infernokun.infernoComics.services.sync.NextcloudSyncService;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.Getter;
@@ -31,9 +30,9 @@ public class SeriesController {
 
     private final SeriesService seriesService;
     private final ProgressService progressService;
-    private final SeriesNextcloudSyncService syncService;
+    private final NextcloudSyncService syncService;
 
-    public SeriesController(SeriesService seriesService, ProgressService progressService, SeriesNextcloudSyncService syncService) {
+    public SeriesController(SeriesService seriesService, ProgressService progressService, NextcloudSyncService syncService) {
         this.seriesService = seriesService;
         this.progressService = progressService;
         this.syncService = syncService;
@@ -70,6 +69,18 @@ public class SeriesController {
             return ResponseEntity.ok(folderMappings);
         } catch (Exception e) {
             log.error("Error fetching series folder structure: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/startSync")
+    public ResponseEntity<List<ProcessingResult>> startAllSeriesSync() {
+        List<ProcessingResult> results = new ArrayList<>();
+        seriesService.getAllSeries().forEach(series -> results.add(syncService.manualSync(series.getId())));
+        try {
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            log.error("Error syncing series: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }

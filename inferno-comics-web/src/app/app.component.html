@@ -2,6 +2,9 @@
 <mat-toolbar color="primary">
   <mat-toolbar-row>
     <span>{{ title }}</span>
+    
+    <app-processing-status-icon></app-processing-status-icon>
+    
     <span class="spacer"></span>
     <button mat-button routerLink="/dashboard">
       <mat-icon>dashboard</mat-icon>
@@ -15,15 +18,13 @@
       <mat-icon>add</mat-icon>
       Add Series
     </button>
-
     <!-- Theme Toggle Button -->
     <button mat-icon-button class="theme-toggle" (click)="toggleTheme()"
-      [attr.aria-label]="(isDarkMode$ | async) ? 'Switch to light mode' : 'Switch to dark mode'">
+            [attr.aria-label]="(isDarkMode$ | async) ? 'Switch to light mode' : 'Switch to dark mode'">
       <mat-icon>{{ (isDarkMode$ | async) ? 'light_mode' : 'dark_mode' }}</mat-icon>
     </button>
   </mat-toolbar-row>
 </mat-toolbar>
-
 <div class="main-content">
   <router-outlet></router-outlet>
 </div>
