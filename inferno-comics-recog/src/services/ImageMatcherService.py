@@ -70,26 +70,6 @@ class ImageMatcherService:
                 logger.warning(f"⚠️ Progress callback error: {e}")
                 pass  # Continue execution even if progress fails
 
-    def cleanup_old_sessions(self):
-        """Clean up sessions older than 2 hours"""
-        with self.session_lock:
-            current_time = datetime.now()
-            sessions_to_remove = []
-            
-            for session_id, session_data in self.sse_sessions.items():
-                if current_time - session_data['created'] > timedelta(hours=2):
-                    sessions_to_remove.append(session_id)
-            
-            for session_id in sessions_to_remove:
-                if session_id in self.sse_sessions:
-                    self.sse_sessions[session_id]['tracker'].close()
-                    del self.sse_sessions[session_id]
-                if session_id in self.progress_data:
-                    del self.progress_data[session_id]
-            
-            if sessions_to_remove:
-                logger.info(f"️ Cleaned up {len(sessions_to_remove)} old sessions")
-
     def process_multiple_images_with_centralized_progress(self, session_id, query_images_data, candidate_covers):
         """Process multiple images matching with CENTRALIZED progress reporting to Java"""
         
@@ -569,6 +549,3 @@ def get_service():
     if _service_instance is None:
         _service_instance = ImageMatcherService()
     return _service_instance
-
-def cleanup_old_sessions():
-    return get_service().cleanup_old_sessions()
