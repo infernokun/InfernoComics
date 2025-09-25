@@ -28,4 +28,5 @@ public class InfernoComicsConfig {
     private String nextcloudUrl;
     private String nextcloudUsername;
     private String nextcloudPassword;
+    private String nextcloudFolderLocation;
 }

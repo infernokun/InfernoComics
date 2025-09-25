@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.models.sync;
 
+import io.micrometer.common.lang.Nullable;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,10 +9,12 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
+
 @Entity
 @Table(name = "processed_files")
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProcessedFile {
@@ -22,8 +25,9 @@ public class ProcessedFile {
     @Column(name = "series_id", nullable = false)
     private Long seriesId;
 
-    @Column(name = "file_path", nullable = false, length = 500)
-    private String filePath;
+    @Builder.Default
+    @Column(name = "file_path", length = 500)
+    private String filePath = "";
 
     @Column(name = "file_name", nullable = false)
     private String fileName;

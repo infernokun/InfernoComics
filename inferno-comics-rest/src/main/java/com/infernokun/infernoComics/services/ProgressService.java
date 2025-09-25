@@ -707,6 +707,19 @@ public class ProgressService {
                 .block();
     }
 
+    public String getSessionImageHash(String sessionId, String fileName) {
+        return webClient.get()
+                .uri("/stored_images/hash/" + sessionId + "/" + fileName )
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                        Mono.error(new RuntimeException("Image not found: " + fileName)))
+                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                        Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
+                .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
+                .block();
+    }
+
     public static class SessionNotFoundException extends RuntimeException {
         public SessionNotFoundException(String message) {
             super(message);

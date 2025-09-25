@@ -28,4 +28,6 @@ public interface ProcessedFileRepository extends JpaRepository<ProcessedFile, Lo
 
     @Query("SELECT pf FROM ProcessedFile pf WHERE pf.processedAt < :cutoffDate")
     List<ProcessedFile> findOldProcessedFiles(@Param("cutoffDate") LocalDateTime cutoffDate);
+
+    Optional<ProcessedFile> findByFileEtag(String fileEtag);
 }

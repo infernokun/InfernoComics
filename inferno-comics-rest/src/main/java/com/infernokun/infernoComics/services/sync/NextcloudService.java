@@ -63,7 +63,7 @@ public class NextcloudService {
     }
 
     public NextcloudFolderInfo getFolderInfo(String folderPath) {
-        folderPath = "/Photos/Comics/" + folderPath;
+        folderPath = infernoComicsConfig.getNextcloudFolderLocation() + folderPath;
         String path = "/remote.php/dav/files/" + infernoComicsConfig.getNextcloudUsername() + folderPath + "/";
         String fullUrl = infernoComicsConfig.getNextcloudUrl() + path;
 
@@ -97,7 +97,8 @@ public class NextcloudService {
     }
 
     public byte[] downloadFile(String filePath) {
-        String path = "/remote.php/dav/files/" + infernoComicsConfig.getNextcloudUsername() + "/Photos/Comics/" + filePath;
+        String path = "/remote.php/dav/files/" + infernoComicsConfig.getNextcloudUsername() +
+                infernoComicsConfig.getNextcloudFolderLocation() + filePath;
 
         log.info("Downloading file: {}", path);
 
@@ -189,14 +190,13 @@ public class NextcloudService {
 
             String name = href.substring(href.lastIndexOf("/") + 1);
 
-            String etag = xpath.evaluate(".//d:getetag", resp);
+            String etag = xpath.evaluate(".//d:getetag", resp).replace("\"", "");
             String contentLength = xpath.evaluate(".//d:getcontentlength", resp);
             String contentType = xpath.evaluate(".//d:getcontenttype", resp);
-            //String lastModified = xpath.evaluate(".//d:getlastmodified", resp);
-            String lastModified = xpath.evaluate(".//d:creationdate", resp);
+            String lastModified = xpath.evaluate(".//d:getlastmodified", resp);
 
             // Strip everything up to the Comics folder → relative path
-            String relativePath = href.replaceFirst("^.*/Photos/Comics/", "");
+            String relativePath = href.replaceFirst("^.*" + infernoComicsConfig.getNextcloudFolderLocation(), "");
 
             NextcloudFile file = NextcloudFile.builder()
                     .name(name)

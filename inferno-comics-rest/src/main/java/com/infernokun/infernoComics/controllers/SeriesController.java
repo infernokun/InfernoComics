@@ -289,7 +289,8 @@ public class SeriesController {
                     imageDataList.add(new ImageData(
                             imageBytes,
                             file.getOriginalFilename(),
-                            file.getContentType()
+                            file.getContentType(),
+                            imageBytes.length
                     ));
                     totalBytes += imageBytes.length;
                 }
@@ -399,16 +400,6 @@ public class SeriesController {
         private String comicVineId;
     }
 
-    @Data
-    public static class ImageData {
-        private final byte[] bytes;
-        private final String originalFilename;
-        private final String contentType;
-
-        public ImageData(byte[] bytes, String originalFilename, String contentType) {
-            this.bytes = bytes;
-            this.originalFilename = originalFilename;
-            this.contentType = contentType;
-        }
+    public record ImageData(byte[] bytes, String originalFilename, String contentType, long fileSize) {
     }
 }

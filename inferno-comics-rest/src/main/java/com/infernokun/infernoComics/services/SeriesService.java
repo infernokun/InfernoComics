@@ -8,7 +8,9 @@ import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
+import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
+import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -27,10 +29,13 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 
 @Slf4j
 @Service
@@ -47,6 +52,7 @@ public class SeriesService {
 
     private final WebClient webClient;
 
+    private final ProcessedFileRepository processedFileRepository;
 
     public SeriesService(SeriesRepository seriesRepository, IssueService issueService,
                          ComicVineService comicVineService,
@@ -55,7 +61,7 @@ public class SeriesService {
                          ModelMapper modelMapper,
                          InfernoComicsConfig infernoComicsConfig,
                          ProgressService progressService,
-                         CacheManager cacheManager) {
+                         CacheManager cacheManager, ProcessedFileRepository processedFileRepository) {
         this.seriesRepository = seriesRepository;
         this.issueService = issueService;
         this.comicVineService = comicVineService;
@@ -72,6 +78,7 @@ public class SeriesService {
                                 .maxInMemorySize(500 * 1024 * 1024))
                         .build())
                 .build();
+        this.processedFileRepository = processedFileRepository;
     }
 
     @CacheEvict(value = "series", key = "#seriesId")
@@ -825,17 +832,49 @@ public class SeriesService {
                     imageDataList.size(), candidateCovers.size(), sessionId);
 
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
+            List<ProcessedFile> filesToRecord = new ArrayList<>();
 
             // Add all images with indexed names
             for (int i = 0; i < imageDataList.size(); i++) {
                 SeriesController.ImageData imageData = imageDataList.get(i);
-                builder.part("images[" + i + "]", new ByteArrayResource(imageData.getBytes()) {
+                builder.part("images[" + i + "]", new ByteArrayResource(imageData.bytes()) {
                     @Override
                     public String getFilename() {
-                        return imageData.getOriginalFilename();
+                        return imageData.originalFilename();
                     }
-                }).contentType(MediaType.valueOf(imageData.getContentType() != null ? imageData.getContentType() : "image/jpeg"));
+                }).contentType(MediaType.valueOf(imageData.contentType() != null ? imageData.contentType() : "image/jpeg"));
+
+                String fileEtag = createEtag(imageData.bytes());
+
+                Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileEtag(fileEtag);
+
+                if (processedFileOptional.isEmpty()) {
+                    filesToRecord.add(ProcessedFile.builder()
+                            .seriesId(seriesEntity.getId())
+                            .filePath(null)
+                            .fileName(imageData.originalFilename())
+                            .fileLastModified(null)
+                            .fileSize(imageData.fileSize())
+                            .fileEtag(fileEtag)
+                            .sessionId(sessionId)
+                            .processingStatus(ProcessedFile.ProcessingStatus.PROCESSED)
+                            .processedAt(LocalDateTime.now())
+                            .build());
+                } else {
+                    ProcessedFile processedFile = processedFileOptional.get();
+                    processedFile.setSeriesId(seriesEntity.getId());
+                    processedFile.setFilePath(null);
+                    processedFile.setFileName(imageData.originalFilename());
+                    processedFile.setFileLastModified(null);
+                    processedFile.setFileSize(imageData.fileSize());
+                    processedFile.setFileEtag(fileEtag);
+                    processedFile.setSessionId(sessionId);
+                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.PROCESSED);
+                    processedFile.setProcessedAt(LocalDateTime.now());
+                }
             }
+
+            processedFileRepository.saveAll(filesToRecord);
 
             // Convert GCDCover objects to JSON and send as candidate_covers
             ObjectMapper mapper = new ObjectMapper();

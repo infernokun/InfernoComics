@@ -16,6 +16,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
+
 @Service
 @Slf4j
 @Transactional
@@ -195,21 +197,37 @@ public class NextcloudSyncService {
             try {
                 byte[] imageBytes = nextcloudService.downloadFile(file.getPath());
                 imageDataList.add(new SeriesController.ImageData(
-                        imageBytes, file.getName(), file.getContentType()
+                        imageBytes, file.getName(), file.getContentType(), imageBytes.length
                 ));
 
-                // Prepare record for successful processing
-                filesToRecord.add(ProcessedFile.builder()
-                        .seriesId(seriesId)
-                        .filePath(file.getPath())
-                        .fileName(file.getName())
-                        .fileEtag(file.getEtag())
-                        .fileSize(file.getSize())
-                        .fileLastModified(file.getLastModified())
-                        .processingStatus(ProcessedFile.ProcessingStatus.PROCESSED)
-                        .sessionId(sessionId)
-                        .build());
+                String fileEtag = createEtag(imageBytes);
 
+                Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileEtag(fileEtag);
+
+                if (processedFileOptional.isEmpty()) {
+                    filesToRecord.add(ProcessedFile.builder()
+                            .seriesId(seriesId)
+                            .filePath(file.getPath())
+                            .fileName(file.getName())
+                            .fileLastModified(file.getLastModified())
+                            .fileSize(file.getSize())
+                            .fileEtag(fileEtag)
+                            .sessionId(sessionId)
+                            .processingStatus(ProcessedFile.ProcessingStatus.PROCESSED)
+                            .processedAt(LocalDateTime.now())
+                            .build());
+                } else {
+                    ProcessedFile processedFile = processedFileOptional.get();
+                    processedFile.setSeriesId(seriesId);
+                    processedFile.setFilePath(file.getPath());
+                    processedFile.setFileName(file.getName());
+                    processedFile.setFileLastModified(file.getLastModified());
+                    processedFile.setFileSize(file.getSize());
+                    processedFile.setFileEtag(fileEtag);
+                    processedFile.setSessionId(sessionId);
+                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.PROCESSED);
+                    processedFile.setProcessedAt(LocalDateTime.now());
+                }
                 successCount++;
 
             } catch (Exception e) {

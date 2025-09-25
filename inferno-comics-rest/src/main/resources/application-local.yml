@@ -82,6 +82,7 @@ inferno-comics:
   nextcloudUrl: "${NEXTCLOUD_URL:none}"
   nextcloudUsername: "${NEXTCLOUD_USERNAME:none}"
   nextcloudPassword: "${NEXTCLOUD_PASSWORD:none}"
+  nextcloudFolderLocation: "${NEXTCLOUD_FOLDER_LOCATION:none}"
 
 logging:
   level:

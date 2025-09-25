@@ -119,12 +119,8 @@ public class ProgressController {
     }
 
     @GetMapping("/image/{sessionId}/{filename}")
-    public ResponseEntity<Resource> getStoredImage(
-            @PathVariable String sessionId,
-            @PathVariable String filename) {
-
+    public ResponseEntity<Resource> getStoredImage(@PathVariable String sessionId, @PathVariable String filename) {
         try {
-
             // Use WebClient to fetch the image
             Resource imageResource = progressService.getSessionImage(sessionId, filename);
 
@@ -139,6 +135,31 @@ public class ProgressController {
                     .contentType(mediaType)
                     .header(HttpHeaders.CACHE_CONTROL, "max-age=3600") // Cache for 1 hour
                     .body(imageResource);
+
+        } catch (Exception e) {
+            // Log the error
+            System.err.println("Error fetching stored image: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/image/hash/{sessionId}/{filename}")
+    public ResponseEntity<String> getStoredImageHash(@PathVariable String sessionId, @PathVariable String filename) {
+        try {
+            // Use WebClient to fetch the image
+            String hash = progressService.getSessionImageHash(sessionId, filename);
+
+            if (hash.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Determine content type based on file extension
+            MediaType mediaType = getMediaTypeFromFilename(hash);
+
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header(HttpHeaders.CACHE_CONTROL, "max-age=3600") // Cache for 1 hour
+                    .body(hash);
 
         } catch (Exception e) {
             // Log the error
