@@ -9,6 +9,7 @@ import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
+import com.infernokun.infernoComics.models.sync.WeirdService;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
@@ -49,6 +50,7 @@ public class SeriesService {
     private final ModelMapper modelMapper;
     private final ProgressService progressService;
     private final CacheManager cacheManager;
+    private final WeirdService weirdService;
 
     private final WebClient webClient;
 
@@ -61,7 +63,7 @@ public class SeriesService {
                          ModelMapper modelMapper,
                          InfernoComicsConfig infernoComicsConfig,
                          ProgressService progressService,
-                         CacheManager cacheManager, ProcessedFileRepository processedFileRepository) {
+                         CacheManager cacheManager, WeirdService weirdService, ProcessedFileRepository processedFileRepository) {
         this.seriesRepository = seriesRepository;
         this.issueService = issueService;
         this.comicVineService = comicVineService;
@@ -78,6 +80,7 @@ public class SeriesService {
                                 .maxInMemorySize(500 * 1024 * 1024))
                         .build())
                 .build();
+        this.weirdService = weirdService;
         this.processedFileRepository = processedFileRepository;
     }
 
@@ -827,12 +830,14 @@ public class SeriesService {
 
     private JsonNode sendMultipleImagesToMatcherWithProgress(String sessionId, List<SeriesController.ImageData> imageDataList,
                                                              List<GCDCover> candidateCovers, Series seriesEntity) {
+        List<ProcessedFile> filesToRecord = new ArrayList<>();
+
         try {
             log.info("📤 Sending {} images with {} candidates to matcher service for session: {}",
                     imageDataList.size(), candidateCovers.size(), sessionId);
 
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
-            List<ProcessedFile> filesToRecord = new ArrayList<>();
+
 
             // Add all images with indexed names
             for (int i = 0; i < imageDataList.size(); i++) {
@@ -846,7 +851,7 @@ public class SeriesService {
 
                 String fileEtag = createEtag(imageData.bytes());
 
-                Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileEtag(fileEtag);
+                Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileName(imageData.originalFilename());
 
                 if (processedFileOptional.isEmpty()) {
                     filesToRecord.add(ProcessedFile.builder()
@@ -857,7 +862,7 @@ public class SeriesService {
                             .fileSize(imageData.fileSize())
                             .fileEtag(fileEtag)
                             .sessionId(sessionId)
-                            .processingStatus(ProcessedFile.ProcessingStatus.PROCESSED)
+                            .processingStatus(ProcessedFile.ProcessingStatus.PROCESSING)
                             .processedAt(LocalDateTime.now())
                             .build());
                 } else {
@@ -869,12 +874,12 @@ public class SeriesService {
                     processedFile.setFileSize(imageData.fileSize());
                     processedFile.setFileEtag(fileEtag);
                     processedFile.setSessionId(sessionId);
-                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.PROCESSED);
+                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.PROCESSING);
                     processedFile.setProcessedAt(LocalDateTime.now());
                 }
             }
 
-            processedFileRepository.saveAll(filesToRecord);
+            weirdService.saveProcessedFiles(filesToRecord);
 
             // Convert GCDCover objects to JSON and send as candidate_covers
             ObjectMapper mapper = new ObjectMapper();

@@ -29,5 +29,12 @@ public interface ProcessedFileRepository extends JpaRepository<ProcessedFile, Lo
     @Query("SELECT pf FROM ProcessedFile pf WHERE pf.processedAt < :cutoffDate")
     List<ProcessedFile> findOldProcessedFiles(@Param("cutoffDate") LocalDateTime cutoffDate);
 
+    @Query("SELECT pf FROM ProcessedFile pf WHERE pf.sessionId = :sessionId")
+    Optional<ProcessedFile> findBySessionId(@Param("sessionId") String sessionId);
+
     Optional<ProcessedFile> findByFileEtag(String fileEtag);
+    Optional<ProcessedFile> findByFileName(String fileName);
+
+    @Query("SELECT pf FROM ProcessedFile pf WHERE pf.sessionId = :sessionId AND pf.fileName = :fileName")
+    Optional<ProcessedFile> findBySessionIdAndFileName(@Param("sessionId") String sessionId, @Param("fileName") String fileName);
 }

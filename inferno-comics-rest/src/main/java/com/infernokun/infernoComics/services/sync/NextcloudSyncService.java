@@ -28,17 +28,19 @@ public class NextcloudSyncService {
     private final SeriesSyncStatusRepository syncStatusRepository;
     private final ProcessedFileRepository processedFileRepository;
     private final ProgressService progressService;
+    private final WeirdService weirdService;
 
     public NextcloudSyncService(SeriesService seriesService,
                                 NextcloudService nextcloudService,
                                 SeriesSyncStatusRepository syncStatusRepository,
                                 ProcessedFileRepository processedFileRepository,
-                                ProgressService progressService) {
+                                ProgressService progressService, WeirdService weirdService) {
         this.seriesService = seriesService;
         this.nextcloudService = nextcloudService;
         this.syncStatusRepository = syncStatusRepository;
         this.processedFileRepository = processedFileRepository;
         this.progressService = progressService;
+        this.weirdService = weirdService;
     }
 
     /*@Scheduled(fixedDelay = 300000) // Every 5 minutes
@@ -180,6 +182,7 @@ public class NextcloudSyncService {
         return existingRecord.isEmpty();
     }
 
+    @Transactional
     private ProcessingResult processNewFiles(Long seriesId,
                                              List<NextcloudFile> newFiles,
                                              int totalFiles,
@@ -202,7 +205,7 @@ public class NextcloudSyncService {
 
                 String fileEtag = createEtag(imageBytes);
 
-                Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileEtag(fileEtag);
+                Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileName(file.getName());
 
                 if (processedFileOptional.isEmpty()) {
                     filesToRecord.add(ProcessedFile.builder()
@@ -213,7 +216,7 @@ public class NextcloudSyncService {
                             .fileSize(file.getSize())
                             .fileEtag(fileEtag)
                             .sessionId(sessionId)
-                            .processingStatus(ProcessedFile.ProcessingStatus.PROCESSED)
+                            .processingStatus(ProcessedFile.ProcessingStatus.PROCESSING)
                             .processedAt(LocalDateTime.now())
                             .build());
                 } else {
@@ -225,7 +228,7 @@ public class NextcloudSyncService {
                     processedFile.setFileSize(file.getSize());
                     processedFile.setFileEtag(fileEtag);
                     processedFile.setSessionId(sessionId);
-                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.PROCESSED);
+                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.PROCESSING);
                     processedFile.setProcessedAt(LocalDateTime.now());
                 }
                 successCount++;
@@ -266,7 +269,7 @@ public class NextcloudSyncService {
 
                 // Mark all files as failed if processing couldn't start
                 filesToRecord.forEach(file -> {
-                    if (file.getProcessingStatus() == ProcessedFile.ProcessingStatus.PROCESSED) {
+                    if (file.getProcessingStatus() == ProcessedFile.ProcessingStatus.COMPLETE) {
                         file.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED);
                         file.setErrorMessage("Failed to start processing: " + e.getMessage());
                     }
@@ -279,7 +282,7 @@ public class NextcloudSyncService {
 
         // Save all processed file records
         try {
-            processedFileRepository.saveAll(filesToRecord);
+            weirdService.saveProcessedFiles(filesToRecord);
         } catch (Exception e) {
             log.error("Failed to save processed file records: {}", e.getMessage());
         }

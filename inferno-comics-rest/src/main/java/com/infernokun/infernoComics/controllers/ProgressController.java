@@ -3,6 +3,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
+import com.infernokun.infernoComics.models.sync.ProcessedFile;
+import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.ProgressService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
@@ -16,9 +18,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Slf4j
 @RestController
@@ -28,6 +29,7 @@ public class ProgressController {
 
     private final ProgressService progressService;
     private final InfernoComicsConfig infernoComicsConfig;
+    private final ProcessedFileRepository processedFileRepository;
 
     // health check endpoint for Python to verify Java service availability
     @GetMapping("/health")
@@ -69,6 +71,62 @@ public class ProgressController {
         } catch (Exception e) {
             log.error("❌ Error processing completion from Python: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/processed-file")
+    public ResponseEntity<Map<String, String>> receiveProcessedFile(@RequestBody Map<String, String> processedFile) {
+        String sessionId = processedFile.get("session_id");
+        String originalFileName = processedFile.get("original_file_name");
+        String processedFileHash = processedFile.get("file_hash");
+        String storedFileName = processedFile.get("stored_file_name");
+
+        // Debug logging
+        log.error("=== DEBUG INFO ===");
+        log.error("Received sessionId: '" + sessionId + "'");
+        log.error("Received originalFileName: '" + originalFileName + "'");
+        log.error("Session ID length: " + (sessionId != null ? sessionId.length() : "null"));
+        log.error("Original filename length: " + (originalFileName != null ? originalFileName.length() : "null"));
+
+        // Try different queries to debug
+        Optional<ProcessedFile> bySessionOnly = processedFileRepository.findBySessionId(sessionId);
+        log.error("Found by session ID only: " + bySessionOnly.isPresent());
+
+        if (bySessionOnly.isPresent()) {
+            ProcessedFile pf = bySessionOnly.get();
+            log.error("DB fileName: '" + pf.getFileName() + "'");
+            log.error("DB sessionId: '" + pf.getSessionId() + "'");
+            log.error("Status: " + pf.getProcessingStatus());
+            log.error("Filename equals: " + Objects.equals(pf.getFileName(), originalFileName));
+            log.error("SessionId equals: " + Objects.equals(pf.getSessionId(), sessionId));
+        }
+
+        // Now try the original query
+        Optional<ProcessedFile> processedFileOptional = processedFileRepository
+                .findBySessionIdAndFileName(sessionId, originalFileName);
+
+        log.error("Found by sessionId AND fileName: " + processedFileOptional.isPresent());
+
+        Map<String, String> response = new HashMap<>();
+
+        if (processedFileOptional.isPresent()) {
+            ProcessedFile processedFileEntity = processedFileOptional.get();
+
+            // Update with the processed file information
+            processedFileEntity.setFileEtag(processedFileHash);
+            processedFileEntity.setFileName(storedFileName);
+            processedFileEntity.setProcessingStatus(ProcessedFile.ProcessingStatus.COMPLETE);
+            processedFileEntity.setProcessedAt(LocalDateTime.now());
+
+            processedFileRepository.save(processedFileEntity);
+
+            response.put("status", "success");
+            response.put("message", "Processed file info updated successfully");
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("status", "error");
+            response.put("message", "ProcessedFile not found for session: " + sessionId + " and filename: " + originalFileName);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
         }
     }
 

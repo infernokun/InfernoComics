@@ -48,7 +48,7 @@ public class ProcessedFile {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "processing_status")
-    private ProcessingStatus processingStatus = ProcessingStatus.PROCESSED;
+    private ProcessingStatus processingStatus = ProcessingStatus.PROCESSING;
 
     @Column(name = "session_id")
     private String sessionId;
@@ -57,7 +57,7 @@ public class ProcessedFile {
     private String errorMessage;
 
     public enum ProcessingStatus {
-        PROCESSED, FAILED, SKIPPED
+        COMPLETE, FAILED, SKIPPED, PROCESSING
     }
 
     @Table(uniqueConstraints = {

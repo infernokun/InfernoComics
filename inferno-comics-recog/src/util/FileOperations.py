@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from util.Util import get_full_image_url
 from util.ImageUtils import get_image_hash
 from config.ComicMatcherConfig import ComicMatcherConfig
+from models.JavaProgressReporter import JavaProgressReporter
 
 logger = get_logger(__name__)
 
@@ -32,37 +33,30 @@ def ensure_images_directory():
 
 def save_image_to_storage(image_data, session_id, image_name, image_type='query'):
     """
-    Save image to server storage and return URL
-    FIXED to match Flask app URL structure
+    Save image to server storage and return URL and hash info
     """
     try:
         images_dir = ensure_images_directory()
-        
-        # Create session subdirectory
         session_dir = os.path.join(images_dir, session_id)
         if not os.path.exists(session_dir):
             os.makedirs(session_dir)
         
         # Handle different input types
         if isinstance(image_data, np.ndarray):
-            # OpenCV image array - encode as JPEG
             _, buffer = cv2.imencode('.jpg', image_data, [cv2.IMWRITE_JPEG_QUALITY, 85])
             image_bytes = buffer.tobytes()
         elif isinstance(image_data, str) and image_data.startswith('data:image'):
-            # Extract base64 data
             header, base64_data = image_data.split(',', 1)
             image_bytes = base64.b64decode(base64_data)
         elif isinstance(image_data, str):
-            # Assume it's already base64 without header
             image_bytes = base64.b64decode(image_data)
         else:
-            # Raw bytes
             image_bytes = image_data
         
-        # Generate unique filename with hash to avoid duplicates
-        image_hash = get_image_hash(image_data)
+        # Generate hash from the ACTUAL bytes that will be saved
+        saved_image_hash = hashlib.sha256(image_bytes).hexdigest()
         file_extension = os.path.splitext(image_name)[1] or '.jpg'
-        stored_filename = f"{image_type}_{image_hash}{file_extension}"
+        stored_filename = f"{image_type}_{saved_image_hash}{file_extension}"
         stored_path = os.path.join(session_dir, stored_filename)
         
         # Save image if it doesn't already exist
@@ -72,9 +66,18 @@ def save_image_to_storage(image_data, session_id, image_name, image_type='query'
             logger.debug(f"Saved image to {stored_path}")
         else:
             logger.debug(f"Image already exists at {stored_path}")
+
+        process_file_data = {
+            "file_hash": saved_image_hash,
+            "stored_file_name": stored_filename,
+            "original_file_name": image_name,
+            "session_id": session_id
+        }
+
+        java_reporter = JavaProgressReporter(session_id)
+
+        java_reporter.send_processed_file_info(process_file_data)
         
-        # CORRECT: Return URL path that matches your Flask app structure
-        # Since all blueprints are registered with /inferno-comics-recognition/api/v1
         return f"/inferno-comics-recognition/api/v1/stored_images/{session_id}/{stored_filename}"
         
     except Exception as e:

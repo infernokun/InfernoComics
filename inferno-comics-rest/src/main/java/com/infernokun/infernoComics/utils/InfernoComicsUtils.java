@@ -1,11 +1,7 @@
 package com.infernokun.infernoComics.utils;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.models.Series;
-import com.infernokun.infernoComics.models.sync.ProcessedFile;
-import io.micrometer.common.lang.Nullable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -13,7 +9,6 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
-import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.regex.Pattern;
 

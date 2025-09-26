@@ -567,36 +567,29 @@ def get_stored_image_hash(session_id, filename):
         image_path = os.path.join(images_dir, session_id, filename)
         
         if not os.path.exists(image_path):
-            logger.warning(f" Stored image not found: {image_path}")
+            logger.warning(f"🔍 Stored image not found: {image_path}")
             abort(404)
-        
+            
         # Security check - ensure the path is within our images directory
         if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
-            logger.warning(f" Security violation - path traversal attempt: {image_path}")
+            logger.warning(f"🔒 Security violation - path traversal attempt: {image_path}")
             abort(403)
-
-        def generate_image_hash(image_path: str) -> str:
-            """
-            Return a Base64‑encoded SHA‑256 digest of the file at *image_path*.
-            The result is identical to the Java `createEtag` method.
-            """
-            try:
-                with open(image_path, "rb") as f:
-                    content = f.read()
-            except OSError as exc:
-                logger.error(f"❌ Unable to read image: {exc}")
-                return ""
-
-            digest = hashlib.sha256(content).digest()
-
-            etag = base64.b64encode(digest).decode("ascii")
-            return etag
         
-        return generate_image_hash(image_path)
+        return {"hash": generate_image_hash(image_path)}
         
     except Exception as e:
-        logger.error(f"❌ Error serving stored image: {e}")
+        logger.error(f"❌ Error serving stored image hash: {e}")
         abort(500)
+
+def generate_image_hash(image_path: str) -> str:
+    try:
+        with open(image_path, "rb") as f:
+            content = f.read()
+    except OSError as exc:
+        logger.error(f"❌ Unable to read image: {exc}")
+        return ""
+    
+    return hashlib.sha256(content).hexdigest()
 
 @image_matcher_bp.route('/image-matcher/admin/migrate', methods=['POST'])
 def admin_migrate():
