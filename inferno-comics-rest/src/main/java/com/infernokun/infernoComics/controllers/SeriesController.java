@@ -20,8 +20,11 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 
 @Slf4j
 @RestController
@@ -290,7 +293,10 @@ public class SeriesController {
                             imageBytes,
                             file.getOriginalFilename(),
                             file.getContentType(),
-                            imageBytes.length
+                            imageBytes.length,
+                            null,
+                            null,
+                            createEtag(imageBytes)
                     ));
                     totalBytes += imageBytes.length;
                 }
@@ -400,6 +406,7 @@ public class SeriesController {
         private String comicVineId;
     }
 
-    public record ImageData(byte[] bytes, String originalFilename, String contentType, long fileSize) {
+    public record ImageData(byte[] bytes, String originalFilename, String contentType, long fileSize,
+                            LocalDateTime lastModified, String filePath, String fileEtag) {
     }
 }

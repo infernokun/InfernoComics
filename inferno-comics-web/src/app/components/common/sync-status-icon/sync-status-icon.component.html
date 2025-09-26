@@ -1,0 +1,131 @@
+<div class="processing-status-container">
+  
+  <button mat-icon-button
+          [class]="getButtonClass()"
+          [disabled]="false"
+          (click)="toggleOverlay($event)">
+    <mat-icon [class]="getIconClass()">{{ getIconName() }}</mat-icon>
+    
+    <!-- Badge showing number of active items -->
+    <span *ngIf="currentStatus.totalActive > 0" class="item-count-badge">
+      {{ currentStatus.totalActive }}
+    </span>
+  </button>
+
+  <!-- Enhanced Overlay Panel -->
+  <div *ngIf="showOverlay" 
+       class="processing-overlay"
+       [@slideIn]>
+    
+    <!-- Header -->
+    <div class="overlay-header">
+      <div class="header-title">
+        <mat-icon class="header-icon">{{ getIconName() }}</mat-icon>
+        <span>Processing Status</span>
+      </div>
+      <div class="header-summary">
+        <span *ngIf="currentStatus.totalProcessing > 0" class="processing-count">
+          {{ currentStatus.totalProcessing }} Processing
+        </span>
+        <span *ngIf="currentStatus.totalQueued > 0" class="queued-count">
+          {{ currentStatus.totalQueued }} Queued
+        </span>
+        <span *ngIf="currentStatus.totalActive === 0" class="idle-text">
+          No active tasks
+        </span>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="overlay-content">
+      <!-- Loading Skeleton - Always show when loading, regardless of data -->
+      <div *ngIf="isLoading" class="skeleton-container">
+        <div *ngFor="let item of [1,2,3]" class="skeleton-item">
+          <div class="skeleton-header">
+            <div class="skeleton-status">
+              <div class="skeleton-icon"></div>
+              <div class="skeleton-text skeleton-status-text"></div>
+              <div class="skeleton-name"></div>
+            </div>
+            <div class="skeleton-progress-percent"></div>
+          </div>
+          <div class="skeleton-progress-bar"></div>
+          <div class="skeleton-details">
+            <div class="skeleton-time"></div>
+            <div class="skeleton-eta"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real Content - Only show when NOT loading -->
+      <div *ngIf="!isLoading">
+        <!-- No Activity State -->
+        <div *ngIf="currentStatus.items.length === 0" class="no-activity">
+          <mat-icon class="no-activity-icon">hourglass_empty</mat-icon>
+          <div class="no-activity-text">No recent processing activity</div>
+        </div>
+
+        <!-- Processing Items -->
+        <div *ngIf="getSortedItems().length > 0" class="items-container">
+          <div *ngFor="let item of getSortedItems(); let i = index" 
+               class="processing-item" 
+               [class]="getItemClass(item)">
+            
+            <!-- Compact Item Header -->
+            <div class="item-header">
+              <div class="item-status">
+                <mat-icon class="status-icon" [class]="getStatusIconClass(item)">
+                  {{ getStatusIcon(item) }}
+                </mat-icon>
+                <span class="status-text">{{ getStatusText(item) }}</span>
+                <div class="item-name" [title]="item.getDisplayName()">
+                    {{ item.getDisplayName() }}
+                  </div>
+                  <div class="item-name" [title]="item.startedBy">
+                    {{ item.startedBy }}
+                  </div>
+              </div>
+              <div class="item-progress" *ngIf="item.percentageComplete !== undefined">
+                {{ item.percentageComplete }}%
+              </div>
+            </div>
+
+            <!-- Compact Progress Bar (for processing items) -->
+            <div *ngIf="item.state === progressState.PROCESSING && item.percentageComplete !== undefined" 
+                 class="progress-container">
+              <mat-progress-bar mode="determinate" 
+                                [value]="item.percentageComplete"
+                                class="progress-bar">
+              </mat-progress-bar>
+            </div>
+
+            <!-- Compact Item Details -->
+            <div class="item-details">
+              <span class="duration">{{ getItemTimeInfo(item) }}</span>
+              <span *ngIf="item.state === progressState.PROCESSING && getEstimatedTime(item)" 
+                    class="estimated-time">
+                • ETA: {{ getEstimatedTime(item) }}
+              </span>
+              <span *ngIf="getItemAdditionalInfo(item)" class="additional-info">
+                • {{ getItemAdditionalInfo(item) }}
+              </span>
+
+              <!-- Error Message -->
+              <div *ngIf="item.errorMessage && item.state === progressState.ERROR" 
+                   class="error-message">
+                {{ item.errorMessage }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Show More Link -->
+        <div *ngIf="getSortedItems().length > maxDisplayItems" class="show-more">
+          <button mat-button class="show-more-btn">
+            View all {{ currentStatus.items.length }} items
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

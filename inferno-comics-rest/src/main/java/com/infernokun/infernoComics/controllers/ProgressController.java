@@ -75,58 +75,60 @@ public class ProgressController {
     }
 
     @PostMapping("/processed-file")
-    public ResponseEntity<Map<String, String>> receiveProcessedFile(@RequestBody Map<String, String> processedFile) {
-        String sessionId = processedFile.get("session_id");
+    public ResponseEntity<Map<String, String>> receiveProcessedFile(
+            @RequestBody Map<String, String> processedFile) {
+
+        String sessionId        = processedFile.get("session_id");
         String originalFileName = processedFile.get("original_file_name");
         String processedFileHash = processedFile.get("file_hash");
-        String storedFileName = processedFile.get("stored_file_name");
+        String storedFileName   = processedFile.get("stored_file_name");
 
-        // Debug logging
-        log.error("=== DEBUG INFO ===");
-        log.error("Received sessionId: '" + sessionId + "'");
-        log.error("Received originalFileName: '" + originalFileName + "'");
-        log.error("Session ID length: " + (sessionId != null ? sessionId.length() : "null"));
-        log.error("Original filename length: " + (originalFileName != null ? originalFileName.length() : "null"));
-
-        // Try different queries to debug
-        Optional<ProcessedFile> bySessionOnly = processedFileRepository.findBySessionId(sessionId);
-        log.error("Found by session ID only: " + bySessionOnly.isPresent());
-
-        if (bySessionOnly.isPresent()) {
-            ProcessedFile pf = bySessionOnly.get();
-            log.error("DB fileName: '" + pf.getFileName() + "'");
-            log.error("DB sessionId: '" + pf.getSessionId() + "'");
-            log.error("Status: " + pf.getProcessingStatus());
-            log.error("Filename equals: " + Objects.equals(pf.getFileName(), originalFileName));
-            log.error("SessionId equals: " + Objects.equals(pf.getSessionId(), sessionId));
+        // 1️⃣ Validate mandatory fields
+        if (sessionId == null || originalFileName == null) {
+            log.warn("Missing mandatory fields: sessionId={}, originalFileName={}",
+                    sessionId, originalFileName);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "status", "error",
+                            "message", "Missing session_id or original_file_name"
+                    ));
         }
 
-        // Now try the original query
-        Optional<ProcessedFile> processedFileOptional = processedFileRepository
-                .findBySessionIdAndFileName(sessionId, originalFileName);
+        // 2️⃣ Try‑catch to surface any unexpected runtime exception
+        try {
+            Optional<ProcessedFile> processedFileOptional =
+                    processedFileRepository.findBySessionIdAndFileName(sessionId, originalFileName);
 
-        log.error("Found by sessionId AND fileName: " + processedFileOptional.isPresent());
+            Map<String, String> response = new HashMap<>();
+            if (processedFileOptional.isPresent()) {
+                ProcessedFile processedFileEntity = processedFileOptional.get();
 
-        Map<String, String> response = new HashMap<>();
+                // 3️⃣ Update with the processed file information
+                processedFileEntity.setFileEtag(processedFileHash);
+                processedFileEntity.setFileName(storedFileName);
+                processedFileEntity.setProcessingStatus(ProcessedFile.ProcessingStatus.COMPLETE);
+                processedFileEntity.setProcessedAt(LocalDateTime.now());
 
-        if (processedFileOptional.isPresent()) {
-            ProcessedFile processedFileEntity = processedFileOptional.get();
+                processedFileRepository.save(processedFileEntity);
 
-            // Update with the processed file information
-            processedFileEntity.setFileEtag(processedFileHash);
-            processedFileEntity.setFileName(storedFileName);
-            processedFileEntity.setProcessingStatus(ProcessedFile.ProcessingStatus.COMPLETE);
-            processedFileEntity.setProcessedAt(LocalDateTime.now());
-
-            processedFileRepository.save(processedFileEntity);
-
-            response.put("status", "success");
-            response.put("message", "Processed file info updated successfully");
-            return ResponseEntity.ok(response);
-        } else {
-            response.put("status", "error");
-            response.put("message", "ProcessedFile not found for session: " + sessionId + " and filename: " + originalFileName);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                response.put("status", "success");
+                response.put("message", "Processed file info updated successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("status", "error");
+                response.put("message",
+                        "ProcessedFile not found for session: " + sessionId +
+                                " and filename: " + originalFileName);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+        } catch (Exception e) {
+            // 3️⃣ Log the exception and return 500 with a friendly message
+            log.error("Unexpected error while processing file", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "status", "error",
+                            "message", "Internal server error"
+                    ));
         }
     }
 

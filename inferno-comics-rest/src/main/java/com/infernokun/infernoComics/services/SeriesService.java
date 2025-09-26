@@ -838,7 +838,6 @@ public class SeriesService {
 
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
 
-
             // Add all images with indexed names
             for (int i = 0; i < imageDataList.size(); i++) {
                 SeriesController.ImageData imageData = imageDataList.get(i);
@@ -856,11 +855,11 @@ public class SeriesService {
                 if (processedFileOptional.isEmpty()) {
                     filesToRecord.add(ProcessedFile.builder()
                             .seriesId(seriesEntity.getId())
-                            .filePath(null)
+                            .filePath(imageData.filePath())
                             .fileName(imageData.originalFilename())
-                            .fileLastModified(null)
+                            .fileLastModified(imageData.lastModified())
                             .fileSize(imageData.fileSize())
-                            .fileEtag(fileEtag)
+                            .fileEtag(imageData.fileEtag())
                             .sessionId(sessionId)
                             .processingStatus(ProcessedFile.ProcessingStatus.PROCESSING)
                             .processedAt(LocalDateTime.now())

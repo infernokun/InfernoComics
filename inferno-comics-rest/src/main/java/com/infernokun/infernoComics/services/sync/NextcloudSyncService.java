@@ -88,7 +88,7 @@ public class NextcloudSyncService {
             SeriesSyncStatus syncStatus = getOrCreateSyncStatus(series.getId(), folderPath, imageFiles);
 
             // Check if processing is needed
-            if (!shouldProcessFolder(syncStatus, currentFolderInfo, imageFiles.size())) {
+            if (!shouldProcessFolder(syncStatus, currentFolderInfo, imageFiles)) {
                 log.info("Skipping series {} - no changes detected", series.getId());
                 return ProcessingResult.noNewFiles();
             }
@@ -147,42 +147,37 @@ public class NextcloudSyncService {
 
     private boolean shouldProcessFolder(SeriesSyncStatus syncStatus,
                                         NextcloudFolderInfo currentFolderInfo,
-                                        int currentImageCount) {
+                                        List<NextcloudFile> imageFiles) {
 
-        // First time processing
-        if (syncStatus.getId() == null) {
+        /* First‑time processing (no ID yet). */
+        if (syncStatus == null || syncStatus.getId() == null) {
             log.info("First time processing folder - will process");
             return true;
         }
 
-        // Check if folder etag changed (folder was modified)
+        /* Folder E‑Tag changed. */
         if (!Objects.equals(syncStatus.getLastFolderEtag(), currentFolderInfo.getEtag())) {
             log.info("Folder etag changed: {} -> {}",
                     syncStatus.getLastFolderEtag(), currentFolderInfo.getEtag());
             return true;
         }
 
-        // Check if image count changed
-        if (!Objects.equals(syncStatus.getTotalFilesCount(), currentImageCount)) {
+        /* Image count changed. */
+        if (!Objects.equals(syncStatus.getTotalFilesCount(), imageFiles.size())) {
             log.info("Image count changed: {} -> {}",
-                    syncStatus.getTotalFilesCount(), currentImageCount);
+                    syncStatus.getTotalFilesCount(), imageFiles.size());
             return true;
         }
-
         return false;
     }
 
     private boolean shouldProcessFile(long seriesId, NextcloudFile file) {
-        String filePath = file.getPath();
-
-        // Check if file was modified since last processing
         Optional<ProcessedFile> existingRecord = processedFileRepository
-                .findBySeriesIdAndFilePath(seriesId, filePath);
+                .findBySeriesIdAndFilePath(seriesId, file.getName());
 
         return existingRecord.isEmpty();
     }
 
-    @Transactional
     private ProcessingResult processNewFiles(Long seriesId,
                                              List<NextcloudFile> newFiles,
                                              int totalFiles,
@@ -194,44 +189,15 @@ public class NextcloudSyncService {
         String sessionId = UUID.randomUUID().toString();
 
         int successCount = 0;
-        int failCount = 0;
 
         for (NextcloudFile file : newFiles) {
             try {
                 byte[] imageBytes = nextcloudService.downloadFile(file.getPath());
                 imageDataList.add(new SeriesController.ImageData(
-                        imageBytes, file.getName(), file.getContentType(), imageBytes.length
+                        imageBytes, file.getName(), file.getContentType(),
+                        file.getSize(), file.getLastModified(), file.getPath(),
+                        createEtag(imageBytes)
                 ));
-
-                String fileEtag = createEtag(imageBytes);
-
-                Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileName(file.getName());
-
-                if (processedFileOptional.isEmpty()) {
-                    filesToRecord.add(ProcessedFile.builder()
-                            .seriesId(seriesId)
-                            .filePath(file.getPath())
-                            .fileName(file.getName())
-                            .fileLastModified(file.getLastModified())
-                            .fileSize(file.getSize())
-                            .fileEtag(fileEtag)
-                            .sessionId(sessionId)
-                            .processingStatus(ProcessedFile.ProcessingStatus.PROCESSING)
-                            .processedAt(LocalDateTime.now())
-                            .build());
-                } else {
-                    ProcessedFile processedFile = processedFileOptional.get();
-                    processedFile.setSeriesId(seriesId);
-                    processedFile.setFilePath(file.getPath());
-                    processedFile.setFileName(file.getName());
-                    processedFile.setFileLastModified(file.getLastModified());
-                    processedFile.setFileSize(file.getSize());
-                    processedFile.setFileEtag(fileEtag);
-                    processedFile.setSessionId(sessionId);
-                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.PROCESSING);
-                    processedFile.setProcessedAt(LocalDateTime.now());
-                }
-                successCount++;
 
             } catch (Exception e) {
                 log.error("Failed to download image {}: {}", file.getName(), e.getMessage());
@@ -249,7 +215,7 @@ public class NextcloudSyncService {
                         .errorMessage(e.getMessage())
                         .build());
 
-                failCount++;
+                weirdService.saveProcessedFiles(filesToRecord);
             }
         }
 
@@ -267,24 +233,9 @@ public class NextcloudSyncService {
             } catch (Exception e) {
                 log.error("Failed to start image processing for series {}: {}", seriesId, e.getMessage());
 
-                // Mark all files as failed if processing couldn't start
-                filesToRecord.forEach(file -> {
-                    if (file.getProcessingStatus() == ProcessedFile.ProcessingStatus.COMPLETE) {
-                        file.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED);
-                        file.setErrorMessage("Failed to start processing: " + e.getMessage());
-                    }
-                });
-
                 updateSyncStatusOnError(seriesId, syncStatus.getFolderPath(), e.getMessage());
                 return ProcessingResult.error(e.getMessage());
             }
-        }
-
-        // Save all processed file records
-        try {
-            weirdService.saveProcessedFiles(filesToRecord);
-        } catch (Exception e) {
-            log.error("Failed to save processed file records: {}", e.getMessage());
         }
 
         // Update sync status
