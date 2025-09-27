@@ -30,16 +30,9 @@ public class SeriesSyncStatus {
     @Column(name = "last_sync_timestamp")
     private LocalDateTime lastSyncTimestamp;
 
-    @Column(name = "last_folder_etag")
-    private String lastFolderEtag;
-
     @Builder.Default
     @Column(name = "total_files_count")
     private Integer totalFilesCount = 0;
-
-    @Builder.Default
-    @Column(name = "processed_files_count")
-    private Integer processedFilesCount = 0;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

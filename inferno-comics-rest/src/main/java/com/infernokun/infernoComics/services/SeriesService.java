@@ -851,31 +851,19 @@ public class SeriesService {
                 String fileEtag = createEtag(imageData.bytes());
 
                 Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileName(imageData.originalFilename());
+                processedFileOptional.ifPresent(weirdService::deleteProcessedFile);
 
-                if (processedFileOptional.isEmpty()) {
-                    filesToRecord.add(ProcessedFile.builder()
-                            .seriesId(seriesEntity.getId())
-                            .filePath(imageData.filePath())
-                            .fileName(imageData.originalFilename())
-                            .fileLastModified(imageData.lastModified())
-                            .fileSize(imageData.fileSize())
-                            .fileEtag(imageData.fileEtag())
-                            .sessionId(sessionId)
-                            .processingStatus(ProcessedFile.ProcessingStatus.PROCESSING)
-                            .processedAt(LocalDateTime.now())
-                            .build());
-                } else {
-                    ProcessedFile processedFile = processedFileOptional.get();
-                    processedFile.setSeriesId(seriesEntity.getId());
-                    processedFile.setFilePath(null);
-                    processedFile.setFileName(imageData.originalFilename());
-                    processedFile.setFileLastModified(null);
-                    processedFile.setFileSize(imageData.fileSize());
-                    processedFile.setFileEtag(fileEtag);
-                    processedFile.setSessionId(sessionId);
-                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.PROCESSING);
-                    processedFile.setProcessedAt(LocalDateTime.now());
-                }
+                filesToRecord.add(ProcessedFile.builder()
+                        .seriesId(seriesEntity.getId())
+                        .filePath(imageData.filePath())
+                        .fileName(imageData.originalFilename())
+                        .fileLastModified(imageData.lastModified())
+                        .fileSize(imageData.fileSize())
+                        .fileEtag(fileEtag)
+                        .sessionId(sessionId)
+                        .processingStatus(ProcessedFile.ProcessingStatus.PROCESSING)
+                        .processedAt(LocalDateTime.now())
+                        .build());
             }
 
             weirdService.saveProcessedFiles(filesToRecord);
@@ -899,7 +887,6 @@ public class SeriesService {
             builder.part("urls_scraped", "true");
 
             long startTime = System.currentTimeMillis();
-
             String response = webClient.post()
                     .uri("/image-matcher-multiple")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -923,7 +910,9 @@ public class SeriesService {
             return root;
 
         } catch (Exception e) {
-            log.error("❌ Failed to send images to matcher service (session: {}): {}", sessionId, e.getMessage(), e);
+            log.error("❌ Failed to send images to matcher service (session: {}): {}", sessionId, e.getMessage());
+            filesToRecord.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED));
+            weirdService.saveProcessedFiles(filesToRecord);
             return null;
         }
     }

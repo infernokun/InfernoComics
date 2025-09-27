@@ -3,6 +3,7 @@ import { Component, OnInit, OnDestroy, HostListener, ElementRef, ChangeDetectorR
 import { BehaviorSubject, interval, Subscription } from 'rxjs';
 import { SeriesService } from '../../../services/series.service';
 import { ProgressData, ProgressState } from '../../../models/progress-data.model';
+import { trigger, transition, style, animate } from '@angular/animations';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -16,6 +17,15 @@ export interface ProcessingStatus {
   templateUrl: 'sync-status-icon.component.html',
   styleUrls: ['sync-status-icon.component.scss'],
   animations: [
+    trigger('slideIn', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(-10px)' }),
+        animate('200ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
+      ]),
+      transition(':leave', [
+        animate('150ms ease-in', style({ opacity: 0, transform: 'translateY(-10px)' }))
+      ])
+    ])
   ],
   standalone: false
 })
@@ -46,7 +56,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.status$.subscribe(status => this.currentStatus = status);
-    this.startPolling();
+    //this.startPolling();
   }
 
   ngOnDestroy() {
@@ -257,11 +267,31 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     if (item.totalItems && item.processedItems !== undefined) {
       info.push(`${item.processedItems}/${item.totalItems} items`);
     }
-    
-    if (item.successfulItems !== undefined && item.failedItems !== undefined) {
-      info.push(`${item.successfulItems} successful, ${item.failedItems} failed`);
-    }
-    
+
+    info.push(item.timeStarted ? `Started: ${item.timeStarted
+      .toLocaleString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      }
+    )}` : 'Not started');
+
+    info.push(item.timeFinished ? `Finished: ${item.timeFinished
+      .toLocaleString('en-US', {
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true 
+      }
+    )}` : 'Not finished');
+
     return info.join(' • ');
   }
 

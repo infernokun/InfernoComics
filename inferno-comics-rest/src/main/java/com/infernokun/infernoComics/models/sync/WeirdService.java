@@ -18,4 +18,9 @@ public class WeirdService {
     public void saveProcessedFiles(List<ProcessedFile> filesToRecord) {
         processedFileRepository.saveAll(filesToRecord);
     }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void deleteProcessedFile(ProcessedFile file) {
+        processedFileRepository.delete(file);
+    }
 }

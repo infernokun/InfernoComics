@@ -7,6 +7,7 @@ import com.infernokun.infernoComics.models.sync.NextcloudFolderInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
@@ -64,8 +65,7 @@ public class NextcloudService {
 
     public NextcloudFolderInfo getFolderInfo(String folderPath) {
         folderPath = infernoComicsConfig.getNextcloudFolderLocation() + folderPath;
-        String path = "/remote.php/dav/files/" + infernoComicsConfig.getNextcloudUsername() + folderPath + "/";
-        String fullUrl = infernoComicsConfig.getNextcloudUrl() + path;
+        String path = "/remote.php/dav/files/" + infernoComicsConfig.getNextcloudUsername() + folderPath;
 
         try {
             log.info("Starting PROPFIND request...");
@@ -82,8 +82,21 @@ public class NextcloudService {
 
             log.info("PROPFIND response received successfully, length: {}", response != null ? response.length() : 0);
             return parseWebDavResponse(response, folderPath);
+
         } catch (WebClientResponseException e) {
-            throw new NextcloudFolderNotFound("Nextcloud folder: " + folderPath + " not found!");
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                log.info("Folder not found, attempting to create: {}", folderPath);
+
+                // Try to create the folder and retry
+                if (createFolderRecursively(folderPath)) {
+                    log.info("Folder created successfully, retrying PROPFIND...");
+                    return retryGetFolderInfo(folderPath, path);
+                } else {
+                    throw new NextcloudFolderNotFound("Failed to create Nextcloud folder: " + folderPath);
+                }
+            } else {
+                throw new NextcloudFolderNotFound("Nextcloud folder access failed: " + folderPath + " - " + e.getMessage());
+            }
         } catch (Exception e) {
             log.error("PROPFIND request failed for path: {} - Error: {}", folderPath, e.getMessage());
             throw new RuntimeException("Failed to access Nextcloud folder: " + folderPath, e);
@@ -214,7 +227,6 @@ public class NextcloudService {
         return files;
     }
 
-
     private static class WebDavNamespaceContext implements NamespaceContext {
         @Override
         public String getNamespaceURI(String prefix) {
@@ -230,5 +242,96 @@ public class NextcloudService {
         public String getPrefix(String uri) { return null; }
         @Override
         public Iterator<String> getPrefixes(String uri) { return null; }
+    }
+
+    private NextcloudFolderInfo retryGetFolderInfo(String folderPath, String path) {
+        try {
+            String response = webClient
+                    .method(HttpMethod.valueOf("PROPFIND"))
+                    .uri(path)
+                    .header("Depth", "1")
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE + "; charset=utf-8")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(30))
+                    .block();
+
+            log.info("Retry PROPFIND response received successfully, length: {}", response != null ? response.length() : 0);
+            return parseWebDavResponse(response, folderPath);
+        } catch (Exception e) {
+            log.error("Retry PROPFIND request failed for path: {} - Error: {}", folderPath, e.getMessage());
+            throw new RuntimeException("Failed to access newly created Nextcloud folder: " + folderPath, e);
+        }
+    }
+
+    private boolean createFolderRecursively(String folderPath) {
+        try {
+            // Split the path into segments and create each folder level
+            String[] pathSegments = folderPath.split("/");
+            StringBuilder currentPath = new StringBuilder();
+
+            for (String segment : pathSegments) {
+                if (segment.isEmpty()) continue;
+
+                currentPath.append("/").append(segment);
+                String fullPath = "/remote.php/dav/files/" + infernoComicsConfig.getNextcloudUsername() + currentPath;
+
+                // Check if this path segment already exists
+                if (!folderExists(fullPath)) {
+                    log.info("Creating folder segment: {}", currentPath.toString());
+                    createSingleFolder(fullPath);
+                }
+            }
+
+            return true;
+        } catch (Exception e) {
+            log.error("Failed to create folder recursively: {} - Error: {}", folderPath, e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean folderExists(String path) {
+        try {
+            webClient
+                    .method(HttpMethod.valueOf("PROPFIND"))
+                    .uri(path + "/")
+                    .header("Depth", "0")
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_XML_VALUE + "; charset=utf-8")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+            return true;
+        } catch (WebClientResponseException e) {
+            return e.getStatusCode() != HttpStatus.NOT_FOUND;
+        } catch (Exception e) {
+            log.debug("Error checking folder existence: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private void createSingleFolder(String path) {
+        try {
+            webClient
+                    .method(HttpMethod.valueOf("MKCOL"))
+                    .uri(path + "/")
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(30))
+                    .block();
+
+            log.info("Successfully created folder: {}", path);
+        } catch (WebClientResponseException e) {
+            if (e.getStatusCode() == HttpStatus.METHOD_NOT_ALLOWED) {
+                // Folder might already exist
+                log.debug("Folder might already exist: {}", path);
+            } else {
+                log.error("Failed to create folder: {} - Status: {}", path, e.getStatusCode());
+                throw e;
+            }
+        } catch (Exception e) {
+            log.error("Failed to create folder: {} - Error: {}", path, e.getMessage());
+            throw new RuntimeException("Failed to create folder: " + path, e);
+        }
     }
 }
