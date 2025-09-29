@@ -27,7 +27,7 @@
     "@angular/platform-browser": "^19.2.13",
     "@angular/platform-browser-dynamic": "^19.2.13",
     "@angular/router": "^19.2.13",
-    "@ngrx/store": "19.2.0",
+    "@ngrx/store": "19.2.1",
     "ag-grid-angular": "^33.3.0",
     "ag-grid-community": "^33.3.0",
     "crypto-js": "4.2.0",
