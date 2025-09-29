@@ -14,7 +14,7 @@ build-rest:
   script:
     - cd inferno-comics-rest
     - npm run docker:build
-    - echo "BUILT_REST=true" >> build.env
+    - echo "BUILT_REST=true" >> ../build.env
   artifacts:
     reports:
       dotenv: build.env
@@ -35,7 +35,7 @@ build-recog:
   script:
     - cd inferno-comics-recog
     - npm run docker:build
-    - echo "BUILT_RECOG=true" >> build.env
+    - echo "BUILT_RECOG=true" >> ../build.env
   artifacts:
     reports:
       dotenv: build.env
@@ -59,7 +59,7 @@ build-web:
   script:
     - cd inferno-comics-web
     - npm run docker:build
-    - echo "BUILT_WEB=true" >> build.env
+    - echo "BUILT_WEB=true" >> ../build.env
   artifacts:
     reports:
       dotenv: build.env
