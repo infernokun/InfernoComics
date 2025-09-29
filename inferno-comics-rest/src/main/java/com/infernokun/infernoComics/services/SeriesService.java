@@ -703,6 +703,8 @@ public class SeriesService {
     @Async("imageProcessingExecutor")
     public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId, Long seriesId, List<SeriesController.ImageData> imageDataList, StartedBy startedBy, String name, int year) {
         log.info("🚀 Starting image processing session: {} for series '{}' with {} images", sessionId, name, imageDataList.size());
+        List<ProcessedFile> filesToRecord = new ArrayList<>();
+        JsonNode root;
 
         try {
             int timeoutSeconds = 20;
@@ -811,28 +813,6 @@ public class SeriesService {
                     String.format("Sending %d images with %d candidates to image matcher...",
                             imageDataList.size(), candidateCovers.size())));
 
-            JsonNode result = sendMultipleImagesToMatcherWithProgress(sessionId, imageDataList, candidateCovers, seriesEntity);
-
-            if (result == null) {
-                log.warn("⚠️ No result received from Python for session: {}", sessionId);
-                progressService.sendError(sessionId, "No results returned from Python image processing");
-            } else {
-                log.info("✅ Image processing completed for session: {}", sessionId);
-            }
-
-        } catch (Exception e) {
-            log.error("❌ Error in image processing for session {}: {}", sessionId, e.getMessage());
-            progressService.sendError(sessionId, "Error processing images: " + e.getMessage());
-        }
-
-        return CompletableFuture.completedFuture(null);
-    }
-
-    private JsonNode sendMultipleImagesToMatcherWithProgress(String sessionId, List<SeriesController.ImageData> imageDataList,
-                                                             List<GCDCover> candidateCovers, Series seriesEntity) {
-        List<ProcessedFile> filesToRecord = new ArrayList<>();
-
-        try {
             log.info("📤 Sending {} images with {} candidates to matcher service for session: {}",
                     imageDataList.size(), candidateCovers.size(), sessionId);
 
@@ -898,7 +878,7 @@ public class SeriesService {
             long duration = System.currentTimeMillis() - startTime;
             log.info("📥 Matcher response received in {}ms for session: {}", duration, sessionId);
 
-            JsonNode root = mapper.readTree(response);
+            root = mapper.readTree(response);
             JsonNode results = root.get("results");
 
             if (results != null && results.isArray()) {
@@ -907,14 +887,17 @@ public class SeriesService {
                 log.warn("⚠️ No results found in matcher response (session: {})", sessionId);
             }
 
-            return root;
+
+            log.info("✅ Image processing completed for session: {}", sessionId);
 
         } catch (Exception e) {
-            log.error("❌ Failed to send images to matcher service (session: {}): {}", sessionId, e.getMessage());
+            log.error("❌ Error in image processing for session {}: {}", sessionId, e.getMessage());
             filesToRecord.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED));
             weirdService.saveProcessedFiles(filesToRecord);
-            return null;
+            progressService.sendError(sessionId, "Error processing images: " + e.getMessage());
         }
+
+        return CompletableFuture.completedFuture(null);
     }
 
     // Base request interface
