@@ -50,6 +50,9 @@ public class SeriesSyncStatus {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "session_id")
+    private String sessionId;
+
     public enum SyncStatus {
         PENDING, IN_PROGRESS, COMPLETED, FAILED, EMPTY
     }

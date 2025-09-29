@@ -24,39 +24,6 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(WrongPasswordException.class)
-    public ResponseEntity<ApiResponse<String>> handleWrongPasswordException(WrongPasswordException ex) {
-        ApiResponse<String> response = ApiResponse.<String>builder()
-                .code(HttpStatus.UNAUTHORIZED.value())
-                .message("WrongPasswordException: " + ex.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
-    }
-
-    @ExceptionHandler(AuthFailedException.class)
-    public ResponseEntity<ApiResponse<Boolean>> handleAuthFailedException(AuthFailedException ex) {
-        ApiResponse<Boolean> response = ApiResponse.<Boolean>builder()
-                .code(HttpStatus.UNAUTHORIZED.value())
-                .message("AuthFailedException: " + ex.getMessage())
-                .data(false)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(response);
-    }
-
-    @ExceptionHandler(TokenException.class)
-    public ResponseEntity<ApiResponse<Boolean>> handleTokenException(TokenException ex) {
-        ApiResponse<Boolean> response = ApiResponse.<Boolean>builder()
-                .code(HttpStatus.BAD_REQUEST.value())
-                .message("TokenException: " + ex.getMessage())
-                .data(false)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-    }
-
     @ExceptionHandler(CryptoException.class)
     public ResponseEntity<ApiResponse<Boolean>> handleTokenException(CryptoException ex) {
         ApiResponse<Boolean> response = ApiResponse.<Boolean>builder()

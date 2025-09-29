@@ -33,19 +33,21 @@ public class IssueService {
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
     private final CacheManager cacheManager;
+    private final ProgressService progressService;
 
     public IssueService(IssueRepository issueRepository,
                         SeriesRepository seriesRepository,
                         ComicVineService comicVineService,
                         DescriptionGeneratorService descriptionGeneratorService,
                         GCDatabaseService gcDatabaseService,
-                        CacheManager cacheManager) {
+                        CacheManager cacheManager, ProgressService progressService) {
         this.issueRepository = issueRepository;
         this.seriesRepository = seriesRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
         this.cacheManager = cacheManager;
+        this.progressService = progressService;
     }
 
     public List<Issue> getAllIssues() {
@@ -201,7 +203,14 @@ public class IssueService {
             return new ArrayList<>();
         }
 
-        Long seriesId = requests.get(0).getSeriesId();
+        Long seriesId = requests.getFirst().getSeriesId();
+
+        // Validate series exists once
+        Optional<Series> series = seriesRepository.findById(seriesId);
+        if (series.isEmpty()) {
+            throw new IllegalArgumentException("Series with ID " + seriesId + " not found");
+        }
+
         log.info("Creating {} issues in bulk for series {}", requests.size(), seriesId);
 
         // Validate all requests have same series ID
@@ -210,12 +219,6 @@ public class IssueService {
 
         if (!sameSeries) {
             throw new IllegalArgumentException("All issues must belong to the same series");
-        }
-
-        // Validate series exists once
-        Optional<Series> series = seriesRepository.findById(seriesId);
-        if (series.isEmpty()) {
-            throw new IllegalArgumentException("Series with ID " + seriesId + " not found");
         }
 
         List<Issue> createdIssues = new ArrayList<>();
@@ -227,7 +230,6 @@ public class IssueService {
                 createdIssues.add(issue);
             } catch (Exception e) {
                 log.error("Failed to create issue #{}: {}", request.getIssueNumber(), e.getMessage());
-                // Continue with other issues instead of failing the entire batch
             }
         }
 
@@ -372,6 +374,18 @@ public class IssueService {
         Issue issue = new Issue();
         mapRequestToIssue(request, issue);
         issue.setSeries(series);
+
+        Optional<Issue> existingIssueOpt = issueRepository.findByUploadedImageUrl(issue.getUploadedImageUrl());
+
+        if (existingIssueOpt.isPresent()) {
+            String[] existingImgUrl = existingIssueOpt.get().getUploadedImageUrl().split("/");
+            String[] issueImgUrl = issue.getUploadedImageUrl().split("/");
+            if (Objects.equals(progressService.getSessionImageHash(existingImgUrl[0], existingImgUrl[1]),
+                    progressService.getSessionImageHash(issueImgUrl[0], issueImgUrl[1]))) {
+                issue.setId(existingIssueOpt.get().getId());
+            }
+            issue.setId(existingIssueOpt.get().getId());
+        }
 
         // Generate description if not provided
         if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {

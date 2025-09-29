@@ -855,7 +855,7 @@ public class SeriesService {
 
                 filesToRecord.add(ProcessedFile.builder()
                         .seriesId(seriesEntity.getId())
-                        .filePath(imageData.filePath())
+                        .filePath(imageData.filePath() != null ? imageData.filePath() : imageData.originalFilename())
                         .fileName(imageData.originalFilename())
                         .fileLastModified(imageData.lastModified())
                         .fileSize(imageData.fileSize())

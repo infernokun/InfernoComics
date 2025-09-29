@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
-import com.infernokun.infernoComics.controllers.ProgressController;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.StartedBy;
@@ -138,7 +137,7 @@ public class ProgressService {
         return emitter;
     }
 
-    public ProgressData initializeSession(String sessionId, Long seriesId, StartedBy startedBy) {
+    public void initializeSession(String sessionId, Long seriesId, StartedBy startedBy) {
         log.info("Initializing processing session: {}", sessionId);
 
         SSEProgressData initialStatus = SSEProgressData.builder()
@@ -160,7 +159,7 @@ public class ProgressService {
         progressData.setSeriesId(seriesId);
         progressData.setStartedBy(startedBy);
 
-        return progressDataRepository.save(progressData);
+        progressDataRepository.save(progressData);
     }
 
     public void updateProgress(ProgressUpdateRequest request) {

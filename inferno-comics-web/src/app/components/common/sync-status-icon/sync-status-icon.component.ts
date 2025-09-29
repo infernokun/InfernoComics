@@ -56,7 +56,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.status$.subscribe(status => this.currentStatus = status);
-    //this.startPolling();
+    this.startPolling();
   }
 
   ngOnDestroy() {

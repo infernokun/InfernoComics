@@ -10,6 +10,7 @@ import com.infernokun.infernoComics.services.ProgressService;
 import com.infernokun.infernoComics.services.SeriesService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -65,7 +66,7 @@ public class NextcloudSyncService {
             if (filteredImageFiles.isEmpty()) {
                 log.info("Skipping series {} - filtered files is empty", series.getId());
                 updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.EMPTY,
-                        0);
+                        0, null);
                 return ProcessingResult.noNewFiles();
             }
 
@@ -74,7 +75,7 @@ public class NextcloudSyncService {
 
             // Update status to IN_PROGRESS
             updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.IN_PROGRESS,
-                    imageFiles.size());
+                    imageFiles.size(), null);
 
             return processNewFiles(series.getId(), filteredImageFiles, imageFiles.size(), syncStatus, currentFolderInfo);
 
@@ -86,6 +87,15 @@ public class NextcloudSyncService {
     }
 
     private SeriesSyncStatus getOrCreateSyncStatus(Long seriesId, String folderPath, List<NextcloudFile> imageFiles) {
+        return SeriesSyncStatus.builder()
+                        .seriesId(seriesId)
+                        .folderPath(folderPath)
+                        .totalFilesCount(imageFiles.size())
+                        .syncStatus(SeriesSyncStatus.SyncStatus.PENDING)
+                        .build();
+    }
+
+    /*private SeriesSyncStatus getOrCreateSyncStatus(Long seriesId, String folderPath, List<NextcloudFile> imageFiles) {
         return syncStatusRepository.findFirstBySeriesIdAndFolderPathOrderByLastSyncTimestampDesc(
                 seriesId, folderPath)
                 .orElse(SeriesSyncStatus.builder()
@@ -94,7 +104,7 @@ public class NextcloudSyncService {
                         .totalFilesCount(imageFiles.size())
                         .syncStatus(SeriesSyncStatus.SyncStatus.PENDING)
                         .build());
-    }
+    }*/
 
     private List<NextcloudFile> getNewFiles(List<NextcloudFile> files, SeriesSyncStatus syncStatus) {
         if (files == null || files.isEmpty() || syncStatus == null) {
@@ -102,10 +112,6 @@ public class NextcloudSyncService {
         }
 
         LocalDateTime reference = syncStatus.getLastSyncTimestamp();
-
-        if (reference == null) {
-            return files;
-        }
 
         return files.stream()
                 .filter(file -> shouldProcessFile(syncStatus.getSeriesId(), file))
@@ -133,22 +139,21 @@ public class NextcloudSyncService {
 
     private boolean shouldProcessFile(long seriesId, NextcloudFile file) {
         return processedFileRepository
-                .findBySeriesIdAndFilePath(seriesId, file.getName())
+                .findBySeriesIdAndFilePath(seriesId, file.getPath())
                 .map(existingRecord -> {
-                    boolean shouldReprocess = existingRecord.getProcessingStatus() == ProcessedFile.ProcessingStatus.FAILED
-                            || existingRecord.getProcessingStatus() == ProcessedFile.ProcessingStatus.PROCESSING;
+                    boolean shouldReprocess = existingRecord.getProcessingStatus() != ProcessedFile.ProcessingStatus.COMPLETE;
 
                     if (shouldReprocess) {
-                        log.info("File {} will be reprocessed due to previous failure, deleting old record", file.getName());
+                        log.info("File {} will be reprocessed due to previous failure, deleting old record", file.getPath());
                         weirdService.deleteProcessedFile(existingRecord);
                     } else {
-                        log.info("File {} already processed successfully, skipping", file.getName());
+                        log.info("File {} already processed successfully, skipping", file.getPath());
                     }
 
                     return shouldReprocess;
                 })
                 .orElseGet(() -> {
-                    log.info("File {} not found in processed records, will process", file.getName());
+                    log.info("File {} not found in processed records, will process", file.getPath());
                     return true;
                 });
     }
@@ -221,15 +226,16 @@ public class NextcloudSyncService {
             }
         }
 
-        updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.COMPLETED, totalFiles);
+        updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.COMPLETED, totalFiles, sessionId);
 
         return ProcessingResult.success(totalFiles, newFiles.size(), successCount, sessionId);
     }
 
     private void updateSyncStatus(SeriesSyncStatus syncStatus,
                                   SeriesSyncStatus.SyncStatus status,
-                                  Integer totalFiles) {
+                                  Integer totalFiles, String sessionId) {
         syncStatus.setSyncStatus(status);
+        syncStatus.setSessionId(sessionId);
 
         if (syncStatus.getSyncStatus() == SeriesSyncStatus.SyncStatus.COMPLETED) {
             syncStatus.setLastSyncTimestamp(LocalDateTime.now());
@@ -253,6 +259,12 @@ public class NextcloudSyncService {
             syncStatus.setErrorMessage(errorMessage);
             syncStatusRepository.save(syncStatus);
         }
+    }
+
+    @Scheduled(cron = "0 0 2 * * *")
+    public void runSeriesProcessingScheduler() {
+        List<Series> allSeries = seriesService.getAllSeries();
+        allSeries.forEach(this::processSeries);
     }
 
     // Manual sync endpoint
