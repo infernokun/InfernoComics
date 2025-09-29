@@ -25,7 +25,6 @@ build-rest:
       changes:
         - inferno-comics-rest/**/*
         - docker-compose.yml
-  allow_failure: true
 
 build-recog:
   stage: build
@@ -47,7 +46,6 @@ build-recog:
       changes:
         - inferno-comics-recog/**/*
         - docker-compose.yml
-  allow_failure: true
 
 build-web:
   stage: build
@@ -72,7 +70,6 @@ build-web:
       changes:
         - inferno-comics-web/**/*
         - docker-compose.yml
-  allow_failure: true
 
 deploy:
   stage: deploy
