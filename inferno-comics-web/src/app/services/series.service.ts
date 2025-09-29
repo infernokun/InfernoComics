@@ -39,6 +39,18 @@ export class SeriesService {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
+  getSeriesFolderStructure(): Observable<any[]> {
+    return this.http.get<any>(`${this.apiUrl}/folder`);
+  }
+
+  syncSeries(id: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/startSync/${id}`, {});
+  }
+
+  syncAllSeries(): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/startSync`, {});
+  }
+
   createSeries(series: any): Observable<any> {
     return this.http.post<any>(this.apiUrl, series);
   }
@@ -240,6 +252,12 @@ export class SeriesService {
   getProgressData(seriesId: number) {
     return this.http.get<any[]>(
       `${this.progressUrl}/data/${seriesId}`
+    );
+  }
+
+  getRelProgressData() {
+        return this.http.get<any[]>(
+      `${this.progressUrl}/data/rel`
     );
   }
 

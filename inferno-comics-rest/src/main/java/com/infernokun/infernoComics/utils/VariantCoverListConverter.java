@@ -10,9 +10,10 @@ import jakarta.persistence.Converter;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.infernokun.infernoComics.utils.InfernoComicsUtils.objectMapper;
+
 @Converter
 public class VariantCoverListConverter implements AttributeConverter<List<Issue.VariantCover>, String> {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public String convertToDatabaseColumn(List<Issue.VariantCover> variantCovers) {

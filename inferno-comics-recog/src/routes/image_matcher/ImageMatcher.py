@@ -5,6 +5,8 @@ import time
 import json
 import uuid
 import queue
+import base64
+import hashlib
 import traceback
 import threading
 import numpy as np
@@ -28,6 +30,7 @@ image_matcher_bp = Blueprint('imager-matcher', __name__)
 
 # Thread pool for async processing
 executor = ThreadPoolExecutor(max_workers=3)
+processing_semaphore = threading.Semaphore(1)
 
 @image_matcher_bp.route('/image-matcher', methods=['POST'])
 def image_matcher_operation():
@@ -419,9 +422,15 @@ def get_image_matcher_data(session_id):
 def image_matcher_multiple_operation():
     """Enhanced multiple images matching API that handles batch processing with centralized progress reporting"""
     
-    logger.debug(" Received multiple images matcher request")
+    logger.debug("Received multiple images matcher request")
     
-    # Check for multiple image files in request
+    # 1. FIRST: Get session_id and validate
+    session_id = request.form.get('session_id')
+    if not session_id:
+        logger.warning("⚠️ Missing session_id in multiple images request")
+        return jsonify({'error': 'session_id is required for multiple images processing'}), 400
+    
+    # 2. SECOND: Process uploaded files (all the fast operations)
     uploaded_files = []
     
     # Handle both indexed format (images[0], images[1], etc.) and regular format
@@ -440,14 +449,6 @@ def image_matcher_multiple_operation():
     if not uploaded_files:
         logger.warning("⚠️ No image files in multiple images request")
         return jsonify({'error': 'No image files found in request'}), 400
-    
-    logger.info(f" Processing {len(uploaded_files)} images in batch request")
-    
-    # Get session_id (required for multiple images)
-    session_id = request.form.get('session_id')
-    if not session_id:
-        logger.warning("⚠️ Missing session_id in multiple images request")
-        return jsonify({'error': 'session_id is required for multiple images processing'}), 400
     
     # Process all uploaded images
     query_images_data = []
@@ -475,18 +476,15 @@ def image_matcher_multiple_operation():
                 'index': i
             })
             
-            logger.debug(f"️ Successfully decoded image {i+1}/{len(uploaded_files)}: {file.filename} - {query_image.shape}")
+            logger.debug(f"Successfully decoded image {i+1}/{len(uploaded_files)}: {file.filename} - {query_image.shape}")
             
         except Exception as e:
             logger.error(f"❌ Failed to process uploaded image {i+1} ({file.filename}): {e}")
-            # Continue with other images instead of failing completely
             continue
     
     if not query_images_data:
         logger.error("❌ No valid images could be processed")
         return jsonify({'error': 'No valid images could be processed'}), 400
-    
-    logger.info(f"✅ Successfully processed {len(query_images_data)} out of {len(uploaded_files)} uploaded images")
     
     # Parse candidate covers
     try:
@@ -498,31 +496,46 @@ def image_matcher_multiple_operation():
         if not isinstance(candidate_covers, list):
             raise ValueError("candidate_covers must be a list")
         
-        logger.info(f" Received {len(candidate_covers)} candidate covers for {len(query_images_data)} images")
+        logger.info(f"Received {len(candidate_covers)} candidate covers for {len(query_images_data)} images")
             
     except Exception as e:
         traceback.print_exc()
-        logger.error(f"❌ Invalid candidate covers in multiple images request: {e}")
+        logger.error(f"❌ Invalid candidate covers: {e}")
         return jsonify({'error': f'Invalid candidate covers: {str(e)}'}), 400
     
-    # Process with centralized progress reporting to Java
-    logger.info(f" Processing CENTRALIZED multiple images progress request for session: {session_id}")
-    
-    try:
-        # Get service and process with centralized progress reporting to Java AND save to JSON
-        service = get_service()
-        result = service.process_multiple_images_with_centralized_progress(session_id, query_images_data, candidate_covers)
-        
-        # Return result immediately - Java handles the SSE side
-        return jsonify(result)
-        
-    except Exception as e:
-        error_msg = f'Multiple images processing failed: {str(e)}'
-        logger.error(f"❌ Centralized multiple images processing failed: {error_msg}")
-        # Send error to Java
+    # 3. NOW: Check queue status and notify Java if waiting
+    available_slots = processing_semaphore._value
+    if available_slots == 0:
+        logger.info(f"⏳ Request {session_id} waiting in queue...")
         java_reporter = JavaProgressReporter(session_id)
-        java_reporter.send_error(error_msg)
-        return jsonify({'error': error_msg}), 500
+        java_reporter.update_progress('in_queue', 9, f'Processing {len(query_images_data)} uploaded images - waiting in queue...')
+    
+    # 4. FINALLY: Process with semaphore (may block here)
+    logger.info(f"Processing CENTRALIZED multiple images progress request for session: {session_id}")
+    
+    with processing_semaphore:
+        available_slots = processing_semaphore._value
+        logger.info(f"🚀 Processing request for session {session_id} (available slots: {available_slots})")
+        
+        # Send "processing started" update
+        java_reporter = JavaProgressReporter(session_id) 
+        java_reporter.update_progress('processing', 10, f'Started processing {len(query_images_data)} images...')
+        
+        try:
+            service = get_service()
+            result = service.process_multiple_images_with_centralized_progress(
+                session_id, query_images_data, candidate_covers
+            )
+            
+            return jsonify(result)
+            
+        except Exception as e:
+            error_msg = f'Multiple images processing failed: {str(e)}'
+            logger.error(f"❌ Centralized multiple images processing failed: {error_msg}")
+            
+            java_reporter = JavaProgressReporter(session_id)
+            java_reporter.send_error(error_msg)
+            return jsonify({'error': error_msg}), 500
 
 @image_matcher_bp.route('/stored_images/<session_id>/<filename>')
 def serve_stored_image(session_id, filename):
@@ -545,6 +558,38 @@ def serve_stored_image(session_id, filename):
     except Exception as e:
         logger.error(f"❌ Error serving stored image: {e}")
         abort(500)
+
+@image_matcher_bp.route('/stored_images/hash/<session_id>/<filename>')
+def get_stored_image_hash(session_id, filename):
+    """Return hash of stored image"""
+    try:
+        images_dir = ensure_images_directory()
+        image_path = os.path.join(images_dir, session_id, filename)
+        
+        if not os.path.exists(image_path):
+            logger.warning(f"🔍 Stored image not found: {image_path}")
+            abort(404)
+            
+        # Security check - ensure the path is within our images directory
+        if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
+            logger.warning(f"🔒 Security violation - path traversal attempt: {image_path}")
+            abort(403)
+        
+        return {"hash": generate_image_hash(image_path)}
+        
+    except Exception as e:
+        logger.error(f"❌ Error serving stored image hash: {e}")
+        abort(500)
+
+def generate_image_hash(image_path: str) -> str:
+    try:
+        with open(image_path, "rb") as f:
+            content = f.read()
+    except OSError as exc:
+        logger.error(f"❌ Unable to read image: {exc}")
+        return ""
+    
+    return hashlib.sha256(content).hexdigest()
 
 @image_matcher_bp.route('/image-matcher/admin/migrate', methods=['POST'])
 def admin_migrate():

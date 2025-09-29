@@ -25,4 +25,8 @@ public class InfernoComicsConfig {
     private boolean skipScrape;
     private String gcdUsername;
     private String gcdPassword;
+    private String nextcloudUrl;
+    private String nextcloudUsername;
+    private String nextcloudPassword;
+    private String nextcloudFolderLocation;
 }

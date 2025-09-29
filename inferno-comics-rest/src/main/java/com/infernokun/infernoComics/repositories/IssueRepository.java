@@ -52,4 +52,6 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     @Query("SELECT c FROM Issue c WHERE c.description IS NULL OR c.description = ''")
     List<Issue> findByDescriptionIsNullOrDescriptionEmpty();
+
+    Optional<Issue> findByUploadedImageUrl(String uploadedImageUrl);
 }

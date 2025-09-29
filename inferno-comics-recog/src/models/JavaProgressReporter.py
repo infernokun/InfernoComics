@@ -253,7 +253,7 @@ class JavaProgressReporter:
             }
             
             logger.info(f" Posting completion with results to Java for session {self.session_id}")
-            
+
             # Log result summary for debugging
             if isinstance(sanitized_result, dict):
                 if 'results' in sanitized_result:
@@ -295,6 +295,19 @@ class JavaProgressReporter:
         except Exception as e:
             logger.error(f"❌ CRITICAL: Error sending completion to Java for session {self.session_id}: {e}")
     
+    def send_processed_file_info(self, data):
+        response = requests.post(
+            f"{self.rest_api_url}/progress/processed-file",
+            json=data,
+            timeout=JAVA_REQUEST_TIMEOUT,
+            headers={'Content-Type': 'application/json'}
+        )
+
+        if response.status_code == 200:
+            logger.success(f"✅ Processed file info sent to Java for session {self.session_id} image: {data['stored_file_name']}")
+        else:
+            logger.error(f"❌ CRITICAL: Java processed file info notification failed: {response.status_code} - {response.text}")
+
     def _extract_final_stats_from_result(self, result):
         """Extract final statistics from the result for the completion payload"""
         stats = {}

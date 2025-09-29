@@ -3,6 +3,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
+import com.infernokun.infernoComics.models.sync.ProcessedFile;
+import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.ProgressService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
@@ -16,9 +18,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 
 @Slf4j
 @RestController
@@ -28,6 +29,7 @@ public class ProgressController {
 
     private final ProgressService progressService;
     private final InfernoComicsConfig infernoComicsConfig;
+    private final ProcessedFileRepository processedFileRepository;
 
     // health check endpoint for Python to verify Java service availability
     @GetMapping("/health")
@@ -72,6 +74,64 @@ public class ProgressController {
         }
     }
 
+    @PostMapping("/processed-file")
+    public ResponseEntity<Map<String, String>> receiveProcessedFile(
+            @RequestBody Map<String, String> processedFile) {
+
+        String sessionId        = processedFile.get("session_id");
+        String originalFileName = processedFile.get("original_file_name");
+        String processedFileHash = processedFile.get("file_hash");
+        String storedFileName   = processedFile.get("stored_file_name");
+
+        // 1️⃣ Validate mandatory fields
+        if (sessionId == null || originalFileName == null) {
+            log.warn("Missing mandatory fields: sessionId={}, originalFileName={}",
+                    sessionId, originalFileName);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "status", "error",
+                            "message", "Missing session_id or original_file_name"
+                    ));
+        }
+
+        // 2️⃣ Try‑catch to surface any unexpected runtime exception
+        try {
+            Optional<ProcessedFile> processedFileOptional =
+                    processedFileRepository.findBySessionIdAndFileName(sessionId, originalFileName);
+
+            Map<String, String> response = new HashMap<>();
+            if (processedFileOptional.isPresent()) {
+                ProcessedFile processedFileEntity = processedFileOptional.get();
+
+                // 3️⃣ Update with the processed file information
+                processedFileEntity.setFileEtag(processedFileHash);
+                processedFileEntity.setFileName(storedFileName);
+                processedFileEntity.setProcessingStatus(ProcessedFile.ProcessingStatus.COMPLETE);
+                processedFileEntity.setProcessedAt(LocalDateTime.now());
+
+                processedFileRepository.save(processedFileEntity);
+
+                response.put("status", "success");
+                response.put("message", "Processed file info updated successfully");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("status", "error");
+                response.put("message",
+                        "ProcessedFile not found for session: " + sessionId +
+                                " and filename: " + originalFileName);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+        } catch (Exception e) {
+            // 3️⃣ Log the exception and return 500 with a friendly message
+            log.error("Unexpected error while processing file", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "status", "error",
+                            "message", "Internal server error"
+                    ));
+        }
+    }
+
     // receive error notification from Python
     @PostMapping("/error")
     public ResponseEntity<Map<String, String>> receiveError(@RequestBody ErrorRequest request) {
@@ -108,18 +168,19 @@ public class ProgressController {
         return ResponseEntity.ok(progressService.getSessionsBySeriesId(seriesId));
     }
 
+    @GetMapping("/data/rel")
+    public ResponseEntity<List<ProgressData>> getSessionsByRelevance() {
+        return ResponseEntity.ok(progressService.getSessionsByRelevance());
+    }
+
     @GetMapping("json/{sessionId}")
     public ResponseEntity<JsonNode> getSessionJSON(@PathVariable String sessionId) {
         return ResponseEntity.ok(progressService.getSessionJSON(sessionId));
     }
 
     @GetMapping("/image/{sessionId}/{filename}")
-    public ResponseEntity<Resource> getStoredImage(
-            @PathVariable String sessionId,
-            @PathVariable String filename) {
-
+    public ResponseEntity<Resource> getStoredImage(@PathVariable String sessionId, @PathVariable String filename) {
         try {
-
             // Use WebClient to fetch the image
             Resource imageResource = progressService.getSessionImage(sessionId, filename);
 
@@ -134,6 +195,31 @@ public class ProgressController {
                     .contentType(mediaType)
                     .header(HttpHeaders.CACHE_CONTROL, "max-age=3600") // Cache for 1 hour
                     .body(imageResource);
+
+        } catch (Exception e) {
+            // Log the error
+            System.err.println("Error fetching stored image: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/image/hash/{sessionId}/{filename}")
+    public ResponseEntity<String> getStoredImageHash(@PathVariable String sessionId, @PathVariable String filename) {
+        try {
+            // Use WebClient to fetch the image
+            String hash = progressService.getSessionImageHash(sessionId, filename);
+
+            if (hash.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Determine content type based on file extension
+            MediaType mediaType = getMediaTypeFromFilename(hash);
+
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header(HttpHeaders.CACHE_CONTROL, "max-age=3600") // Cache for 1 hour
+                    .body(hash);
 
         } catch (Exception e) {
             // Log the error

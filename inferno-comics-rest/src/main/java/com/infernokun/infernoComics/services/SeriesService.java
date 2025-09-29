@@ -5,13 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.SeriesController;
-import com.infernokun.infernoComics.models.DescriptionGenerated;
-import com.infernokun.infernoComics.models.Issue;
-import com.infernokun.infernoComics.models.ProgressUpdateRequest;
-import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
+import com.infernokun.infernoComics.models.sync.ProcessedFile;
+import com.infernokun.infernoComics.models.sync.WeirdService;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
+import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -30,10 +30,13 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 
 @Slf4j
 @Service
@@ -47,9 +50,11 @@ public class SeriesService {
     private final ModelMapper modelMapper;
     private final ProgressService progressService;
     private final CacheManager cacheManager;
+    private final WeirdService weirdService;
 
     private final WebClient webClient;
 
+    private final ProcessedFileRepository processedFileRepository;
 
     public SeriesService(SeriesRepository seriesRepository, IssueService issueService,
                          ComicVineService comicVineService,
@@ -58,7 +63,7 @@ public class SeriesService {
                          ModelMapper modelMapper,
                          InfernoComicsConfig infernoComicsConfig,
                          ProgressService progressService,
-                         CacheManager cacheManager) {
+                         CacheManager cacheManager, WeirdService weirdService, ProcessedFileRepository processedFileRepository) {
         this.seriesRepository = seriesRepository;
         this.issueService = issueService;
         this.comicVineService = comicVineService;
@@ -75,6 +80,8 @@ public class SeriesService {
                                 .maxInMemorySize(500 * 1024 * 1024))
                         .build())
                 .build();
+        this.weirdService = weirdService;
+        this.processedFileRepository = processedFileRepository;
     }
 
     @CacheEvict(value = "series", key = "#seriesId")
@@ -694,7 +701,7 @@ public class SeriesService {
     }
 
     @Async("imageProcessingExecutor")
-    public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId, Long seriesId, List<SeriesController.ImageData> imageDataList, String name, int year) {
+    public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId, Long seriesId, List<SeriesController.ImageData> imageDataList, StartedBy startedBy, String name, int year) {
         log.info("🚀 Starting image processing session: {} for series '{}' with {} images", sessionId, name, imageDataList.size());
 
         try {
@@ -702,12 +709,14 @@ public class SeriesService {
             int intervalMs = 2000;
             int waited = 0;
 
-            while (!progressService.emitterIsPresent(sessionId)) {
-                if (waited >= timeoutSeconds * 1000) {
-                    throw new RuntimeException("Timeout: Emitter for sessionId " + sessionId + " not found after " + timeoutSeconds + " seconds.");
+            if (startedBy == StartedBy.MANUAL) {
+                while (!progressService.emitterIsPresent(sessionId)) {
+                    if (waited >= timeoutSeconds * 1000) {
+                        throw new RuntimeException("Timeout: Emitter for sessionId " + sessionId + " not found after " + timeoutSeconds + " seconds.");
+                    }
+                    Thread.sleep(intervalMs);
+                    waited += intervalMs;
                 }
-                Thread.sleep(intervalMs);
-                waited += intervalMs;
             }
 
             // Stage 1: Series validation
@@ -821,6 +830,8 @@ public class SeriesService {
 
     private JsonNode sendMultipleImagesToMatcherWithProgress(String sessionId, List<SeriesController.ImageData> imageDataList,
                                                              List<GCDCover> candidateCovers, Series seriesEntity) {
+        List<ProcessedFile> filesToRecord = new ArrayList<>();
+
         try {
             log.info("📤 Sending {} images with {} candidates to matcher service for session: {}",
                     imageDataList.size(), candidateCovers.size(), sessionId);
@@ -830,13 +841,32 @@ public class SeriesService {
             // Add all images with indexed names
             for (int i = 0; i < imageDataList.size(); i++) {
                 SeriesController.ImageData imageData = imageDataList.get(i);
-                builder.part("images[" + i + "]", new ByteArrayResource(imageData.getBytes()) {
+                builder.part("images[" + i + "]", new ByteArrayResource(imageData.bytes()) {
                     @Override
                     public String getFilename() {
-                        return imageData.getOriginalFilename();
+                        return imageData.originalFilename();
                     }
-                }).contentType(MediaType.valueOf(imageData.getContentType() != null ? imageData.getContentType() : "image/jpeg"));
+                }).contentType(MediaType.valueOf(imageData.contentType() != null ? imageData.contentType() : "image/jpeg"));
+
+                String fileEtag = createEtag(imageData.bytes());
+
+                Optional<ProcessedFile> processedFileOptional = processedFileRepository.findByFileName(imageData.originalFilename());
+                processedFileOptional.ifPresent(weirdService::deleteProcessedFile);
+
+                filesToRecord.add(ProcessedFile.builder()
+                        .seriesId(seriesEntity.getId())
+                        .filePath(imageData.filePath() != null ? imageData.filePath() : imageData.originalFilename())
+                        .fileName(imageData.originalFilename())
+                        .fileLastModified(imageData.lastModified())
+                        .fileSize(imageData.fileSize())
+                        .fileEtag(fileEtag)
+                        .sessionId(sessionId)
+                        .processingStatus(ProcessedFile.ProcessingStatus.PROCESSING)
+                        .processedAt(LocalDateTime.now())
+                        .build());
             }
+
+            weirdService.saveProcessedFiles(filesToRecord);
 
             // Convert GCDCover objects to JSON and send as candidate_covers
             ObjectMapper mapper = new ObjectMapper();
@@ -857,7 +887,6 @@ public class SeriesService {
             builder.part("urls_scraped", "true");
 
             long startTime = System.currentTimeMillis();
-
             String response = webClient.post()
                     .uri("/image-matcher-multiple")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
@@ -881,7 +910,9 @@ public class SeriesService {
             return root;
 
         } catch (Exception e) {
-            log.error("❌ Failed to send images to matcher service (session: {}): {}", sessionId, e.getMessage(), e);
+            log.error("❌ Failed to send images to matcher service (session: {}): {}", sessionId, e.getMessage());
+            filesToRecord.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED));
+            weirdService.saveProcessedFiles(filesToRecord);
             return null;
         }
     }

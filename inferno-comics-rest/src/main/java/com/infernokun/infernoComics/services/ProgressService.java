@@ -6,9 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
-import com.infernokun.infernoComics.controllers.ProgressController;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
+import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -137,7 +137,7 @@ public class ProgressService {
         return emitter;
     }
 
-    public ProgressData initializeSession(String sessionId, Long seriesId) {
+    public void initializeSession(String sessionId, Long seriesId, StartedBy startedBy) {
         log.info("Initializing processing session: {}", sessionId);
 
         SSEProgressData initialStatus = SSEProgressData.builder()
@@ -157,8 +157,9 @@ public class ProgressService {
         progressData.setSessionId(sessionId);
         progressData.setTimeStarted(LocalDateTime.now());
         progressData.setSeriesId(seriesId);
+        progressData.setStartedBy(startedBy);
 
-        return progressDataRepository.save(progressData);
+        progressDataRepository.save(progressData);
     }
 
     public void updateProgress(ProgressUpdateRequest request) {
@@ -589,6 +590,9 @@ public class ProgressService {
         return sessions;
     }
 
+    public List<ProgressData> getSessionsByRelevance() {
+        return progressDataRepository.findByStartedOrFinishedWithinLast24Hours(LocalDateTime.now().minusHours(24));
+    }
     private Integer getIntegerFromMap(Map<String, Object> map, String... keys) {
         for (String key : keys) {
             Object value = map.get(key);
@@ -698,6 +702,19 @@ public class ProgressService {
                 .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
                         Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
                 .bodyToMono(Resource.class)
+                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
+                .block();
+    }
+
+    public String getSessionImageHash(String sessionId, String fileName) {
+        return webClient.get()
+                .uri("/stored_images/hash/" + sessionId + "/" + fileName )
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                        Mono.error(new RuntimeException("Image not found: " + fileName)))
+                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                        Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
+                .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
                 .block();
     }

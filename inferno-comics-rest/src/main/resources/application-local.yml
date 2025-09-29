@@ -79,6 +79,10 @@ inferno-comics:
   skipScrape: false
   gcdUsername: "${GCD_USERNAME}"
   gcdPassword: "${GCD_PASSWORD}"
+  nextcloudUrl: "${NEXTCLOUD_URL:none}"
+  nextcloudUsername: "${NEXTCLOUD_USERNAME:none}"
+  nextcloudPassword: "${NEXTCLOUD_PASSWORD:none}"
+  nextcloudFolderLocation: "${NEXTCLOUD_FOLDER_LOCATION:none}"
 
 logging:
   level:
@@ -88,3 +92,8 @@ logging:
 rsa:
   private-key: ${RSA_PRIVATE_KEY_PATH:certs/private.pem}
   public-key: ${RSA_PUBLIC_KEY_PATH:certs/public.pem}
+
+sync:
+  max-concurrent: 1
+  retry-delay: 30000  # 30 seconds between retries
+  max-retries: 3
