@@ -70,20 +70,20 @@
           <div *ngFor="let item of getSortedItems(); let i = index" 
                class="processing-item" 
                [class]="getItemClass(item)">
-            
             <!-- Compact Item Header -->
             <div class="item-header">
+              <p style="color: black">{{i}}.</p>
               <div class="item-status">
                 <mat-icon class="status-icon" [class]="getStatusIconClass(item)">
                   {{ getStatusIcon(item) }}
                 </mat-icon>
                 <span class="status-text">{{ getStatusText(item) }}</span>
                 <div class="item-name" [title]="item.getDisplayName()">
-                    {{ item.getDisplayName() }}
-                  </div>
-                  <div class="item-name" [title]="item.startedBy">
-                    {{ item.startedBy }}
-                  </div>
+                  {{ item.series?.name }} ({{item.series?.id}})
+                </div>
+                <div class="item-name" [title]="item.startedBy">
+                  {{ item.startedBy }}
+                </div>
               </div>
               <div class="item-progress" *ngIf="item.percentageComplete !== undefined">
                 {{ item.percentageComplete }}%

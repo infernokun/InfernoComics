@@ -1,7 +1,9 @@
 package com.infernokun.infernoComics.models;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
@@ -42,9 +44,11 @@ public class ProgressData {
     @JsonSerialize(using = LocalDateTimeSerializer.class)
     private LocalDateTime timeFinished;
 
-    private Long seriesId;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "series_id", nullable = false)
+    @JsonManagedReference
+    private Series series;
 
-    // New fields for enhanced tracking
     private Integer percentageComplete;
 
     private String currentStage;
@@ -116,29 +120,14 @@ public class ProgressData {
         return Duration.between(lastUpdated, LocalDateTime.now()).toMinutes() > 5;
     }
 
+    @Getter
+    @AllArgsConstructor
     public enum State {
         PROCESSING("Processing"),
         COMPLETE("Completed"),
+        QUEUE("Queue"),
         ERROR("Error");
 
         private final String displayName;
-
-        State(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-    }
-
-    // Constructors
-    public ProgressData(String sessionId, Long seriesId, String processType) {
-        this.sessionId = sessionId;
-        this.seriesId = seriesId;
-        this.state = State.PROCESSING;
-        this.percentageComplete = 0;
-        this.timeStarted = LocalDateTime.now();
-        this.lastUpdated = LocalDateTime.now();
     }
 }

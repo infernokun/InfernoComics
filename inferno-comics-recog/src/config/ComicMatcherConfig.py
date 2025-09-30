@@ -145,11 +145,11 @@ class ComicMatcherConfig:
     def _load_config(self, config_path, create_default=True):
         """Load configuration from YAML file or use defaults"""
         if config_path and os.path.exists(config_path):
-            logger.info(f" Loading config from: {config_path}")
+            logger.info(f"Loading config from: {config_path}")
             with open(config_path, 'r') as f:
                 return yaml.safe_load(f)
         else:
-            logger.info(" Using default configuration")
+            logger.info("Using default configuration")
             default_config = yaml.safe_load(DEFAULT_CONFIG)
             
             # Save default config if path provided and create_default is True
@@ -165,16 +165,16 @@ class ComicMatcherConfig:
             config_dir = os.path.dirname(config_path)
             if config_dir and not os.path.exists(config_dir):
                 os.makedirs(config_dir, exist_ok=True)
-                logger.info(f" Created config directory: {config_dir}")
+                logger.info(f"Created config directory: {config_dir}")
             
             # Save the default config
             with open(config_path, 'w') as f:
                 yaml.dump(config_data, f, default_flow_style=False, indent=2)
-            logger.info(f" Created default config file: {config_path}")
-            logger.debug(f"✏️ You can edit this file to customize your settings")
+            logger.info(f"Created default config file: {config_path}")
+            logger.debug(f"You can edit this file to customize your settings")
             
         except Exception as e:
-            logger.error(f"⚠️ Could not save default config to {config_path}: {e}")
+            logger.error(f"Could not save default config to {config_path}: {e}")
     
     def _apply_performance_level(self):
         """Apply performance level preset, prioritizing environment variable"""
@@ -200,16 +200,16 @@ class ComicMatcherConfig:
                 self.config['feature_weights'] = preset['feature_weights'].copy()
                 
             if env_level:
-                logger.info(f"⚡ Applied '{level}' performance preset from environment variable")
+                logger.info(f"Applied '{level}' performance preset from environment variable")
             else:
-                logger.info(f"⚡ Applied '{level}' performance preset from config")
+                logger.info(f"Applied '{level}' performance preset from config")
                 
             # Show the weights being applied
             if 'feature_weights' in preset:
                 weights_str = ', '.join([f'{k}:{v*100:.0f}%' for k, v in preset['feature_weights'].items() if v > 0])
-                logger.info(f"⚖️ Feature weights: {weights_str}")
+                logger.info(f"Feature weights: {weights_str}")
         else:
-            logger.info(f" Using custom configuration (level: {level})")
+            logger.info(f"Using custom configuration (level: {level})")
            
     def get(self, key, default=None):
         """Get configuration value"""
@@ -229,7 +229,7 @@ class ComicMatcherConfig:
             
             with open(save_path, 'w') as f:
                 yaml.dump(self.config, f, default_flow_style=False, indent=2)
-            logger.info(f" Configuration saved to: {save_path}")
+            logger.info(f"Configuration saved to: {save_path}")
             
         except Exception as e:
             logger.error(f"❌ Failed to save configuration: {e}")
@@ -250,7 +250,7 @@ class ComicMatcherConfig:
         }
         
         self.config['presets'][preset_name] = preset
-        logger.info(f"✨ Created custom preset: {preset_name}")
+        logger.info(f"Created custom preset: {preset_name}")
         return preset
     
     def get_simularity_threshold(self):

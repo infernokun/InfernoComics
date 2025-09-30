@@ -4,6 +4,7 @@ import { Observable, Subject } from 'rxjs';
 import { EnvironmentService } from './environment.service';
 import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
 import { Series } from '../models/series.model';
+import { ProgressData } from '../models/progress-data.model';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -255,10 +256,8 @@ export class SeriesService {
     );
   }
 
-  getRelProgressData() {
-        return this.http.get<any[]>(
-      `${this.progressUrl}/data/rel`
-    );
+  getRelProgressData(): Observable<ProgressData[]> {
+    return this.http.get<ProgressData[]>(`${this.progressUrl}/data/rel`);
   }
 
   getSessionJSON(sessionId: string) {

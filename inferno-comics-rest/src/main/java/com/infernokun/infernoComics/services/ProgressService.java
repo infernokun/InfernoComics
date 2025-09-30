@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
+import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import lombok.AllArgsConstructor;
@@ -40,12 +41,12 @@ import java.util.stream.Collectors;
 @Service
 public class ProgressService {
 
+    private final ProgressDataRepository progressDataRepository;
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
-    private final ProgressDataRepository progressDataRepository;
     private final WebClient webClient;
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -137,7 +138,7 @@ public class ProgressService {
         return emitter;
     }
 
-    public void initializeSession(String sessionId, Long seriesId, StartedBy startedBy) {
+    public void initializeSession(String sessionId, Series series, StartedBy startedBy) {
         log.info("Initializing processing session: {}", sessionId);
 
         SSEProgressData initialStatus = SSEProgressData.builder()
@@ -156,7 +157,7 @@ public class ProgressService {
         progressData.setState(ProgressData.State.PROCESSING);
         progressData.setSessionId(sessionId);
         progressData.setTimeStarted(LocalDateTime.now());
-        progressData.setSeriesId(seriesId);
+        progressData.setSeries(series);
         progressData.setStartedBy(startedBy);
 
         progressDataRepository.save(progressData);
@@ -561,6 +562,12 @@ public class ProgressService {
     public List<ProgressData> getSessionsBySeriesId(Long seriesId) {
         List<ProgressData> sessions = progressDataRepository.findBySeriesId(seriesId);
 
+        getLatestDataFromRedis(sessions);
+
+        return sessions;
+    }
+
+    public void getLatestDataFromRedis(List<ProgressData> sessions) {
         sessions.forEach(progressData -> {
             if (progressData.getState() == ProgressData.State.PROCESSING) {
                 try {
@@ -586,12 +593,14 @@ public class ProgressService {
                 }
             }
         });
-
-        return sessions;
     }
 
     public List<ProgressData> getSessionsByRelevance() {
-        return progressDataRepository.findByStartedOrFinishedWithinLast24Hours(LocalDateTime.now().minusHours(24));
+        List<ProgressData> sessions = progressDataRepository.findByStartedOrFinishedWithinLast24Hours(LocalDateTime.now().minusHours(24));
+
+        getLatestDataFromRedis(sessions);
+
+        return sessions;
     }
     private Integer getIntegerFromMap(Map<String, Object> map, String... keys) {
         for (String key : keys) {

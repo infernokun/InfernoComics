@@ -11,6 +11,7 @@ import {
   ComicMatchDialogData,
 } from '../comic-match-selection/comic-match-selection.component';
 import { ComicMatch } from '../../../models/comic-match.model';
+import { HoverPreviewComponent } from './image-hover-preview/image-hover-preview.component';
 
 export interface ProcessedImageResult {
   imageIndex: number;
@@ -41,7 +42,7 @@ export interface BulkSelectionDialogData {
   selector: 'app-bulk-comic-selection',
   templateUrl: './bulk-comic-selection.component.html',
   styleUrls: ['./bulk-comic-selection.component.scss'],
-  imports: [CommonModule, MaterialModule],
+  imports: [CommonModule, MaterialModule, HoverPreviewComponent],
 })
 export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   processedResults: ProcessedImageResult[] = [];

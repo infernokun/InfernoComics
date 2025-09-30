@@ -4,12 +4,10 @@ import json
 import traceback
 import threading
 from util.Logger import get_logger
-from datetime import datetime, timedelta
+from datetime import datetime
 from models.JavaProgressReporter import JavaProgressReporter
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
-from util.ImageUtils import image_to_base64
 from util.FileOperations import (
-    save_image_matcher_result, 
     sanitize_for_json, 
     copy_external_image_to_storage, 
     ensure_results_directory, 

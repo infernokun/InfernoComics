@@ -231,7 +231,7 @@ public class ProgressController {
     @GetMapping("/evaluation/{sessionId}")
     public ResponseEntity<?> getEvaluationUrl(@PathVariable String sessionId, HttpServletRequest request) {
         String host = request.getServerName() + ":" + infernoComicsConfig.getRecognitionServerPort();
-        String url = "http://" + host + "/inferno-comics-recognition/api/v1/evaluation/" + sessionId;
+        String url = host + "/inferno-comics-recognition/api/v1/evaluation/" + sessionId;
 
         Map<String, String> response = new HashMap<>();
         response.put("evaluationUrl", url);

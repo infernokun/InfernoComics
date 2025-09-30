@@ -490,7 +490,6 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
     return false;
   }
 
-  // FIXED: Added proper error handling
   async openEvaluationUrl() {
     if (!this.params?.value) {
       console.error('No session ID available');
@@ -509,13 +508,19 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
       }
 
       const currentHost = window.location.hostname;
-      const evaluationUrl = response.evaluationUrl.replace('localhost', currentHost);
+      const evaluationPortUrl = response.evaluationUrl.replace('localhost', currentHost);
+      const evaluationNginxUrl = response.evaluationUrl.replace('localhost:5000', window.location.origin);
 
-      console.log('Opening evaluation URL:', evaluationUrl);
-      window.open(evaluationUrl, '_blank', 'noopener,noreferrer');
+      // running w/ ports
+      if (window.location.origin.split(":")[1]) {
+        window.open(evaluationPortUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        window.open(evaluationNginxUrl, '_blank', 'noopener,noreferrer')
+      }
+
+      console.log('Opening evaluation URL:', 'port', evaluationPortUrl, 'nginx', evaluationNginxUrl);
     } catch (error) {
       console.error('Error fetching evaluation URL:', error);
-      // Could show user notification here
     }
   }
 }

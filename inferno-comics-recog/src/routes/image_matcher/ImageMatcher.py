@@ -508,7 +508,7 @@ def image_matcher_multiple_operation():
     if available_slots == 0:
         logger.info(f"⏳ Request {session_id} waiting in queue...")
         java_reporter = JavaProgressReporter(session_id)
-        java_reporter.update_progress('in_queue', 9, f'Processing {len(query_images_data)} uploaded images - waiting in queue...')
+        java_reporter.update_progress('queue', 9, f'Processing {len(query_images_data)} uploaded images - waiting in queue...')
     
     # 4. FINALLY: Process with semaphore (may block here)
     logger.info(f"Processing CENTRALIZED multiple images progress request for session: {session_id}")
@@ -519,7 +519,7 @@ def image_matcher_multiple_operation():
         
         # Send "processing started" update
         java_reporter = JavaProgressReporter(session_id) 
-        java_reporter.update_progress('processing', 10, f'Started processing {len(query_images_data)} images...')
+        java_reporter.update_progress('processing_data', 10, f'Started processing {len(query_images_data)} images...')
         
         try:
             service = get_service()

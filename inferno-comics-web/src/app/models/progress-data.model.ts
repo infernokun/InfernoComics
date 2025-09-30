@@ -1,3 +1,5 @@
+import { Series } from "./series.model";
+
 export enum ProgressState {
   PROCESSING = 'PROCESSING',
   COMPLETE = 'COMPLETE',
@@ -15,7 +17,7 @@ export class ProgressData {
   sessionId?: string;
   timeStarted?: Date;
   timeFinished?: Date;
-  seriesId?: number;
+  series?: Series;
   percentageComplete?: number;
   currentStage?: string;
   statusMessage?: string;
@@ -34,8 +36,8 @@ export class ProgressData {
       this.sessionId = data.sessionId;
       this.timeStarted = data.timeStarted ? this.parseDateTime(data.timeStarted) : undefined;
       this.timeFinished = data.timeFinished ? this.parseDateTime(data.timeFinished) : undefined;
-      this.seriesId = data.seriesId;
-      this.percentageComplete = data.percentageComplete;
+      this.series = new Series(data.series);
+      this.percentageComplete = data.percentageComplete ?? 0;
       this.currentStage = data.currentStage;
       this.statusMessage = data.statusMessage;
       this.errorMessage = data.errorMessage;
@@ -195,7 +197,7 @@ export class ProgressData {
       return this.statusMessage;
     }
     
-    return `Processing Series ${this.seriesId || 'Unknown'}`;
+    return `Processing Series ${this.series?.id || 'Unknown'}`;
   }
 
   /**

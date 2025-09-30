@@ -159,9 +159,11 @@
           <!-- Original Image Column -->
           <div class="col-image">
             <div class="image-preview">
-              <img [src]="result.imagePreview" 
-                   [alt]="result.imageName" 
-                   (error)="onImageError($event)" />
+              <image-hover-preview [src]="result.imagePreview" [alt]="result.imageName" [matchSrc]="result.bestMatch?.url!" [matchAlt]="result.bestMatch?.comic_name!">
+                <img [src]="result.imagePreview" 
+                    [alt]="result.imageName" 
+                    (error)="onImageError($event)" />
+                </image-hover-preview>
             </div>
             <div class="image-details">
               <div class="image-name">{{ result.imageName }}</div>
@@ -173,9 +175,11 @@
           <div class="col-match">
             <div class="match-content" *ngIf="result.bestMatch; else noMatchTemplate">
               <div class="match-image">
-                <img [src]="result.bestMatch.url" 
-                     [alt]="result.bestMatch.comic_name" 
-                     (error)="onImageError($event)" />
+                <image-hover-preview [src]="result.imagePreview" [alt]="result.imageName" [matchSrc]="result.bestMatch.url" [matchAlt]="result.bestMatch.comic_name">
+                  <img [src]="result.bestMatch.url" 
+                      [alt]="result.bestMatch.comic_name" 
+                      (error)="onImageError($event)" />
+                  </image-hover-preview>
               </div>
               <div class="match-details">
                 <div class="comic-title">{{ result.bestMatch.comic_name }}</div>

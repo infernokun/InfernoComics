@@ -311,7 +311,7 @@ public class SeriesController {
             log.info("Starting image processing session {} for series {}: {} images ({} MB total)",
                     sessionId, seriesId, imageDataList.size(), totalBytes / (1024 * 1024));
 
-            progressService.initializeSession(sessionId, seriesId, StartedBy.MANUAL);
+            progressService.initializeSession(sessionId, seriesService.getSeriesById(seriesId), StartedBy.MANUAL);
 
             // Start async processing with image data list
             seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, StartedBy.MANUAL, name, year);

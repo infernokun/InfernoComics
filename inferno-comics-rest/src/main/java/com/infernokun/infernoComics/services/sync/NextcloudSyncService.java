@@ -231,7 +231,7 @@ public class NextcloudSyncService {
         // Process images if any were successfully downloaded
         if (!imageDataList.isEmpty()) {
             try {
-                progressService.initializeSession(sessionId, seriesId, StartedBy.AUTOMATIC);
+                progressService.initializeSession(sessionId, seriesService.getSeriesById(seriesId), StartedBy.AUTOMATIC);
 
                 seriesService.startMultipleImagesProcessingWithProgress(
                         sessionId, seriesId, imageDataList, StartedBy.AUTOMATIC, null, 0);
