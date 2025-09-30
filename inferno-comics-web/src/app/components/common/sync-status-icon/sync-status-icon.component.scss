@@ -3,7 +3,6 @@
   display: inline-block;
 }
 
-/* Button Styles */
 .processing-idle {
   color: inherit;
   opacity: 0.6;
@@ -37,13 +36,12 @@
   z-index: 10;
 }
 
-/* Overlay Styles - Positioned directly under the icon, aligned left */
 .processing-overlay {
   position: absolute;
   top: 100%;
   left: 0;
   margin-top: 8px;
-  width: 600px;
+  width: 650px;
   max-width: calc(100vw - 16px);
   background: white;
   border-radius: 8px;
@@ -53,7 +51,6 @@
   overflow: hidden;
 }
 
-/* Responsive positioning */
 @media (max-width: 480px) {
   .processing-overlay {
     width: calc(100vw - 16px);
@@ -62,7 +59,6 @@
   }
 }
 
-/* Header */
 .overlay-header {
   padding: 16px 20px;
   background: #f5f5f5;
@@ -105,7 +101,6 @@
   color: #666;
 }
 
-/* Content */
 .overlay-content {
   max-height: 400px;
   overflow-y: auto;
@@ -129,7 +124,6 @@
   font-size: 14px;
 }
 
-/* Items - More Compact Layout with Smooth Transitions */
 .items-container {
   padding: 4px 0;
 }
@@ -169,17 +163,20 @@
   border-left: 3px solid #f44336;
 }
 
-/* Smooth transitions for content changes */
-.item-name, .item-progress, .item-details, .progress-container {
-  transition: all 0.2s ease;
-}
-
-/* Compact Item Header */
 .item-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 6px;
+}
+
+.item-index {
+  font-size: 11px;
+  color: #999;
+  font-weight: 600;
+  margin-right: 4px;
+  flex-shrink: 0;
+  min-width: 18px;
 }
 
 .item-status {
@@ -220,35 +217,74 @@
   text-transform: uppercase;
   letter-spacing: 0.3px;
   flex-shrink: 0;
-  color: #000;
+  color: #666;
 }
 
-.item-progress {
-  font-size: 11px;
-  font-weight: 500;
-  color: #2196f3;
-  padding: 2px 6px;
-  background: #e3f2fd;
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-
-/* Compact Item Name - Now inline with status */
 .item-name {
   font-size: 13px;
-  font-weight: 400;
+  font-weight: 500;
   color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
   min-width: 0;
-  margin-left: 4px;
 }
 
-/* Compact Progress Bar */
+.item-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 22px;
+  font-size: 11px;
+  color: #666;
+  flex-wrap: wrap;
+}
+
+.item-series {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+  color: #555;
+}
+
+.series-id {
+  color: #999;
+  font-size: 10px;
+}
+
+.item-user {
+  flex-shrink: 0;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #888;
+  
+  &::before {
+    content: '👤 ';
+    opacity: 0.6;
+  }
+}
+
+.item-progress {
+  font-size: 11px;
+  font-weight: 600;
+  color: #2196f3;
+  padding: 2px 8px;
+  background: #e3f2fd;
+  border-radius: 10px;
+  flex-shrink: 0;
+  min-width: 45px;
+  text-align: center;
+}
+
 .progress-container {
   margin-bottom: 6px;
+  padding-left: 22px;
 }
 
 .progress-bar {
@@ -256,11 +292,11 @@
   border-radius: 2px;
 }
 
-/* Compact Item Details - All in one line */
 .item-details {
   font-size: 11px;
   color: #666;
-  line-height: 1.3;
+  line-height: 1.4;
+  padding-left: 22px;
 }
 
 .duration {
@@ -284,9 +320,12 @@
   border-radius: 3px;
   margin-top: 4px;
   display: block;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
-/* Skeleton Loading Styles */
 .skeleton-container {
   padding: 4px 0;
 }
@@ -302,8 +341,8 @@
 
 .skeleton-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 6px;
 }
 
@@ -320,6 +359,7 @@
   border-radius: 50%;
   background: #f0f0f0;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
 }
 
 .skeleton-text {
@@ -333,21 +373,28 @@
   height: 12px;
 }
 
-.skeleton-progress-percent {
-  width: 30px;
-  height: 16px;
-  background: #f0f0f0;
-  border-radius: 8px;
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
-}
-
 .skeleton-name {
   width: 70%;
   height: 13px;
   background: #f0f0f0;
   border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  flex: 1;
+}
+
+.skeleton-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-left: 22px;
   margin-bottom: 6px;
-  margin-left: 22px;
+}
+
+.skeleton-progress-percent {
+  width: 45px;
+  height: 20px;
+  background: #f0f0f0;
+  border-radius: 10px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -357,6 +404,7 @@
   background: #f0f0f0;
   border-radius: 2px;
   margin-bottom: 6px;
+  margin-left: 22px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -364,10 +412,11 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  padding-left: 22px;
 }
 
 .skeleton-time {
-  width: 80px;
+  width: 120px;
   height: 11px;
   background: #f0f0f0;
   border-radius: 4px;
@@ -394,7 +443,6 @@
   }
 }
 
-/* Show More */
 .show-more {
   padding: 12px 20px;
   border-top: 1px solid #f0f0f0;
@@ -406,7 +454,6 @@
   color: #2196f3;
 }
 
-/* Animations */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }

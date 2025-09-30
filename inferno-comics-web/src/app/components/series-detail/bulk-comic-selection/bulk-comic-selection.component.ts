@@ -11,7 +11,7 @@ import {
   ComicMatchDialogData,
 } from '../comic-match-selection/comic-match-selection.component';
 import { ComicMatch } from '../../../models/comic-match.model';
-import { HoverPreviewComponent } from './image-hover-preview/image-hover-preview.component';
+import { HoverPreviewComponent } from '../../common/image-hover-preview/image-hover-preview.component';
 
 export interface ProcessedImageResult {
   imageIndex: number;

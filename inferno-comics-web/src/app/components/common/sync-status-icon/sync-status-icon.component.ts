@@ -268,39 +268,49 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
       info.push(`${item.processedItems}/${item.totalItems} items`);
     }
 
-    info.push(item.timeStarted ? `Started: ${item.timeStarted
-      .toLocaleString('en-US', {
-        month: 'numeric',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      }
-    )}` : 'Not started');
+    if (item.timeStarted) {
+      info.push(`Started: ${this.formatDateTime(item.timeStarted)}`);
+    }
 
-    info.push(item.timeFinished ? `Finished: ${item.timeFinished
-      .toLocaleString('en-US', {
-        month: 'numeric',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true 
-      }
-    )}` : 'Not finished');
+    if (item.timeFinished) {
+      info.push(`Finished: ${this.formatDateTime(item.timeFinished)}`);
+    }
 
     return info.join(' • ');
+  }
+
+  // New helper methods for series and user display
+  getSeriesDisplay(item: ProgressData): string {
+    return item.series?.name || 'Unknown Series';
+  }
+
+  getSeriesId(item: ProgressData): string | number {
+    return item.series?.id ?? '—';
+  }
+
+  getUserDisplay(item: ProgressData): string {
+    return item.startedBy || 'System';
+  }
+
+  getSeriesInfo(item: ProgressData): string {
+    if (!item.series) return 'Unknown Series';
+    return `${item.series.name} (ID: ${item.series.id})`;
+  }
+
+  private formatDateTime(date: Date): string {
+    return date.toLocaleString('en-US', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
   }
 
   toggleOverlay(event: Event) {
     event.stopPropagation();
     this.showOverlay = !this.showOverlay;
-
-    if (this.showOverlay) {
-      setTimeout(() => this.cdr.detectChanges(), 0);
-    }
   }
 }
