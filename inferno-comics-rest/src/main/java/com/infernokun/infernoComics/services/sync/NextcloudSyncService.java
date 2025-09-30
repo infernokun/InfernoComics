@@ -15,6 +15,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
@@ -170,38 +173,56 @@ public class NextcloudSyncService {
 
         int successCount = 0;
 
+        ExecutorService executor = Executors.newFixedThreadPool(
+                Runtime.getRuntime().availableProcessors()
+        );
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+
         for (NextcloudFile file : newFiles) {
-            try {
-                byte[] imageBytes = nextcloudService.downloadFile(file.getPath());
-                imageDataList.add(new SeriesController.ImageData(
-                        imageBytes, file.getName(), file.getContentType(),
-                        file.getSize(), file.getLastModified(), file.getPath(),
-                        createEtag(imageBytes)
-                ));
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    byte[] imageBytes = nextcloudService.downloadFile(file.getPath());
 
-            } catch (Exception e) {
-                log.error("Failed to download image {}: {}", file.getName(), e.getMessage());
+                    // Thread-safe add
+                    synchronized (imageDataList) {
+                        imageDataList.add(new SeriesController.ImageData(
+                                imageBytes, file.getName(), file.getContentType(),
+                                file.getSize(), file.getLastModified(), file.getPath(),
+                                createEtag(imageBytes)
+                        ));
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to download image {}: {}", file.getName(), e.getMessage());
 
-                // Find existing record or create new one
-                ProcessedFile processedFile = processedFileRepository
-                        .findBySeriesIdAndFilePath(seriesId, file.getPath())
-                        .orElse(ProcessedFile.builder()
-                                .seriesId(seriesId)
-                                .filePath(file.getPath())
-                                .fileName(file.getName())
-                                .sessionId(sessionId)
-                                .build());
+                    ProcessedFile processedFile = processedFileRepository
+                            .findBySeriesIdAndFilePath(seriesId, file.getPath())
+                            .orElse(ProcessedFile.builder()
+                                    .seriesId(seriesId)
+                                    .filePath(file.getPath())
+                                    .fileName(file.getName())
+                                    .sessionId(sessionId)
+                                    .build());
 
-                // Update the record with new failure info
-                processedFile.setFileEtag(file.getEtag());
-                processedFile.setFileSize(file.getSize());
-                processedFile.setFileLastModified(file.getLastModified());
-                processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED);
-                processedFile.setErrorMessage(e.getMessage());
+                    processedFile.setFileEtag(file.getEtag());
+                    processedFile.setFileSize(file.getSize());
+                    processedFile.setFileLastModified(file.getLastModified());
+                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED);
+                    processedFile.setErrorMessage(e.getMessage());
 
-                filesToRecord.add(processedFile);
-            }
+                    synchronized (filesToRecord) {
+                        filesToRecord.add(processedFile);
+                    }
+                }
+            }, executor);
+
+            futures.add(future);
         }
+
+        // Wait for all downloads to complete
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        executor.shutdown();
 
         if (!filesToRecord.isEmpty()) {
             weirdService.saveProcessedFiles(filesToRecord);
