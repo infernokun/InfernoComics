@@ -801,6 +801,10 @@ public class SeriesService {
 
                 log.info("Generated {} candidate covers for session: {}", candidateCovers.size(), sessionId);
 
+                if (candidateCovers.isEmpty()) {
+                    progressService.sendError(sessionId, "No valid candidate cover urls found!");
+                }
+
                 // Cache the covers and update cache
                 seriesEntity.setCachedCoverUrls(candidateCovers);
                 seriesRepository.save(seriesEntity);
