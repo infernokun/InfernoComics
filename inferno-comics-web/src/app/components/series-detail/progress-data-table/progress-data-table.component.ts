@@ -507,18 +507,23 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
         return;
       }
 
-      const currentHost = window.location.hostname;
-      const evaluationPortUrl = response.evaluationUrl.replace('localhost', currentHost);
-      const evaluationNginxUrl = response.evaluationUrl.replace('localhost:5000', window.location.origin);
-
-      // running w/ ports
-      if (window.location.origin.split(":")[1]) {
-        window.open(evaluationPortUrl, '_blank', 'noopener,noreferrer');
-      } else {
-        window.open(evaluationNginxUrl, '_blank', 'noopener,noreferrer')
+      const evaluationUrl = new URL(response.evaluationUrl);
+      
+      evaluationUrl.hostname = window.location.hostname;
+      
+      if (this.environmentService.settings?.production) {
+        if (window.location.port) {
+          evaluationUrl.port = window.location.port;
+        } else {
+          evaluationUrl.port = '';
+        }
       }
 
-      console.log('Opening evaluation URL:', 'port', evaluationPortUrl, 'nginx', evaluationNginxUrl);
+      const finalUrl = evaluationUrl.toString();
+      console.log('Opening evaluation URL:', finalUrl);
+      
+      window.open(finalUrl, '_blank', 'noopener,noreferrer');
+      
     } catch (error) {
       console.error('Error fetching evaluation URL:', error);
     }
