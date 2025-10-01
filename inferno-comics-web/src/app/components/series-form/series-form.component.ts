@@ -23,6 +23,7 @@ export class SeriesFormComponent implements OnInit {
   loading = false;
   comicVineResults: ComicVineSeries[] = [];
   searchingComicVine = false;
+  searchByComicVineId = false;
   
   // Custom search term for Comic Vine
   customSearchTerm = '';
@@ -189,8 +190,41 @@ export class SeriesFormComponent implements OnInit {
 
   searchComicVine(): void {
     const searchTerm = this.customSearchTerm || this.seriesForm.get('name')?.value;
-    if (searchTerm && searchTerm.length > 2) {
-      this.searchingComicVine = true;
+    if (!searchTerm || searchTerm.length < 3) {
+      this.snackBar.open('Please enter at least 3 characters to search', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.searchingComicVine = true;
+
+    // Search by ID if checkbox is checked
+    if (this.searchByComicVineId) {
+      this.comicVineService.getSeriesById(searchTerm).subscribe({
+        next: (result) => {
+          if (result) {
+            // Filter out if already associated
+            const currentIds = this.existingComicVineData.map(s => s.id);
+            if (currentIds.includes(result.id)) {
+              this.comicVineResults = [];
+              this.snackBar.open('This series is already associated', 'Close', { duration: 3000 });
+            } else {
+              this.comicVineResults = [result];
+            }
+          } else {
+            this.comicVineResults = [];
+            this.snackBar.open('No series found with that ID', 'Close', { duration: 3000 });
+          }
+          this.searchingComicVine = false;
+        },
+        error: (error) => {
+          console.error('Error fetching Comic Vine series by ID:', error);
+          this.snackBar.open('Error fetching series by ID', 'Close', { duration: 3000 });
+          this.comicVineResults = [];
+          this.searchingComicVine = false;
+        }
+      });
+    } else {
+      // Original text search logic
       this.seriesService.searchComicVineSeries(searchTerm).subscribe({
         next: (results) => {
           results = results.sort((a, b) => {
@@ -204,7 +238,6 @@ export class SeriesFormComponent implements OnInit {
             return 0; 
           });
 
-          // Filter out already associated series
           const currentIds = this.existingComicVineData.map(s => s.id);
           results = results.filter(r => !currentIds.includes(r.id));
 
@@ -216,8 +249,6 @@ export class SeriesFormComponent implements OnInit {
           this.searchingComicVine = false;
         }
       });
-    } else {
-      this.snackBar.open('Please enter at least 3 characters to search', 'Close', { duration: 3000 });
     }
   }
 

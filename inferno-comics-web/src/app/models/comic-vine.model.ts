@@ -9,7 +9,7 @@ export interface ComicVineSeries {
   comicVineIds?: string[];
   issueCount?: number;
   imageUrl?: string;
-  generatedDescription: boolean;
+  generatedDescription?: boolean;
 }
 
 export interface ComicVineIssue {

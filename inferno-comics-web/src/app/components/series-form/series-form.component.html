@@ -94,14 +94,20 @@
                     <!-- Custom search input -->
                     <div class="search-input-section">
                         <mat-form-field appearance="outline" class="search-input">
-                            <mat-label>Search Term</mat-label>
+                            <mat-label>{{ searchByComicVineId ? 'Comic Vine ID' : 'Search Term' }}</mat-label>
                             <input matInput 
-                                   [(ngModel)]="customSearchTerm" 
-                                   [ngModelOptions]="{standalone: true}"
-                                   (keyup.enter)="searchComicVine()">
-                            <mat-hint>Search Comic Vine for series to add</mat-hint>
+                                [(ngModel)]="customSearchTerm" 
+                                [ngModelOptions]="{standalone: true}"
+                                (keyup.enter)="searchComicVine()">
+                            <mat-hint>{{ searchByComicVineId ? 'Enter a Comic Vine series ID' : 'Search Comic Vine for series to add' }}</mat-hint>
                         </mat-form-field>
                         
+                        <mat-checkbox [(ngModel)]="searchByComicVineId" 
+                                    [ngModelOptions]="{standalone: true}"
+                                    class="search-mode-toggle">
+                            Search by Comic Vine ID
+                        </mat-checkbox>
+
                         <button type="button" 
                                 mat-stroked-button 
                                 color="primary" 
