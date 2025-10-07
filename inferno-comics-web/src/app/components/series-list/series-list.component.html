@@ -147,6 +147,9 @@
     </div>
   
     <!-- Series Display -->
+    <mat-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions"
+    (page)="onPageChange($event)" showFirstLastButtons>
+    </mat-paginator>
     <div *ngIf="!loading" class="series-container" [class.grid]="viewMode === 'grid'" [class.list]="viewMode === 'list'" [@fadeInUp]>
       <div *ngFor="let series of displaySeries; trackBy: trackBySeries" class="series-card" [@cardAnimation]>
         
@@ -233,6 +236,9 @@
         </div>
       </div>
     </div>
+    <mat-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions"
+        (page)="onPageChange($event)" showFirstLastButtons>
+    </mat-paginator>
   
     <!-- No Results State -->
     <div class="no-results" *ngIf="!loading && filteredSeries.length === 0 && (searchTerm || selectedPublisher || showCompletedOnly)">

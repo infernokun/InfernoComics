@@ -9,14 +9,12 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 
+@Builder
 @Entity
 @Table(name = "progress_data")
 @Getter
@@ -74,6 +72,9 @@ public class ProgressData {
 
     @Enumerated(EnumType.STRING)
     private StartedBy startedBy;
+
+    @Builder.Default
+    public boolean dismissed = false;
 
     // Auto-update lastUpdated on save
     @PrePersist

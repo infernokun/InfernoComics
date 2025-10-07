@@ -1,9 +1,10 @@
 // processing-status-icon.component.ts
 import { Component, OnInit, OnDestroy, HostListener, ElementRef, ChangeDetectorRef } from '@angular/core';
-import { BehaviorSubject, interval, Subscription } from 'rxjs';
+import { BehaviorSubject, finalize, interval, Subscription } from 'rxjs';
 import { SeriesService } from '../../../services/series.service';
 import { ProgressData, ProgressState } from '../../../models/progress-data.model';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -25,6 +26,13 @@ export interface ProcessingStatus {
       transition(':leave', [
         animate('150ms ease-in', style({ opacity: 0, transform: 'translateY(-10px)' }))
       ])
+    ]),
+    trigger('fadeOut', [
+      transition(':enter', []),
+      transition(':leave', [
+        style({ opacity: 1, height: '*', marginBottom: '*', padding: '*', overflow: 'hidden' }),
+        animate('200ms ease-out', style({ opacity: 0, height: 0, marginBottom: 0, padding: 0 }))
+      ])
     ])
   ],
   standalone: false
@@ -34,6 +42,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   maxDisplayItems = 5;
   showOverlay = false;
   isLoading = true;
+
+  pendingDismissIds = new Set<number>();
 
   private statusSubject = new BehaviorSubject<ProcessingStatus>({
     items: [],
@@ -49,7 +59,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   constructor(
     private seriesService: SeriesService,
     private elementRef: ElementRef,
-    private cdr: ChangeDetectorRef   
+    private cdr: ChangeDetectorRef,
+    private snackBar: MatSnackBar
   ) {
     this.currentStatus = this.statusSubject.value;
   }
@@ -143,36 +154,42 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   }
 
   getSortedItems(): ProgressData[] {
+    const toDate = (value: any): Date | undefined =>
+      value instanceof Date ? value : value ? new Date(value) : undefined;
+  
     return [...this.currentStatus.items]
       .sort((a, b) => {
-        // Priority 1: Processing items first
+        // 1️⃣  Processing items first
         if (a.state === ProgressState.PROCESSING && b.state !== ProgressState.PROCESSING) {
           return -1;
         }
         if (b.state === ProgressState.PROCESSING && a.state !== ProgressState.PROCESSING) {
           return 1;
         }
-
-        // Priority 2: Queued items next (when implemented)
-        
-        // Priority 3: Sort by most recent activity
+  
+        // 2️⃣  Get the most recent timestamp for each item
         const getRelevantTime = (item: ProgressData): Date | undefined => {
           if (item.state === ProgressState.PROCESSING && item.lastUpdated) {
-            return item.lastUpdated;
+            return toDate(item.lastUpdated);
           }
-          if ((item.state === ProgressState.COMPLETE || item.state === ProgressState.ERROR) && item.timeFinished) {
-            return item.timeFinished;
+          if (
+            (item.state === ProgressState.COMPLETE || item.state === ProgressState.ERROR) &&
+            item.timeFinished
+          ) {
+            return toDate(item.timeFinished);
           }
-          return item.timeStarted;
+          return toDate(item.timeStarted);
         };
-
+  
         const timeA = getRelevantTime(a);
         const timeB = getRelevantTime(b);
-
+  
+        // 3️⃣  Handle missing dates
         if (!timeA && !timeB) return 0;
         if (!timeA) return 1;
         if (!timeB) return -1;
-
+  
+        // 4️⃣  Compare timestamps
         return timeB.getTime() - timeA.getTime();
       })
       .slice(0, this.maxDisplayItems);
@@ -312,5 +329,35 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   toggleOverlay(event: Event) {
     event.stopPropagation();
     this.showOverlay = !this.showOverlay;
+  }
+
+  dismissProgressData(itemId: number): void {
+    if (!itemId || this.pendingDismissIds.has(itemId)) return;
+
+    this.pendingDismissIds.add(itemId);
+
+    this.seriesService.dismissProgressData(itemId).pipe(
+      finalize(() => this.pendingDismissIds.delete(itemId))
+    ).subscribe({
+      next: (data: ProgressData[]) => {
+        // 4️⃣  Push the new status
+        this.statusSubject.next(this.convertToProcessingStatus(data.map(item => new ProgressData(item))));
+
+        // 5️⃣  Show a success snackbar
+        this.snackBar.open(
+          `Progress for series "${itemId}" dismissed`,
+          'Close',
+          { duration: 3000, panelClass: ['snackbar-success'] }
+        );
+      },
+      error: err => {
+        console.error('Error dismissing progress:', err);
+        this.snackBar.open(
+          'Failed to dismiss progress',
+          'Close',
+          { duration: 3000, panelClass: ['snackbar-error'] }
+        );
+      }
+    });
   }
 }

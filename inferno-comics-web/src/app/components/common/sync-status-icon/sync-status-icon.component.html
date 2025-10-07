@@ -62,10 +62,11 @@
         </div>
 
         <div *ngIf="getSortedItems().length > 0" class="items-container">
-          <div *ngFor="let item of getSortedItems(); let i = index" 
-               class="processing-item" 
-               [class]="getItemClass(item)">
-
+          <div *ngFor="let item of getSortedItems(); let i = index" class="processing-item" [class]="getItemClass(item)">
+            <button class="dismiss-btn" mat-button (click)="dismissProgressData(item.id!)" [disabled]="pendingDismissIds.has(item.id!)">
+              <mat-spinner *ngIf="pendingDismissIds.has(item.id!)" diameter="20"></mat-spinner>
+              <span *ngIf="!pendingDismissIds.has(item.id!)">Dismiss</span>
+            </button>
             <div class="item-header">
               <div class="item-status">
                 <span class="item-index">{{i + 1}}.</span>

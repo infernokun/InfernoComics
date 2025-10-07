@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, Inject, ViewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { SeriesService } from '../../services/series.service';
 import { Series } from '../../models/series.model';
@@ -10,6 +10,7 @@ import { trigger, transition, style, animate } from '@angular/animations';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
+import { MatPaginator, PageEvent } from '@angular/material/paginator';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';
@@ -42,6 +43,13 @@ type ViewMode = 'grid' | 'list';
   ]
 })
 export class SeriesListComponent implements OnInit, OnDestroy {
+  @ViewChild(MatPaginator) paginator!: MatPaginator;
+  pageSize = 3;
+  pageIndex = 0;
+  totalSeries = 0;
+
+  pageSizeOptions = [3, 6, 9, 15, 18, 50, 100];
+  
   // Core data
   series: Series[] = [];
   filteredSeries: Series[] = [];
@@ -100,6 +108,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
         next: (data) => {
           this.series = data;
           this.extractPublishers();
+          this.updatePage();
           this.applyFiltersAndSorting();
           this.loading = false;
         },
@@ -111,6 +120,18 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       });
   }
 
+  updatePage(): void {
+    const start = this.pageIndex * this.pageSize;
+    const end   = start + this.pageSize;
+    this.displaySeries = this.filteredSeries.slice(start, end);
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.pageSize  = event.pageSize;
+    this.pageIndex = event.pageIndex;
+    this.updatePage();
+  }
+  
   private extractPublishers(): void {
     const publisherSet = new Set<string>();
     this.series.forEach(s => {
@@ -247,7 +268,9 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       return this.currentSortDirection === 'asc' ? comparison : -comparison;
     });
 
-    this.displaySeries = this.filteredSeries;
+    this.pageIndex = 0;
+    this.totalSeries = this.filteredSeries.length;
+    this.updatePage();
   }
 
   // Series completion logic

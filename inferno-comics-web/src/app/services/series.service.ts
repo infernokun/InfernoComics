@@ -260,6 +260,10 @@ export class SeriesService {
     return this.http.get<ProgressData[]>(`${this.progressUrl}/data/rel`);
   }
 
+  dismissProgressData(itemId: number): Observable<ProgressData[]> {
+    return this.http.post<ProgressData[]>(`${this.progressUrl}/data/dismiss/${itemId}`, {});
+  }
+
   getSessionJSON(sessionId: string) {
     return this.http.get<any[]>(
       `${this.progressUrl}/json/${sessionId}`

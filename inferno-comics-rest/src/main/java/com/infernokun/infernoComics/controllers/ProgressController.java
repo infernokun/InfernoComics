@@ -7,7 +7,6 @@ import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.ProgressService;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -171,6 +170,11 @@ public class ProgressController {
     @GetMapping("/data/rel")
     public ResponseEntity<List<ProgressData>> getSessionsByRelevance() {
         return ResponseEntity.ok(progressService.getSessionsByRelevance());
+    }
+
+    @PostMapping("/data/dismiss/{id}")
+    public ResponseEntity<List<ProgressData>> dismissProgressData(@PathVariable Long id) {
+        return ResponseEntity.ok((progressService.dismissProgressData(id)));
     }
 
     @GetMapping("json/{sessionId}")

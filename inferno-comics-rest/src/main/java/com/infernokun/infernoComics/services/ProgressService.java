@@ -596,12 +596,27 @@ public class ProgressService {
     }
 
     public List<ProgressData> getSessionsByRelevance() {
-        List<ProgressData> sessions = progressDataRepository.findByStartedOrFinishedWithinLast24Hours(LocalDateTime.now().minusHours(24));
-
+        List<ProgressData> sessions = progressDataRepository.findByStartedOrFinishedWithinLast24Hours(LocalDateTime.now().minusDays(7));
         getLatestDataFromRedis(sessions);
+
+        sessions = sessions.stream().filter(s -> !s.dismissed).toList();
 
         return sessions;
     }
+
+    public List<ProgressData> dismissProgressData(long id) {
+        Optional<ProgressData> progressDataOpt = progressDataRepository.findById(id);
+
+        if (progressDataOpt.isEmpty())  return null;
+
+        ProgressData progressData = progressDataOpt.get();
+
+        progressData.setDismissed(true);
+        progressDataRepository.save(progressData);
+
+        return getSessionsByRelevance();
+    }
+
     private Integer getIntegerFromMap(Map<String, Object> map, String... keys) {
         for (String key : keys) {
             Object value = map.get(key);
