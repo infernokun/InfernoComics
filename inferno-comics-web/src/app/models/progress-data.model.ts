@@ -3,7 +3,8 @@ import { Series } from "./series.model";
 export enum ProgressState {
   PROCESSING = 'PROCESSING',
   COMPLETE = 'COMPLETE',
-  ERROR = 'ERROR'
+  ERROR = 'ERROR',
+  QUEUED = 'QUEUED'
 }
 
 export enum StartedBy {
