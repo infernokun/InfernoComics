@@ -68,8 +68,7 @@ public class NextcloudSyncService {
 
             if (filteredImageFiles.isEmpty()) {
                 log.info("Skipping series {} - filtered files is empty", series.getId());
-                updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.EMPTY,
-                        0, null);
+                //updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.EMPTY, 0, null);
                 return ProcessingResult.noNewFiles();
             }
 
