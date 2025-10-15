@@ -1,5 +1,8 @@
-package com.infernokun.infernoComics.models.sync;
+package com.infernokun.infernoComics.services.sync;
 
+import com.infernokun.infernoComics.models.ProgressData;
+import com.infernokun.infernoComics.models.sync.ProcessedFile;
+import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -13,6 +16,7 @@ import java.util.List;
 public class WeirdService {
 
     private final ProcessedFileRepository processedFileRepository;
+    private final ProgressDataRepository progressDataRepository;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void saveProcessedFiles(List<ProcessedFile> filesToRecord) {
@@ -22,5 +26,10 @@ public class WeirdService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void deleteProcessedFile(ProcessedFile file) {
         processedFileRepository.delete(file);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveProgressData(ProgressData data) {
+        progressDataRepository.save(data);
     }
 }

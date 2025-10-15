@@ -9,7 +9,7 @@ import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
-import com.infernokun.infernoComics.models.sync.WeirdService;
+import com.infernokun.infernoComics.services.sync.WeirdService;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;

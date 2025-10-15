@@ -57,7 +57,7 @@ public class ProgressController {
         }
     }
 
-     // receive completion notification from Python
+    // receive completion notification from Python
     @PostMapping("/complete")
     public ResponseEntity<Map<String, String>> receiveCompletion(@RequestBody CompletionRequest request) {
         try {

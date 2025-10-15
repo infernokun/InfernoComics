@@ -11,6 +11,7 @@ import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
+import com.infernokun.infernoComics.services.sync.WeirdService;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 @Service
 public class ProgressService {
 
+    private final WeirdService weirdService;
     private final ProgressDataRepository progressDataRepository;
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();
@@ -53,7 +55,8 @@ public class ProgressService {
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
 
-    public ProgressService(ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig, RedisTemplate<String, Object> redisTemplate) {
+    public ProgressService(WeirdService weirdService, ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig, RedisTemplate<String, Object> redisTemplate) {
+        this.weirdService = weirdService;
         this.progressDataRepository = progressDataRepository;
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
@@ -160,7 +163,7 @@ public class ProgressService {
         progressData.setSeries(series);
         progressData.setStartedBy(startedBy);
 
-        progressDataRepository.save(progressData);
+        weirdService.saveProgressData(progressData);
     }
 
     public void updateProgress(ProgressUpdateRequest request) {
@@ -262,7 +265,7 @@ public class ProgressService {
                     }
                 }
 
-                progressDataRepository.save(progressData);
+                weirdService.saveProgressData(progressData);
                 log.info("✅ Database updated with completion data for session: {}", sessionId);
             }
         } catch (Exception e) {
@@ -303,7 +306,8 @@ public class ProgressService {
                 progressData.setState(ProgressData.State.ERROR);
                 progressData.setErrorMessage(errorMessage);
                 progressData.setTimeFinished(LocalDateTime.now());
-                progressDataRepository.save(progressData);
+
+                weirdService.saveProgressData(progressData);
                 log.info("✅ Database updated with error state for session: {}", sessionId);
             }
         } catch (Exception e) {
@@ -612,7 +616,7 @@ public class ProgressService {
         ProgressData progressData = progressDataOpt.get();
 
         progressData.setDismissed(true);
-        progressDataRepository.save(progressData);
+        weirdService.saveProgressData(progressData);
 
         return getSessionsByRelevance();
     }
