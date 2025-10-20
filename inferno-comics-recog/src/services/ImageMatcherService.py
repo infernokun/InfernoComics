@@ -345,7 +345,7 @@ class ImageMatcherService:
                 enhanced_results.append(enhanced_result)
             
             # Get top 5 matches for this image
-            top_matches = enhanced_results[:10]
+            top_matches = enhanced_results[:config.get_result_batch()]
             
             # Create result for this image
             image_result = {

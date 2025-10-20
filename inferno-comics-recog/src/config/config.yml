@@ -2,7 +2,7 @@
 # Hardware Performance Level (overrides individual settings below)
 # Options: "minimal", "fast", "balanced", "high_performance"
 performance_level: "balanced"
-
+result_batch: 10
 simularity_threshold: 55%
 
 # Performance Presets - Optimized for Processing Power vs Accuracy

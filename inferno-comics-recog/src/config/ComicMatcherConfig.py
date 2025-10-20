@@ -136,6 +136,12 @@ class ComicMatcherConfig:
         logger.info(f"Created custom preset: {preset_name}")
         return preset
     
+    def get_result_batch(self):
+        result_match = self.get("result_batch")
+
+        if result_match is None:
+            return 10
+
     def get_simularity_threshold(self):
         threshold_value = self.get("simularity_threshold")
         
