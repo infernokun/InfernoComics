@@ -8,12 +8,13 @@
     "watch": "ng build --watch --configuration development",
     "name": "echo ${npm_package_name}",
     "test": "ng test",
+    "gen-version": "node scripts/gen-version.js",
     "build:app": "NODE_OPTIONS=--max_old_space_size=8192 pnpm build --configuration=production",
     "build:prod": "pnpm build --configuration production",
     "docker:build-compile": "export PROJECT=$(jq -r .name package.json) && docker buildx build --target compile-stage --build-arg BUILDKIT_INLINE_CACHE=1 -t infernokun/$PROJECT:compile .",
     "docker:build-runtime": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker buildx build --target runtime-stage --build-arg BUILDKIT_INLINE_CACHE=1 -t infernokun/$PROJECT:$VERSION -t infernokun/${npm_package_name}:latest .",
     "docker:push": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker push infernokun/$PROJECT:$VERSION && docker push infernokun/$PROJECT:latest",
-    "docker:build": "npm run docker:build-compile -s && npm run docker:build-runtime -s && npm run docker:push -s"
+    "docker:build": "npm run gen-version && npm run docker:build-compile -s && npm run docker:build-runtime -s && npm run docker:push -s"
   },
   "private": true,
   "dependencies": {

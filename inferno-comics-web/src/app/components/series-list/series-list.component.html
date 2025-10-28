@@ -114,7 +114,7 @@
     <!-- View Controls -->
     <div class="view-controls" [@slideInUp]>
       <div class="controls-left">
-        <mat-button-toggle-group [(value)]="viewMode" (change)="toggleView()">
+        <mat-button-toggle-group [value]="viewMode" (change)="toggleView()">
           <mat-button-toggle value="grid">
             <mat-icon>grid_view</mat-icon>
             Grid

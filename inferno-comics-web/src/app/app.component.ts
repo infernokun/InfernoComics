@@ -3,6 +3,8 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ThemeService } from './services/theme.service';
 import { Observable, Subscription } from 'rxjs';
 
+import { APP_VERSION } from '../app/version';
+
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
@@ -11,6 +13,7 @@ import { Observable, Subscription } from 'rxjs';
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'Inferno Comics';
+  version: string = APP_VERSION;
   isDarkMode$: Observable<boolean>;
   private themeSubscription: Subscription = new Subscription();
 
@@ -19,6 +22,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    console.log('version', this.version);
     // Subscribe to theme changes to ensure DOM classes are applied
     this.themeSubscription = this.themeService.isDarkMode$.subscribe(isDark => {
       // Force apply theme classes

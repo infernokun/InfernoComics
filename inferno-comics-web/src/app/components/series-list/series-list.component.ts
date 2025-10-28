@@ -44,18 +44,18 @@ type ViewMode = 'grid' | 'list';
 })
 export class SeriesListComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
-  pageSize = 3;
-  pageIndex = 0;
-  totalSeries = 0;
+  pageSize: number = 3;
+  pageIndex: number = 0;
+  totalSeries: number = 0;
 
-  pageSizeOptions = [3, 6, 9, 15, 18, 50, 100];
+  pageSizeOptions: number[] = [3, 6, 9, 15, 18, 50, 100];
   
   // Core data
   series: Series[] = [];
   filteredSeries: Series[] = [];
   displaySeries: Series[] = [];
-  loading = true;
-  searchTerm = '';
+  loading: boolean = true;
+  searchTerm: string = '';
   
   // Enhanced features
   favoriteSeriesIds: Set<number> = new Set();
@@ -76,11 +76,11 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   ];
 
   // Filter options
-  showCompletedOnly = false;
-  selectedPublisher = '';
+  showCompletedOnly: boolean = false;
+  selectedPublisher: string = '';
   publishers: string[] = [];
   
-  private destroy$ = new Subject<void>();
+  private destroy$: Subject<void> = new Subject<void>();
 
   constructor(
     private seriesService: SeriesService,
@@ -89,6 +89,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     private dialog: MatDialog
   ) {
     this.loadUserPreferences();
+    console.log('lol', this.viewMode)
   }
 
   ngOnInit(): void {
@@ -130,6 +131,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     this.pageSize  = event.pageSize;
     this.pageIndex = event.pageIndex;
     this.updatePage();
+    this.saveUserPreferences();
   }
   
   private extractPublishers(): void {
@@ -178,7 +180,9 @@ export class SeriesListComponent implements OnInit, OnDestroy {
 
   // View mode toggle
   toggleView(): void {
+    console.log(this.viewMode);
     this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
+    console.log(this.viewMode);
     this.saveUserPreferences();
   }
 
@@ -359,6 +363,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       this.currentSortDirection = prefs.currentSortDirection || 'asc';
       this.selectedPublisher = prefs.selectedPublisher || '';
       this.showCompletedOnly = prefs.showCompletedOnly || false;
+      this.pageSize = prefs.pageSize || 3;
     }
   }
 
@@ -369,7 +374,8 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       currentSortOption: this.currentSortOption,
       currentSortDirection: this.currentSortDirection,
       selectedPublisher: this.selectedPublisher,
-      showCompletedOnly: this.showCompletedOnly
+      showCompletedOnly: this.showCompletedOnly,
+      pageSize: this.pageSize
     };
     localStorage.setItem('seriesListPreferences', JSON.stringify(preferences));
   }
