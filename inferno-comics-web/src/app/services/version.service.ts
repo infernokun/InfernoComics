@@ -2,12 +2,16 @@ import { HttpClient } from '@angular/common/http';
 import { EnvironmentService } from './environment.service';
 import { APP_VERSION } from '../version';
 import { forkJoin, map, Observable, of } from 'rxjs';
+import { Injectable } from '@angular/core';
 
 export interface AppVersion {
   name: string;
   version: string;
 }
 
+@Injectable({
+  providedIn: 'root'
+})
 export class VersionService {
   private apiUrl: string = '';
   version: string = APP_VERSION;

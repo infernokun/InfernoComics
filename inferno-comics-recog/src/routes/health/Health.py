@@ -4,6 +4,8 @@ import time
 import psutil
 import platform
 from config.Config import Config
+import os
+import json
 
 health_bp = Blueprint('health', __name__)
 
@@ -65,7 +67,7 @@ def health():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.utcnow().isoformat(),
-        'version': Config.API_VERSION,
+        'version': get_version_from_package_json(),
         'uptime': get_uptime()
     })
 
@@ -75,7 +77,7 @@ def detailed_health():
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
-        'version': Config.API_VERSION,
+        'version': get_version_from_package_json(),
         'uptime': get_uptime(),
         'system': get_system_info(),
         'resources': get_resource_usage(),
@@ -108,3 +110,15 @@ def metrics():
     }
     
     return jsonify(metrics_data)
+
+def get_version_from_package_json():
+    try:
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+        package_json_path = os.path.join(project_root, 'package.json')
+        
+        with open(package_json_path, 'r') as f:
+            package_data = json.load(f)
+            return package_data.get('version', 'unknown')
+    except Exception as e:
+        print(f"Could not read package.json: {e}")
+        return 'unknown'

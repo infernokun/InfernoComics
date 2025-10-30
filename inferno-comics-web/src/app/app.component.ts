@@ -9,7 +9,7 @@ import { APP_VERSION } from '../app/version';
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss'],
-  standalone: false
+  standalone: false,
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'Inferno Comics';

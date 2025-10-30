@@ -8,6 +8,7 @@ COPY --link gradlew /app/gradlew
 COPY --link gradle /app/gradle
 COPY --link build.gradle /app/build.gradle
 COPY --link settings.gradle /app/settings.gradle
+COPY --link package.json /app/package.json
 COPY --link src /app/src
 RUN chmod +x gradlew
 
@@ -46,6 +47,8 @@ RUN apt-get update && apt-get install -y tini
 # Copy entrypoint and JAR
 COPY --link --chown=java:java scripts/docker-entrypoint.sh /
 COPY --link --chown=java:java --from=compile-stage /app/build/libs/${PROJECT}.jar /app/${PROJECT}.jar
+# Copy package.json to the runtime stage
+COPY --link --chown=java:java --from=compile-stage /app/package.json /app/package.json
 
 RUN chmod +x /docker-entrypoint.sh
 
