@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { VersionService } from '../../../services/version.service';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../../material.module';
-import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
   selector: 'app-version-info',
@@ -12,7 +11,7 @@ import { trigger, transition, style, animate } from '@angular/animations';
          (mouseleave)="showPanel = false">
       <mat-icon class="info-icon">info</mat-icon>
       
-      <div class="version-panel" *ngIf="showPanel" [@fadeIn]>
+      <div class="version-panel" *ngIf="showPanel">
         <div class="panel-header">
           <mat-icon>info_outline</mat-icon>
           <span>Version Information</span>
@@ -135,17 +134,6 @@ import { trigger, transition, style, animate } from '@angular/animations';
       font-size: 13px;
     }
   `],
-  animations: [
-    trigger('fadeIn', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'translateY(-8px)' }),
-        animate('200ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
-      ]),
-      transition(':leave', [
-        animate('150ms ease-in', style({ opacity: 0, transform: 'translateY(-8px)' }))
-      ])
-    ])
-  ],
   standalone: true,
   imports: [CommonModule, MaterialModule]
 })
