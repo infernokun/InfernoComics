@@ -6,11 +6,13 @@ import { SeriesListComponent } from './components/series-list/series-list.compon
 import { SeriesDetailComponent } from './components/series-detail/series-detail.component';
 import { SeriesFormComponent } from './components/series-form/series-form.component';
 import { SeriesAdminComponent } from './components/series-admin/series-admin.component';
+import { IssuesListComponent } from './components/issues-list/issues-list.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent },
   { path: 'series', component: SeriesListComponent },
+  { path: 'issues', component: IssuesListComponent },
   { path: 'series/new', component: SeriesFormComponent },
   { path: 'series/:id', component: SeriesDetailComponent },
   { path: 'series/:id/edit', component: SeriesFormComponent },

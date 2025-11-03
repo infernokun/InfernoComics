@@ -89,7 +89,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     private dialog: MatDialog
   ) {
     this.loadUserPreferences();
-    console.log('lol', this.viewMode)
   }
 
   ngOnInit(): void {
