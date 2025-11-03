@@ -10,6 +10,8 @@ import { Series } from '../../models/series.model';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SeriesService } from '../../services/series.service';
+import { IssueService } from '../../services/issue.service';
+import { Issue } from '../../models/issue.model';
 
 type SortOption =
   | 'name'
@@ -66,8 +68,12 @@ export class IssuesListComponent implements OnInit, OnDestroy {
 
   // Core data
   series: Series[] = [];
+  issues: Issue[] = [];
   filteredSeries: Series[] = [];
   displaySeries: Series[] = [];
+
+  comicVineIssues: any[] = [];
+
   loading: boolean = true;
   searchTerm: string = '';
 
@@ -100,6 +106,7 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     private seriesService: SeriesService,
     private router: Router,
     private snackBar: MatSnackBar,
+    private issueService: IssueService,
     private dialog: MatDialog
   ) {}
 
@@ -107,9 +114,12 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     this.loadSeries();
   }
 
+  ngOnDestroy(): void {}
+
   loadSeries(): void {
     this.loading = true;
-    this.seriesService.getAllSeries()
+    this.seriesService
+      .getAllSeries()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
@@ -118,11 +128,22 @@ export class IssuesListComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error loading series:', error);
-          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+          this.snackBar.open('Error loading series', 'Close', {
+            duration: 3000,
+          });
           this.loading = false;
-        }
+        },
       });
   }
 
-  ngOnDestroy(): void {}
+  loadIssues(seriesId: number): void {
+    this.issueService.getIssuesBySeries(seriesId).subscribe({
+      next: (books: Issue[]) => {
+        this.issues = books.map((issue) => new Issue(issue));
+      },
+      error: (error) => {
+        console.error('Error loading comic books:', error);
+      },
+    });
+  }
 }
