@@ -3,12 +3,12 @@ import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
-import { trigger, transition, style, animate } from '@angular/animations';
 import { MatPaginator } from '@angular/material/paginator';
 import { Subject, takeUntil } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SeriesService, SeriesWithIssues } from '../../services/series.service';
 import { Issue } from '../../models/issue.model';
+import { EnvironmentService } from '../../services/environment.service';
 
 @Component({
   selector: 'app-issues-list',
@@ -19,14 +19,17 @@ import { Issue } from '../../models/issue.model';
 export class IssuesListComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 
-  loading = true;
+  loading: boolean = true;
   seriesWithIssues: SeriesWithIssues[] = [];
+
+  uploadedPhotos: boolean = false;
 
   private destroy$ = new Subject<void>();
 
   constructor(
     private seriesService: SeriesService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private environmentService: EnvironmentService
   ) {}
 
   ngOnInit(): void {
@@ -64,5 +67,12 @@ export class IssuesListComponent implements OnInit, OnDestroy {
 
   trackByIssueId(_: number, issue: Issue) {
     return issue.id;
+  }
+
+  getCurrentImageUrl(issue: Issue): string {
+    if (this.uploadedPhotos && issue.uploadedImageUrl) {
+      return `${this.environmentService.settings!.restUrl}/progress/image/${issue.uploadedImageUrl}`;
+    }
+    return issue.imageUrl || 'assets/placeholder-comic.jpg';
   }
 }
