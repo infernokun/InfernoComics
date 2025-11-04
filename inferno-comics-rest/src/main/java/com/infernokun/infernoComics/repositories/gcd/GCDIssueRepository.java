@@ -9,7 +9,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-
 public interface GCDIssueRepository extends JpaRepository<GCDIssue, Long> {
     List<GCDIssue> findByPublicationDateContaining(String date);
     List<GCDIssue> findByTitleContainingIgnoreCase(String title);
