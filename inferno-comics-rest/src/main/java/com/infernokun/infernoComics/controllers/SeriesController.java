@@ -1,8 +1,10 @@
 package com.infernokun.infernoComics.controllers;
 
+import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.models.sync.ProcessingResult;
+import com.infernokun.infernoComics.services.IssueService;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
 import com.infernokun.infernoComics.services.ProgressService;
@@ -10,6 +12,7 @@ import com.infernokun.infernoComics.services.sync.NextcloudSyncService;
 import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -28,18 +31,14 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 
 @Slf4j
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/series")
 public class SeriesController {
 
     private final SeriesService seriesService;
+    private final IssueService issueService;
     private final ProgressService progressService;
     private final NextcloudSyncService syncService;
-
-    public SeriesController(SeriesService seriesService, ProgressService progressService, NextcloudSyncService syncService) {
-        this.seriesService = seriesService;
-        this.progressService = progressService;
-        this.syncService = syncService;
-    }
 
     @GetMapping
     public ResponseEntity<List<Series>> getAllSeries() {
@@ -50,6 +49,24 @@ public class SeriesController {
             log.error("Error fetching all series: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @GetMapping("/with-issues")
+    public ResponseEntity<List<SeriesWithIssues>> getSeriesWithIssues() {
+        List<Series> series = seriesService.getAllSeries();
+
+        List<SeriesWithIssues> seriesWithIssuesList = new ArrayList<>();
+
+        series.forEach(s -> {
+            SeriesWithIssues seriesWithIssues = new SeriesWithIssues(s);
+
+            List<Issue> issues = issueService.getIssuesBySeriesId(s.getId());
+            seriesWithIssues.setIssues(issues);
+
+            seriesWithIssuesList.add(seriesWithIssues);
+        });
+
+        return ResponseEntity.ok(seriesWithIssuesList);
     }
 
     @GetMapping("/{id}")
@@ -404,6 +421,18 @@ public class SeriesController {
         private List<String> comicVineIds;
         private int issueCount;
         private String comicVineId;
+    }
+
+    @Setter
+    @Getter
+    public static class SeriesWithIssues {
+        private Series series;
+        private List<Issue> issues;
+
+        public SeriesWithIssues(Series series) {
+            this.series = series;
+            this.issues = new ArrayList<>();
+        }
     }
 
     public record ImageData(byte[] bytes, String originalFilename, String contentType, long fileSize,

@@ -1,16 +1,13 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MatPaginator } from '@angular/material/paginator';
 import { Subject, takeUntil } from 'rxjs';
-import { Series } from '../../models/series.model';
-import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { SeriesService } from '../../services/series.service';
-import { IssueService } from '../../services/issue.service';
+import { SeriesService, SeriesWithIssues } from '../../services/series.service';
 import { Issue } from '../../models/issue.model';
 
 type SortOption =
@@ -60,74 +57,35 @@ type ViewMode = 'grid' | 'list';
 })
 export class IssuesListComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
-  pageSize: number = 3;
-  pageIndex: number = 0;
-  totalSeries: number = 0;
 
-  pageSizeOptions: number[] = [3, 6, 9, 15, 18, 50, 100];
+  loading = true;
+  seriesWithIssues: SeriesWithIssues[] = [];
 
-  // Core data
-  series: Series[] = [];
-  issues: Issue[] = [];
-  filteredSeries: Series[] = [];
-  displaySeries: Series[] = [];
+  private destroy$ = new Subject<void>();
 
-  comicVineIssues: any[] = [];
-
-  loading: boolean = true;
-  searchTerm: string = '';
-
-  // Enhanced features
-  favoriteSeriesIds: Set<number> = new Set();
-  viewMode: ViewMode = 'grid';
-
-  // Sorting functionality
-  currentSortOption: SortOption = 'name';
-  currentSortDirection: SortDirection = 'asc';
-
-  // Sort options for dropdown
-  sortOptions = [
-    { value: 'name', label: 'Series Name', icon: 'sort_by_alpha' },
-    { value: 'publisher', label: 'Publisher', icon: 'business' },
-    { value: 'year', label: 'Start Year', icon: 'calendar_today' },
-    { value: 'completion', label: 'Completion %', icon: 'pie_chart' },
-    { value: 'issueCount', label: 'Issue Count', icon: 'library_books' },
-    { value: 'dateAdded', label: 'Date Added', icon: 'schedule' },
-  ];
-
-  // Filter options
-  showCompletedOnly: boolean = false;
-  selectedPublisher: string = '';
-  publishers: string[] = [];
-
-  private destroy$: Subject<void> = new Subject<void>();
-
-  constructor(
-    private seriesService: SeriesService,
-    private router: Router,
-    private snackBar: MatSnackBar,
-    private issueService: IssueService,
-    private dialog: MatDialog
-  ) {}
+  constructor(private seriesService: SeriesService,private snackBar: MatSnackBar) {}
 
   ngOnInit(): void {
-    this.loadSeries();
+    this.loadSeriesWithIssues();
   }
 
-  ngOnDestroy(): void {}
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
-  loadSeries(): void {
+  private loadSeriesWithIssues(): void {
     this.loading = true;
-    this.seriesService
-      .getAllSeries()
+    this.seriesService.getSeriesWithIssues()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (data) => {
-          this.series = data;
+        next: (data: SeriesWithIssues[]) => {
+          this.seriesWithIssues = data;
+          console.log('data', this.seriesWithIssues);
           this.loading = false;
         },
-        error: (error) => {
-          console.error('Error loading series:', error);
+        error: (err) => {
+          console.error('Error loading series with issues:', err);
           this.snackBar.open('Error loading series', 'Close', {
             duration: 3000,
           });
@@ -136,14 +94,11 @@ export class IssuesListComponent implements OnInit, OnDestroy {
       });
   }
 
-  loadIssues(seriesId: number): void {
-    this.issueService.getIssuesBySeries(seriesId).subscribe({
-      next: (books: Issue[]) => {
-        this.issues = books.map((issue) => new Issue(issue));
-      },
-      error: (error) => {
-        console.error('Error loading comic books:', error);
-      },
-    });
+  trackBySeriesId(_: number, swi: SeriesWithIssues) {
+    return swi.series.id;
+  }
+
+  trackByIssueId(_: number, issue: Issue) {
+    return issue.id;
   }
 }

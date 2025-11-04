@@ -5,6 +5,8 @@ import { EnvironmentService } from './environment.service';
 import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
 import { Series } from '../models/series.model';
 import { ProgressData } from '../models/progress-data.model';
+import { IssueService } from './issue.service';
+import { Issue } from '../models/issue.model';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -17,6 +19,11 @@ export interface SSEProgressData {
   timestamp: number;
 }
 
+export interface SeriesWithIssues {
+  series: Series,
+  issues: Issue[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -24,10 +31,7 @@ export class SeriesService {
   private apiUrl: string = '';
   private progressUrl: string = '';
 
-  constructor(
-    private http: HttpClient,
-    private environmentService: EnvironmentService
-  ) {
+  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/series`;
     this.progressUrl = `${this.environmentService.settings?.restUrl}/progress`;
   }
@@ -38,6 +42,10 @@ export class SeriesService {
 
   getSeriesById(id: number): Observable<Series> {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
+  }
+
+  getSeriesWithIssues(): Observable<SeriesWithIssues[]> {
+    return this.http.get<SeriesWithIssues[]>(`${this.apiUrl}/with-issues`);
   }
 
   getSeriesFolderStructure(): Observable<any[]> {

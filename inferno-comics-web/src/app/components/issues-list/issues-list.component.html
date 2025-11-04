@@ -1,0 +1,18 @@
+<div class="issues-list">
+    <div *ngIf="loading" class="spinner">
+        <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+    </div>
+
+    <ng-container *ngIf="!loading">
+        <div *ngFor="let s of seriesWithIssues" class="series-block">
+            <h2 class="series-title">{{ s.series.name }}</h2>
+
+            <div class="issues-grid">
+                <div *ngFor="let i of s.issues" class="issue-item">
+                    <img [src]="i.imageUrl" [alt]="'Issue ' + i.comicVineId" class="issue-img" />
+                    <span class="issue-id">{{ i.issueNumber }}: {{ i.comicVineId }}</span>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+</div>
