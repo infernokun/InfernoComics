@@ -15,7 +15,7 @@ RUN chmod +x gradlew
 RUN gradle build --no-daemon -x test
 
 # Stage 2: Runtime
-FROM openjdk:21-jdk-slim AS runtime-stage
+FROM amazoncorretto:21-alpine AS runtime-stage
 LABEL maintainer="infernokun@infernokun.com" \
       description="Java service Docker image" \
       source="https://github.com/infernokun/InfernoComics" \
