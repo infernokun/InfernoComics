@@ -2,20 +2,27 @@ import groovy.json.JsonSlurper
 
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.4.2'
+	id 'org.springframework.boot' version '3.5.7'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
 group = 'com.infernokun'
 
 // ─── Dynamically set version from package.json ─────────────────────────────────
-def packageJson = new File(rootDir, "package.json")
-if (packageJson.exists()) {
-	def parsedJson = new JsonSlurper().parseText(packageJson.text)
-	version = parsedJson.version
-} else {
-	version = '0.0.1-SNAPSHOT'  // fallback
+def getVersionFromPackageJson() {
+	try {
+		def packageJson = new File(rootDir, "package.json")
+		if (packageJson.exists()) {
+			def parsedJson = new JsonSlurper().parseText(packageJson.text)
+			return parsedJson.version ?: '0.0.1-SNAPSHOT'
+		}
+	} catch (Exception e) {
+		logger.warn("Failed to parse package.json: ${e.message}")
+	}
+	return '0.0.1-SNAPSHOT'
 }
+
+version = getVersionFromPackageJson()
 
 bootRun {
 	systemProperty 'app.version', project.version
@@ -59,7 +66,7 @@ dependencies {
 	implementation 'org.apache.httpcomponents.client5:httpclient5:5.4.2'
 	implementation 'io.fabric8:kubernetes-client:7.1.0'
 	implementation 'org.bitbucket.b_c:jose4j:0.9.6'
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13'
 	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
 	implementation 'org.modelmapper:modelmapper:3.1.1'
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-hibernate5'
