@@ -52,4 +52,4 @@ WORKDIR /app/
 EXPOSE 8080
 
 ENTRYPOINT ["/sbin/tini", "-g", "--", "/docker-entrypoint.sh"]
-CMD ["sh", "-c", "java ${JAVA_TOOL_OPTIONS} -jar /app/${PROJECT}.jar"]
+CMD ["/app/${PROJECT}.jar", "${JAVA_TOOL_OPTIONS}"]
