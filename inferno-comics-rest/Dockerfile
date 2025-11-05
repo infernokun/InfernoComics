@@ -15,7 +15,7 @@ RUN chmod +x gradlew
 RUN gradle build --no-daemon -x test
 
 # Stage 2: Runtime
-FROM amazoncorretto:21-alpine AS runtime-stage
+FROM eclipse-temurin:21-jre-alpine AS runtime-stage
 LABEL maintainer="infernokun@infernokun.com" \
       description="Java service Docker image" \
       source="https://github.com/infernokun/InfernoComics" \
