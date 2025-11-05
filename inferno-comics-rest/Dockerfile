@@ -1,8 +1,7 @@
 # syntax=docker/dockerfile:1.4.2
 
 # Stage 1: Compile
-FROM gradle:jdk21-corretto AS compile-stage
-
+FROM gradle:jdk25-corretto AS compile-stage
 WORKDIR /app/
 COPY --link gradlew /app/gradlew
 COPY --link gradle /app/gradle
@@ -11,11 +10,10 @@ COPY --link settings.gradle /app/settings.gradle
 COPY --link package.json /app/package.json
 COPY --link src /app/src
 RUN chmod +x gradlew
-
 RUN gradle build --no-daemon -x test
 
 # Stage 2: Runtime
-FROM openjdk:22-jdk-slim AS runtime-stage
+FROM eclipse-temurin:25-jdk-alpine AS runtime-stage
 LABEL maintainer="infernokun@infernokun.com" \
       description="Java service Docker image" \
       source="https://github.com/infernokun/InfernoComics" \
@@ -23,31 +21,27 @@ LABEL maintainer="infernokun@infernokun.com" \
 
 VOLUME ["/data/certs"]
 
-RUN apt-get update && apt-get install -y \
+# Install dependencies using apk (Alpine's package manager)
+RUN apk add --no-cache \
     tini \
     curl \
     bash \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
+    shadow
 
+# Create user and group (Alpine uses addgroup/adduser)
 RUN set -eux; \
-    groupadd -g 1000 java; \
-    useradd -m -r -u 1000 -g java java; \
+    addgroup -g 1000 java; \
+    adduser -D -u 1000 -G java java; \
     mkdir -p /app; \
     chown java:java -R /app /home/java
 
-ENV JAVA_TOOL_OPTIONS='-Dserver.servlet.contextPath=/${PROJECT} \
-                        -XX:-TieredCompilation'
-
 ARG PROJECT
 ENV PROJECT=${PROJECT}
-
-# Install tini
-RUN apt-get update && apt-get install -y tini
+ENV JAVA_TOOL_OPTIONS="-Dserver.servlet.contextPath=/${PROJECT} -XX:-TieredCompilation"
 
 # Copy entrypoint and JAR
 COPY --link --chown=java:java scripts/docker-entrypoint.sh /
 COPY --link --chown=java:java --from=compile-stage /app/build/libs/${PROJECT}.jar /app/${PROJECT}.jar
-# Copy package.json to the runtime stage
 COPY --link --chown=java:java --from=compile-stage /app/package.json /app/package.json
 
 RUN chmod +x /docker-entrypoint.sh
@@ -57,5 +51,5 @@ WORKDIR /app/
 
 EXPOSE 8080
 
-ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/docker-entrypoint.sh"]
-CMD ["/app/${PROJECT}.jar", "${JAVA_TOOL_OPTIONS}"]
+ENTRYPOINT ["/sbin/tini", "-g", "--", "/docker-entrypoint.sh"]
+CMD ["sh", "-c", "java ${JAVA_TOOL_OPTIONS} -jar /app/${PROJECT}.jar"]
