@@ -41,8 +41,8 @@
             </div>
 
             <form [formGroup]="seriesForm" (ngSubmit)="onSubmit()">
-                <!-- Basic form fields (only show in non-management mode) -->
-                <div *ngIf="!isComicVineManagementMode">
+                <!-- Basic form fields -->
+                <div>
                     <div class="form-row">
                         <mat-form-field appearance="outline" class="full-width">
                             <mat-label>Series Name *</mat-label>
@@ -73,17 +73,39 @@
                             </mat-hint>
                         </mat-form-field>
                     </div>
-                </div>
 
-                <!-- Series reference info in management mode -->
-                <div class="series-reference" *ngIf="isComicVineManagementMode && !loading">
-                    <div class="reference-info">
-                        <h4>{{ seriesForm.get('name')?.value }}</h4>
-                        <p>{{ seriesForm.get('publisher')?.value }} • {{ seriesForm.get('startYear')?.value }}</p>
-                        <div class="count-info">
-                            <p class="available-count">Available: {{ getCurrentAvailableCount() }} issues from {{ existingComicVineData.length }} series</p>
-                            <p class="owned-count">Owned: {{ getCurrentOwnedCount() }} issues in collection</p>
-                        </div>
+                    <div class="form-row">
+                        <mat-form-field appearance="outline" class="half-width">
+                            <mat-label>Publisher</mat-label>
+                            <input matInput formControlName="publisher">
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline" class="quarter-width">
+                            <mat-label>Start Year</mat-label>
+                            <input matInput type="number" formControlName="startYear">
+                        </mat-form-field>
+
+                        <mat-form-field appearance="outline" class="quarter-width">
+                            <mat-label>End Year</mat-label>
+                            <input matInput type="number" formControlName="endYear">
+                        </mat-form-field>
+                    </div>
+
+                    <div class="form-row">
+                        <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Description</mat-label>
+                            <textarea matInput formControlName="description" rows="4" maxlength="10000"></textarea>
+                            <mat-hint align="end">
+                                {{ seriesForm.get('description')?.value?.length || 0 }}/10000
+                            </mat-hint>
+                        </mat-form-field>
+                    </div>
+
+                    <div class="form-row">
+                        <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Image URL</mat-label>
+                            <input matInput formControlName="imageUrl">
+                        </mat-form-field>
                     </div>
                 </div>
 
@@ -309,43 +331,6 @@
                     </mat-card>
                 </div>
 
-                <!-- Regular form fields (hidden in management mode) -->
-                <div *ngIf="!isComicVineManagementMode">
-                    <div class="form-row">
-                        <mat-form-field appearance="outline" class="half-width">
-                            <mat-label>Publisher</mat-label>
-                            <input matInput formControlName="publisher">
-                        </mat-form-field>
-
-                        <mat-form-field appearance="outline" class="quarter-width">
-                            <mat-label>Start Year</mat-label>
-                            <input matInput type="number" formControlName="startYear">
-                        </mat-form-field>
-
-                        <mat-form-field appearance="outline" class="quarter-width">
-                            <mat-label>End Year</mat-label>
-                            <input matInput type="number" formControlName="endYear">
-                        </mat-form-field>
-                    </div>
-
-                    <div class="form-row">
-                        <mat-form-field appearance="outline" class="full-width">
-                            <mat-label>Description</mat-label>
-                            <textarea matInput formControlName="description" rows="4" maxlength="10000"></textarea>
-                            <mat-hint align="end">
-                                {{ seriesForm.get('description')?.value?.length || 0 }}/10000
-                            </mat-hint>
-                        </mat-form-field>
-                    </div>
-
-                    <div class="form-row">
-                        <mat-form-field appearance="outline" class="full-width">
-                            <mat-label>Image URL</mat-label>
-                            <input matInput formControlName="imageUrl">
-                        </mat-form-field>
-                    </div>
-                </div>
-
                 <!-- Combined Series IDs Display -->
                 <div class="combined-series-info" *ngIf="seriesForm.get('comicVineIds')?.value?.length > 0">
                     <h4>{{ isComicVineManagementMode ? 'Associated' : 'Combined' }} Series IDs:</h4>
@@ -356,8 +341,8 @@
                     </mat-chip-set>
                 </div>
 
-                <!-- Image preview (only in non-management mode) -->
-                <div class="image-preview" *ngIf="!isComicVineManagementMode && seriesForm.get('imageUrl')?.value">
+                <!-- Image preview -->
+                <div class="image-preview" *ngIf="seriesForm.get('imageUrl')?.value">
                     <h4>Image Preview:</h4>
                     <img [src]="seriesForm.get('imageUrl')?.value" [alt]="seriesForm.get('name')?.value"
                         class="preview-image"

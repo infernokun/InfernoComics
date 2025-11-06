@@ -291,7 +291,7 @@ public class SeriesService {
         return savedSeries;
     }
 
-    @CachePut(value = "series", key = "#id", condition = "#result != null")
+    @CacheEvict(value = "series", key = "#id")
     @Transactional
     public Series updateSeries(Long id, SeriesUpdateRequest request) {
         try {
@@ -350,16 +350,28 @@ public class SeriesService {
             // Save the updated series
             Series updatedSeries = seriesRepository.save(existingSeries);
 
-            evictListCaches();
-            descriptionGeneratorService.evictSeriesCache(updatedSeries);
+            // FIX 1: Add explicit flush to ensure data is persisted before cache operations
+            seriesRepository.flush();
 
-            if (!originalComicVineIds.equals(newComicVineIds)) {
-                evictCacheValue("comic-vine-issues", id.toString());
+            log.info("✅ Series saved and flushed to database");
+
+            // FIX 2: Wrap cache evictions in try-catch to prevent them from blocking the response
+            try {
+                evictListCaches();
+                descriptionGeneratorService.evictSeriesCache(updatedSeries);
+
+                if (!originalComicVineIds.equals(newComicVineIds)) {
+                    evictCacheValue("comic-vine-issues", id.toString());
+                }
+            } catch (Exception cacheException) {
+                // Don't let cache eviction failures block the response
+                log.warn("Cache eviction failed, but series was updated successfully: {}", cacheException.getMessage());
             }
 
             log.info("Updated series '{}': {} Comic Vine IDs, {} GCD mappings",
-                    updatedSeries.getName(), updatedSeries.getComicVineIds().size(),
-                    updatedSeries.getGcdIds().size());
+                    updatedSeries.getName(),
+                    updatedSeries.getComicVineIds() != null ? updatedSeries.getComicVineIds().size() : 0,
+                    updatedSeries.getGcdIds() != null ? updatedSeries.getGcdIds().size() : 0);
 
             return updatedSeries;
 
