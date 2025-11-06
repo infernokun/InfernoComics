@@ -1,0 +1,118 @@
+<!-- src/app/config/config.component.html -->
+<div class="config-wrapper" *ngIf="configForm">
+    <mat-card class="config-card">
+      <mat-card-header>
+        <mat-card-title>Recognition Configuration</mat-card-title>
+      </mat-card-header>
+  
+      <mat-card-content [formGroup]="configForm">
+        <!-- ----- Global settings ----- -->
+        <section class="section-global">
+          <h3>Global Settings</h3>
+  
+          <mat-form-field appearance="fill">
+            <mat-label>Performance Level</mat-label>
+            <mat-select formControlName="performance_level">
+              <mat-option *ngFor="let lvl of ['balanced','fast','high_performance','minimal','akaze_focused']"
+                          [value]="lvl">
+                {{ lvl }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+  
+          <mat-form-field appearance="fill">
+            <mat-label>Result Batch</mat-label>
+            <input matInput type="number" formControlName="result_batch" />
+          </mat-form-field>
+  
+          <mat-form-field appearance="fill">
+            <mat-label>Similarity Threshold</mat-label>
+            <input matInput type="text" formControlName="similarity_threshold" placeholder="e.g. 55%" />
+          </mat-form-field>
+        </section>
+  
+        <!-- ----- Preset list ----- -->
+        <section class="section-presets">
+          <h3>Presets</h3>
+  
+          <ng-container formGroupName="presets">
+            <div *ngFor="let presetKey of Object.keys(presetControls)" class="preset-card">
+              <mat-card>
+                <mat-card-header>
+                  <mat-card-title>{{ presetKey | titlecase }} preset</mat-card-title>
+                </mat-card-header>
+  
+                <mat-card-content [formGroup]="presetControls[presetKey]">
+                  <!-- Detectors -->
+                  <div class="sub-section">
+                    <h4>Detectors (max features)</h4>
+                    <div formGroupName="detectors" class="map-grid">
+                      <ng-container *ngFor="let det of Object.keys(presetControls[presetKey].get('detectors')?.value)">
+                        <mat-form-field appearance="fill">
+                          <mat-label>{{ det }}</mat-label>
+                          <input matInput type="number" [formControlName]="det" />
+                        </mat-form-field>
+                      </ng-container>
+                    </div>
+                  </div>
+  
+                  <!-- Feature weights -->
+                  <div class="sub-section">
+                    <h4>Feature Weights</h4>
+                    <div formGroupName="feature_weights" class="map-grid">
+                      <ng-container *ngFor="let ft of Object.keys(presetControls[presetKey].get('feature_weights')?.value)">
+                        <mat-form-field appearance="fill">
+                          <mat-label>{{ ft }}</mat-label>
+                          <input matInput type="number" step="0.01" [formControlName]="ft" />
+                        </mat-form-field>
+                      </ng-container>
+                    </div>
+                  </div>
+  
+                  <!-- Simple numeric fields -->
+                  <div class="sub-section">
+                    <mat-form-field appearance="fill">
+                      <mat-label>Image Size</mat-label>
+                      <input matInput type="number" formControlName="image_size" />
+                    </mat-form-field>
+  
+                    <mat-form-field appearance="fill">
+                      <mat-label>Max Workers</mat-label>
+                      <input matInput type="number" formControlName="max_workers" />
+                    </mat-form-field>
+                  </div>
+  
+                  <!-- Options (toggles) -->
+                  <div class="sub-section options">
+                    <h4>Options</h4>
+                    <div formGroupName="options" class="options-grid">
+                      <mat-slide-toggle formControlName="use_advanced_matching">
+                        Use Advanced Matching
+                      </mat-slide-toggle>
+  
+                      <mat-slide-toggle formControlName="use_comic_detection">
+                        Use Comic Detection
+                      </mat-slide-toggle>
+  
+                      <mat-slide-toggle formControlName="cache_only">
+                        Cache Only (minimal preset)
+                      </mat-slide-toggle>
+                    </div>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </ng-container>
+        </section>
+      </mat-card-content>
+  
+      <mat-card-actions align="end">
+        <button mat-raised-button color="primary" (click)="onSave()">Save</button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+  
+  <!-- Loading spinner while the form is being built -->
+  <div class="loading" *ngIf="!configForm">
+    <mat-progress-spinner mode="indeterminate"></mat-progress-spinner>
+  </div>

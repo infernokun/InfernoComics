@@ -3,7 +3,7 @@
 # Options: "minimal", "fast", "balanced", "high_performance"
 performance_level: "balanced"
 result_batch: 10
-simularity_threshold: 55%
+similarity_threshold: 55%
 
 # Performance Presets - Optimized for Processing Power vs Accuracy
 presets:

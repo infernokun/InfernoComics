@@ -5,7 +5,6 @@ import { EnvironmentService } from './environment.service';
 import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
 import { Series } from '../models/series.model';
 import { ProgressData } from '../models/progress-data.model';
-import { IssueService } from './issue.service';
 import { Issue } from '../models/issue.model';
 
 export interface SSEProgressData {

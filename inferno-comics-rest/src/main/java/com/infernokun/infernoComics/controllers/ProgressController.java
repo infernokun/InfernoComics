@@ -177,7 +177,7 @@ public class ProgressController {
         return ResponseEntity.ok((progressService.dismissProgressData(id)));
     }
 
-    @GetMapping("json/{sessionId}")
+    @GetMapping("/json/{sessionId}")
     public ResponseEntity<JsonNode> getSessionJSON(@PathVariable String sessionId) {
         return ResponseEntity.ok(progressService.getSessionJSON(sessionId));
     }

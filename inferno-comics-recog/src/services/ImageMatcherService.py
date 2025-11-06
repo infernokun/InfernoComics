@@ -17,7 +17,7 @@ from config.ComicMatcherConfig import ComicMatcherConfig
 
 logger = get_logger(__name__)
 config = ComicMatcherConfig()
-SIMILARITY_THRESHOLD = config.get_simularity_threshold()
+SIMILARITY_THRESHOLD = config.get_similarity_threshold()
 
 def get_global_matcher():
     """Get the global matcher instance from Flask app config"""

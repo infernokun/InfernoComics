@@ -7,9 +7,8 @@ import hashlib
 import base64
 import numpy as np
 from util.Logger import get_logger
-from datetime import datetime, timedelta
+from datetime import datetime
 from util.Util import get_full_image_url
-from util.ImageUtils import get_image_hash
 from config.ComicMatcherConfig import ComicMatcherConfig
 from models.JavaProgressReporter import JavaProgressReporter
 
@@ -17,7 +16,7 @@ logger = get_logger(__name__)
 
 config = ComicMatcherConfig()
 
-SIMILARITY_THRESHOLD = config.get_simularity_threshold()
+SIMILARITY_THRESHOLD = config.get_similarity_threshold()
 
 def ensure_images_directory():
     """Ensure the stored images directory exists"""

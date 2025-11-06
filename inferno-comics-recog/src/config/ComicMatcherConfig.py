@@ -93,7 +93,10 @@ class ComicMatcherConfig:
                 logger.info(f"Feature weights: {weights_str}")
         else:
             logger.info(f"Using custom configuration (level: {level})")
-           
+
+    def get_config(self):
+         return self._load_config(self.config_path, False)
+         
     def get(self, key, default=None):
         """Get configuration value"""
         return self.config.get(key, default)
@@ -142,8 +145,8 @@ class ComicMatcherConfig:
         if result_match is None:
             return 10
 
-    def get_simularity_threshold(self):
-        threshold_value = self.get("simularity_threshold")
+    def get_similarity_threshold(self):
+        threshold_value = self.get("similarity_threshold")
         
         if threshold_value is None:
             return 0.55
@@ -156,7 +159,7 @@ class ComicMatcherConfig:
                     percentage = float(threshold_value.rstrip('%').strip())
                     return percentage / 100.0
                 except ValueError:
-                    logger.warning(f"Invalid percentage format for simularity_threshold: {threshold_value}, using default 0.55")
+                    logger.warning(f"Invalid percentage format for similarity_threshold: {threshold_value}, using default 0.55")
                     return 0.55
             
             try:
@@ -165,7 +168,7 @@ class ComicMatcherConfig:
                     return decimal_value / 100.0
                 return decimal_value
             except ValueError:
-                logger.warning(f"Invalid format for simularity_threshold: {threshold_value}, using default 0.55")
+                logger.warning(f"Invalid format for similarity_threshold: {threshold_value}, using default 0.55")
                 return 0.55
         
         elif isinstance(threshold_value, (int, float)):
@@ -174,5 +177,5 @@ class ComicMatcherConfig:
             return float(threshold_value)
         
         else:
-            logger.warning(f"Unexpected type for simularity_threshold: {type(threshold_value)}, using default 0.55")
+            logger.warning(f"Unexpected type for similarity_threshold: {type(threshold_value)}, using default 0.55")
             return 0.55

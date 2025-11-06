@@ -5,6 +5,7 @@ from waitress import serve
 from flask_cors import CORS
 from config.Config import Config
 from util.Logger import initialize_logger, set_global_log_config
+from config.ComicMatcherConfig import ComicMatcherConfig
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 
 # Set up logging
@@ -26,10 +27,7 @@ def create_matcher():
         db_path = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
         
         try:
-            global_matcher = FeatureMatchingComicMatcher(
-                cache_dir=cache_dir,
-                db_path=db_path
-            )
+            global_matcher = FeatureMatchingComicMatcher(ComicMatcherConfig(), cache_dir=cache_dir, db_path=db_path)
             logger.success("✅ Global matcher initialized successfully")
             global_matcher.print_config_summary()
             
@@ -69,6 +67,7 @@ def create_app():
     from routes.health.Health import health_bp
     from routes.evaluation.Evaluation import evaluation_bp
     from routes.image_matcher.ImageMatcher import image_matcher_bp
+    from routes.config.Config import config_bp
     
     # Pass the matcher getter function to blueprints
     app.config['GET_MATCHER'] = get_matcher
@@ -81,6 +80,9 @@ def create_app():
     
     app.register_blueprint(evaluation_bp, url_prefix=app.config['API_URL_PREFIX'])
     logger.debug(f"📊 Evaluation blueprint registered at {app.config['API_URL_PREFIX']}")
+
+    app.register_blueprint(config_bp, url_prefix=app.config['API_URL_PREFIX'])
+    logger.debug(f"📊 Config blueprint registered at {app.config['API_URL_PREFIX']}")
     
     logger.success("✅ All blueprints registered successfully")
     return app

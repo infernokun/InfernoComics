@@ -500,8 +500,8 @@ class FastCacheManager:
 
 
 class FeatureMatchingComicMatcher:
-    def __init__(self, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH):
-        self.config = ComicMatcherConfig()
+    def __init__(self, config, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH):
+        self.config = config
         self.cache_dir = cache_dir
         self.db_path = db_path
         self.max_workers = self.config.get('max_workers', 4)
@@ -509,7 +509,7 @@ class FeatureMatchingComicMatcher:
         logger.info(f"Initializing Fast Comic Matcher")
         logger.debug(f"Cache directory: {cache_dir}")
         logger.debug(f"Database path: {db_path}")
-        logger.debug(f"Image size: {self.config.get('image_size')}")
+        #logger.debug(f"Image size: {self.config.get('image_size')}")
         logger.debug(f"Workers: {self.max_workers}")
         
         os.makedirs(cache_dir, exist_ok=True)
@@ -993,7 +993,7 @@ class FeatureMatchingComicMatcher:
             return None
         
         h, w = image.shape[:2]
-        target_size = self.config.get('image_size', 800)
+        target_size = self.config.get('image_size')
         
         if max(h, w) > target_size:
             scale = target_size / max(h, w)
@@ -1553,7 +1553,7 @@ class FeatureMatchingComicMatcher:
         
         summary = {
             'performance_level': self.config.get('performance_level', 'custom'),
-            'image_size': self.config.get('image_size', 800),
+            'image_size': self.config.get('image_size'),
             'max_workers': self.max_workers,
             'enabled_detectors': enabled_detectors,
             'detector_feature_counts': detector_counts,
