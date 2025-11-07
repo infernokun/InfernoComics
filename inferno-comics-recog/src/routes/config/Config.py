@@ -2,9 +2,9 @@ import yaml
 import json
 
 from util.Logger import get_logger
+from util.Globals import get_global_matcher_config
 from models.RecognitionConfig import RecognitionConfig
 from flask import Blueprint, request, jsonify, abort, current_app
-from util.Globals import get_global_matcher_config
 from config.ComicMatcherConfig import ComicMatcherConfig, CONFIG_PATH
 
 logger = get_logger(__name__)

@@ -1,10 +1,11 @@
-from flask import Blueprint, jsonify, request
-from datetime import datetime
+import os
+import json
 import time
 import psutil
 import platform
-import os
-import json
+
+from datetime import datetime
+from flask import Blueprint, jsonify, request
 
 health_bp = Blueprint('health', __name__)
 
