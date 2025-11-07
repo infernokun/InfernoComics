@@ -342,6 +342,18 @@ public class SeriesController {
         }
     }
 
+    @PostMapping("/replay/{sessionId}")
+    public ResponseEntity<?> replaySession(@PathVariable String sessionId) {
+        // find files
+
+        // find series
+
+        // remove processed_files
+
+        // re-run
+        return ResponseEntity.ok(null);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Series> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesUpdateRequestDto request) {
         try {

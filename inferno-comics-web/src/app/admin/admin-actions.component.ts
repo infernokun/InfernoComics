@@ -1,6 +1,5 @@
 import {
   Component,
-  OnInit,
   ViewEncapsulation,
   ChangeDetectionStrategy,
 } from '@angular/core';
@@ -46,17 +45,17 @@ export interface AdminActionRendererParams extends ICellRendererParams {
       height: 100%;
       width: 100%;
       flex-wrap: nowrap;
-      min-width: 80px; /* Reduced from 120px */
+      min-width: 80px;
       align-items: center;
-      justify-content: flex-start; /* Changed from center to start */
-      gap: 2px; /* Add small gap between buttons */
+      justify-content: flex-start;
+      gap: 2px;
     }
     
     .table-action {
       margin: 0;
       padding: 0;
-      min-width: 28px !important; /* Reduced from 32px */
-      height: 28px; /* Reduced from 32px */
+      min-width: 28px !important;
+      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -75,8 +74,8 @@ export interface AdminActionRendererParams extends ICellRendererParams {
     }
     
     .sm-icon {
-      font-size: 18px !important; /* Reduced from 22px */
-      height: 16px; /* Reduced from 18px */
+      font-size: 18px !important;
+      height: 16px;
       color: rgb(121, 86, 84);
     }
     

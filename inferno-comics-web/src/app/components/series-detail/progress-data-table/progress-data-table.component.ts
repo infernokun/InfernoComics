@@ -47,8 +47,7 @@ import { Subscription, interval } from 'rxjs';
       </div>
     </div>
   `,
-  styles: [
-    `
+  styles: [`
     .grid-container {
       display: flex;
       flex-direction: column;
@@ -191,7 +190,6 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
     filterParams: { buttons: ['clear', 'reset'], debounceMs: 200 },
   };
 
-  // FIXED: Using proper Subscription type instead of any
   private refreshSubscription?: Subscription;
   private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
 
@@ -204,8 +202,8 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
       suppressDragLeaveHidesColumns: true,
       suppressMovableColumns: false,
       pagination: false,
-      rowHeight: 80, // Increase from default ~28px to 80px
-      headerHeight: 40, // Optional: increase header height too
+      rowHeight: 80,
+      headerHeight: 40,
       columnDefs: this.getColumnDefs(),
       onGridReady: (params) => this.onGridReady(params),
       onFirstDataRendered: (params) => this.onFirstDataRendered(params),
@@ -221,7 +219,6 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
     this.stopAutoRefresh();
   }
 
-  // FIXED: Added proper error handling
   private loadProgressData(): void {
     this.seriesService.getProgressData(this.id).subscribe({
       next: (res) => {
@@ -243,7 +240,6 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
     });
   }
 
-  // FIXED: Using proper interval observable instead of setInterval
   private startAutoRefresh(): void {
     this.refreshSubscription = interval(this.REFRESH_INTERVAL_MS).subscribe(() => {
       // Only refresh if there are processing sessions
@@ -293,7 +289,6 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
         lockPosition: true,
         cellRenderer: AdminActionsComponent,
         cellRendererParams: (params: any) => {
-          // FIXED: Added validation for params.data
           if (!params.data) {
             return {
               showPlay: false,
@@ -305,7 +300,7 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
           
           const state = params.data.state;
           return {
-            showPlay: state !== 'COMPLETE' && state !== 'PROCESSING',
+            showPlay: state === 'COMPLETE' && state !== 'PROCESSING',
             showAdd: state === 'COMPLETE',
             playClick: (data: any) => console.log('playClick', state),
             addClick: (data: any) => this.getSessionJSON(data.sessionId),
@@ -321,7 +316,7 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
       },
       {
         headerName: 'Status & Progress',
-        field: 'state', // Use state for sorting
+        field: 'state',
         cellRenderer: CombinedStatusRenderer,
         filter: 'agTextColumnFilter',
         width: 450,
@@ -690,7 +685,7 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
       <div class="main-status">
         <span class="status-icon" [style.color]="getStatusColor()">{{ getStatusIcon() }}</span>
         <span class="status-text" [style.color]="getStatusColor()">{{ getMainStatusText() }}</span>
-        <span> {{params?.data?.startedBy}}</span>
+        <span> {{params?.data?.startedBy}} - <button mat-button class="replay-button" (click)=replaySession()>REPLAY</button> </span>
       </div>
       
       <!-- Progress bar for processing items -->
@@ -786,11 +781,29 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
       white-space: nowrap;
       line-height: 1.2;
     }
+
+    .replay-button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .replay-button:hover {
+      background: #0056b3;
+    }
   `],
   imports: [CommonModule]
 })
 export class CombinedStatusRenderer implements ICellRendererAngularComp {
   params: any;
+
+  constructor(private seriesService: SeriesService) {}
 
   agInit(params: any): void {
     this.params = params;
@@ -841,6 +854,14 @@ export class CombinedStatusRenderer implements ICellRendererAngularComp {
       default:
         return state || 'Unknown';
     }
+  }
+
+  replaySession() {
+    const sessionId = this.params?.data.sessionId;
+
+    this.seriesService.replaySession(sessionId).subscribe((data: any) => {
+
+    });
   }
 
   shouldShowProgress(): boolean {

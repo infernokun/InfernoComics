@@ -92,6 +92,10 @@ export class SeriesService {
     return this.http.get<any[]>(`${this.apiUrl}/recent?limit=${limit}`);
   }
 
+  replaySession(sessionId: string) {
+    return this.http.post<any>(`${this.apiUrl}/replay/${sessionId}`, {});
+  }
+
   addComicsByImagesWithSSE(
     seriesId: number,
     imageFiles: File[]
