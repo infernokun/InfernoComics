@@ -3,9 +3,15 @@ import { OnInit, OnDestroy, Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RecognitionConfig, RecognitionService} from '../../services/recognition-config.service';
+import { RecognitionConfig, RecognitionService } from '../../services/recognition-config.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subscription } from 'rxjs';
+
+interface PerformanceLevel {
+  value: string;
+  label: string;
+  hint: string;
+}
 
 @Component({
   selector: 'app-config',
@@ -15,28 +21,75 @@ import { Subscription } from 'rxjs';
 })
 export class ConfigComponent implements OnInit, OnDestroy {
   config?: RecognitionConfig;
-
   configForm!: FormGroup;
-
   private sub = new Subscription();
-
+  private originalFormValue: any;
+  
   Object = Object;
+  selectedPresetIndex = 0;
+  hasUnsavedChanges = false;
 
-  constructor(private recognitionService: RecognitionService, private fb: FormBuilder, private snackBar: MatSnackBar) {}
+  // Performance level options with descriptions
+  performanceLevels: PerformanceLevel[] = [
+    { 
+      value: 'balanced', 
+      label: 'Balanced', 
+      hint: 'Best balance between speed and quality' 
+    },
+    { 
+      value: 'fast', 
+      label: 'Fast', 
+      hint: 'Optimized for speed' 
+    },
+    { 
+      value: 'high_performance', 
+      label: 'High Performance', 
+      hint: 'Maximum quality, slower processing' 
+    },
+    { 
+      value: 'minimal', 
+      label: 'Minimal', 
+      hint: 'Lightweight processing' 
+    },
+    { 
+      value: 'akaze_focused', 
+      label: 'AKAZE Focused', 
+      hint: 'Specialized AKAZE detection' 
+    }
+  ];
+
+  constructor(
+    private recognitionService: RecognitionService,
+    private fb: FormBuilder,
+    private snackBar: MatSnackBar
+  ) {}
 
   ngOnInit(): void {
-    const load$ = this.recognitionService
-      .getRecognitionConfig()
-      .subscribe((cfg) => {
-        this.config = cfg;
-        this.buildForm(cfg);
-      });
-
-    this.sub.add(load$);
+    this.loadConfiguration();
   }
 
   ngOnDestroy(): void {
     this.sub.unsubscribe();
+  }
+
+  private loadConfiguration(): void {
+    const load$ = this.recognitionService
+      .getRecognitionConfig()
+      .subscribe({
+        next: (cfg) => {
+          this.config = cfg;
+          this.buildForm(cfg);
+          this.originalFormValue = JSON.parse(JSON.stringify(this.configForm.value));
+          this.trackFormChanges();
+        },
+        error: (err) => {
+          console.error('Failed to load configuration:', err);
+          this.snackBar.open('Failed to load configuration.', 'Close', {
+            duration: 3000,
+          });
+        }
+      });
+    this.sub.add(load$);
   }
 
   private buildForm(cfg: RecognitionConfig): void {
@@ -74,6 +127,14 @@ export class ConfigComponent implements OnInit, OnDestroy {
     return this.fb.group(controls);
   }
 
+  private trackFormChanges(): void {
+    const changes$ = this.configForm.valueChanges.subscribe(() => {
+      this.hasUnsavedChanges = JSON.stringify(this.configForm.value) !== 
+                               JSON.stringify(this.originalFormValue);
+    });
+    this.sub.add(changes$);
+  }
+
   onSave(): void {
     if (this.configForm.invalid) {
       this.snackBar.open('Please fix the errors before saving.', 'Close', {
@@ -82,27 +143,94 @@ export class ConfigComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const updated: RecognitionConfig = this.configForm
-      .value as RecognitionConfig;
-
+    const updated: RecognitionConfig = this.configForm.value as RecognitionConfig;
+    
     const save$ = this.recognitionService
       .saveRecognitionConfig(updated)
       .subscribe({
         next: () => {
-          this.snackBar.open('Configuration saved successfully.', 'Close', {
+          this.snackBar.open('✓ Configuration saved successfully', 'Close', {
             duration: 2500,
           });
           this.config = updated;
+          this.originalFormValue = JSON.parse(JSON.stringify(this.configForm.value));
+          this.hasUnsavedChanges = false;
         },
         error: (err) => {
-          console.error(err);
-          this.snackBar.open('Failed to save configuration.', 'Close', {
+          console.error('Save error:', err);
+          this.snackBar.open('✗ Failed to save configuration', 'Close', {
             duration: 3000,
           });
         },
       });
-
     this.sub.add(save$);
+  }
+
+  onCancel(): void {
+    if (this.hasUnsavedChanges) {
+      this.configForm.patchValue(this.originalFormValue);
+      this.hasUnsavedChanges = false;
+      this.snackBar.open('Changes discarded', 'Close', { duration: 2000 });
+    }
+  }
+
+  onExport(): void {
+    if (!this.configForm) return;
+
+    const dataStr = JSON.stringify(this.configForm.value, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `recognition-config-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    
+    this.snackBar.open('Configuration exported successfully', 'Close', {
+      duration: 2500,
+    });
+  }
+
+  onImport(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const importedConfig = JSON.parse(e.target?.result as string);
+        this.buildForm(importedConfig);
+        this.hasUnsavedChanges = true;
+        
+        this.snackBar.open('Configuration imported. Click Save to apply.', 'Close', {
+          duration: 3000,
+        });
+      } catch (error) {
+        console.error('Import error:', error);
+        this.snackBar.open('Invalid configuration file', 'Close', {
+          duration: 3000,
+        });
+      }
+    };
+
+    reader.readAsText(file);
+    input.value = ''; // Reset input
+  }
+
+  getPresetIcon(presetKey: string): string {
+    const iconMap: { [key: string]: string } = {
+      'balanced': 'balance',
+      'fast': 'flash_on',
+      'high_performance': 'rocket_launch',
+      'minimal': 'minimize',
+      'akaze_focused': 'filter_center_focus',
+      'default': 'view_module'
+    };
+    return iconMap[presetKey.toLowerCase()] || iconMap['default'];
   }
 
   get presetControls() {

@@ -27,6 +27,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatSlideToggle } from '@angular/material/slide-toggle';
+import { MatSliderModule } from '@angular/material/slider';
 
 @NgModule({
   imports: [
@@ -90,7 +91,8 @@ import { MatSlideToggle } from '@angular/material/slide-toggle';
     MatAutocompleteModule,
     MatProgressBarModule,
     MatButtonToggleModule,
-    MatSlideToggle
+    MatSlideToggle,
+    MatSliderModule
   ],
   declarations: [],
   providers: [

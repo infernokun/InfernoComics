@@ -1,77 +1,472 @@
-$card-radius: 8px;
-$section-gap: 24px;
+// Variables
+$card-radius: 12px;
+$section-gap: 32px;
 $sub-section-gap: 16px;
+$primary-color: #1976d2;
+$accent-color: #ff4081;
+$success-color: #4caf50;
+$warn-color: #ff9800;
 
+// Mixins
+@mixin responsive-grid($min-width) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
+  gap: 16px;
+}
+
+// Main wrapper
 .config-wrapper {
   display: flex;
   justify-content: center;
   padding: 24px;
   min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
 }
 
 .config-card {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   border-radius: $card-radius;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  background: white;
+  animation: slideIn 0.4s ease-out;
+
+  mat-card-header {
+    margin-bottom: 32px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 16px;
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+
+      mat-card-title {
+        font-size: 28px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 4px;
+      }
+
+      mat-card-subtitle {
+        color: #666;
+        font-size: 14px;
+      }
+
+      .more-options {
+        opacity: 0.7;
+        transition: opacity 0.2s;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+  }
 }
 
-/* Global section */
-.section-global {
+// Section headers
+.section-header {
   display: flex;
-  flex-wrap: wrap;
-  gap: $section-gap;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 600;
+    color: #444;
+    margin: 0;
+
+    mat-icon {
+      color: $primary-color;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  mat-chip {
+    &.unsaved {
+      background-color: $warn-color;
+      color: white;
+    }
+  }
+}
+
+// Global settings section
+.section-global {
+  margin-bottom: $section-gap;
+  padding: 24px;
+  background: #f9fafb;
+  border-radius: $card-radius;
+  border: 1px solid #e5e7eb;
+
+  .settings-grid {
+    @include responsive-grid(250px);
+    margin-top: 16px;
+
+    mat-form-field {
+      width: 100%;
+    }
+  }
+}
+
+// Presets section
+.section-presets {
   margin-bottom: $section-gap;
 
-  mat-form-field {
-    flex: 1 1 200px;
+  ::ng-deep .mat-mdc-tab-group {
+    .mat-mdc-tab-labels {
+      background: #f5f5f5;
+      border-radius: $card-radius $card-radius 0 0;
+      border: 1px solid #e5e7eb;
+      border-bottom: none;
+    }
+
+    .mat-mdc-tab {
+      min-width: 140px;
+      color: #333 !important;
+      opacity: 0.7;
+
+      &.mdc-tab--active {
+        opacity: 1;
+        color: $primary-color !important;
+      }
+
+      .mdc-tab__text-label {
+        color: inherit;
+      }
+
+      .tab-icon {
+        margin-right: 8px;
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: inherit;
+      }
+    }
+
+    .mat-mdc-tab-body-wrapper {
+      padding: 24px;
+      border: 1px solid #e5e7eb;
+      border-radius: 0 0 $card-radius $card-radius;
+      background: white;
+    }
+  }
+
+  .preset-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sub-section-panel {
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    background: white;
+
+    ::ng-deep {
+      .mat-expansion-panel-header {
+        padding: 16px 24px;
+        background: white;
+
+        mat-panel-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-weight: 600;
+          color: #333;
+
+          mat-icon {
+            color: $primary-color;
+          }
+        }
+      }
+
+      .mat-expansion-panel-body {
+        padding: 24px;
+        background: #f9fafb;
+      }
+    }
+  }
+
+  // Parameter grids
+  .param-grid {
+    @include responsive-grid(200px);
+
+    .compact-field {
+      ::ng-deep {
+        .mat-mdc-form-field-infix {
+          padding: 8px 0;
+        }
+
+        .small-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          opacity: 0.6;
+        }
+      }
+    }
+  }
+
+  .settings-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+  }
+
+  // Options panel
+  .options-panel {
+    .options-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+
+      .option-card {
+        padding: 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+
+        &:hover {
+          border-color: $primary-color;
+          box-shadow: 0 4px 12px rgba(25, 118, 210, 0.1);
+          transform: translateY(-2px);
+        }
+
+        mat-slide-toggle {
+          width: 100%;
+
+          .toggle-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-left: 12px;
+
+            strong {
+              font-size: 15px;
+              color: #333;
+            }
+
+            .toggle-hint {
+              font-size: 12px;
+              color: #666;
+              line-height: 1.4;
+            }
+          }
+        }
+      }
+    }
   }
 }
 
-/* Preset list */
-.section-presets {
-  .preset-card {
-    margin-bottom: $section-gap;
+// Material Select custom options
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .option-label {
+    font-weight: 500;
   }
 
-  mat-card {
-    border: 1px solid #e0e0e0;
-    border-radius: $card-radius;
+  .option-hint {
+    font-size: 12px;
+    color: #666;
+  }
+}
+
+// Hide hint in selected value, only show in dropdown
+::ng-deep .mat-mdc-select-value {
+  .option-hint {
+    display: none;
+  }
+}
+
+// Action bar
+.action-bar {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 2px solid #f0f0f0;
+  gap: 12px;
+
+  button {
+    min-width: 120px;
+
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}
+
+// Loading state
+.loading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  gap: 24px;
+
+  .loading-text {
+    color: #666;
+    font-size: 16px;
+    margin: 0;
+  }
+}
+
+// Animations
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .config-wrapper {
     padding: 16px;
   }
 
-  .sub-section {
-    margin-top: $sub-section-gap;
+  .config-card {
+    padding: 20px;
 
-    h4 {
-      margin: 0 0 8px;
-      font-weight: 500;
-    }
-
-    .map-grid,
-    .options-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    mat-form-field {
-      flex: 1 1 120px;
+    mat-card-header {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
     }
   }
 
-  .options {
-    mat-slide-toggle {
-      width: auto;
+  .section-global {
+    padding: 16px;
+
+    .settings-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .section-presets {
+    ::ng-deep .mat-mdc-tab-body-wrapper {
+      padding: 16px;
+    }
+
+    .param-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .options-container {
+      grid-template-columns: 1fr !important;
     }
   }
 }
 
-/* Loading spinner */
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200px;
+// Dark mode support (optional)
+@media (prefers-color-scheme: dark) {
+  .config-wrapper {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  }
+
+  .config-card {
+    background: #2d3748;
+    color: #e2e8f0;
+
+    mat-card-header {
+      border-bottom-color: #4a5568;
+
+      mat-card-title {
+        color: #e2e8f0;
+      }
+
+      mat-card-subtitle {
+        color: #a0aec0;
+      }
+    }
+  }
+
+  .section-global {
+    background: #1a202c;
+    border-color: #4a5568;
+  }
+
+  .section-header h3 {
+    color: #e2e8f0;
+  }
+
+  .section-presets {
+    ::ng-deep .mat-mdc-tab-group {
+      .mat-mdc-tab-labels {
+        background: #2d3748;
+        border-color: #4a5568;
+      }
+
+      .mat-mdc-tab {
+        color: #a0aec0 !important;
+
+        &.mdc-tab--active {
+          color: #63b3ed !important;
+        }
+      }
+
+      .mat-mdc-tab-body-wrapper {
+        background: #2d3748;
+        border-color: #4a5568;
+      }
+    }
+  }
+
+  .sub-section-panel {
+    background: #2d3748 !important;
+
+    ::ng-deep {
+      .mat-expansion-panel-header {
+        background: #2d3748 !important;
+
+        mat-panel-title {
+          color: #e2e8f0 !important;
+        }
+      }
+
+      .mat-expansion-panel-body {
+        background: #1a202c !important;
+      }
+    }
+  }
+
+  .option-card {
+    background: #1a202c !important;
+    border-color: #4a5568 !important;
+
+    &:hover {
+      border-color: $primary-color !important;
+    }
+
+    strong {
+      color: #e2e8f0 !important;
+    }
+
+    .toggle-hint {
+      color: #a0aec0 !important;
+    }
+  }
+
+  .action-bar {
+    border-top-color: #4a5568;
+  }
 }
