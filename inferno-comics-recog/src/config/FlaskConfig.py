@@ -1,6 +1,6 @@
 import os
 
-class Config:
+class FlaskConfig:
     API_VERSION = "v1"
     API_URL_PREFIX = f"/inferno-comics-recognition/api/{API_VERSION}"
     REST_API = os.getenv('REST_API', 'http://localhost:8080/inferno-comics-rest/api')

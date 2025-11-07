@@ -1,16 +1,21 @@
 import yaml
 import json
 
-from config.ComicMatcherConfig import ComicMatcherConfig, DEFAULT_CONFIG, CONFIG_PATH
+from util.Logger import get_logger
 from models.RecognitionConfig import RecognitionConfig
 from flask import Blueprint, request, jsonify, abort, current_app
+from util.Globals import get_global_matcher_config
+from config.ComicMatcherConfig import ComicMatcherConfig, CONFIG_PATH
 
+logger = get_logger(__name__)
 
 config_bp = Blueprint('config', __name__)
 
 def load_yaml() -> dict:
+    config_matcher = get_global_matcher_config()
+
     try:
-        yaml_data = yaml.safe_load(DEFAULT_CONFIG) or {}
+        yaml_data = config_matcher.get_config()
         if not isinstance(yaml_data, dict):
             yaml_data = {"value": yaml_data}
         return yaml_data

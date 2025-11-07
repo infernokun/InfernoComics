@@ -10,11 +10,10 @@ import numpy as np
 import threading
 import queue
 from datetime import datetime
-from typing import Dict, Optional, Tuple, List
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from util.Logger import get_logger
-from config.ComicMatcherConfig import ComicMatcherConfig
+from typing import Dict, Optional, Tuple, List
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger(__name__)
 
@@ -27,7 +26,6 @@ cv2.setNumThreads(1)
 DB_PATH = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
 DB_IMAGE_CACHE = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
 
-
 @dataclass
 class CacheItem:
     """Represents a cache item with metadata"""
@@ -35,7 +33,6 @@ class CacheItem:
     created_at: datetime
     last_accessed: datetime
     access_count: int = 0
-
 
 def safe_progress_callback(callback, current_item, message=""):
     """Safely call progress callback, handling None case"""
@@ -45,7 +42,6 @@ def safe_progress_callback(callback, current_item, message=""):
         except Exception as e:
             logger.warning(f"Progress callback error: {e}")
             pass
-
 
 class FastCacheManager:
     """High-performance cache manager with in-memory storage and async persistence"""
@@ -498,7 +494,6 @@ class FastCacheManager:
         self.write_worker.join(timeout=5.0)
         logger.info("Cache manager shutdown complete")
 
-
 class FeatureMatchingComicMatcher:
     def __init__(self, config, cache_dir=DB_IMAGE_CACHE, db_path=DB_PATH):
         self.config = config
@@ -527,7 +522,6 @@ class FeatureMatchingComicMatcher:
         })
 
         self.print_config_summary()
-        logger.success("Fast Comic Matcher initialization complete")
         
     def _setup_detectors(self):
         """Setup feature detectors based on config with configurable weights"""
@@ -670,8 +664,6 @@ class FeatureMatchingComicMatcher:
         
         conn.commit()
         conn.close()
-        
-        logger.success("Database initialization complete")
 
     def _get_url_hash(self, url: str) -> str:
         """Generate consistent hash for URL"""
@@ -1554,6 +1546,7 @@ class FeatureMatchingComicMatcher:
         summary = {
             'performance_level': self.config.get('performance_level', 'custom'),
             'image_size': self.config.get('image_size'),
+            'result_batch': self.config.get('result_batch'),
             'max_workers': self.max_workers,
             'enabled_detectors': enabled_detectors,
             'detector_feature_counts': detector_counts,
@@ -1569,13 +1562,15 @@ class FeatureMatchingComicMatcher:
     def print_config_summary(self):
         """Print current configuration summary"""
         summary = self.get_config_summary()
+        title = "COMIC MATCHER CONFIGURATION"
         
-        logger.info("\n" + "="*60)
-        logger.info("FAST COMIC MATCHER CONFIGURATION")
-        logger.info("="*60)
+        logger.success("=" * len(title))
+        logger.success(title)
+        logger.success("=" * len(title))
         logger.info(f"Performance Level: {summary['performance_level']}")
         logger.info(f"Image Size: {summary['image_size']}")
         logger.info(f"Max Workers: {summary['max_workers']}")
+        logger.info(f"Result Batch Size: {summary['result_batch']}")
         logger.info(f"Enabled Detectors: {', '.join(summary['enabled_detectors'])}")
         
         for detector, count in summary['detector_feature_counts'].items():
@@ -1589,21 +1584,17 @@ class FeatureMatchingComicMatcher:
         cache_stats = summary['cache_manager_stats']
         logger.info(f"Memory Cache: {cache_stats.get('memory_image_count', 0)} images, {cache_stats.get('memory_feature_count', 0)} features")
         logger.info(f"Memory Hit Rate: {cache_stats.get('memory_hit_rate', 0):.1f}%")
-        logger.info("="*60)
     
     def __del__(self):
         """Cleanup when object is destroyed"""
         if hasattr(self, 'cache_manager'):
             self.cache_manager.shutdown()
 
-
-# Usage example and performance comparison functions
-
 def performance_comparison_test(matcher, test_urls, query_image):
     """Compare performance with and without fast caching"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "="*30)
     logger.info("PERFORMANCE COMPARISON TEST")
-    logger.info("="*60)
+    logger.info("="*30)
     
     # First run (cold cache)
     logger.info("Cold cache run...")
@@ -1624,12 +1615,11 @@ def performance_comparison_test(matcher, test_urls, query_image):
     
     matcher.print_cache_stats()
 
-
 def stress_test(matcher, test_urls, query_image, num_workers_list=[1, 2, 4, 8]):
     """Test concurrency performance with different worker counts"""
-    logger.info("\n" + "="*60)
+    logger.info("\n" + "="*30)
     logger.info("CONCURRENCY STRESS TEST")
-    logger.info("="*60)
+    logger.info("="*30)
     
     for workers in num_workers_list:
         logger.info(f"\nTesting with {workers} workers...")

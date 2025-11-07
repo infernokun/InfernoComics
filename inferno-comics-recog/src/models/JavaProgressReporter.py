@@ -39,9 +39,9 @@ class JavaProgressReporter:
         logger.info(f" Java Progress Service URL: {self.rest_api_url}")
         
         if self.check_java_service_health():
-            logger.success("✅ Java progress service is available")
+            logger.success("Java progress service is available")
         else:
-            logger.warning("⚠️ Java progress service is not available - progress updates will be logged only")
+            logger.warning("Java progress service is not available - progress updates will be logged only")
         
     def check_java_service_health(self):
         """Check if Java progress service is available"""
@@ -51,10 +51,10 @@ class JavaProgressReporter:
             if is_healthy:
                 logger.debug(" Java service health check passed")
             else:
-                logger.warning(f"⚠️ Java service health check failed: status {response.status_code}")
+                logger.warning(f"Java service health check failed: status {response.status_code}")
             return is_healthy
         except Exception as e:
-            logger.warning(f"⚠️ Health check failed: {e}")
+            logger.warning(f"Health check failed: {e}")
             return False
 
     def _extract_process_info_from_message(self, message, stage):
@@ -222,11 +222,11 @@ class JavaProgressReporter:
                     self.stage_change_count += 1
                 
                 if is_important_event or is_image_processing_update:
-                    logger.success(f"✅ IMPORTANT progress sent to Java: {stage} {progress}% - {message[:100] if message else ''}")
+                    logger.success(f"IMPORTANT progress sent to Java: {stage} {progress}% - {message[:100] if message else ''}")
                 else:
                     logger.debug(f" Progress sent to Java: {stage} {progress}% - {message[:50] if message else ''}")
             else:
-                logger.warning(f"⚠️ Java progress update failed: {response.status_code} - {response.text}")
+                logger.warning(f"Java progress update failed: {response.status_code} - {response.text}")
                 
         except requests.exceptions.Timeout:
             logger.warning(f"⏱️ Java progress update timed out for session {self.session_id}")
@@ -272,7 +272,7 @@ class JavaProgressReporter:
             )
             
             if response.status_code == 200:
-                logger.success(f"✅ COMPLETION with results sent successfully to Java for session {self.session_id}")
+                logger.success(f"COMPLETION with results sent successfully to Java for session {self.session_id}")
             else:
                 logger.error(f"❌ CRITICAL: Java completion notification failed: {response.status_code} - {response.text}")
                 
@@ -286,7 +286,7 @@ class JavaProgressReporter:
                         headers={'Content-Type': 'application/json'}
                     )
                     if retry_response.status_code == 200:
-                        logger.success(f"✅ COMPLETION sent on retry for session {self.session_id}")
+                        logger.success(f"COMPLETION sent on retry for session {self.session_id}")
                     else:
                         logger.error(f"❌ CRITICAL: Completion retry also failed: {retry_response.status_code}")
                 except Exception as retry_error:
@@ -304,7 +304,7 @@ class JavaProgressReporter:
         )
 
         if response.status_code == 200:
-            logger.success(f"✅ Processed file info sent to Java for session {self.session_id} image: {data['stored_file_name']}")
+            logger.success(f"Processed file info sent to Java for session {self.session_id} image: {data['stored_file_name']}")
         else:
             logger.error(f"❌ CRITICAL: Java processed file info notification failed: {response.status_code} - {response.text}")
 
@@ -383,9 +383,9 @@ class JavaProgressReporter:
             )
             
             if response.status_code == 200:
-                logger.error(f"✅ ERROR sent to Java for session {self.session_id}")
+                logger.error(f"ERROR sent to Java for session {self.session_id}")
             else:
-                logger.warning(f"⚠️ Java error notification failed: {response.status_code}")
+                logger.warning(f"Java error notification failed: {response.status_code}")
                 
         except Exception as e:
             logger.error(f"❌ Error sending error to Java for session {self.session_id}: {e}")

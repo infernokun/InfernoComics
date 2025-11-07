@@ -75,6 +75,7 @@ services:
       RECOGNITION_HOST: "${RECOGNITION_HOST:-0.0.0.0}"
       RECOGNITION_PORT: "${RECOGNITION_PORT:-5000}"
       FLASK_THREADS: "${FLASK_THREADS:-4}"
+      CONFIG_PATH: "/var/tmp/inferno-comics/config.yml"
       COMIC_CACHE_DB_PATH: "/var/tmp/inferno-comics/comic_cache.db"
       COMIC_CACHE_IMAGE_PATH: "/var/tmp/inferno-comics/image_cache"
       REST_API: "http://inferno-comics-rest:8080/inferno-comics-rest/api"

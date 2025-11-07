@@ -6,34 +6,10 @@ import threading
 from util.Logger import get_logger
 from datetime import datetime
 from models.JavaProgressReporter import JavaProgressReporter
-from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
-from util.FileOperations import (
-    sanitize_for_json, 
-    copy_external_image_to_storage, 
-    ensure_results_directory, 
-    save_image_to_storage
-)
-from config.ComicMatcherConfig import ComicMatcherConfig
+from util.Globals import get_global_matcher, get_global_matcher_config
+from util.FileOperations import sanitize_for_json, copy_external_image_to_storage, ensure_results_directory, save_image_to_storage
 
 logger = get_logger(__name__)
-config = ComicMatcherConfig()
-SIMILARITY_THRESHOLD = config.get_similarity_threshold()
-
-def get_global_matcher():
-    """Get the global matcher instance from Flask app config"""
-    try:
-        from flask import current_app
-        get_matcher_func = current_app.config.get('GET_MATCHER')
-        if get_matcher_func:
-            return get_matcher_func()
-        else:
-            # Fallback: create a new instance (should not happen in production)
-            logger.warning("⚠️ Global matcher not found, creating new instance")
-            return FeatureMatchingComicMatcher()
-    except Exception as e:
-        logger.error(f"❌ Error getting global matcher: {e}")
-        # Fallback: create a new instance
-        return FeatureMatchingComicMatcher()
     
 class ImageMatcherService:
     """Service class to handle image matching operations with proper dependency management"""
@@ -42,22 +18,6 @@ class ImageMatcherService:
         self.session_lock = threading.Lock()
         self.sse_sessions = {}
         self.progress_data = {}
-        
-    def get_global_matcher(self):
-        """Get the global matcher instance from Flask app config"""
-        try:
-            from flask import current_app
-            get_matcher_func = current_app.config.get('GET_MATCHER')
-            if get_matcher_func:
-                return get_matcher_func()
-            else:
-                # Fallback: create a new instance (should not happen in production)
-                logger.warning("⚠️ Global matcher not found, creating new instance")
-                return FeatureMatchingComicMatcher()
-        except Exception as e:
-            logger.error(f"❌ Error getting global matcher: {e}")
-            # Fallback: create a new instance
-            return FeatureMatchingComicMatcher()
 
     def safe_progress_callback(self, callback, current_item, message=""):
         """Safely call progress callback, handling None case"""
@@ -65,7 +25,7 @@ class ImageMatcherService:
             try:
                 callback(current_item, message)
             except Exception as e:
-                logger.warning(f"⚠️ Progress callback error: {e}")
+                logger.warning(f"Progress callback error: {e}")
                 pass  # Continue execution even if progress fails
 
     def process_multiple_images_with_centralized_progress(self, session_id, query_images_data, candidate_covers):
@@ -95,7 +55,7 @@ class ImageMatcherService:
             java_reporter.update_progress('initializing_matcher', 22, 'Initializing image matching engine for multiple images...')
             
             # Initialize matcher
-            matcher = self.get_global_matcher()
+            matcher = get_global_matcher()
             logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers for multiple images")
             
             java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready for multiple images')
@@ -151,7 +111,7 @@ class ImageMatcherService:
             traceback.print_exc()
             error_msg = f'Multiple images matching failed: {str(e)}'
             java_reporter.send_error(error_msg)
-            logger.error(f"❌ Error in centralized multiple images processing for session {session_id}: {error_msg}")
+            logger.error(f"Error in centralized multiple images processing for session {session_id}: {error_msg}")
             
             # Save error state
             error_result = {
@@ -283,7 +243,7 @@ class ImageMatcherService:
         java_reporter.update_progress('comparing_images', int(start_progress), 
                                     f'Processing image {current_image_num}/{len(query_images_data)}: {query_filename}')
         
-        logger.info(f"️ Processing image {current_image_num}/{len(query_images_data)}: {query_filename}")
+        logger.info(f"️Processing image {current_image_num}/{len(query_images_data)}: {query_filename}")
         
         # Create progress callback
         def create_image_progress_callback(img_num, total_imgs, filename, start_prog, end_prog):
@@ -345,7 +305,7 @@ class ImageMatcherService:
                 enhanced_results.append(enhanced_result)
             
             # Get top 5 matches for this image
-            top_matches = enhanced_results[:config.get_result_batch()]
+            top_matches = enhanced_results[:get_global_matcher_config().get_result_batch()]
             
             # Create result for this image
             image_result = {
@@ -366,7 +326,7 @@ class ImageMatcherService:
             return image_result
             
         except Exception as image_error:
-            logger.error(f"❌ Error processing image {current_image_num} ({query_filename}): {image_error}")
+            logger.error(f"Error processing image {current_image_num} ({query_filename}): {image_error}")
             
             # Error message format
             error_msg = f'Failed image {current_image_num}/{len(query_images_data)}: {query_filename} - {str(image_error)}'
@@ -451,7 +411,7 @@ class ImageMatcherService:
                 'no_matches': len(query_images_data) - successful_images,
                 'overall_success': successful_images > 0,
                 'best_similarity': 0.0,  # Will be calculated below
-                'similarity_threshold': float(SIMILARITY_THRESHOLD),
+                'similarity_threshold': float(get_global_matcher_config().get_similarity_threshold()),
                 'total_covers_processed': int(result_data.get('summary', {}).get('total_covers_processed', 0)),
                 'total_urls_processed': int(result_data.get('summary', {}).get('total_urls_processed', 0)),
                 'query_type': 'multiple_images_search',
@@ -506,7 +466,7 @@ class ImageMatcherService:
                         'similarity': float(match.get('similarity', 0)),
                         'url': candidate_url,  # Keep original URL
                         'local_url': local_candidate_url,  # Add local stored URL
-                        'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD),
+                        'meets_threshold': bool(match.get('similarity', 0) >= get_global_matcher_config().get_similarity_threshold()),
                         'comic_name': str(match.get('comic_name', 'Unknown')),
                         'issue_number': str(match.get('issue_number', 'Unknown')),
                         'comic_vine_id': match.get('comic_vine_id'),
@@ -533,7 +493,7 @@ class ImageMatcherService:
             return sanitized_result
             
         except Exception as e:
-            logger.error(f"❌ Error saving multiple images matcher result: {e}")
+            logger.error(f"Error saving multiple images matcher result: {e}")
             traceback.print_exc()
             return None
 

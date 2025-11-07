@@ -9,14 +9,10 @@ import numpy as np
 from util.Logger import get_logger
 from datetime import datetime
 from util.Util import get_full_image_url
-from config.ComicMatcherConfig import ComicMatcherConfig
+from util.Globals import get_global_matcher_config
 from models.JavaProgressReporter import JavaProgressReporter
 
 logger = get_logger(__name__)
-
-config = ComicMatcherConfig()
-
-SIMILARITY_THRESHOLD = config.get_similarity_threshold()
 
 def ensure_images_directory():
     """Ensure the stored images directory exists"""
@@ -300,7 +296,7 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
         # Convert image matcher result to evaluation-compatible format
         total_matches = len(result_data.get('top_matches', []))
         successful_matches = sum(1 for match in result_data.get('top_matches', []) 
-                               if match.get('similarity', 0) >= SIMILARITY_THRESHOLD)
+                               if match.get('similarity', 0) >= get_global_matcher_config().get_similarity_threshold())
         
         # Create evaluation-compatible result structure
         evaluation_result = {
@@ -316,7 +312,7 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
             'no_matches': total_matches - successful_matches,
             'overall_success': successful_matches > 0,
             'best_similarity': max((match.get('similarity', 0) for match in result_data.get('top_matches', [])), default=0.0),
-            'similarity_threshold': float(SIMILARITY_THRESHOLD),
+            'similarity_threshold': float(get_global_matcher_config().get_similarity_threshold()),
             'total_covers_processed': int(result_data.get('total_covers_processed', 0)),
             'total_urls_processed': int(result_data.get('total_urls_processed', 0)),
             'query_type': 'image_search',  # Distinguish from folder evaluation
@@ -354,7 +350,7 @@ def save_image_matcher_result(session_id, result_data, query_filename=None, quer
                 'similarity': float(match.get('similarity', 0)),
                 'url': candidate_url,  # Keep original URL
                 'local_url': local_candidate_url,  # Add local stored URL
-                'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD),
+                'meets_threshold': bool(match.get('similarity', 0) >= get_global_matcher_config().get_similarity_threshold()),
                 'comic_name': str(match.get('comic_name', 'Unknown')),
                 'issue_number': str(match.get('issue_number', 'Unknown')),
                 'comic_vine_id': match.get('comic_vine_id'),

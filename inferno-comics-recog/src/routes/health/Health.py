@@ -3,7 +3,6 @@ from datetime import datetime
 import time
 import psutil
 import platform
-from config.Config import Config
 import os
 import json
 
