@@ -22,21 +22,31 @@ export interface AdminActionRendererParams extends ICellRendererParams {
   selector: 'app-admin-action',
   template: `
     <span class="row">
-      <button *ngIf="params?.showPlay" mat-icon-button color="primary" matTooltip="Play" (click)="play()">
-        <mat-icon class="sm-icon">play_arrow</mat-icon>
+      <button mat-icon-button [matMenuTriggerFor]="menu" class="table-action" color="primary" matTooltip="Actions">
+        <mat-icon class="sm-icon">more_vert</mat-icon>
       </button>
-      <button *ngIf="params?.showAdd" mat-icon-button color="primary" matTooltip="Add" (click)="add()">
-        <mat-icon class="sm-icon">add</mat-icon>
-      </button>
-      <button *ngIf="!params || !params.data || (!!params.data && !!params.viewClick)" mat-icon-button aria-label="View" class="table-action" color="primary" matToolTip="View" (click)="view()">
-        <mat-icon class="sm-icon">visibility</mat-icon>
-      </button>
-      <button *ngIf="!params || !params.data || (!!params.data && !!params.editClick)" mat-icon-button aria-label="Edit" class="table-action" color="primary" matToolTip="Edit" (click)="edit()">
-        <mat-icon class="sm-icon">edit</mat-icon>
-      </button>
-      <button *ngIf="!params || !params.data || (!!params.data && !!params.deleteClick)" mat-icon-button aria-label="Delete" class="table-action" color="primary" matToolTip="Delete" (click)="delete()">
-        <mat-icon class="sm-icon">delete</mat-icon>
-      </button>
+      <mat-menu #menu="matMenu">
+        <button *ngIf="params?.showPlay" mat-menu-item (click)="play()">
+          <mat-icon>play_arrow</mat-icon>
+          <span>Play</span>
+        </button>
+        <button *ngIf="params?.showAdd" mat-menu-item (click)="add()">
+          <mat-icon>add</mat-icon>
+          <span>Add</span>
+        </button>
+        <button *ngIf="!params || !params.data || (!!params.data && !!params.viewClick)" mat-menu-item (click)="view()">
+          <mat-icon>visibility</mat-icon>
+          <span>View</span>
+        </button>
+        <button *ngIf="!params || !params.data || (!!params.data && !!params.editClick)" mat-menu-item (click)="edit()">
+          <mat-icon>edit</mat-icon>
+          <span>Edit</span>
+        </button>
+        <button *ngIf="!params || !params.data || (!!params.data && !!params.deleteClick)" mat-menu-item (click)="delete()">
+          <mat-icon color="warn">delete</mat-icon>
+          <span>Delete</span>
+        </button>
+      </mat-menu>
     </span>
   `,
   styles: [`
@@ -44,13 +54,9 @@ export interface AdminActionRendererParams extends ICellRendererParams {
       display: flex;
       height: 100%;
       width: 100%;
-      flex-wrap: nowrap;
-      min-width: 80px;
       align-items: center;
-      justify-content: flex-start;
-      gap: 2px;
+      justify-content: center;
     }
-    
     .table-action {
       margin: 0;
       padding: 0;
@@ -64,23 +70,13 @@ export interface AdminActionRendererParams extends ICellRendererParams {
       box-shadow: none;
       transition: background-color 0.2s ease;
     }
-    
     .table-action:hover {
       background-color: rgba(0, 0, 0, 0.04);
     }
-    
-    .table-action[color="warn"]:hover {
-      background-color: rgba(244, 67, 54, 0.04);
-    }
-    
     .sm-icon {
       font-size: 18px !important;
       height: 16px;
       color: rgb(121, 86, 84);
-    }
-    
-    .table-action[color="warn"] .sm-icon {
-      color: #f44336;
     }
   `],
   encapsulation: ViewEncapsulation.None,
@@ -89,34 +85,34 @@ export interface AdminActionRendererParams extends ICellRendererParams {
 })
 export class AdminActionsComponent implements ICellRendererAngularComp {
   params?: AdminActionRendererParams;
-  
+
   constructor() {}
-  
+
   agInit(params: AdminActionRendererParams): void {
     this.params = params;
   }
-  
+
   refresh(params: AdminActionRendererParams): boolean {
     this.params = params;
     return true;
   }
-  
+
   view() {
     this.params?.viewClick(this.params?.data);
   }
-  
+
   edit() {
     this.params?.editClick(this.params?.data);
   }
-  
+
   delete() {
     this.params?.deleteClick(this.params?.data);
   }
-  
+
   play() {
     this.params?.playClick(this.params?.data);
   }
-  
+
   add() {
     this.params?.addClick(this.params?.data);
   }

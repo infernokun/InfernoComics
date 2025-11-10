@@ -279,9 +279,9 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
     return [
       {
         //headerName: 'Actions',
-        width: 60,
-        minWidth: 60,
-        maxWidth: 70,
+        width: 50,
+        minWidth: 45,
+        maxWidth: 60,
         pinned: 'left',
         sortable: false,
         filter: false,
