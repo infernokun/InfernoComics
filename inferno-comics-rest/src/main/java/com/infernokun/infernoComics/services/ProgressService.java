@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.Series;
@@ -17,6 +18,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.Resource;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatusCode;
@@ -717,7 +719,7 @@ public class ProgressService {
                                     new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
                 })
                 .bodyToMono(JsonNode.class)
-                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
+                .timeout(Duration.ofSeconds(30))
                 .block();
     }
 
@@ -730,7 +732,20 @@ public class ProgressService {
                 .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
                         Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
                 .bodyToMono(Resource.class)
-                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
+                .timeout(Duration.ofSeconds(30))
+                .block();
+    }
+
+    public List<SeriesController.ImageData> getSessionImages(String sessionId) {
+        return webClient.get()
+                .uri("/stored_images/" + sessionId + "/query")
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                        Mono.error(new RuntimeException("Query images not found for session: " + sessionId)))
+                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                        Mono.error(new RuntimeException("Server error fetching query images for session: " + sessionId)))
+                .bodyToMono(new ParameterizedTypeReference<List<SeriesController.ImageData>>() {})
+                .timeout(Duration.ofSeconds(30))
                 .block();
     }
 
@@ -743,7 +758,7 @@ public class ProgressService {
                 .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
                         Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
                 .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(30)) // FIXED: Added timeout
+                .timeout(Duration.ofSeconds(30))
                 .block();
     }
 

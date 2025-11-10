@@ -3,7 +3,9 @@ package com.infernokun.infernoComics.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.RecognitionConfig;
+import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +18,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -24,12 +27,14 @@ import java.util.concurrent.ScheduledExecutorService;
 @Slf4j
 @Service
 public class RecognitionService {
+    private final SeriesService seriesService;
     private final WebClient webClient;
 
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
 
-    public RecognitionService(InfernoComicsConfig infernoComicsConfig) {
+    public RecognitionService(SeriesService seriesService, InfernoComicsConfig infernoComicsConfig) {
+        this.seriesService = seriesService;
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
                 .exchangeStrategies(ExchangeStrategies.builder()
@@ -77,5 +82,11 @@ public class RecognitionService {
                 .bodyToMono(Boolean.class)
                 .timeout(Duration.ofSeconds(30))
                 .block();
+    }
+
+    public void startReplay(String sessionId, Long seriesId, StartedBy startedBy, List<SeriesController.ImageData> imageDataList) {
+        log.info("Replay image processing session: {}", sessionId);
+
+        seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, startedBy, null, 0);
     }
 }

@@ -3,14 +3,12 @@ package com.infernokun.infernoComics.controllers;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
+import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.models.sync.ProcessingResult;
-import com.infernokun.infernoComics.services.IssueService;
-import com.infernokun.infernoComics.services.SeriesService;
-import com.infernokun.infernoComics.services.ComicVineService;
-import com.infernokun.infernoComics.services.ProgressService;
+import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
+import com.infernokun.infernoComics.services.*;
 import com.infernokun.infernoComics.services.sync.NextcloudSyncService;
 import jakarta.validation.Valid;
-import lombok.Data;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -22,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import org.springframework.core.io.Resource;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -34,11 +33,12 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @RequiredArgsConstructor
 @RequestMapping("/api/series")
 public class SeriesController {
-
     private final SeriesService seriesService;
     private final IssueService issueService;
     private final ProgressService progressService;
     private final NextcloudSyncService syncService;
+    private final RecognitionService recognitionService;
+    private final ProcessedFileRepository processedFileRepository;
 
     @GetMapping
     public ResponseEntity<List<Series>> getAllSeries() {
@@ -344,15 +344,68 @@ public class SeriesController {
 
     @PostMapping("/replay/{sessionId}")
     public ResponseEntity<?> replaySession(@PathVariable String sessionId) {
-        // find files
+        try {
+            log.info("Starting replay for session: {}", sessionId);
 
-        // find series
+            // Fetch processed files for the session
+            List<ProcessedFile> processedFiles = processedFileRepository.findBySessionId(sessionId);
 
-        // remove processed_files
+            if (processedFiles.isEmpty()) {
+                log.warn("No processed files found for session: {}", sessionId);
+                return ResponseEntity.notFound().build();
+            }
 
-        // re-run
-        return ResponseEntity.ok(null);
+            // Extract seriesId (assuming all files in a session belong to the same series)
+            Long seriesId = processedFiles.getFirst().getSeriesId();
+
+            // Fetch the series
+            Series series = seriesService.getSeriesById(seriesId);
+            if (series == null) {
+                log.error("Series {} not found for session {}", seriesId, sessionId);
+                return ResponseEntity.badRequest()
+                        .body("Series not found: " + seriesId);
+            }
+
+            // Fetch query images from the session
+            List<SeriesController.ImageData> images = progressService.getSessionImages(sessionId);
+
+            if (images.isEmpty()) {
+                log.warn("No query images found for session: {}", sessionId);
+                return ResponseEntity.badRequest()
+                        .body("No query images found for session");
+            }
+
+            log.info("Found {} query images for session {}", images.size(), sessionId);
+
+            processedFiles.forEach(file -> {
+                log.debug("Deleting processed file: {}", file.getFileName());
+            });
+            processedFileRepository.deleteAll(processedFiles);
+
+            sessionId = UUID.randomUUID().toString();
+
+            progressService.initializeSession(sessionId, series, StartedBy.AUTOMATIC);
+
+            // Start async processing with the query images
+            recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
+
+            log.info("Successfully initiated replay for session: {}", sessionId);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Session replay started",
+                    "sessionId", sessionId,
+                    "seriesId", seriesId,
+                    "imageCount", images.size()
+            ));
+
+        } catch (Exception e) {
+            log.error("Error replaying session {}: {}", sessionId, e.getMessage(), e);
+            return ResponseEntity.internalServerError()
+                    .body("Error replaying session: " + e.getMessage());
+        }
     }
+
+    //recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
 
     @PutMapping("/{id}")
     public ResponseEntity<Series> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesUpdateRequestDto request) {

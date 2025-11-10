@@ -685,7 +685,7 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
       <div class="main-status">
         <span class="status-icon" [style.color]="getStatusColor()">{{ getStatusIcon() }}</span>
         <span class="status-text" [style.color]="getStatusColor()">{{ getMainStatusText() }}</span>
-        <span> {{params?.data?.startedBy}} - <button mat-button class="replay-button" (click)=replaySession()>REPLAY</button> </span>
+        <span> {{params?.data?.startedBy}} <span *ngIf="params.data.state == 'COMPLETE'"> - <button mat-button class="replay-button" (click)="replaySession()">REPLAY</button></span></span>
       </div>
       
       <!-- Progress bar for processing items -->

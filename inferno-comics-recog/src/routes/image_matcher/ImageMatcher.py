@@ -40,12 +40,12 @@ def image_matcher_operation():
     
     # Check for image file in request
     if 'image' not in request.files:
-        logger.warning("⚠️ No image file in request")
+        logger.warning("No image file in request")
         return jsonify({'error': 'Missing image file in request'}), 400
     
     file = request.files['image']
     if file.filename == '':
-        logger.warning("⚠️ Empty filename in request")
+        logger.warning("Empty filename in request")
         return jsonify({'error': 'No selected file'}), 400
     
     # Get query filename for better result identification
@@ -64,7 +64,7 @@ def image_matcher_operation():
             raise ValueError("Image decoding failed")
         logger.debug(f"️ Successfully decoded image: {query_image.shape}")
     except Exception as e:
-        logger.error(f"❌ Failed to process uploaded image: {e}")
+        logger.error(f"Failed to process uploaded image: {e}")
         return jsonify({'error': f'Failed to process uploaded image: {str(e)}'}), 400
 
     # Parse candidate covers
@@ -81,7 +81,7 @@ def image_matcher_operation():
             
     except Exception as e:
         traceback.print_exc()
-        logger.error(f"❌ Invalid candidate covers: {e}")
+        logger.error(f"Invalid candidate covers: {e}")
         return jsonify({'error': f'Invalid candidate covers: {str(e)}'}), 400
 
     # Get the service instance
@@ -100,7 +100,7 @@ def image_matcher_operation():
             
         except Exception as e:
             error_msg = f'Processing failed: {str(e)}'
-            logger.error(f"❌ Centralized processing failed: {error_msg}")
+            logger.error(f"Centralized processing failed: {error_msg}")
             # Send error to Java
             java_reporter = JavaProgressReporter(session_id)
             java_reporter.send_error(error_msg)
@@ -146,7 +146,7 @@ def image_matcher_operation():
     logger.info(f" Extracted {len(candidate_urls)} URLs from covers")
     
     if not candidate_urls:
-        logger.warning("⚠️ No valid URLs found in candidate covers")
+        logger.warning("No valid URLs found in candidate covers")
         return jsonify({'error': 'No valid URLs found in candidate covers'}), 400
 
     # Initialize matcher
@@ -187,7 +187,7 @@ def image_matcher_operation():
         
     except Exception as e:
         traceback.print_exc()
-        logger.error(f"❌ Regular processing failed: {e}")
+        logger.error(f"Regular processing failed: {e}")
         
         # Save error state
         error_result = {
@@ -211,12 +211,12 @@ def start_image_processing():
     
     # Check for image file in request
     if 'image' not in request.files:
-        logger.warning("⚠️ No image file in SSE start request")
+        logger.warning("No image file in SSE start request")
         return jsonify({'error': 'Missing image file in request'}), 400
     
     file = request.files['image']
     if file.filename == '':
-        logger.warning("⚠️ Empty filename in SSE start request")
+        logger.warning("Empty filename in SSE start request")
         return jsonify({'error': 'No selected file'}), 400
     
     # Get query filename
@@ -232,7 +232,7 @@ def start_image_processing():
             raise ValueError("Image decoding failed")
         logger.debug(f"️ Successfully decoded SSE image: {query_image.shape}")
     except Exception as e:
-        logger.error(f"❌ Failed to process SSE uploaded image: {e}")
+        logger.error(f"Failed to process SSE uploaded image: {e}")
         return jsonify({'error': f'Failed to process uploaded image: {str(e)}'}), 400
 
     # Parse candidate covers
@@ -248,7 +248,7 @@ def start_image_processing():
         logger.info(f" Received {len(candidate_covers)} candidate covers for SSE processing")
             
     except Exception as e:
-        logger.error(f"❌ Invalid candidate covers in SSE request: {e}")
+        logger.error(f"Invalid candidate covers in SSE request: {e}")
         return jsonify({'error': f'Invalid candidate covers: {str(e)}'}), 400
 
     # Generate session ID and set up tracking
@@ -272,7 +272,7 @@ def get_image_processing_progress():
     
     session_id = request.args.get('sessionId')
     if not session_id:
-        logger.warning("⚠️ Missing sessionId in progress request")
+        logger.warning("Missing sessionId in progress request")
         return jsonify({'error': 'Missing sessionId parameter'}), 400
     
     logger.info(f" Client connecting to SSE progress stream for session: {session_id}")
@@ -289,7 +289,7 @@ def get_image_processing_progress():
                 'error': 'Session not found',
                 'timestamp': int(time.time() * 1000)
             }
-            logger.warning(f"⚠️ SSE session not found: {session_id}")
+            logger.warning(f"SSE session not found: {session_id}")
             yield f"data: {json.dumps(error_event)}\n\n"
             return
         
@@ -329,7 +329,7 @@ def get_image_processing_progress():
                 yield f"data: {json.dumps(heartbeat)}\n\n"
                 continue
             except Exception as e:
-                logger.error(f"❌ Error in SSE stream for session {session_id}: {e}")
+                logger.error(f"Error in SSE stream for session {session_id}: {e}")
                 break
         
         logger.debug(f" SSE stream closed for session: {session_id}")
@@ -346,7 +346,7 @@ def get_image_processing_status():
     
     session_id = request.args.get('sessionId')
     if not session_id:
-        logger.warning("⚠️ Missing sessionId in status request")
+        logger.warning("Missing sessionId in status request")
         return jsonify({'error': 'Missing sessionId parameter'}), 400
     
     logger.debug(f" Status check for session: {session_id}")
@@ -355,7 +355,7 @@ def get_image_processing_status():
     session_data = service.get_sse_session(session_id)
     
     if not session_data:
-        logger.warning(f"⚠️ Session not found for status check: {session_id}")
+        logger.warning(f"Session not found for status check: {session_id}")
         return jsonify({
             'sessionId': session_id,
             'status': 'not_found',
@@ -386,7 +386,7 @@ def view_image_matcher_result(session_id):
     result_data = load_image_matcher_result(session_id)
     
     if not result_data:
-        logger.warning(f"⚠️ Result not found for session: {session_id}")
+        logger.warning(f"Result not found for session: {session_id}")
         return render_template('evaluation_error.html', 
                              error_message=f"Image matcher result not found for session: {session_id}",
                              config={'flask_host': current_app.config.get('FLASK_HOST'),
@@ -412,7 +412,7 @@ def get_image_matcher_data(session_id):
     result_data = load_image_matcher_result(session_id)
     
     if not result_data:
-        logger.warning(f"⚠️ API data not found for session: {session_id}")
+        logger.warning(f"API data not found for session: {session_id}")
         return jsonify({'error': 'Image matcher result not found'}), 404
     
     logger.debug(f"✅ Successfully returned API data for session: {session_id}")
@@ -427,7 +427,7 @@ def image_matcher_multiple_operation():
     # 1. FIRST: Get session_id and validate
     session_id = request.form.get('session_id')
     if not session_id:
-        logger.warning("⚠️ Missing session_id in multiple images request")
+        logger.warning("Missing session_id in multiple images request")
         return jsonify({'error': 'session_id is required for multiple images processing'}), 400
     
     # 2. SECOND: Process uploaded files (all the fast operations)
@@ -447,7 +447,7 @@ def image_matcher_multiple_operation():
                 uploaded_files.append(file)
     
     if not uploaded_files:
-        logger.warning("⚠️ No image files in multiple images request")
+        logger.warning("No image files in multiple images request")
         return jsonify({'error': 'No image files found in request'}), 400
     
     # Process all uploaded images
@@ -455,7 +455,7 @@ def image_matcher_multiple_operation():
     
     for i, file in enumerate(uploaded_files):
         if file.filename == '':
-            logger.warning(f"⚠️ Empty filename for image {i+1}")
+            logger.warning(f"Empty filename for image {i+1}")
             continue
         
         try:
@@ -479,11 +479,11 @@ def image_matcher_multiple_operation():
             logger.debug(f"Successfully decoded image {i+1}/{len(uploaded_files)}: {file.filename} - {query_image.shape}")
             
         except Exception as e:
-            logger.error(f"❌ Failed to process uploaded image {i+1} ({file.filename}): {e}")
+            logger.error(f"Failed to process uploaded image {i+1} ({file.filename}): {e}")
             continue
     
     if not query_images_data:
-        logger.error("❌ No valid images could be processed")
+        logger.error("No valid images could be processed")
         return jsonify({'error': 'No valid images could be processed'}), 400
     
     # Parse candidate covers
@@ -500,7 +500,7 @@ def image_matcher_multiple_operation():
             
     except Exception as e:
         traceback.print_exc()
-        logger.error(f"❌ Invalid candidate covers: {e}")
+        logger.error(f"Invalid candidate covers: {e}")
         return jsonify({'error': f'Invalid candidate covers: {str(e)}'}), 400
     
     # 3. NOW: Check queue status and notify Java if waiting
@@ -531,7 +531,7 @@ def image_matcher_multiple_operation():
             
         except Exception as e:
             error_msg = f'Multiple images processing failed: {str(e)}'
-            logger.error(f"❌ Centralized multiple images processing failed: {error_msg}")
+            logger.error(f"Centralized multiple images processing failed: {error_msg}")
             
             java_reporter = JavaProgressReporter(session_id)
             java_reporter.send_error(error_msg)
@@ -548,7 +548,6 @@ def serve_stored_image(session_id, filename):
             logger.warning(f" Stored image not found: {image_path}")
             abort(404)
         
-        # Security check - ensure the path is within our images directory
         if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
             logger.warning(f" Security violation - path traversal attempt: {image_path}")
             abort(403)
@@ -556,7 +555,63 @@ def serve_stored_image(session_id, filename):
         return send_file(image_path)
         
     except Exception as e:
-        logger.error(f"❌ Error serving stored image: {e}")
+        logger.error(f"Error serving stored image: {e}")
+        abort(500)
+
+@image_matcher_bp.route('/stored_images/<session_id>/query', methods=['GET'])
+def serve_query_images(session_id):
+    """Serve all stored images from the server that start with 'query'"""
+    try:
+        images_dir = ensure_images_directory()
+        session_path = os.path.join(images_dir, session_id)
+        
+        if not os.path.exists(session_path):
+            logger.warning(f"Session directory not found: {session_path}")
+            abort(404)
+        
+        if not os.path.abspath(session_path).startswith(os.path.abspath(images_dir)):
+            logger.warning(f"Security violation - path traversal attempt: {session_path}")
+            abort(403)
+
+        from datetime import datetime
+        
+        # Find all files starting with "query"
+        query_files = []
+        for filename in os.listdir(session_path):
+            if filename.startswith("query"):
+                file_path = os.path.join(session_path, filename)
+                if os.path.isfile(file_path):
+                    file_stat = os.stat(file_path)
+                    
+                    # Read file bytes
+                    with open(file_path, 'rb') as f:
+                        file_bytes = f.read()
+                    
+                    # Determine content type
+                    content_type = 'application/octet-stream'
+                    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                        ext = filename.lower().split('.')[-1]
+                        content_type = f'image/{ext if ext != "jpg" else "jpeg"}'
+                    
+                    query_files.append({
+                        'bytes': base64.b64encode(file_bytes).decode('utf-8'),
+                        'originalFilename': filename,
+                        'contentType': content_type,
+                        'fileSize': file_stat.st_size,
+                        'lastModified': datetime.fromtimestamp(file_stat.st_mtime).isoformat(),
+                        'filePath': file_path,
+                        'fileEtag': hashlib.md5(file_bytes).hexdigest()
+                    })
+        
+        if not query_files:
+            logger.warning(f"No query images found for session: {session_id}")
+            return jsonify([]), 200
+        
+        logger.info(f"✅ Found {len(query_files)} query images for session: {session_id}")
+        return jsonify(query_files)
+        
+    except Exception as e:
+        logger.error(f"Error serving query images: {e}")
         abort(500)
 
 @image_matcher_bp.route('/stored_images/hash/<session_id>/<filename>')
@@ -572,13 +627,13 @@ def get_stored_image_hash(session_id, filename):
             
         # Security check - ensure the path is within our images directory
         if not os.path.abspath(image_path).startswith(os.path.abspath(images_dir)):
-            logger.warning(f"🔒 Security violation - path traversal attempt: {image_path}")
+            logger.warning(f"Security violation - path traversal attempt: {image_path}")
             abort(403)
         
         return {"hash": generate_image_hash(image_path)}
         
     except Exception as e:
-        logger.error(f"❌ Error serving stored image hash: {e}")
+        logger.error(f"Error serving stored image hash: {e}")
         abort(500)
 
 def generate_image_hash(image_path: str) -> str:
@@ -586,7 +641,7 @@ def generate_image_hash(image_path: str) -> str:
         with open(image_path, "rb") as f:
             content = f.read()
     except OSError as exc:
-        logger.error(f"❌ Unable to read image: {exc}")
+        logger.error(f"Unable to read image: {exc}")
         return ""
     
     return hashlib.sha256(content).hexdigest()
@@ -601,7 +656,7 @@ def admin_migrate():
             'message': 'Migration to file storage completed successfully'
         })
     except Exception as e:
-        logger.error(f"❌ Error during migration: {e}")
+        logger.error(f"Error during migration: {e}")
         return jsonify({
             'status': 'error',
             'message': f'Migration failed: {str(e)}'
@@ -638,5 +693,5 @@ def get_json_by_session_id():
         return jsonify({'error': 'Unable to read session data'}), 500
     except Exception as e:
         # Log the actual error for debugging (consider using proper logging)
-        logger.error(f"❌ Unexpected error reading session {session_id}: {str(e)}")
+        logger.error(f"Unexpected error reading session {session_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
