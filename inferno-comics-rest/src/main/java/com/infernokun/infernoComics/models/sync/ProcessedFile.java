@@ -57,7 +57,7 @@ public class ProcessedFile {
     private String errorMessage;
 
     public enum ProcessingStatus {
-        COMPLETE, FAILED, SKIPPED, PROCESSING
+        COMPLETE, FAILED, SKIPPED, PROCESSING, REPLAY
     }
 
     @Table(uniqueConstraints = {

@@ -8,6 +8,7 @@ import com.infernokun.infernoComics.models.sync.ProcessingResult;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.*;
 import com.infernokun.infernoComics.services.sync.NextcloudSyncService;
+import com.infernokun.infernoComics.services.sync.WeirdService;
 import jakarta.validation.Valid;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,7 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @RequiredArgsConstructor
 @RequestMapping("/api/series")
 public class SeriesController {
+    private final WeirdService weirdService;
     private final SeriesService seriesService;
     private final IssueService issueService;
     private final ProgressService progressService;
@@ -378,9 +380,11 @@ public class SeriesController {
             log.info("Found {} query images for session {}", images.size(), sessionId);
 
             processedFiles.forEach(file -> {
-                log.debug("Deleting processed file: {}", file.getFileName());
+                file.setProcessingStatus(ProcessedFile.ProcessingStatus.REPLAY);
             });
-            processedFileRepository.deleteAll(processedFiles);
+            
+            weirdService.saveProcessedFiles(processedFiles);
+            //processedFileRepository.deleteAll(processedFiles);
 
             sessionId = UUID.randomUUID().toString();
 
