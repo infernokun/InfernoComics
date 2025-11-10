@@ -6,6 +6,7 @@ import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.ProgressService;
+import com.infernokun.infernoComics.services.RecognitionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -25,8 +26,8 @@ import java.util.*;
 @RequiredArgsConstructor
 @RequestMapping("/api/progress")
 public class ProgressController {
-
     private final ProgressService progressService;
+    private final RecognitionService recognitionService;
     private final InfernoComicsConfig infernoComicsConfig;
     private final ProcessedFileRepository processedFileRepository;
 
@@ -240,6 +241,21 @@ public class ProgressController {
         Map<String, String> response = new HashMap<>();
         response.put("evaluationUrl", url);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{sessionId}")
+    public ResponseEntity<?> deleteProgressData(@PathVariable String sessionId) {
+        Optional<ProgressData> progressDataOpt = progressService.getProgressDataBySessionId(sessionId);
+
+        if (progressDataOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Session id: " + sessionId + " not found!");
+        }
+
+        progressService.deleteProgressDataSession(progressDataOpt.get());
+        processedFileRepository.deleteAll(processedFileRepository.findBySessionId(sessionId));
+        recognitionService.cleanSession(sessionId);
+
+        return ResponseEntity.ok().body(recognitionService.cleanSession(sessionId));
     }
 
     private MediaType getMediaTypeFromFilename(String filename) {

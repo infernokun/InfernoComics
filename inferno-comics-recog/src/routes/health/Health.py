@@ -4,6 +4,7 @@ import time
 import psutil
 import platform
 
+from util.FileOperations import delete_session_data
 from datetime import datetime
 from flask import Blueprint, jsonify, request
 
@@ -70,6 +71,26 @@ def health():
         'version': get_version_from_package_json(),
         'uptime': get_uptime()
     })
+
+@health_bp.route("/health/clean", methods=["POST"])
+def clean_session():
+    session_id = request.args.get("sessionId")
+    if not session_id:
+        session_id = request.form.get("sessionId")
+    if not session_id:
+        json_body = request.get_json(silent=True)
+        if json_body:
+            session_id = json_body.get("sessionId")
+        else:
+            session_id = request.data.decode().strip() or None
+
+    print("session_id:", session_id)
+
+    if not session_id:
+        return jsonify({"status": "error", "message": "sessionId missing"}), 400
+
+    result = delete_session_data(session_id)
+    return jsonify(result), (200 if result["status"] == "ok" else 400)
 
 @health_bp.route('/health/detailed', methods=['GET'])
 def detailed_health():

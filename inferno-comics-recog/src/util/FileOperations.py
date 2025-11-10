@@ -6,6 +6,7 @@ import shutil
 import hashlib
 import base64
 import numpy as np
+from flask import jsonify
 from util.Logger import get_logger
 from datetime import datetime
 from util.Util import get_full_image_url
@@ -394,3 +395,49 @@ def load_image_matcher_result(session_id):
     except Exception as e:
         logger.error(f"❌ Error loading image matcher result: {e}")
         return None
+
+def delete_session_data(session_id: str) -> dict:
+    if not session_id:
+        return {
+            "session_id": session_id,
+            "error": "session_id missing or empty",
+            "status": "error"
+        }
+
+    results_dir = ensure_results_directory()
+    images_dir = ensure_images_directory()
+
+    json_path = os.path.join(results_dir, f"{session_id}.json")
+    json_deleted = False
+    if os.path.isfile(json_path):
+        try:
+            os.remove(json_path)
+            json_deleted = True
+        except OSError as exc:
+            logger.error(
+                f"Failed to delete JSON file {json_path}: {exc}"
+            )
+    else:
+        json_deleted = True
+
+    images_path = os.path.join(images_dir, session_id)
+    images_deleted = False
+    if os.path.isdir(images_path):
+        try:
+            shutil.rmtree(images_path)
+            images_deleted = True
+        except OSError as exc:
+            logger.error(
+                f"Failed to delete images folder {images_path}: {exc}"
+            )
+    else:
+        images_deleted = True
+
+    status = "ok" if json_deleted and images_deleted else "error"
+
+    return {
+        "session_id": session_id,
+        "json_deleted": json_deleted,
+        "images_deleted": images_deleted,
+        "status": status,
+    }

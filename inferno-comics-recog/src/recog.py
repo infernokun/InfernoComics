@@ -24,9 +24,7 @@ def create_matcher_config():
     return global_matcher_config
 
 def get_matcher_config():
-    if global_matcher_config is None:
-        return create_matcher_config()
-    return global_matcher_config
+    return create_matcher_config()
 
 def create_matcher():
     """Create and configure the global matcher instance"""
@@ -50,10 +48,7 @@ def create_matcher():
     return global_matcher
 
 def get_matcher():
-    """Get the global matcher instance (thread-safe)"""
-    if global_matcher is None:
-        return create_matcher()
-    return global_matcher
+    return create_matcher()
 
 def create_app():
     """Application factory pattern for better testing and deployment"""

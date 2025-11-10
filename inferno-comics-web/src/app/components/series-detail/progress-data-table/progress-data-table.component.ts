@@ -24,6 +24,7 @@ import { ComicMatch } from '../../../models/comic-match.model';
 import { EnvironmentService } from '../../../services/environment.service';
 import { HttpClient } from '@angular/common/http';
 import { Subscription, interval } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -47,133 +48,140 @@ import { Subscription, interval } from 'rxjs';
       </div>
     </div>
   `,
-  styles: [`
-    .grid-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      height: 700px;
-      border: 1px solid #d0d0d0;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      background: #fff;
-    }
-    
-    .grid-header {
-      padding: 0.5rem 1rem;
-      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-      border-bottom: 1px solid #e0e0e0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    
-    .grid-title {
-      margin: 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: #495057;
-    }
-    
-    .refresh-button {
-      background: #007bff;
-      color: white;
-      border: none;
-      padding: 0.25rem 0.75rem;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.875rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .refresh-button:hover {
-      background: #0056b3;
-    }
-    
-    .grid-wrapper {
-      flex: 1;
-      overflow: hidden;
-    }
-    
-    .ag-theme-quartz {
-      height: 100%;
-    }
-    
-    /* Custom AG-Grid styles for taller rows */
-    .ag-theme-quartz .ag-header-cell-label {
-      font-weight: 600;
-    }
-    
-    .ag-theme-quartz .ag-row {
-      border-bottom: 1px solid #f1f3f4;
-    }
-    
-    .ag-theme-quartz .ag-row:hover {
-      background-color: #f8f9fa;
-    }
-    
-    /* Center content vertically in taller cells */
-    .ag-theme-quartz .ag-cell {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-    }
-    
-    /* Progress bar styles */
-    .progress-bar {
-      width: 100%;
-      height: 20px;
-      background-color: #e9ecef;
-      border-radius: 10px;
-      overflow: hidden;
-      position: relative;
-    }
-    
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
-      border-radius: 10px;
-      transition: width 0.3s ease;
-      position: relative;
-    }
-    
-    .progress-text {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 11px;
-      font-weight: 600;
-      color: #fff;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-      z-index: 2;
-    }
-    
-    .progress-processing .progress-fill {
-      animation: progress-pulse 2s infinite;
-    }
-    
-    @keyframes progress-pulse {
-      0% { opacity: 0.6; }
-      50% { opacity: 1; }
-      100% { opacity: 0.6; }
-    }
-    
-    .status-message {
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 0.85em;
-      color: #6c757d;
-    }
-  `,
+  styles: [
+    `
+      .grid-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        height: 700px;
+        border: 1px solid #d0d0d0;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        background: #fff;
+      }
+
+      .grid-header {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .grid-title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #495057;
+      }
+
+      .refresh-button {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .refresh-button:hover {
+        background: #0056b3;
+      }
+
+      .grid-wrapper {
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .ag-theme-quartz {
+        height: 100%;
+      }
+
+      /* Custom AG-Grid styles for taller rows */
+      .ag-theme-quartz .ag-header-cell-label {
+        font-weight: 600;
+      }
+
+      .ag-theme-quartz .ag-row {
+        border-bottom: 1px solid #f1f3f4;
+      }
+
+      .ag-theme-quartz .ag-row:hover {
+        background-color: #f8f9fa;
+      }
+
+      /* Center content vertically in taller cells */
+      .ag-theme-quartz .ag-cell {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+      }
+
+      /* Progress bar styles */
+      .progress-bar {
+        width: 100%;
+        height: 20px;
+        background-color: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+        border-radius: 10px;
+        transition: width 0.3s ease;
+        position: relative;
+      }
+
+      .progress-text {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 11px;
+        font-weight: 600;
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        z-index: 2;
+      }
+
+      .progress-processing .progress-fill {
+        animation: progress-pulse 2s infinite;
+      }
+
+      @keyframes progress-pulse {
+        0% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+        100% {
+          opacity: 0.6;
+        }
+      }
+
+      .status-message {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.85em;
+        color: #6c757d;
+      }
+    `,
   ],
   imports: [CommonModule, MaterialModule, AgGridModule],
 })
-export class ProgressDataTable implements OnInit, OnDestroy  {
+export class ProgressDataTable implements OnInit, OnDestroy {
   @Input() id!: number;
   @Output() resultEmitter: EventEmitter<any> = new EventEmitter<any>(undefined);
 
@@ -193,7 +201,11 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
   private refreshSubscription?: Subscription;
   private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
 
-  constructor(private seriesService: SeriesService, private environmentService: EnvironmentService) {
+  constructor(
+    private seriesService: SeriesService,
+    private environmentService: EnvironmentService,
+    private snackBar: MatSnackBar
+  ) {
     this.gridOptions = {
       animateRows: false,
       cellFlashDuration: 0,
@@ -227,7 +239,7 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
           console.log('Updating grid with progress data:', this.progressData());
           this.gridApi.setGridOption('rowData', this.progressData());
           this.gridApi.refreshCells();
-          
+
           setTimeout(() => {
             this.gridApi?.sizeColumnsToFit();
           }, 100);
@@ -236,19 +248,23 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
       error: (error) => {
         console.error('Failed to load progress data:', error);
         // Could add user notification here
-      }
+      },
     });
   }
 
   private startAutoRefresh(): void {
-    this.refreshSubscription = interval(this.REFRESH_INTERVAL_MS).subscribe(() => {
-      // Only refresh if there are processing sessions
-      const hasProcessingSessions = this.progressData().some(item => item.state === 'PROCESSING');
-      if (hasProcessingSessions) {
-        console.log('Auto-refreshing progress data...');
-        this.loadProgressData();
+    this.refreshSubscription = interval(this.REFRESH_INTERVAL_MS).subscribe(
+      () => {
+        // Only refresh if there are processing sessions
+        const hasProcessingSessions = this.progressData().some(
+          (item) => item.state === 'PROCESSING'
+        );
+        if (hasProcessingSessions) {
+          console.log('Auto-refreshing progress data...');
+          this.loadProgressData();
+        }
       }
-    });
+    );
   }
 
   private stopAutoRefresh(): void {
@@ -297,13 +313,14 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
               addClick: () => {},
             };
           }
-          
+
           const state = params.data.state;
           return {
             showPlay: state === 'COMPLETE' && state !== 'PROCESSING',
             showAdd: state === 'COMPLETE',
             playClick: (data: any) => console.log('playClick', state),
             addClick: (data: any) => this.getSessionJSON(data.sessionId),
+            deleteClick: (data: any) => this.deleteProgressData(data.sessionId),
           };
         },
       },
@@ -324,8 +341,8 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
         sortable: true,
         cellStyle: {
           padding: '8px',
-          lineHeight: '1.2'
-        }
+          lineHeight: '1.2',
+        },
       },
       {
         headerName: 'Total',
@@ -336,7 +353,7 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
       },
       {
         headerName: 'Timing Info',
-        field: 'timeStarted', // Use timeStarted for sorting
+        field: 'timeStarted',
         cellRenderer: TimeInfoCellRenderer,
         filter: 'agTextColumnFilter',
         minWidth: 160,
@@ -346,8 +363,8 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
         sortable: true,
         cellStyle: {
           padding: '4px 8px',
-          lineHeight: '1.2'
-        }
+          lineHeight: '1.2',
+        },
       },
       {
         headerName: 'Link',
@@ -356,11 +373,10 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
         minWidth: 100,
         maxWidth: 120,
         tooltipField: 'sessionId',
-      }
+      },
     ];
   }
 
-  // FIXED: Added error handling
   getSessionJSON(sessionId: string) {
     this.seriesService.getSessionJSON(sessionId).subscribe({
       next: (res) => {
@@ -370,7 +386,19 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
       },
       error: (error) => {
         console.error('Failed to get session JSON:', error);
-        // Could add user notification here
+      },
+    });
+  }
+
+  deleteProgressData(sessionId: string): void {
+    this.seriesService.deleteProgressData(sessionId).subscribe({
+      next: () => {
+        this.snackBar.open('Progress deleted', 'Close', { duration: 3000 });
+  
+        this.loadProgressData();
+      },
+      error: (err: Error) => {
+        this.snackBar.open(err.message, 'Close', { duration: 5000 });
       }
     });
   }
@@ -385,23 +413,31 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
 
     const allMatches: ComicMatch[] = [];
     const storedImages: any[] = [];
-    
+
     sessionData.results.forEach((imageResult: any, imageIndex: number) => {
-      console.log(`Processing image result ${imageIndex}:`, imageResult.image_name);
-      
+      console.log(
+        `Processing image result ${imageIndex}:`,
+        imageResult.image_name
+      );
+
       // Store image information for bulk component
       if (imageResult.image_name && imageResult.image_url) {
         storedImages.push({
           index: imageIndex,
           name: imageResult.image_name,
-          originalUrl: imageResult.image_url, 
-          javaUrl: this.convertToJavaImageUrl(sessionData.session_id, imageResult.image_url)
+          originalUrl: imageResult.image_url,
+          javaUrl: this.convertToJavaImageUrl(
+            sessionData.session_id,
+            imageResult.image_url
+          ),
         });
       }
-      
+
       if (imageResult.matches && Array.isArray(imageResult.matches)) {
-        console.log(`Found ${imageResult.matches.length} matches for image ${imageIndex}`);
-        
+        console.log(
+          `Found ${imageResult.matches.length} matches for image ${imageIndex}`
+        );
+
         imageResult.matches.forEach((match: any) => {
           const transformedMatch: ComicMatch = {
             session_id: sessionData.session_id,
@@ -415,14 +451,16 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
             parent_comic_vine_id: match.parent_comic_vine_id,
             match_details: match.match_details,
             candidate_features: match.candidate_features,
-            sourceImageIndex: match.source_image_index !== undefined 
-              ? match.source_image_index 
-              : imageIndex,
-            sourceImageName: match.source_image_name 
-              || imageResult.image_name 
-              || `Image ${imageIndex + 1}`
+            sourceImageIndex:
+              match.source_image_index !== undefined
+                ? match.source_image_index
+                : imageIndex,
+            sourceImageName:
+              match.source_image_name ||
+              imageResult.image_name ||
+              `Image ${imageIndex + 1}`,
           };
-          
+
           allMatches.push(transformedMatch);
         });
       } else {
@@ -438,25 +476,28 @@ export class ProgressDataTable implements OnInit, OnDestroy  {
       matches: allMatches,
       sessionId: sessionData.session_id,
       isMultiple: sessionData.total_images > 1,
-      storedImages: storedImages, 
+      storedImages: storedImages,
       summary: {
         total_images: sessionData.total_images,
         processed: sessionData.processed,
         successful_matches: sessionData.successful_matches,
         failed_uploads: sessionData.failed_uploads,
         no_matches: sessionData.no_matches,
-        best_similarity: sessionData.best_similarity
-      }
+        best_similarity: sessionData.best_similarity,
+      },
     };
   }
 
   // Helper method to convert Python image URL to Java backend URL
-  private convertToJavaImageUrl(sessionId: string, pythonImageUrl: string): string {
+  private convertToJavaImageUrl(
+    sessionId: string,
+    pythonImageUrl: string
+  ): string {
     // Extract filename from Python URL
     // Python URL: "/inferno-comics-recognition/api/v1/stored_images/session_id/filename.jpg"
     const urlParts = pythonImageUrl.split('/');
     const filename = urlParts[urlParts.length - 1];
-    
+
     // Convert to Java backend URL
     // Java URL: "http://rest-url:8080/inferno-comics-rest/api/progress/image/session_id/filename.jpg"
     return `${this.environmentService.settings?.restUrl}/progress/image/${sessionId}/${filename}`;

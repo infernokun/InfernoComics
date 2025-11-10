@@ -13,6 +13,7 @@ import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
+import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.Resource;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
@@ -521,7 +523,6 @@ public class ProgressService {
         }
     }
 
-    // ✅ NEW METHOD: Update additional data in memory only
     private void updateProgressFromAdditionalDataInMemory(ProgressData progressData, Object additionalData) {
         try {
             if (additionalData instanceof Map) {
@@ -623,6 +624,16 @@ public class ProgressService {
         return getSessionsByRelevance();
     }
 
+    public Optional<ProgressData> getProgressDataBySessionId(String sessionId) {
+        return progressDataRepository.findBySessionId(sessionId);
+    }
+
+    @Modifying
+    @Transactional
+    public void deleteProgressDataSession(ProgressData progressData) {
+        progressDataRepository.delete(progressData);
+    }
+
     private Integer getIntegerFromMap(Map<String, Object> map, String... keys) {
         for (String key : keys) {
             Object value = map.get(key);
@@ -653,7 +664,6 @@ public class ProgressService {
                 .reconnectTime(1000)); // Reconnect time in ms
     }
 
-    // FIXED: Using ScheduledExecutorService instead of creating new threads
     private void scheduleEmitterCompletion(String sessionId, long delayMs) {
         scheduler.schedule(() -> {
             SseEmitter emitter = activeEmitters.get(sessionId);

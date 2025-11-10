@@ -45,7 +45,11 @@ def save_config():
         f.write(cfg.to_yml())
 
     matcher = current_app.config['GET_MATCHER']()
-    matcher.config = ComicMatcherConfig()
+    new_config = ComicMatcherConfig()
+
+    matcher.config = new_config
+    current_app.config['GET_MATCHER_CONFIG'] = new_config
+
     matcher.print_config_summary()
 
     return jsonify(True), 200

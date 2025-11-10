@@ -145,6 +145,8 @@ class ComicMatcherConfig:
         if result_match is None:
             return 10
 
+        return result_match
+
     def get_similarity_threshold(self):
         threshold_value = self.get("similarity_threshold")
         

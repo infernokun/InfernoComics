@@ -3,6 +3,7 @@ package com.infernokun.infernoComics.repositories.sync;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -37,4 +38,8 @@ public interface ProcessedFileRepository extends JpaRepository<ProcessedFile, Lo
 
     @Query("SELECT pf FROM ProcessedFile pf WHERE pf.sessionId = :sessionId AND pf.fileName = :fileName")
     Optional<ProcessedFile> findBySessionIdAndFileName(@Param("sessionId") String sessionId, @Param("fileName") String fileName);
+
+    @Modifying
+    @Query("DELETE FROM ProcessedFile pf WHERE pf.sessionId = :sessionId")
+    void deleteBySessionId(@Param("sessionId") String sessionId);
 }

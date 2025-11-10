@@ -284,4 +284,8 @@ export class SeriesService {
   reverifySeries(seriesId: number): Observable<Series> {
     return this.http.post<Series>(`${this.apiUrl}/reverify-metadata/${seriesId}`, {});
   }
+
+  deleteProgressData(sessionId: string): Observable<any> {
+    return this.http.delete<any>(`${this.progressUrl}/${sessionId}`);
+  }
 }
