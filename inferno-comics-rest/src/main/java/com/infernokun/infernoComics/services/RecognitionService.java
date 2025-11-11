@@ -82,6 +82,7 @@ public class RecognitionService {
 
         seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, startedBy, null, 0);
     }
+    
     public JsonNode cleanSession(String sessionId) {
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder.path("/health/clean").build())

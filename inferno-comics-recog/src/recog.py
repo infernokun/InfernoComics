@@ -95,7 +95,6 @@ def main():
     try:
         app = create_app()
         
-
         # Get configuration from environment variables
         host = app.config.get('FLASK_HOST')
         port = app.config.get('FLASK_PORT')
@@ -119,7 +118,7 @@ def main():
                 channel_timeout=120
             )
         else:
-            logger.warning("⚠️ Running in development mode!")
+            logger.warning("Running in development mode!")
             logger.info(f"Server available at: http://{host}:{port}{url_prefix}")
             logger.info("Debug mode is enabled")
             app.run(host=host, port=port, debug=True)

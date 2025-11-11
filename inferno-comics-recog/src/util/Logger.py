@@ -2,6 +2,7 @@ import os
 import sys
 from typing import Optional, Dict
 from loguru import logger as _loguru_logger
+import loguru
 
 _shared_log_file: Optional[str] = None
 _shared_log_level: int = _loguru_logger.level("INFO").no
