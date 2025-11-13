@@ -3,9 +3,8 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { IssueService } from '../../services/issue.service';
-import { Issue, IssueCondition } from '../../models/issue.model';
+import { Issue, IssueCondition, IssueRequest } from '../../models/issue.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
-import { IssueRequest } from '../../models/issue-request.model';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 

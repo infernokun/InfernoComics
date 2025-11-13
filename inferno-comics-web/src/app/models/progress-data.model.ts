@@ -51,25 +51,19 @@ export class ProgressData {
     }
   }
 
-  /**
-   * Parse datetime from Java backend (handles both string and array formats)
-   */
   private parseDateTime(dateValue: any): Date | undefined {
     if (!dateValue) return undefined;
 
-    // If it's already a Date object
     if (dateValue instanceof Date) {
       return dateValue;
     }
 
-    // If it's a string (ISO format from Jackson)
     if (typeof dateValue === 'string') {
       return new Date(dateValue);
     }
 
     // If it's an array format [year, month, day, hour, minute, second]
     if (Array.isArray(dateValue)) {
-      // JavaScript months are 0-based, Java months are 1-based
       return new Date(
         dateValue[0], // year
         dateValue[1] - 1, // month (convert from 1-based to 0-based)
@@ -84,9 +78,6 @@ export class ProgressData {
     return undefined;
   }
 
-  /**
-   * Get duration between start and end times
-   */
   getDuration(): number {
     if (!this.timeStarted) return 0;
     
@@ -96,9 +87,6 @@ export class ProgressData {
     return endTime - startTime; // Duration in milliseconds
   }
 
-  /**
-   * Get formatted duration string (HH:mm:ss or mm:ss)
-   */
   getFormattedDuration(): string {
     const durationMs = this.getDuration();
     const totalSeconds = Math.floor(durationMs / 1000);
@@ -114,9 +102,6 @@ export class ProgressData {
     }
   }
 
-  /**
-   * Check if the processing session is stale (no updates for 5+ minutes while processing)
-   */
   isStale(): boolean {
     if (this.state !== ProgressState.PROCESSING || !this.lastUpdated) {
       return false;
@@ -126,9 +111,6 @@ export class ProgressData {
     return this.lastUpdated.getTime() < fiveMinutesAgo;
   }
 
-  /**
-   * Get display name for the state
-   */
   getStateDisplayName(): string {
     switch (this.state) {
       case ProgressState.PROCESSING:
@@ -142,37 +124,22 @@ export class ProgressData {
     }
   }
 
-  /**
-   * Get progress percentage as a number (0-100)
-   */
   getProgressPercentage(): number {
     return this.percentageComplete || 0;
   }
 
-  /**
-   * Check if processing is currently active
-   */
   isActive(): boolean {
     return this.state === ProgressState.PROCESSING;
   }
 
-  /**
-   * Check if processing completed successfully
-   */
   isCompleted(): boolean {
     return this.state === ProgressState.COMPLETE;
   }
 
-  /**
-   * Check if processing failed
-   */
   isFailed(): boolean {
     return this.state === ProgressState.ERROR;
   }
 
-  /**
-   * Get estimated completion time (if progress is available)
-   */
   getEstimatedCompletion(): Date | undefined {
     if (!this.timeStarted || !this.percentageComplete || this.percentageComplete <= 0) {
       return undefined;
@@ -186,9 +153,6 @@ export class ProgressData {
     return new Date(Date.now() + Math.max(remaining, 0));
   }
 
-  /**
-   * Get a user-friendly display name for this processing item
-   */
   getDisplayName(): string {
     if (this.currentStage) {
       return this.currentStage;
@@ -201,9 +165,6 @@ export class ProgressData {
     return `Processing Series ${this.series?.id || 'Unknown'}`;
   }
 
-  /**
-   * Convert to ProcessingItem format for the processing status icon
-   */
   toProcessingItem(): any {
     return {
       id: this.sessionId || this.id?.toString(),
@@ -216,9 +177,6 @@ export class ProgressData {
     };
   }
 
-  /**
-   * Map ProgressData state to ProcessingItem status
-   */
   private mapToProcessingStatus(): string {
     switch (this.state) {
       case ProgressState.PROCESSING:

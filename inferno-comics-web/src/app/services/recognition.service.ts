@@ -30,10 +30,7 @@ export interface Options {
 export class RecognitionService {
   private apiUrl: string = '';
 
-  constructor(
-    private http: HttpClient,
-    private environmentService: EnvironmentService
-  ) {
+  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/recog`;
   }
 
@@ -43,5 +40,18 @@ export class RecognitionService {
 
   saveRecognitionConfig(cfg: RecognitionConfig): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/config`, cfg);
+  }
+
+  getSessionJSON(sessionId: string) {
+    return this.http.get<any[]>(
+      `${this.apiUrl}/json/${sessionId}`
+    );
+  }
+
+  getCurrentImageUrl(data: any): string {
+    if (data.issue.uploadedImageUrl) {
+      return `${this.apiUrl}/image/${data.issue.uploadedImageUrl}`;
+    }
+    return data.issue.imageUrl || 'assets/placeholder-comic.jpg';
   }
 }

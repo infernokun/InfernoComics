@@ -1,4 +1,5 @@
 package com.infernokun.infernoComics.controllers;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ProgressData;
@@ -11,10 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,6 +37,41 @@ public class ProgressController {
                 "service", "progress-service",
                 "timestamp", String.valueOf(System.currentTimeMillis())
         ));
+    }
+
+    // get current status of a session (for debugging)
+    @GetMapping("/status/{sessionId}")
+    public ResponseEntity<Map<String, Object>> getSessionStatus(@PathVariable String sessionId) {
+        try {
+            log.debug("📊 Status requested for session: {}", sessionId);
+
+            Map<String, Object> status = progressService.getSessionStatus(sessionId);
+            return ResponseEntity.ok(status);
+
+        } catch (Exception e) {
+            log.error("❌ Error getting session status: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/data/{seriesId}")
+    public ResponseEntity<List<ProgressData>> getSessionsBySeriesId(@PathVariable Long seriesId) {
+        return ResponseEntity.ok(progressService.getSessionsBySeriesId(seriesId));
+    }
+
+    @GetMapping("/evaluation/{sessionId}")
+    public ResponseEntity<?> getEvaluationUrl(@PathVariable String sessionId, HttpServletRequest request) {
+        String host = request.getServerName() + ":" + infernoComicsConfig.getRecognitionServerPort();
+        String url = host + "/inferno-comics-recognition/api/v1/evaluation/" + sessionId;
+
+        Map<String, String> response = new HashMap<>();
+        response.put("evaluationUrl", url);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/data/rel")
+    public ResponseEntity<List<ProgressData>> getSessionsByRelevance() {
+        return ResponseEntity.ok(progressService.getSessionsByRelevance());
     }
 
     // receive progress updates from Python
@@ -148,99 +181,9 @@ public class ProgressController {
         }
     }
 
-    // get current status of a session (for debugging)
-    @GetMapping("/status/{sessionId}")
-    public ResponseEntity<Map<String, Object>> getSessionStatus(@PathVariable String sessionId) {
-        try {
-            log.debug("📊 Status requested for session: {}", sessionId);
-
-            Map<String, Object> status = progressService.getSessionStatus(sessionId);
-            return ResponseEntity.ok(status);
-
-        } catch (Exception e) {
-            log.error("❌ Error getting session status: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @GetMapping("/data/{seriesId}")
-    public ResponseEntity<List<ProgressData>> getSessionsBySeriesId(@PathVariable Long seriesId) {
-        return ResponseEntity.ok(progressService.getSessionsBySeriesId(seriesId));
-    }
-
-    @GetMapping("/data/rel")
-    public ResponseEntity<List<ProgressData>> getSessionsByRelevance() {
-        return ResponseEntity.ok(progressService.getSessionsByRelevance());
-    }
-
     @PostMapping("/data/dismiss/{id}")
     public ResponseEntity<List<ProgressData>> dismissProgressData(@PathVariable Long id) {
         return ResponseEntity.ok((progressService.dismissProgressData(id)));
-    }
-
-    @GetMapping("/json/{sessionId}")
-    public ResponseEntity<JsonNode> getSessionJSON(@PathVariable String sessionId) {
-        return ResponseEntity.ok(progressService.getSessionJSON(sessionId));
-    }
-
-    @GetMapping("/image/{sessionId}/{filename}")
-    public ResponseEntity<Resource> getStoredImage(@PathVariable String sessionId, @PathVariable String filename) {
-        try {
-            // Use WebClient to fetch the image
-            Resource imageResource = progressService.getSessionImage(sessionId, filename);
-
-            if (imageResource == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            // Determine content type based on file extension
-            MediaType mediaType = getMediaTypeFromFilename(filename);
-
-            return ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .header(HttpHeaders.CACHE_CONTROL, "max-age=3600") // Cache for 1 hour
-                    .body(imageResource);
-
-        } catch (Exception e) {
-            // Log the error
-            System.err.println("Error fetching stored image: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping("/image/hash/{sessionId}/{filename}")
-    public ResponseEntity<String> getStoredImageHash(@PathVariable String sessionId, @PathVariable String filename) {
-        try {
-            // Use WebClient to fetch the image
-            String hash = progressService.getSessionImageHash(sessionId, filename);
-
-            if (hash.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            // Determine content type based on file extension
-            MediaType mediaType = getMediaTypeFromFilename(hash);
-
-            return ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .header(HttpHeaders.CACHE_CONTROL, "max-age=3600") // Cache for 1 hour
-                    .body(hash);
-
-        } catch (Exception e) {
-            // Log the error
-            System.err.println("Error fetching stored image: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping("/evaluation/{sessionId}")
-    public ResponseEntity<?> getEvaluationUrl(@PathVariable String sessionId, HttpServletRequest request) {
-        String host = request.getServerName() + ":" + infernoComicsConfig.getRecognitionServerPort();
-        String url = host + "/inferno-comics-recognition/api/v1/evaluation/" + sessionId;
-
-        Map<String, String> response = new HashMap<>();
-        response.put("evaluationUrl", url);
-        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{sessionId}")
@@ -258,17 +201,6 @@ public class ProgressController {
         return ResponseEntity.ok().body(recognitionService.cleanSession(sessionId));
     }
 
-    private MediaType getMediaTypeFromFilename(String filename) {
-        String extension = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
-
-        return switch (extension) {
-            case "png" -> MediaType.IMAGE_PNG;
-            case "gif" -> MediaType.IMAGE_GIF;
-            case "webp" -> MediaType.parseMediaType("image/webp");
-            case "bmp" -> MediaType.parseMediaType("image/bmp");
-            default -> MediaType.IMAGE_JPEG;
-        };
-    }
 
     @Data
     public static class CompletionRequest {

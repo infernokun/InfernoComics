@@ -95,44 +95,6 @@ public class SeriesController {
         }
     }
 
-    @PostMapping("/startSync")
-    public ResponseEntity<List<ProcessingResult>> startAllSeriesSync() {
-        List<ProcessingResult> results = new ArrayList<>();
-        seriesService.getAllSeries().forEach(series -> results.add(syncService.manualSync(series.getId())));
-        try {
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Error syncing series: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    @PostMapping("/startSync/{id}")
-    public ResponseEntity<ProcessingResult> startSeriesSync(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(syncService.manualSync(id));
-        } catch (Exception e) {
-            log.error("Error syncing series {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    @GetMapping("/get-comic-vine/{comicVineId}")
-    public ResponseEntity<ComicVineService.ComicVineSeriesDto> getComicVineSeriesById(@PathVariable Long comicVineId) {
-        return ResponseEntity.ok(seriesService.getComicVineSeriesById(comicVineId));
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity<List<Series>> searchSeries(@RequestParam String query) {
-        try {
-            List<Series> results = seriesService.searchSeries(query);
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Error searching series with query '{}': {}", query, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
     @GetMapping("/search/advanced")
     public ResponseEntity<List<Series>> searchSeriesAdvanced(
             @RequestParam(required = false) String publisher,
@@ -204,6 +166,50 @@ public class SeriesController {
         }
     }
 
+    @GetMapping("/get-comic-vine/{comicVineId}")
+    public ResponseEntity<ComicVineService.ComicVineSeriesDto> getComicVineSeriesById(@PathVariable Long comicVineId) {
+        return ResponseEntity.ok(seriesService.getComicVineSeriesById(comicVineId));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Series>> searchSeries(@RequestParam String query) {
+        try {
+            List<Series> results = seriesService.searchSeries(query);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            log.error("Error searching series with query '{}': {}", query, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @CrossOrigin(origins = "*", allowCredentials = "false")
+    @GetMapping(value = "{seriesId}/add-comics-by-images/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getMultipleImagesProcessingProgress(
+            @PathVariable Long seriesId,
+            @RequestParam String sessionId) {
+
+        log.debug("SSE connection requested for multiple images session: {} (series: {})", sessionId, seriesId);
+
+        try {
+            SseEmitter emitter = progressService.createProgressEmitter(sessionId);
+            return emitter;
+        } catch (Exception e) {
+            log.error("Failed to create SSE emitter for multiple images session {}: {}", sessionId, e.getMessage());
+
+            // Return a failed emitter
+            SseEmitter errorEmitter = new SseEmitter(1000L);
+            try {
+                errorEmitter.send(SseEmitter.event()
+                        .name("error")
+                        .data("{\"error\":\"Failed to create progress stream\"}"));
+                errorEmitter.complete();
+            } catch (Exception sendError) {
+                log.error("Failed to send error via SSE: {}", sendError.getMessage());
+            }
+            return errorEmitter;
+        }
+    }
+
     @PostMapping
     public ResponseEntity<Series> createSeries(@Valid @RequestBody SeriesCreateRequestDto request) {
         try {
@@ -211,6 +217,28 @@ public class SeriesController {
             return ResponseEntity.ok(series);
         } catch (Exception e) {
             log.error("Error creating series '{}': {}", request.getName(), e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/startSync")
+    public ResponseEntity<List<ProcessingResult>> startAllSeriesSync() {
+        List<ProcessingResult> results = new ArrayList<>();
+        seriesService.getAllSeries().forEach(series -> results.add(syncService.manualSync(series.getId())));
+        try {
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            log.error("Error syncing series: {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/startSync/{id}")
+    public ResponseEntity<ProcessingResult> startSeriesSync(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(syncService.manualSync(id));
+        } catch (Exception e) {
+            log.error("Error syncing series {}: {}", id, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -251,34 +279,6 @@ public class SeriesController {
         } catch (Exception e) {
             log.error("Error reverifying metadata for series {}: {}", seriesId, e.getMessage());
             return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    @CrossOrigin(origins = "*", allowCredentials = "false")
-    @GetMapping(value = "{seriesId}/add-comics-by-images/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter getMultipleImagesProcessingProgress(
-            @PathVariable Long seriesId,
-            @RequestParam String sessionId) {
-
-        log.debug("SSE connection requested for multiple images session: {} (series: {})", sessionId, seriesId);
-
-        try {
-            SseEmitter emitter = progressService.createProgressEmitter(sessionId);
-            return emitter;
-        } catch (Exception e) {
-            log.error("Failed to create SSE emitter for multiple images session {}: {}", sessionId, e.getMessage());
-
-            // Return a failed emitter
-            SseEmitter errorEmitter = new SseEmitter(1000L);
-            try {
-                errorEmitter.send(SseEmitter.event()
-                        .name("error")
-                        .data("{\"error\":\"Failed to create progress stream\"}"));
-                errorEmitter.complete();
-            } catch (Exception sendError) {
-                log.error("Failed to send error via SSE: {}", sendError.getMessage());
-            }
-            return errorEmitter;
         }
     }
 
@@ -369,7 +369,7 @@ public class SeriesController {
             }
 
             // Fetch query images from the session
-            List<SeriesController.ImageData> images = progressService.getSessionImages(sessionId);
+            List<SeriesController.ImageData> images = recognitionService.getSessionImages(sessionId);
 
             if (images.isEmpty()) {
                 log.warn("No query images found for session: {}", sessionId);

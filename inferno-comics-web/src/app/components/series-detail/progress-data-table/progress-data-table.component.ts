@@ -25,6 +25,7 @@ import { EnvironmentService } from '../../../services/environment.service';
 import { HttpClient } from '@angular/common/http';
 import { Subscription, interval } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { RecognitionService } from '../../../services/recognition.service';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -203,6 +204,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
 
   constructor(
     private seriesService: SeriesService,
+    private recognitionService: RecognitionService,
     private environmentService: EnvironmentService,
     private snackBar: MatSnackBar
   ) {
@@ -378,7 +380,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
   }
 
   getSessionJSON(sessionId: string) {
-    this.seriesService.getSessionJSON(sessionId).subscribe({
+    this.recognitionService.getSessionJSON(sessionId).subscribe({
       next: (res) => {
         const transformedData = this.transformSessionDataToMatches(res);
         console.log('Transformed session data:', transformedData);
@@ -534,32 +536,35 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
 
     const sessionId = this.params.value;
     try {
-      const response = await this.httpClient.get<{ evaluationUrl: string }>(
-        `${this.environmentService.settings?.restUrl}/progress/evaluation/${sessionId}`
-      ).toPromise();
+      const response = await this.httpClient
+        .get<{ evaluationUrl: string }>(
+          `${this.environmentService.settings?.restUrl}/progress/evaluation/${sessionId}`
+        )
+        .toPromise();
 
       if (!response?.evaluationUrl) {
         console.error('No evaluation URL received from server');
         return;
       }
 
-      const evaluationUrl = new URL(response.evaluationUrl);
+      const rawUrl = response.evaluationUrl.trim();
+  
+      const absoluteUrl = /^https?:\/\//i.test(rawUrl)
+        ? rawUrl
+        : `${window.location.protocol}//${rawUrl}`;
+  
+      const evaluationUrl = new URL(absoluteUrl);
       
+      evaluationUrl.protocol = window.location.protocol;
       evaluationUrl.hostname = window.location.hostname;
-      
+  
       if (this.environmentService.settings?.production) {
-        if (window.location.port) {
-          evaluationUrl.port = window.location.port;
-        } else {
-          evaluationUrl.port = '';
-        }
+        evaluationUrl.port = window.location.port ? window.location.port : '';
       }
-
+  
       const finalUrl = evaluationUrl.toString();
       console.log('Opening evaluation URL:', finalUrl);
-      
       window.open(finalUrl, '_blank', 'noopener,noreferrer');
-      
     } catch (error) {
       console.error('Error fetching evaluation URL:', error);
     }

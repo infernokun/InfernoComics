@@ -553,7 +553,7 @@ export class SeriesFormComponent implements OnInit {
 
     // Add ID for updates
     if (this.isEditMode && this.seriesId) {
-      (seriesData as any).id = this.seriesId;
+      seriesData .id = this.seriesId;
     }
 
     const operation = this.isEditMode && this.seriesId

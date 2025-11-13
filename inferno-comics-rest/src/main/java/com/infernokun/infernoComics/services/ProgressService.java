@@ -711,66 +711,6 @@ public class ProgressService {
         });
     }
 
-    public JsonNode getSessionJSON(String sessionId) {
-        return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/json")
-                        .queryParam("sessionId", sessionId)
-                        .build())
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> {
-                    return clientResponse.bodyToMono(String.class)
-                            .flatMap(errorBody -> Mono.error(
-                                    new RuntimeException("Client error: " + clientResponse.statusCode() + " - " + errorBody)));
-                })
-                .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
-                    return clientResponse.bodyToMono(String.class)
-                            .flatMap(errorBody -> Mono.error(
-                                    new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
-                })
-                .bodyToMono(JsonNode.class)
-                .timeout(Duration.ofSeconds(30))
-                .block();
-    }
-
-    public Resource getSessionImage(String sessionId, String fileName) {
-        return webClient.get()
-                .uri("/stored_images/" + sessionId + "/" + fileName)
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
-                        Mono.error(new RuntimeException("Image not found: " + fileName)))
-                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
-                        Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
-                .bodyToMono(Resource.class)
-                .timeout(Duration.ofSeconds(30))
-                .block();
-    }
-
-    public List<SeriesController.ImageData> getSessionImages(String sessionId) {
-        return webClient.get()
-                .uri("/stored_images/" + sessionId + "/query")
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
-                        Mono.error(new RuntimeException("Query images not found for session: " + sessionId)))
-                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
-                        Mono.error(new RuntimeException("Server error fetching query images for session: " + sessionId)))
-                .bodyToMono(new ParameterizedTypeReference<List<SeriesController.ImageData>>() {})
-                .timeout(Duration.ofSeconds(30))
-                .block();
-    }
-
-    public String getSessionImageHash(String sessionId, String fileName) {
-        return webClient.get()
-                .uri("/stored_images/hash/" + sessionId + "/" + fileName )
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
-                        Mono.error(new RuntimeException("Image not found: " + fileName)))
-                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
-                        Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
-                .bodyToMono(String.class)
-                .timeout(Duration.ofSeconds(30))
-                .block();
-    }
 
     public static class SessionNotFoundException extends RuntimeException {
         public SessionNotFoundException(String message) {

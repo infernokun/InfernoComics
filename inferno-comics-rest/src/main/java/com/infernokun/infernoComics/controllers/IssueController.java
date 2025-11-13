@@ -83,9 +83,7 @@ public class IssueController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Issue>> searchIssues(
-            @RequestParam String query,
-            @RequestParam(defaultValue = "20") int limit) {
+    public ResponseEntity<List<Issue>> searchIssues(@RequestParam String query, @RequestParam(defaultValue = "20") int limit) {
         try {
             List<Issue> results = issueService.searchIssues(query, limit);
             return ResponseEntity.ok(results);

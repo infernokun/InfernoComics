@@ -9,6 +9,7 @@ import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -25,30 +26,15 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class IssueService {
-
     private final IssueRepository issueRepository;
     private final SeriesRepository seriesRepository;
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
     private final CacheManager cacheManager;
-    private final ProgressService progressService;
-
-    public IssueService(IssueRepository issueRepository,
-                        SeriesRepository seriesRepository,
-                        ComicVineService comicVineService,
-                        DescriptionGeneratorService descriptionGeneratorService,
-                        GCDatabaseService gcDatabaseService,
-                        CacheManager cacheManager, ProgressService progressService) {
-        this.issueRepository = issueRepository;
-        this.seriesRepository = seriesRepository;
-        this.comicVineService = comicVineService;
-        this.descriptionGeneratorService = descriptionGeneratorService;
-        this.gcDatabaseService = gcDatabaseService;
-        this.cacheManager = cacheManager;
-        this.progressService = progressService;
-    }
+    private final RecognitionService recognitionService;
 
     public List<Issue> getAllIssues() {
         log.info("Fetching all issues from database");
@@ -380,8 +366,8 @@ public class IssueService {
         if (existingIssueOpt.isPresent()) {
             String[] existingImgUrl = existingIssueOpt.get().getUploadedImageUrl().split("/");
             String[] issueImgUrl = issue.getUploadedImageUrl().split("/");
-            if (Objects.equals(progressService.getSessionImageHash(existingImgUrl[0], existingImgUrl[1]),
-                    progressService.getSessionImageHash(issueImgUrl[0], issueImgUrl[1]))) {
+            if (Objects.equals(recognitionService.getSessionImageHash(existingImgUrl[0], existingImgUrl[1]),
+                    recognitionService.getSessionImageHash(issueImgUrl[0], issueImgUrl[1]))) {
                 issue.setId(existingIssueOpt.get().getId());
             }
             issue.setId(existingIssueOpt.get().getId());

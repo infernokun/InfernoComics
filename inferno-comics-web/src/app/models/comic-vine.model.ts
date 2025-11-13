@@ -23,3 +23,22 @@ export interface ComicVineIssue {
   keyIssue?: boolean;
   variant?: boolean;
 }
+
+export interface ComicVineSeriesDto {
+  id: string;
+  name: string;
+  description: string;
+  issueCount: number;
+  publisher: string;
+  startYear: number;
+  imageUrl: string;
+}
+
+export interface ComicVineIssueDto {
+  id: string;
+  issueNumber: string;
+  name: string;
+  description: string;
+  coverDate: string;
+  imageUrl: string;
+}

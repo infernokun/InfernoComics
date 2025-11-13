@@ -32,7 +32,7 @@ import { ComicMatch } from '../../models/comic-match.model';
 })
 export class SeriesDetailComponent implements OnInit {
   series: Series | null = null;
-  issues: any[] = [];
+  issues: Issue[] = [];
   comicVineIssues: any[] = [];
   selectedIssues: Set<string> = new Set();
   lastSelectedIndex: number = -1;
@@ -1160,7 +1160,7 @@ export class SeriesDetailComponent implements OnInit {
     });
 
     // Get all issue IDs
-    const issueIds = this.issues.map((issue) => issue.id);
+    const issueIds = this.issues.map((issue) => issue.id!);
 
     // Use bulk delete endpoint instead of individual calls
     this.issueService.deleteIssuesBulk(issueIds).subscribe({

@@ -3,7 +3,8 @@ import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from "@angular/material/dial
 import { IssueFormComponent } from "../../issue-form/issue-form.component";
 import { MaterialModule } from "../../../material.module";
 import { CommonModule } from "@angular/common";
-import { EnvironmentService } from "../../../services/environment.service"; // Adjust import path as needed
+import { EnvironmentService } from "../../../services/environment.service";
+import { RecognitionService } from "../../../services/recognition.service";
 
 @Component({
   selector: 'comic-book-view-dialog',
@@ -13,13 +14,14 @@ import { EnvironmentService } from "../../../services/environment.service"; // A
 })
 export class IssueViewDialog {
   Math = Math;
-  showUploadedImage = false; // Toggle state for image display
+  showUploadedImage = false;
 
   constructor(
     public dialogRef: MatDialogRef<IssueViewDialog>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private dialog: MatDialog,
-    private environmentService: EnvironmentService
+    private environmentService: EnvironmentService,
+    private recognitionService: RecognitionService
   ) {
     console.log('IssueViewDialog initialized with data:', data);
   }
@@ -64,8 +66,8 @@ export class IssueViewDialog {
 
   // Get the current image URL based on toggle state
   getCurrentImageUrl(): string {
-    if (this.showUploadedImage && this.data.issue.uploadedImageUrl) {
-      return `${this.environmentService.settings!.restUrl}/progress/image/${this.data.issue.uploadedImageUrl}`;
+    if (this.showUploadedImage) {
+      return this.recognitionService.getCurrentImageUrl(this.data);
     }
     return this.data.issue.imageUrl || 'assets/placeholder-comic.jpg';
   }

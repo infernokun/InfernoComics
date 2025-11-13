@@ -39,6 +39,19 @@ public class VersionController {
         this.appVersion = packageInfo.get("version");
     }
 
+    @GetMapping
+    public List<Map<String, String>> getVersion() {
+        // Get REST service version
+        Map<String, String> restVersion = new HashMap<>();
+        restVersion.put("name", appName);
+        restVersion.put("version", appVersion);
+
+        // Get Recognition service version
+        Map<String, String> recogVersion = getRecognitionVersion();
+
+        return List.of(restVersion, recogVersion);
+    }
+
     private Map<String, String> readPackageJson() {
         Map<String, String> result = new HashMap<>();
 
@@ -62,19 +75,6 @@ public class VersionController {
         result.put("name", "inferno-comics-rest");
         result.put("version", "unknown");
         return result;
-    }
-
-    @GetMapping
-    public List<Map<String, String>> getVersion() {
-        // Get REST service version
-        Map<String, String> restVersion = new HashMap<>();
-        restVersion.put("name", appName);
-        restVersion.put("version", appVersion);
-
-        // Get Recognition service version
-        Map<String, String> recogVersion = getRecognitionVersion();
-
-        return List.of(restVersion, recogVersion);
     }
 
     private Map<String, String> getRecognitionVersion() {

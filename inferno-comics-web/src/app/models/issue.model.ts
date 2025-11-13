@@ -44,8 +44,8 @@ export class Issue {
       this.coverDate = data.coverDate ? DateUtils.parseArrayDate(data.coverDate) : undefined;
       this.imageUrl = data.imageUrl;
       this.condition = data.condition;
-      this.purchasePrice = data.purchasePrice;
-      this.currentValue = data.currentValue;
+      this.purchasePrice = data.purchasePrice || 0;
+      this.currentValue = data.currentValue || 0;
       this.purchaseDate = data.purchaseDate ? DateUtils.parseArrayDate(data.purchaseDate) : undefined;
       this.notes = data.notes;
       this.comicVineId = data.comicVineId;
@@ -67,4 +67,22 @@ export interface VariantCover {
   originalUrl?: string;
   caption?: string;
   imageTags?: string;
+}
+
+export interface IssueRequest {
+  seriesId: number;
+  issueNumber: string;
+  title?: string;
+  description?: string;
+  coverDate?: Date;
+  imageUrl?: string;
+  condition?: IssueCondition;
+  purchasePrice?: number;
+  currentValue?: number;
+  purchaseDate?: Date;
+  notes?: string;
+  comicVineId?: string;
+  keyIssue?: boolean;
+  variant?: boolean; 
+  generatedDescription: boolean;
 }

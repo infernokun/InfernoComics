@@ -22,6 +22,20 @@ public class DescriptionController {
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final IssueRepository issueRepository;
 
+    @GetMapping("/cache/stats")
+    public ResponseEntity<Map<String, Object>> getCacheStats() {
+        try {
+            Map<String, Object> stats = descriptionGeneratorService.getCacheStats();
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            log.error("Error getting cache stats: {}", e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "error", "Unable to retrieve cache statistics",
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
     @PostMapping("/generate/{issueId}")
     public ResponseEntity<Map<String, String>> generateDescriptionForIssue(@PathVariable Long issueId) {
         try {
@@ -167,36 +181,6 @@ public class DescriptionController {
         }
     }
 
-    @GetMapping("/cache/stats")
-    public ResponseEntity<Map<String, Object>> getCacheStats() {
-        try {
-            Map<String, Object> stats = descriptionGeneratorService.getCacheStats();
-            return ResponseEntity.ok(stats);
-        } catch (Exception e) {
-            log.error("Error getting cache stats: {}", e.getMessage());
-            return ResponseEntity.ok(Map.of(
-                    "error", "Unable to retrieve cache statistics",
-                    "message", e.getMessage()
-            ));
-        }
-    }
-
-    @DeleteMapping("/cache/clear")
-    public ResponseEntity<Map<String, String>> clearDescriptionCache() {
-        try {
-            descriptionGeneratorService.clearAllDescriptionCache();
-            return ResponseEntity.ok(Map.of(
-                    "message", "Description cache cleared successfully"
-            ));
-        } catch (Exception e) {
-            log.error("Error clearing description cache: {}", e.getMessage());
-            return ResponseEntity.ok(Map.of(
-                    "error", "Failed to clear cache",
-                    "message", e.getMessage()
-            ));
-        }
-    }
-
     @PostMapping("/refresh/{issueId}")
     public ResponseEntity<Map<String, String>> refreshDescriptionForIssue(@PathVariable Long issueId) {
         try {
@@ -231,6 +215,22 @@ public class DescriptionController {
             return ResponseEntity.ok(Map.of(
                     "description", "",
                     "message", "Error refreshing description: " + e.getMessage()
+            ));
+        }
+    }
+
+    @DeleteMapping("/cache/clear")
+    public ResponseEntity<Map<String, String>> clearDescriptionCache() {
+        try {
+            descriptionGeneratorService.clearAllDescriptionCache();
+            return ResponseEntity.ok(Map.of(
+                    "message", "Description cache cleared successfully"
+            ));
+        } catch (Exception e) {
+            log.error("Error clearing description cache: {}", e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "error", "Failed to clear cache",
+                    "message", e.getMessage()
             ));
         }
     }

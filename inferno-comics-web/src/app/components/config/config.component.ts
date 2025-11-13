@@ -3,7 +3,7 @@ import { OnInit, OnDestroy, Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RecognitionConfig, RecognitionService } from '../../services/recognition-config.service';
+import { RecognitionConfig, RecognitionService } from '../../services/recognition.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subscription } from 'rxjs';
 

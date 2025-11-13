@@ -4,6 +4,7 @@ import com.infernokun.infernoComics.services.IssueService;
 import com.infernokun.infernoComics.services.SeriesService;
 import com.infernokun.infernoComics.services.ComicVineService;
 import com.infernokun.infernoComics.services.DescriptionGeneratorService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,23 +14,13 @@ import java.util.Map;
 
 @Slf4j
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/admin/cache")
 public class CacheManagementController {
-
     private final IssueService issueService;
     private final SeriesService seriesService;
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
-
-    public CacheManagementController(IssueService issueService,
-                                     SeriesService seriesService,
-                                     ComicVineService comicVineService,
-                                     DescriptionGeneratorService descriptionGeneratorService) {
-        this.issueService = issueService;
-        this.seriesService = seriesService;
-        this.comicVineService = comicVineService;
-        this.descriptionGeneratorService = descriptionGeneratorService;
-    }
 
     // Get comprehensive cache statistics
     @GetMapping("/stats")
@@ -57,6 +48,49 @@ public class CacheManagementController {
         } catch (Exception e) {
             log.error("Error getting cache statistics: {}", e.getMessage());
             return ResponseEntity.ok(Map.of("error", "Unable to retrieve cache statistics"));
+        }
+    }
+
+    // Refresh specific cache by invalidating and pre-warming
+    @PostMapping("/refresh/comic-vine-series")
+    public ResponseEntity<Map<String, String>> refreshComicVineSeriesCache(@RequestParam String query) {
+        try {
+            log.info("Refreshing Comic Vine series cache for query: {}", query);
+
+            // This will refresh the cache by making a new API call
+            comicVineService.refreshSeriesSearch(query);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "Comic Vine series cache refreshed for query: " + query
+            ));
+        } catch (Exception e) {
+            log.error("Error refreshing Comic Vine series cache: {}", e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "status", "error",
+                    "message", "Failed to refresh Comic Vine series cache: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/refresh/comic-vine-issues")
+    public ResponseEntity<Map<String, String>> refreshComicVineIssuesCache(@RequestParam String seriesId) {
+        try {
+            log.info("Refreshing Comic Vine issues cache for series: {}", seriesId);
+
+            // This will refresh the cache by making a new API call
+            comicVineService.refreshIssuesSearch(seriesId);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "Comic Vine issues cache refreshed for series: " + seriesId
+            ));
+        } catch (Exception e) {
+            log.error("Error refreshing Comic Vine issues cache: {}", e.getMessage());
+            return ResponseEntity.ok(Map.of(
+                    "status", "error",
+                    "message", "Failed to refresh Comic Vine issues cache: " + e.getMessage()
+            ));
         }
     }
 
@@ -160,49 +194,6 @@ public class CacheManagementController {
             return ResponseEntity.ok(Map.of(
                     "status", "error",
                     "message", "Failed to clear description caches: " + e.getMessage()
-            ));
-        }
-    }
-
-    // Refresh specific cache by invalidating and pre-warming
-    @PostMapping("/refresh/comic-vine-series")
-    public ResponseEntity<Map<String, String>> refreshComicVineSeriesCache(@RequestParam String query) {
-        try {
-            log.info("Refreshing Comic Vine series cache for query: {}", query);
-
-            // This will refresh the cache by making a new API call
-            comicVineService.refreshSeriesSearch(query);
-
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Comic Vine series cache refreshed for query: " + query
-            ));
-        } catch (Exception e) {
-            log.error("Error refreshing Comic Vine series cache: {}", e.getMessage());
-            return ResponseEntity.ok(Map.of(
-                    "status", "error",
-                    "message", "Failed to refresh Comic Vine series cache: " + e.getMessage()
-            ));
-        }
-    }
-
-    @PostMapping("/refresh/comic-vine-issues")
-    public ResponseEntity<Map<String, String>> refreshComicVineIssuesCache(@RequestParam String seriesId) {
-        try {
-            log.info("Refreshing Comic Vine issues cache for series: {}", seriesId);
-
-            // This will refresh the cache by making a new API call
-            comicVineService.refreshIssuesSearch(seriesId);
-
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Comic Vine issues cache refreshed for series: " + seriesId
-            ));
-        } catch (Exception e) {
-            log.error("Error refreshing Comic Vine issues cache: {}", e.getMessage());
-            return ResponseEntity.ok(Map.of(
-                    "status", "error",
-                    "message", "Failed to refresh Comic Vine issues cache: " + e.getMessage()
             ));
         }
     }

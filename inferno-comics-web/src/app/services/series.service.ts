@@ -3,9 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { EnvironmentService } from './environment.service';
 import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
-import { Series } from '../models/series.model';
+import { Series, SeriesWithIssues } from '../models/series.model';
 import { ProgressData } from '../models/progress-data.model';
-import { Issue } from '../models/issue.model';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -16,11 +15,6 @@ export interface SSEProgressData {
   result?: ImageMatcherResponse;
   error?: string;
   timestamp: number;
-}
-
-export interface SeriesWithIssues {
-  series: Series,
-  issues: Issue[];
 }
 
 @Injectable({
@@ -36,11 +30,11 @@ export class SeriesService {
   }
 
   getAllSeries(): Observable<Series[]> {
-    return this.http.get<any[]>(this.apiUrl);
+    return this.http.get<Series[]>(this.apiUrl);
   }
 
   getSeriesById(id: number): Observable<Series> {
-    return this.http.get<any>(`${this.apiUrl}/${id}`);
+    return this.http.get<Series>(`${this.apiUrl}/${id}`);
   }
 
   getSeriesWithIssues(): Observable<SeriesWithIssues[]> {
@@ -59,16 +53,16 @@ export class SeriesService {
     return this.http.post<any>(`${this.apiUrl}/startSync`, {});
   }
 
-  createSeries(series: any): Observable<any> {
-    return this.http.post<any>(this.apiUrl, series);
+  createSeries(series: Series): Observable<Series> {
+    return this.http.post<Series>(this.apiUrl, series);
   }
 
-  updateSeries(id: number, series: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, series);
+  updateSeries(id: number, series: any): Observable<Series> {
+    return this.http.put<Series>(`${this.apiUrl}/${id}`, series);
   }
 
-  deleteSeries(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+  deleteSeries(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
   searchSeries(query: string): Observable<any[]> {
@@ -77,7 +71,6 @@ export class SeriesService {
     );
   }
 
-  // Comic Vine integration - for searching series when creating/editing
   searchComicVineSeries(query: string): Observable<any[]> {
     return this.http.get<any[]>(
       `${this.apiUrl}/search-comic-vine?query=${encodeURIComponent(query)}`
@@ -96,10 +89,7 @@ export class SeriesService {
     return this.http.post<any>(`${this.apiUrl}/replay/${sessionId}`, {});
   }
 
-  addComicsByImagesWithSSE(
-    seriesId: number,
-    imageFiles: File[]
-  ): Observable<SSEProgressData> {
+  addComicsByImagesWithSSE(seriesId: number, imageFiles: File[]): Observable<SSEProgressData> {
     const progressSubject = new Subject<SSEProgressData>();
 
     const formData = new FormData();
@@ -133,12 +123,7 @@ export class SeriesService {
     return progressSubject.asObservable();
   }
 
-  private connectToSSEProgress(
-    seriesId: number,
-    sessionId: string,
-    progressSubject: Subject<SSEProgressData>,
-    endpoint: string = 'add-comic-by-image'
-  ): void {
+  private connectToSSEProgress(seriesId: number, sessionId: string, progressSubject: Subject<SSEProgressData>, endpoint: string = 'add-comic-by-image'): void {
     const sseUrl = `${this.apiUrl}/${seriesId}/${endpoint}/progress?sessionId=${sessionId}`;
     console.log('Connecting to SSE URL:', sseUrl);
 
@@ -256,7 +241,6 @@ export class SeriesService {
     });
   }
 
-  // Utility method to check if SSE is supported
   isSSESupported(): boolean {
     return typeof EventSource !== 'undefined';
   }
@@ -273,12 +257,6 @@ export class SeriesService {
 
   dismissProgressData(itemId: number): Observable<ProgressData[]> {
     return this.http.post<ProgressData[]>(`${this.progressUrl}/data/dismiss/${itemId}`, {});
-  }
-
-  getSessionJSON(sessionId: string) {
-    return this.http.get<any[]>(
-      `${this.progressUrl}/json/${sessionId}`
-    );
   }
 
   reverifySeries(seriesId: number): Observable<Series> {

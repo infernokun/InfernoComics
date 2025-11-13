@@ -1,6 +1,11 @@
 import { DateUtils } from "../utils/date-utils";
 import { Issue } from "./issue.model";
 
+export interface SeriesWithIssues {
+  series: Series,
+  issues: Issue[];
+}
+
 export class Series {
   id?: number;
   name?: string;
@@ -45,7 +50,6 @@ export class Series {
   }
 }
 
-// Additional interfaces for dashboard features
 export interface PublisherStats {
   name: string;
   seriesCount: number;

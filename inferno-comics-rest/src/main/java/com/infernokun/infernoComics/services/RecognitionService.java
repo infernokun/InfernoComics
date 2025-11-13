@@ -6,6 +6,8 @@ import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.RecognitionConfig;
 import com.infernokun.infernoComics.models.StartedBy;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -82,7 +84,7 @@ public class RecognitionService {
 
         seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, startedBy, null, 0);
     }
-    
+
     public JsonNode cleanSession(String sessionId) {
         return webClient.post()
                 .uri(uriBuilder -> uriBuilder.path("/health/clean").build())
@@ -100,6 +102,67 @@ public class RecognitionService {
                                         new RuntimeException("Server error: "
                                                 + clientResponse.statusCode() + " - " + errorBody))))
                 .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30))
+                .block();
+    }
+
+    public JsonNode getSessionJSON(String sessionId) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/json")
+                        .queryParam("sessionId", sessionId)
+                        .build())
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> {
+                    return clientResponse.bodyToMono(String.class)
+                            .flatMap(errorBody -> Mono.error(
+                                    new RuntimeException("Client error: " + clientResponse.statusCode() + " - " + errorBody)));
+                })
+                .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
+                    return clientResponse.bodyToMono(String.class)
+                            .flatMap(errorBody -> Mono.error(
+                                    new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
+                })
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30))
+                .block();
+    }
+
+    public Resource getSessionImage(String sessionId, String fileName) {
+        return webClient.get()
+                .uri("/stored_images/" + sessionId + "/" + fileName)
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                        Mono.error(new RuntimeException("Image not found: " + fileName)))
+                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                        Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
+                .bodyToMono(Resource.class)
+                .timeout(Duration.ofSeconds(30))
+                .block();
+    }
+
+    public List<SeriesController.ImageData> getSessionImages(String sessionId) {
+        return webClient.get()
+                .uri("/stored_images/" + sessionId + "/query")
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                        Mono.error(new RuntimeException("Query images not found for session: " + sessionId)))
+                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                        Mono.error(new RuntimeException("Server error fetching query images for session: " + sessionId)))
+                .bodyToMono(new ParameterizedTypeReference<List<SeriesController.ImageData>>() {})
+                .timeout(Duration.ofSeconds(30))
+                .block();
+    }
+
+    public String getSessionImageHash(String sessionId, String fileName) {
+        return webClient.get()
+                .uri("/stored_images/hash/" + sessionId + "/" + fileName )
+                .retrieve()
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                        Mono.error(new RuntimeException("Image not found: " + fileName)))
+                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                        Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
+                .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(30))
                 .block();
     }

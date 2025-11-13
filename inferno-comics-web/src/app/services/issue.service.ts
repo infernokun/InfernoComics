@@ -9,10 +9,7 @@ import { EnvironmentService } from './environment.service';
 export class IssueService {
   private apiUrl: string = '';
 
-  constructor(
-    private http: HttpClient,
-    private environmentService: EnvironmentService
-  ) {
+  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/issues`;
   }
 

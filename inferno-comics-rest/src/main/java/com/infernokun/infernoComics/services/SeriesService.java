@@ -9,6 +9,7 @@ import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
+import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
@@ -18,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.CacheManager;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
@@ -43,7 +43,7 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Transactional
 public class SeriesService {
     private final SeriesRepository seriesRepository;
-    private final IssueService issueService;
+    private final IssueRepository issueRepository;
     private final ComicVineService comicVineService;
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
@@ -56,7 +56,8 @@ public class SeriesService {
 
     private final ProcessedFileRepository processedFileRepository;
 
-    public SeriesService(SeriesRepository seriesRepository, IssueService issueService,
+    public SeriesService(SeriesRepository seriesRepository,
+                         IssueRepository issueRepository,
                          ComicVineService comicVineService,
                          DescriptionGeneratorService descriptionGeneratorService,
                          GCDatabaseService gcDatabaseService,
@@ -65,7 +66,7 @@ public class SeriesService {
                          ProgressService progressService,
                          CacheManager cacheManager, WeirdService weirdService, ProcessedFileRepository processedFileRepository) {
         this.seriesRepository = seriesRepository;
-        this.issueService = issueService;
+        this.issueRepository = issueRepository;
         this.comicVineService = comicVineService;
         this.descriptionGeneratorService = descriptionGeneratorService;
         this.gcDatabaseService = gcDatabaseService;
@@ -181,7 +182,7 @@ public class SeriesService {
 
         List<Series> seriesList = seriesRepository.findAll();
         seriesList.forEach(series -> {
-            List<Issue> issues = issueService.getIssuesBySeriesId(series.getId());
+            List<Issue> issues = issueRepository.findBySeriesId(series.getId());
             series.setIssuesOwnedCount(issues.size());
         });
 
@@ -763,7 +764,8 @@ public class SeriesService {
                         String.format("Found %d ComicVine issues for %d input images",
                                 results.size(), imageDataList.size())));
 
-                Set<Long> existingComicVineIds = issueService.getIssuesBySeriesId(seriesId)
+
+                Set<Long> existingComicVineIds = issueRepository.findBySeriesId(seriesId)
                         .stream()
                         .map(Issue::getComicVineId)
                         .filter(Objects::nonNull)

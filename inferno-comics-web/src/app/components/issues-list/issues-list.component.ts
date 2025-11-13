@@ -5,9 +5,11 @@ import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, finalize, debounceTime } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { SeriesService, SeriesWithIssues } from '../../services/series.service';
+import { SeriesService } from '../../services/series.service';
 import { Issue } from '../../models/issue.model';
 import { EnvironmentService } from '../../services/environment.service';
+import { SeriesWithIssues } from '../../models/series.model';
+import { RecognitionService } from '../../services/recognition.service';
 
 interface SeriesDisplayState {
   seriesId: number;
@@ -42,6 +44,7 @@ export class IssuesListComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly seriesService: SeriesService,
+    private readonly recognitionService: RecognitionService,
     private readonly snackBar: MatSnackBar,
     private readonly environmentService: EnvironmentService,
     private readonly cdr: ChangeDetectorRef
@@ -57,9 +60,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  /**
-   * Loads all series with their associated issues
-   */
   private loadSeriesWithIssues(): void {
     this.loading = true;
     this.seriesService
@@ -80,9 +80,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Loads all user preferences from local storage
-   */
   private loadUserPreferences(): void {
     // Load uploaded photos toggle preference
     const savedPhotosPreference = localStorage.getItem(this.STORAGE_KEYS.UPLOADED_PHOTOS);
@@ -104,39 +101,24 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Saves the uploaded photos toggle preference to local storage
-   */
   private saveTogglePreference(): void {
     localStorage.setItem(this.STORAGE_KEYS.UPLOADED_PHOTOS, String(this.uploadedPhotos));
   }
   
-  /**
-   * Saves series display states to local storage
-   */
   private saveSeriesDisplayStates(): void {
     const states: SeriesDisplayState[] = Array.from(this.seriesDisplayStates.entries())
       .map(([seriesId, showAll]) => ({ seriesId, showAll }));
     localStorage.setItem(this.STORAGE_KEYS.SERIES_DISPLAY_STATES, JSON.stringify(states));
   }
 
-  /**
-   * TrackBy function for series to optimize ngFor rendering
-   */
   trackBySeriesId(_index: number, item: SeriesWithIssues): number {
     return item.series.id!;
   }
 
-  /**
-   * TrackBy function for issues to optimize ngFor rendering
-   */
   trackByIssueId(_index: number, issue: Issue): number {
     return issue.id!;
   }
 
-  /**
-   * Gets the appropriate image URL based on toggle state
-   */
   getImageUrl(issue: Issue): string {
     const cacheKey = `${issue.id}-${this.uploadedPhotos}`;
     
@@ -146,7 +128,7 @@ export class IssuesListComponent implements OnInit, OnDestroy {
 
     let url: string;
     if (this.uploadedPhotos && issue.uploadedImageUrl) {
-      url = this.buildUploadedImageUrl(issue.uploadedImageUrl);
+      url = this.buildUploadedImageUrl(issue);
     } else {
       url = issue.imageUrl || this.placeholderImage;
     }
@@ -155,17 +137,10 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     return url;
   }
 
-  /**
-   * Constructs the full URL for uploaded images
-   */
-  private buildUploadedImageUrl(imageUrl: string): string {
-    const baseUrl = this.environmentService.settings?.restUrl;
-    return baseUrl ? `${baseUrl}/progress/image/${imageUrl}` : this.placeholderImage;
+  private buildUploadedImageUrl(issue: Issue): string {
+    return this.recognitionService.getCurrentImageUrl({ issue: issue });
   }
 
-  /**
-   * Handles image loading errors by falling back to placeholder
-   */
   onImageError(event: Event): void {
     const imgElement = event.target as HTMLImageElement;
     if (imgElement.src !== this.placeholderImage) {
@@ -173,9 +148,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Gets the issues to display for a series (limited or all)
-   */
   getDisplayedIssues(series: SeriesWithIssues): Issue[] {
     if (!series.issues || series.issues.length === 0) {
       return [];
@@ -185,31 +157,19 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     return showAll ? series.issues : series.issues.slice(0, this.DEFAULT_ISSUE_LIMIT);
   }
   
-  /**
-   * Checks if a series is expanded (showing all issues)
-   */
   isSeriesExpanded(seriesId: number): boolean {
     return this.seriesDisplayStates.get(seriesId) ?? false;
   }
   
-  /**
-   * Checks if a series has more issues than the default limit
-   */
   hasMoreIssues(series: SeriesWithIssues): boolean {
     return (series.issues?.length || 0) > this.DEFAULT_ISSUE_LIMIT;
   }
   
-  /**
-   * Gets the count of hidden issues for a series
-   */
   getHiddenIssuesCount(series: SeriesWithIssues): number {
     const total = series.issues?.length || 0;
     return Math.max(0, total - this.DEFAULT_ISSUE_LIMIT);
   }
   
-  /**
-   * Toggles the show more/less state for a series
-   */
   toggleSeriesExpansion(seriesId: number): void {
     const currentState = this.seriesDisplayStates.get(seriesId) ?? false;
     this.seriesDisplayStates.set(seriesId, !currentState);
@@ -224,9 +184,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     });
   }
   
-  /**
-   * Expands all series to show all issues
-   */
   expandAllSeries(): void {
     this.seriesWithIssues.forEach(series => {
       if (series.series.id && this.hasMoreIssues(series)) {
@@ -243,9 +200,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     });
   }
   
-  /**
-   * Collapses all series to show limited issues
-   */
   collapseAllSeries(): void {
     this.seriesDisplayStates.clear();
     this.saveSeriesDisplayStates();
@@ -258,25 +212,16 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Checks if a series has any issues
-   */
   hasIssues(series: SeriesWithIssues): boolean {
     return series.issues?.length > 0;
   }
 
-  /**
-   * Gets the total count of all issues across all series
-   */
   private getTotalIssuesCount(): number {
     return this.seriesWithIssues.reduce((total, series) => 
       total + (series.issues?.length || 0), 0
     );
   }
 
-  /**
-   * Shows error message to user
-   */
   private showError(message: string): void {
     this.snackBar.open(message, 'Close', {
       duration: 5000,
@@ -286,9 +231,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Shows success message to user
-   */
   private showSuccessMessage(message: string): void {
     this.snackBar.open(message, 'Dismiss', {
       duration: 3000,
@@ -298,12 +240,9 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Handles toggle change event
-   */
   onToggleChange(): void {
     this.saveTogglePreference();
-    this.imageCache.clear(); // Clear cache when toggle changes
+    this.imageCache.clear();
     
     const photoType = this.uploadedPhotos ? 'uploaded' : 'original';
     this.snackBar.open(`Showing ${photoType} photos`, undefined, {
@@ -313,9 +252,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Refreshes the series list
-   */
   refresh(): void {
     this.imageCache.clear();
     this.loadSeriesWithIssues();

@@ -85,16 +85,18 @@
           {{ showFullDescription ? 'Show less' : 'Show more' }}
         </button>
       </div>
-      <div class="value-info">
-        <div class="value-card">
-          <div class="value-label">Total Purchase Price</div>
-          <div class="value-amount">${{ calculateTotalPurchasePrice() }}</div>
+      @if (calculateTotalPurchasePrice() != 0 && calculateCurrentValue() != 0) {
+        <div class="value-info">
+          <div class="value-card">
+            <div class="value-label">Total Purchase Price</div>
+            <div class="value-amount">${{ calculateTotalPurchasePrice() }}</div>
+          </div>
+          <div class="value-card">
+            <div class="value-label">Current Value</div>
+            <div class="value-amount">${{ calculateCurrentValue() }}</div>
+          </div>
         </div>
-        <div class="value-card">
-          <div class="value-label">Current Value</div>
-          <div class="value-amount">${{ calculateCurrentValue() }}</div>
-        </div>
-      </div>
+      }
       <div class="action-buttons">
         <button mat-raised-button color="primary" (click)="addIssue()">
           <mat-icon>add</mat-icon>
@@ -196,16 +198,16 @@
                 <!-- Updated issue description with toggle -->
                 <div class="issue-description-container" *ngIf="comic.description">
                   <p class="issue-description">{{ getIssueDescription(comic) }}</p>
-                  <button *ngIf="shouldShowIssueToggle(comic)" (click)="toggleIssueDescription(comic.id)"
+                  <button *ngIf="shouldShowIssueToggle(comic)" (click)="toggleIssueDescription(comic.id!)"
                     class="show-more-btn issue-toggle">
-                    {{ isIssueDescriptionExpanded(comic.id) ? 'Show less' : 'Show more' }}
+                    {{ isIssueDescriptionExpanded(comic.id!) ? 'Show less' : 'Show more' }}
                   </button>
                 </div>
           
                 <p class="cover-date" *ngIf="comic.coverDate">Cover Date: {{ comic.coverDate }}</p>
               </mat-card-content>
               <mat-card-actions>
-                <button mat-button color="accent" (click)="viewIssue(comic.id)">
+                <button mat-button color="accent" (click)="viewIssue(comic.id!)">
                   <mat-icon>visibility</mat-icon>
                   View
                 </button>
@@ -213,7 +215,7 @@
                   <mat-icon>edit</mat-icon>
                   Edit
                 </button>
-                <button mat-button color="warn" (click)="deleteIssue(comic.id)">
+                <button mat-button color="warn" (click)="deleteIssue(comic.id!)">
                   <mat-icon>delete</mat-icon>
                   Delete
                 </button>
@@ -266,7 +268,7 @@
                 <div class="compact-actions">
                   <button mat-icon-button color="accent" 
                           matTooltip="View Details" 
-                          (click)="viewIssue(issue.id)">
+                          (click)="viewIssue(issue.id!)">
                     <mat-icon>visibility</mat-icon>
                   </button>
                   <button mat-icon-button color="primary" 
@@ -276,7 +278,7 @@
                   </button>
                   <button mat-icon-button color="warn" 
                           matTooltip="Delete Comic" 
-                          (click)="deleteIssue(issue.id)">
+                          (click)="deleteIssue(issue.id!)">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </div>
