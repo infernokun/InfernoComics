@@ -7,6 +7,7 @@ import { Issue, IssueCondition, IssueRequest } from '../../models/issue.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
+import { RecognitionService } from '../../services/recognition.service';
 
 export interface IssueFormData {
   seriesId: number;
@@ -31,11 +32,12 @@ export class IssueFormComponent implements OnInit {
   conditions = Object.values(IssueCondition);
   loading = false;
   isEditMode = false;
-  isFromImageMatch = false;  // New property to track if this is from image matching
+  isFromImageMatch = false;
 
   constructor(
-    private fb: FormBuilder,
     private issueService: IssueService,
+    private recognitionService: RecognitionService,
+    private fb: FormBuilder,
     private snackBar: MatSnackBar,
     public dialogRef: MatDialogRef<IssueFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: IssueFormData
@@ -77,6 +79,8 @@ export class IssueFormComponent implements OnInit {
       description: [''],
       coverDate: [''],
       imageUrl: [''],
+      uploadedImageUrl: [''],
+      imageData: undefined,
       condition: [''],
       purchasePrice: [''],
       currentValue: [''],
@@ -90,12 +94,14 @@ export class IssueFormComponent implements OnInit {
 
   populateFormForEdit(): void {
     if (this.data.issue) {
+      console.log("??????????", this.data.issue.uploadedImageUrl);
       this.issueForm.patchValue({
         issueNumber: this.data.issue.issueNumber,
         title: this.data.issue.title,
         description: this.data.issue.description,
         coverDate: this.data.issue.coverDate,
         imageUrl: this.data.issue.imageUrl,
+        uploadedImageUrl: this.recognitionService.getCurrentImageUrl(this.data),
         condition: this.data.issue.condition,
         purchasePrice: this.data.issue.purchasePrice,
         currentValue: this.data.issue.currentValue,
@@ -116,6 +122,9 @@ export class IssueFormComponent implements OnInit {
         title: issue.name,
         description: issue.description,
         coverDate: issue.coverDate ? new Date(issue.coverDate) : null,
+        condition: IssueCondition.FAIR,
+        purchasePrice: 0,
+        currentValue: 0,
         imageUrl: issue.imageUrl,
         comicVineId: issue.id,
         keyIssue: issue.keyIssue || false,
@@ -148,7 +157,7 @@ export class IssueFormComponent implements OnInit {
       };
 
       const operation = this.isEditMode && this.data.issue?.id
-        ? this.issueService.updateIssue(this.data.issue.id, issueRequest)
+        ? this.issueService.updateIssue(this.data.issue.id, issueRequest, formData.imageData)
         : this.issueService.createIssue(issueRequest);
 
       operation.subscribe({
@@ -187,5 +196,26 @@ export class IssueFormComponent implements OnInit {
       case 'imageUrl': return !!this.data.prefillData.coverImageUrl;
       default: return false;
     }
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+
+    const file: File = input.files[0];
+    this.issueForm.patchValue({ imageData: file });
+
+    const reader: FileReader = new FileReader();
+    reader.onload = (event: any) => {
+      // `reader.result` is a data‑URL (e.g., "data:image/png;base64,…")
+      this.issueForm.patchValue({ uploadedImageUrl: reader.result as string });
+      
+      // Reset match flag because the user supplied a manual image
+      this.isFromImageMatch = false;
+    };
+
+    reader.readAsDataURL(file);
+
+    console.log(this.issueForm);
   }
 }

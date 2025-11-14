@@ -8,8 +8,10 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -172,11 +174,25 @@ public class IssueController {
         }
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Issue> updateIssue(@PathVariable Long id, @Valid @RequestBody IssueUpdateRequestDto request) {
+    @PutMapping(
+            value = "/{id}"
+    )
+    public ResponseEntity<Issue> updateIssue(
+            @PathVariable Long id,
+            @RequestPart("issue") IssueUpdateRequestDto request,
+            @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
+
         try {
-            Issue comicBook = issueService.updateIssue(id, request);
-            return ResponseEntity.ok(comicBook);
+            if (imageData != null && !imageData.isEmpty()) {
+                log.info("Received image: name='{}', size={} bytes, contentType='{}'",
+                        imageData.getOriginalFilename(),
+                        imageData.getSize(),
+                        imageData.getContentType());
+            } else {
+                log.info("No image supplied for issue {}", id);
+            }
+            //Issue comicBook = issueService.updateIssue(id, request);
+            return ResponseEntity.ok(null);
         } catch (IllegalArgumentException e) {
             log.warn("Invalid request for updating issue {}: {}", id, e.getMessage());
             return ResponseEntity.notFound().build();

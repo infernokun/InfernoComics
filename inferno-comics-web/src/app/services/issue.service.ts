@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { EnvironmentService } from './environment.service';
+import { IssueRequest } from '../models/issue.model';
 
 @Injectable({
   providedIn: 'root',
@@ -33,8 +34,13 @@ export class IssueService {
     return this.http.post<any[]>(`${this.apiUrl}/bulk`, issues);
   }
 
-  updateIssue(id: number, issue: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${id}`, issue);
+  updateIssue(id: number, issue: IssueRequest, imageData: File): Observable<any> {
+    // Build a multipart/form‑data payload
+    const formData = new FormData();
+    formData.append('issue', JSON.stringify(issue));
+    formData.append('imageData', imageData, imageData.name);
+
+    return this.http.put<any>(`${this.apiUrl}/${id}`, formData);
   }
 
   deleteIssue(id: number): Observable<any> {

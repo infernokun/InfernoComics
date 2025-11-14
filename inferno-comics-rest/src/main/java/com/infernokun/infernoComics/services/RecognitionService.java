@@ -113,16 +113,12 @@ public class RecognitionService {
                         .queryParam("sessionId", sessionId)
                         .build())
                 .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> {
-                    return clientResponse.bodyToMono(String.class)
-                            .flatMap(errorBody -> Mono.error(
-                                    new RuntimeException("Client error: " + clientResponse.statusCode() + " - " + errorBody)));
-                })
-                .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> {
-                    return clientResponse.bodyToMono(String.class)
-                            .flatMap(errorBody -> Mono.error(
-                                    new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody)));
-                })
+                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> clientResponse.bodyToMono(String.class)
+                        .flatMap(errorBody -> Mono.error(
+                                new RuntimeException("Client error: " + clientResponse.statusCode() + " - " + errorBody))))
+                .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> clientResponse.bodyToMono(String.class)
+                        .flatMap(errorBody -> Mono.error(
+                                new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody))))
                 .bodyToMono(JsonNode.class)
                 .timeout(Duration.ofSeconds(30))
                 .block();
@@ -158,10 +154,10 @@ public class RecognitionService {
         return webClient.get()
                 .uri("/stored_images/hash/" + sessionId + "/" + fileName )
                 .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
-                        Mono.error(new RuntimeException("Image not found: " + fileName)))
-                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
-                        Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
+                .onStatus(HttpStatusCode::is4xxClientError, _ ->
+                        Mono.error(new RuntimeException("Image hash not found: " + fileName)))
+                .onStatus(HttpStatusCode::is5xxServerError, _ ->
+                        Mono.error(new RuntimeException("Server error fetching image hash: " + fileName)))
                 .bodyToMono(String.class)
                 .timeout(Duration.ofSeconds(30))
                 .block();

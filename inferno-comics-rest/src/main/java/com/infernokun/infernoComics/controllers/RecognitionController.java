@@ -53,8 +53,7 @@ public class RecognitionController {
                     .body(imageResource);
 
         } catch (Exception e) {
-            // Log the error
-            System.err.println("Error fetching stored image: " + e.getMessage());
+            log.error("Error fetching stored image: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -78,8 +77,7 @@ public class RecognitionController {
                     .body(hash);
 
         } catch (Exception e) {
-            // Log the error
-            System.err.println("Error fetching stored image: " + e.getMessage());
+            log.error("Error fetching stored image hash: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

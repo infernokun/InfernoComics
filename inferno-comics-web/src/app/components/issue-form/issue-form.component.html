@@ -106,6 +106,30 @@
                 </div>
             </div>
 
+            <input type="file" #fileInput accept="image/*" (change)="onFileSelected($event)" style="display:none">
+
+            <div class="image-preview" *ngIf="isEditMode || !isFromImageMatch">
+                @if (issueForm.get('uploadedImageUrl')?.value) {
+                    <img [src]="issueForm.get('uploadedImageUrl')?.value"
+                    [alt]="'Issue #' + issueForm.get('issueNumber')?.value" class="preview-image edit"
+                    (click)="fileInput.click()"
+                    onerror="if (this.src!=='assets/placeholder-comic.jpg') {
+                            this.src='assets/placeholder-comic.jpg';
+                            this.style.display='block'
+                        } else {
+                            this.style.display='none'
+                        }">
+                } @else {
+                    <div class="upload-box">
+                        <label class="upload-label">
+                            <input type="file" accept="image/*" (change)="onFileSelected($event)" hidden>
+                            <mat-icon>cloud_upload</mat-icon>
+                            <span>Upload a different cover image</span>
+                        </label>
+                    </div>
+                }
+            </div>
+
             <div class="form-row">
                 <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Notes</mat-label>
