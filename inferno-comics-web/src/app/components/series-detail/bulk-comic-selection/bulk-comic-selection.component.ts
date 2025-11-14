@@ -50,7 +50,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   currentStatusFilter: 'all' | 'auto_selected' | 'manually_selected' | 'needs_review' | 'no_match' | 'rejected' = 'all';
   currentConfidenceFilter: 'all' | 'high' | 'medium' | 'low' = 'all';
 
-
   private imagePreviewUrls: string[] = [];
   private highConfidenceThreshold: number = 0.7;
   private mediumConfidenceThreshold: number = 0.55;

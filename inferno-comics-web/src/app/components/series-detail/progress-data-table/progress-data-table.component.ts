@@ -502,7 +502,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
 
     // Convert to Java backend URL
     // Java URL: "http://rest-url:8080/inferno-comics-rest/api/progress/image/session_id/filename.jpg"
-    return `${this.environmentService.settings?.restUrl}/progress/image/${sessionId}/${filename}`;
+    return `${this.environmentService.settings?.restUrl}/recog/image/${sessionId}/${filename}`;
   }
 }
 
