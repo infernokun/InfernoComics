@@ -1,6 +1,10 @@
 package com.infernokun.infernoComics.services;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.IssueController;
+import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.Series;
@@ -9,32 +13,62 @@ import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.CacheManager;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import org.springframework.web.reactive.function.client.WebClient;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
+
 @Slf4j
 @Service
 @Transactional
-@RequiredArgsConstructor
 public class IssueService {
     private final IssueRepository issueRepository;
     private final SeriesRepository seriesRepository;
     private final ComicVineService comicVineService;
+    private final InfernoComicsConfig infernoComicsConfig;
     private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
     private final CacheManager cacheManager;
     private final RecognitionService recognitionService;
+    private final WebClient webClient;
+
+    public IssueService(IssueRepository issueRepository, SeriesRepository seriesRepository, ComicVineService comicVineService, InfernoComicsConfig infernoComicsConfig1, DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, CacheManager cacheManager, RecognitionService recognitionService, InfernoComicsConfig infernoComicsConfig) {
+        this.issueRepository = issueRepository;
+        this.seriesRepository = seriesRepository;
+        this.comicVineService = comicVineService;
+        this.infernoComicsConfig = infernoComicsConfig1;
+        this.descriptionGeneratorService = descriptionGeneratorService;
+        this.gcDatabaseService = gcDatabaseService;
+        this.cacheManager = cacheManager;
+        this.recognitionService = recognitionService;
+
+        this.webClient = WebClient.builder()
+                .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
+                .exchangeStrategies(ExchangeStrategies.builder()
+                        .codecs(configurer -> configurer
+                                .defaultCodecs()
+                                .maxInMemorySize(500 * 1024 * 1024))
+                        .build())
+                .build();
+    }
 
     public List<Issue> getAllIssues() {
         log.info("Fetching all issues from database");
@@ -250,6 +284,74 @@ public class IssueService {
         return updatedIssue;
     }
 
+    public JsonNode placeImageUpload(MultipartFile file) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            String sessionId = UUID.randomUUID().toString();
+            byte[] imageBytes = file.getBytes();
+
+            SeriesController.ImageData imageData = new SeriesController.ImageData(
+                    imageBytes,
+                    file.getOriginalFilename(),
+                    file.getContentType(),
+                    imageBytes.length,
+                    null,
+                    null,
+                    createEtag(imageBytes)
+            );
+
+            MultipartBodyBuilder builder = new MultipartBodyBuilder();
+
+            builder.part("session_id", sessionId);
+
+            builder.part("image", new ByteArrayResource(imageData.bytes()) {
+                @Override
+                public String getFilename() {
+                    return imageData.originalFilename();
+                }
+            }).contentType(MediaType.valueOf(imageData.contentType() != null ? imageData.contentType() : "image/jpeg"));
+
+            log.info("Uploading image '{}' with session_id: {}",
+                    imageData.originalFilename(), sessionId);
+
+            long startTime = System.currentTimeMillis();
+
+            String response = webClient.post()
+                    .uri("/add-issue")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(BodyInserters.fromMultipartData(builder.build()))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Image upload completed in {} ms", duration);
+
+            JsonNode root = mapper.readTree(response);
+
+            boolean success = root.path("success").asBoolean(false);
+            String returnedSessionId = root.path("session_id").asText();
+            JsonNode result = root.path("result");
+
+            if (!success) {
+                log.error("Image upload failed for session: {}", sessionId);
+                throw new RuntimeException("Image upload failed");
+            }
+
+            log.info("Successfully processed image. Session: {}, Filename: {}",
+                    returnedSessionId, result.path("filename").asText());
+
+            return result;
+
+        } catch (IOException e) {
+            log.error("Error reading image file: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to read image file", e);
+        } catch (Exception e) {
+            log.error("Error uploading image: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload image", e);
+        }
+    }
+
     @CacheEvict(value = "issue", key = "#id")
     @Transactional
     public void deleteIssue(Long id) {
@@ -364,17 +466,30 @@ public class IssueService {
         Optional<Issue> existingIssueOpt = issueRepository.findByUploadedImageUrl(issue.getUploadedImageUrl());
 
         if (existingIssueOpt.isPresent()) {
-            String[] existingImgUrl = existingIssueOpt.get().getUploadedImageUrl().split("/");
-            String[] issueImgUrl = issue.getUploadedImageUrl().split("/");
-            if (Objects.equals(recognitionService.getSessionImageHash(existingImgUrl[0], existingImgUrl[1]),
-                    recognitionService.getSessionImageHash(issueImgUrl[0], issueImgUrl[1]))) {
-                issue.setId(existingIssueOpt.get().getId());
+            String existingUrl = existingIssueOpt.get().getUploadedImageUrl();
+            String newUrl = issue.getUploadedImageUrl();
+
+            if (existingUrl != null && newUrl != null) {
+                String[] existingImgUrl = existingUrl.split("/");
+                String[] issueImgUrl = newUrl.split("/");
+
+                if (existingImgUrl.length >= 2 && issueImgUrl.length >= 2) {
+                    if (Objects.equals(
+                            recognitionService.getSessionImageHash(existingImgUrl[0], existingImgUrl[1]),
+                            recognitionService.getSessionImageHash(issueImgUrl[0], issueImgUrl[1]))) {
+                        issue.setId(existingIssueOpt.get().getId());
+                    }
+                } else {
+                    log.warn("Image URL format unexpected. Existing: {}, New: {}", existingUrl, newUrl);
+                }
             }
+
+            // This line seems redundant - you're setting ID twice
             issue.setId(existingIssueOpt.get().getId());
         }
 
         // Generate description if not provided
-        if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {
+        if ((request.getDescription() == null || request.getDescription().trim().isEmpty()) && infernoComicsConfig.isDescriptionGeneration()) {
             try {
                 DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                         series.getName(),

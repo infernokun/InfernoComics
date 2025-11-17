@@ -64,7 +64,8 @@ public class SeriesService {
                          ModelMapper modelMapper,
                          InfernoComicsConfig infernoComicsConfig,
                          ProgressService progressService,
-                         CacheManager cacheManager, WeirdService weirdService, ProcessedFileRepository processedFileRepository) {
+                         CacheManager cacheManager, WeirdService weirdService,
+                         ProcessedFileRepository processedFileRepository) {
         this.seriesRepository = seriesRepository;
         this.issueRepository = issueRepository;
         this.comicVineService = comicVineService;

@@ -636,16 +636,6 @@ def get_stored_image_hash(session_id, filename):
         logger.error(f"Error serving stored image hash: {e}")
         abort(500)
 
-def generate_image_hash(image_path: str) -> str:
-    try:
-        with open(image_path, "rb") as f:
-            content = f.read()
-    except OSError as exc:
-        logger.error(f"Unable to read image: {exc}")
-        return ""
-    
-    return hashlib.sha256(content).hexdigest()
-
 @image_matcher_bp.route('/image-matcher/admin/migrate', methods=['POST'])
 def admin_migrate():
     """Admin endpoint to migrate existing base64 results to file storage"""
@@ -660,6 +650,52 @@ def admin_migrate():
         return jsonify({
             'status': 'error',
             'message': f'Migration failed: {str(e)}'
+        }), 500
+
+@image_matcher_bp.route('/add-issue', methods=['POST'])
+def add_issue():
+    session_id = request.form.get('session_id')
+    if not session_id:
+        logger.warning("Missing session_id in add-issue request")
+        return jsonify({'error': 'session_id is required'}), 400
+    
+    if 'image' not in request.files:
+        logger.warning("No image file in add-issue request")
+        return jsonify({'error': 'No image file found in request'}), 400
+    
+    file = request.files['image']
+    
+    if not file.filename:
+        logger.warning("Empty filename in add-issue request")
+        return jsonify({'error': 'No selected file'}), 400
+    
+    logger.info(f"Processing image '{file.filename}' for session {session_id}")
+    
+    try:
+        image_bytes = file.read()
+        from util.FileOperations import save_image_to_storage
+        link = save_image_to_storage(image_bytes, session_id, file.filename, image_type='query', add=True)
+        
+        result = {
+            'filename': file.filename,
+            'size': len(image_bytes),
+            'content_type': file.content_type,
+            'status': 'processed',
+            'link': link
+        }
+        
+        return jsonify({
+            'session_id': session_id,
+            'result': result,
+            'success': True
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing image ({file.filename}): {str(e)}")
+        return jsonify({
+            'session_id': session_id,
+            'error': str(e),
+            'success': False
         }), 500
 
 @image_matcher_bp.route('/json', methods=['GET'])
@@ -695,3 +731,13 @@ def get_json_by_session_id():
         # Log the actual error for debugging (consider using proper logging)
         logger.error(f"Unexpected error reading session {session_id}: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
+
+def generate_image_hash(image_path: str) -> str:
+    try:
+        with open(image_path, "rb") as f:
+            content = f.read()
+    except OSError as exc:
+        logger.error(f"Unable to read image: {exc}")
+        return ""
+    
+    return hashlib.sha256(content).hexdigest()

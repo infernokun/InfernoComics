@@ -80,6 +80,7 @@ export class IssueFormComponent implements OnInit {
       coverDate: [''],
       imageUrl: [''],
       uploadedImageUrl: [''],
+      uploadedImageUrlPreview: [''],
       imageData: undefined,
       condition: [''],
       purchasePrice: [''],
@@ -94,14 +95,14 @@ export class IssueFormComponent implements OnInit {
 
   populateFormForEdit(): void {
     if (this.data.issue) {
-      console.log("??????????", this.data.issue.uploadedImageUrl);
       this.issueForm.patchValue({
         issueNumber: this.data.issue.issueNumber,
         title: this.data.issue.title,
         description: this.data.issue.description,
         coverDate: this.data.issue.coverDate,
         imageUrl: this.data.issue.imageUrl,
-        uploadedImageUrl: this.recognitionService.getCurrentImageUrl(this.data),
+        uploadedImageUrl: this.data.issue.uploadedImageUrl,
+        uploadedImageUrlPreview: this.recognitionService.getCurrentImageUrl(this.data),
         condition: this.data.issue.condition,
         purchasePrice: this.data.issue.purchasePrice,
         currentValue: this.data.issue.currentValue,
@@ -145,6 +146,7 @@ export class IssueFormComponent implements OnInit {
         description: formData.description,
         coverDate: formData.coverDate,
         imageUrl: formData.imageUrl,
+        uploadedImageUrl: formData.uploadedImageUrl,
         condition: formData.condition,
         purchasePrice: formData.purchasePrice,
         currentValue: formData.currentValue,
@@ -158,7 +160,7 @@ export class IssueFormComponent implements OnInit {
 
       const operation = this.isEditMode && this.data.issue?.id
         ? this.issueService.updateIssue(this.data.issue.id, issueRequest, formData.imageData)
-        : this.issueService.createIssue(issueRequest);
+        : this.issueService.createIssue(issueRequest, formData.imageData);
 
       operation.subscribe({
         next: (result) => {
@@ -208,7 +210,7 @@ export class IssueFormComponent implements OnInit {
     const reader: FileReader = new FileReader();
     reader.onload = (event: any) => {
       // `reader.result` is a data‑URL (e.g., "data:image/png;base64,…")
-      this.issueForm.patchValue({ uploadedImageUrl: reader.result as string });
+      this.issueForm.patchValue({ uploadedImageUrlPreview: reader.result as string });
       
       // Reset match flag because the user supplied a manual image
       this.isFromImageMatch = false;

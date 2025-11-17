@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.controllers;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.services.IssueService;
 import com.infernokun.infernoComics.services.ComicVineService;
@@ -8,7 +9,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -123,8 +123,16 @@ public class IssueController {
     }
 
     @PostMapping
-    public ResponseEntity<Issue> createIssue(@RequestBody IssueCreateRequestDto request) {
+    public ResponseEntity<Issue> createIssue(@RequestPart("issue") IssueCreateRequestDto request,
+                                             @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
         try {
+            JsonNode node;
+            if (imageData != null && !imageData.isEmpty()) {
+                node = issueService.placeImageUpload(imageData);
+                request.setUploadedImageUrl(node.get("link").asText());
+                log.error(request.getUploadedImageUrl());
+            }
+
             Issue issue = issueService.createIssue(request);
             return ResponseEntity.ok(issue);
         } catch (IllegalArgumentException e) {
@@ -174,25 +182,22 @@ public class IssueController {
         }
     }
 
-    @PutMapping(
-            value = "/{id}"
-    )
-    public ResponseEntity<Issue> updateIssue(
-            @PathVariable Long id,
-            @RequestPart("issue") IssueUpdateRequestDto request,
+    @PutMapping(value = "/{id}")
+    public ResponseEntity<Issue> updateIssue(@PathVariable Long id, @RequestPart("issue") IssueUpdateRequestDto request,
             @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
 
         try {
+            JsonNode node;
             if (imageData != null && !imageData.isEmpty()) {
-                log.info("Received image: name='{}', size={} bytes, contentType='{}'",
-                        imageData.getOriginalFilename(),
-                        imageData.getSize(),
-                        imageData.getContentType());
+                node = issueService.placeImageUpload(imageData);
+                request.setUploadedImageUrl(node.get("link").asText());
             } else {
                 log.info("No image supplied for issue {}", id);
             }
-            //Issue comicBook = issueService.updateIssue(id, request);
-            return ResponseEntity.ok(null);
+
+            Issue comicBook = issueService.updateIssue(id, request);
+
+            return ResponseEntity.ok(comicBook);
         } catch (IllegalArgumentException e) {
             log.warn("Invalid request for updating issue {}: {}", id, e.getMessage());
             return ResponseEntity.notFound().build();

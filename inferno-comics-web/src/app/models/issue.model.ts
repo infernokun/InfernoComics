@@ -76,6 +76,7 @@ export interface IssueRequest {
   description?: string;
   coverDate?: Date;
   imageUrl?: string;
+  uploadedImageUrl?: string;
   condition?: IssueCondition;
   purchasePrice?: number;
   currentValue?: number;

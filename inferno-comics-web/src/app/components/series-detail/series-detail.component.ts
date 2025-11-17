@@ -234,7 +234,7 @@ export class SeriesDetailComponent implements OnInit {
 
     // Create comic books for all selected issues
     const creationPromises = selectedIssues.map((issue: ComicVineIssue) => {
-      const issueData = {
+      const issueData: any = {
         seriesId: this.series!.id,
         issueNumber: issue.issueNumber,
         title: issue.name,

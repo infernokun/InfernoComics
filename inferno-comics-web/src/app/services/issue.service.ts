@@ -26,20 +26,34 @@ export class IssueService {
     return this.http.get<any[]>(`${this.apiUrl}/series/${seriesId}`);
   }
 
-  createIssue(issue: any): Observable<any> {
-    return this.http.post<any>(this.apiUrl, issue);
+  createIssue(issue: any, imageData?: File): Observable<any> {
+    const formData = new FormData();
+    
+    // Create a Blob with application/json content type
+    const issueBlob = new Blob([JSON.stringify(issue)], { type: 'application/json' });
+    formData.append('issue', issueBlob);
+    
+    if (imageData) {
+      formData.append('imageData', imageData, imageData.name);
+    }
+    return this.http.post<any>(this.apiUrl, formData);
   }
 
   createIssuesBulk(issues: any[]): Observable<any[]> {
     return this.http.post<any[]>(`${this.apiUrl}/bulk`, issues);
   }
 
-  updateIssue(id: number, issue: IssueRequest, imageData: File): Observable<any> {
-    // Build a multipart/form‑data payload
+  updateIssue(id: number, issue: IssueRequest, imageData?: File): Observable<any> {
     const formData = new FormData();
-    formData.append('issue', JSON.stringify(issue));
-    formData.append('imageData', imageData, imageData.name);
-
+    
+    // Create a Blob with application/json content type
+    const issueBlob = new Blob([JSON.stringify(issue)], { type: 'application/json' });
+    formData.append('issue', issueBlob);
+    
+    if (imageData) {
+      formData.append('imageData', imageData, imageData.name);
+    }
+    
     return this.http.put<any>(`${this.apiUrl}/${id}`, formData);
   }
 

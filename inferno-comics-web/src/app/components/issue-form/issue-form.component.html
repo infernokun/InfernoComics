@@ -109,8 +109,8 @@
             <input type="file" #fileInput accept="image/*" (change)="onFileSelected($event)" style="display:none">
 
             <div class="image-preview" *ngIf="isEditMode || !isFromImageMatch">
-                @if (issueForm.get('uploadedImageUrl')?.value) {
-                    <img [src]="issueForm.get('uploadedImageUrl')?.value"
+                @if (issueForm.get('uploadedImageUrlPreview')?.value) {
+                    <img [src]="issueForm.get('uploadedImageUrlPreview')?.value"
                     [alt]="'Issue #' + issueForm.get('issueNumber')?.value" class="preview-image edit"
                     (click)="fileInput.click()"
                     onerror="if (this.src!=='assets/placeholder-comic.jpg') {

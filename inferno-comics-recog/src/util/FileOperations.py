@@ -27,7 +27,7 @@ def ensure_images_directory():
         logger.debug(f"Created stored images directory: {images_dir}")
     return images_dir
 
-def save_image_to_storage(image_data, session_id, image_name, image_type='query'):
+def save_image_to_storage(image_data, session_id, image_name, image_type='query', add=False):
     """
     Save image to server storage and return URL and hash info
     """
@@ -70,15 +70,17 @@ def save_image_to_storage(image_data, session_id, image_name, image_type='query'
             "session_id": session_id
         }
 
-        java_reporter = JavaProgressReporter(session_id)
+        if not add:
+            java_reporter = JavaProgressReporter(session_id)
 
-        java_reporter.send_processed_file_info(process_file_data)
+            java_reporter.send_processed_file_info(process_file_data)
         
-        return f"/inferno-comics-recognition/api/v1/stored_images/{session_id}/{stored_filename}"
+            return f"/inferno-comics-recognition/api/v1/stored_images/{session_id}/{stored_filename}"
+        return f"{session_id}/{stored_filename}"
         
     except Exception as e:
         logger.error(f"Error saving image to storage: {e}")
-        return None
+        return None 
 
 def copy_external_image_to_storage(image_url, session_id, comic_name, issue_number):
     """
