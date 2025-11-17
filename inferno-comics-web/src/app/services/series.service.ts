@@ -153,31 +153,17 @@ export class SeriesService {
 
         // Close connection when complete or error
         if (data.type === 'complete' || data.type === 'error') {
-          console.log(
-            'SSE stream ending for session:',
-            sessionId,
-            'type:',
-            data.type
-          );
+          console.log('SSE stream ending for session:', sessionId, 'type:', data.type);
           console.log('SSE result data:', data.result);
           eventSource.close();
           progressSubject.complete();
         }
       } catch (error) {
-        console.error(
-          'Error parsing SSE progress data:',
-          error,
-          'Raw data:',
-          event.data
-        );
+        console.error('Error parsing SSE progress data:', error, 'Raw data:', event.data);
 
         // Check if it's a large JSON that might be truncated
         if (typeof event.data === 'string' && event.data.length > 10000) {
-          console.warn(
-            'Very large SSE message received (',
-            event.data.length,
-            'chars), might be truncated'
-          );
+          console.warn('Very large SSE message received (', event.data.length, 'chars), might be truncated');
         }
 
         eventSource.close();

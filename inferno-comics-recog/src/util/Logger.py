@@ -1,8 +1,8 @@
 import os
 import sys
+import loguru
 from typing import Optional, Dict
 from loguru import logger as _loguru_logger
-import loguru
 
 _shared_log_file: Optional[str] = None
 _shared_log_level: int = _loguru_logger.level("INFO").no
@@ -97,7 +97,7 @@ def initialize_logger(
 
 def get_logger(name: Optional[str] = None) -> "loguru.Logger":
     """
-    Retrieve a logger, creating it on‑the‑fly with the *global* configuration
+    Retrieve a logger, creating it on-the-fly with the *global* configuration
     (if any) when it does not yet exist.
     """
     logger_name = name or sys._getframe(1).f_globals.get("__name__", "__main__")

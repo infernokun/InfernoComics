@@ -1,4 +1,3 @@
-# routes/image_matcher_routes.py
 import os
 import cv2
 import time
@@ -14,6 +13,7 @@ from util.Logger import get_logger
 from concurrent.futures import ThreadPoolExecutor
 from models.SSEProgressTracker import SSEProgressTracker
 from models.JavaProgressReporter import JavaProgressReporter
+from services.ImageMatcherService import get_service, get_global_matcher
 from flask import Blueprint, jsonify, request, Response, current_app, render_template, send_file, abort
 from util.ImageUtils import image_to_base64
 from util.FileOperations import (
@@ -22,7 +22,6 @@ from util.FileOperations import (
     ensure_images_directory,
     migrate_existing_results_to_file_storage
 )
-from services.ImageMatcherService import get_service, get_global_matcher
 
 logger = get_logger(__name__)
 

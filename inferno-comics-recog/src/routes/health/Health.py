@@ -4,9 +4,12 @@ import time
 import psutil
 import platform
 
-from util.FileOperations import delete_session_data
 from datetime import datetime
+from util.Logger import get_logger
 from flask import Blueprint, jsonify, request
+from util.FileOperations import delete_session_data
+
+logger = get_logger(__name__)
 
 health_bp = Blueprint('health', __name__)
 

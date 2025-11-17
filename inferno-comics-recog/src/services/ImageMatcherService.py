@@ -1,4 +1,3 @@
-# services/ImageMatcherService.py
 import os
 import json
 import traceback

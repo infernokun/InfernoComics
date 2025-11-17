@@ -69,7 +69,7 @@ public class IssueController {
             return ResponseEntity.ok(issues);
         } catch (Exception e) {
             log.error("Error searching Comic Vine issues for series {}: {}", seriesId, e.getMessage());
-            return ResponseEntity.ok(List.of()); // Return empty list instead of error for UX
+            return ResponseEntity.ok(List.of());
         }
     }
 
