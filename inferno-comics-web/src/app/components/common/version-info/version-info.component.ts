@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { VersionService } from '../../../services/version.service';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../../material.module';
+import { WebsocketService } from '../../../services/websocket.service';
 
 @Component({
   selector: 'app-version-info',
@@ -9,12 +10,12 @@ import { MaterialModule } from '../../../material.module';
     <div class="version-info-container" 
          (mouseenter)="showPanel = true" 
          (mouseleave)="showPanel = false">
-      <mat-icon class="info-icon">info</mat-icon>
+      <mat-icon class="info-icon" [ngClass]="{ connected: webSocketConnected }">info</mat-icon>
       
       <div class="version-panel" *ngIf="showPanel">
         <div class="panel-header">
           <mat-icon>info_outline</mat-icon>
-          <span>Version Information</span>
+          <span>Version Information ({{webSocketConnected ? 'connected' : 'disconnected'}})</span>
         </div>
         
         <div class="panel-content" *ngIf="versions; else loading">
@@ -53,8 +54,12 @@ import { MaterialModule } from '../../../material.module';
       width: 24px;
       height: 24px;
       cursor: pointer;
-      color: rgba(0, 0, 0, 0.54);
       transition: color 0.2s ease;
+      color: #dc3545;
+
+      &.connected {
+        color: #28a745;
+  }   
     }
 
     .info-icon:hover {
@@ -65,7 +70,7 @@ import { MaterialModule } from '../../../material.module';
       position: absolute;
       top: 100%;
       left: 50%;
-      transform: translateX(-50%);  /* Center it under the icon */
+      transform: translateX(-50%);
       margin-top: 8px;
       background: white;
       border-radius: 8px;
@@ -140,8 +145,10 @@ import { MaterialModule } from '../../../material.module';
 export class VersionInfoComponent implements OnInit {
   showPanel = false;
   versions: any = null;
+
+  @Input() webSocketConnected: boolean = true;
   
-  constructor(private vs: VersionService) {}
+  constructor(private vs: VersionService, private websocket: WebsocketService) {}
   
   ngOnInit() {
     this.vs.getAllVersions().subscribe(data => {

@@ -1,9 +1,9 @@
-// src/app/app.component.ts
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ThemeService } from './services/theme.service';
 import { Observable, Subscription } from 'rxjs';
 
 import { APP_VERSION } from '../app/version';
+import { WebsocketService } from './services/websocket.service';
 
 @Component({
   selector: 'app-root',
@@ -17,12 +17,13 @@ export class AppComponent implements OnInit, OnDestroy {
   isDarkMode$: Observable<boolean>;
   private themeSubscription: Subscription = new Subscription();
 
-  constructor(private themeService: ThemeService) {
+  webSocketConnected: boolean = true;
+
+  constructor(private themeService: ThemeService, private websocket: WebsocketService) {
     this.isDarkMode$ = this.themeService.isDarkMode$;
   }
 
   ngOnInit(): void {
-    console.log('version', this.version);
     // Subscribe to theme changes to ensure DOM classes are applied
     this.themeSubscription = this.themeService.isDarkMode$.subscribe(isDark => {
       // Force apply theme classes
@@ -34,6 +35,10 @@ export class AppComponent implements OnInit, OnDestroy {
         document.documentElement.classList.remove('dark-theme');
       }
     });
+
+    this.websocket.isConnected$.subscribe((isConnected: boolean) => {
+      this.webSocketConnected = isConnected;
+    })
   }
 
   ngOnDestroy(): void {

@@ -1,10 +1,10 @@
-// processing-status-icon.component.ts
-import { Component, OnInit, OnDestroy, HostListener, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ElementRef } from '@angular/core';
 import { BehaviorSubject, finalize, interval, Subscription } from 'rxjs';
 import { SeriesService } from '../../../services/series.service';
 import { ProgressData, ProgressState } from '../../../models/progress-data.model';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { WebsocketService } from '../../../services/websocket.service';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -15,8 +15,8 @@ export interface ProcessingStatus {
 
 @Component({
   selector: 'app-processing-status-icon',
-  templateUrl: 'sync-status-icon.component.html',
-  styleUrls: ['sync-status-icon.component.scss'],
+  templateUrl: 'processing-status-icon.component.html',
+  styleUrls: ['processing-status-icon.component.scss'],
   animations: [
     trigger('slideIn', [
       transition(':enter', [
@@ -38,13 +38,8 @@ export interface ProcessingStatus {
   standalone: false
 })
 export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
-  progressState = ProgressState;
-  maxDisplayItems = 5;
-  showOverlay = false;
-  isLoading = true;
-
-  pendingDismissIds = new Set<number>();
-
+  private pollingSubscription?: Subscription;
+  private wsSub!: Subscription;
   private statusSubject = new BehaviorSubject<ProcessingStatus>({
     items: [],
     totalActive: 0,
@@ -52,14 +47,20 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     totalQueued: 0
   });
 
-  public status$ = this.statusSubject.asObservable();
+  isLoading = true;
+  maxDisplayItems = 5;
+  showOverlay = false;
+  progressState = ProgressState;
   currentStatus: ProcessingStatus;
-  private pollingSubscription?: Subscription;
+  pendingDismissIds = new Set<number>();
+
+
+  public status$ = this.statusSubject.asObservable();
 
   constructor(
+    private websocket: WebsocketService,
     private seriesService: SeriesService,
     private elementRef: ElementRef,
-    private cdr: ChangeDetectorRef,
     private snackBar: MatSnackBar
   ) {
     this.currentStatus = this.statusSubject.value;
@@ -67,7 +68,41 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.status$.subscribe(status => this.currentStatus = status);
-    this.startPolling();
+    //this.startPolling();
+    this.fetchStatus();
+
+    this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
+      this.isLoading = true;
+      if (Array.isArray(msg) && msg.every(item => item instanceof ProgressData)) {
+        const processed: ProgressData[] = msg.map((item) => new ProgressData(item));
+        const status: ProcessingStatus = this.convertToProcessingStatus(processed);
+        this.statusSubject.next(status);
+        this.isLoading = false;
+        console.log('Received data', msg);
+      }
+
+      if (msg.name == 'ProgressData') {
+        const incoming = new ProgressData(msg);
+        const current: ProgressData[] = this.statusSubject.value.items ?? [];
+      
+        const existingIndex = current.findIndex(item => item.id === incoming.id);
+      
+        let updated: ProgressData[];
+        if (existingIndex !== -1) {
+          updated = [
+            ...current.slice(0, existingIndex),
+            incoming,
+            ...current.slice(existingIndex + 1)
+          ];
+        } else {
+          updated = [...current, incoming];
+        }
+      
+        this.statusSubject.next(this.convertToProcessingStatus(updated));
+        this.isLoading = false;
+        console.log('Received ProgressData (id:', incoming.id, ')', incoming);
+      }
+    });
   }
 
   ngOnDestroy() {
