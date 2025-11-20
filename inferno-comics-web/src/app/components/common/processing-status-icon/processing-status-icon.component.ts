@@ -4,7 +4,7 @@ import { SeriesService } from '../../../services/series.service';
 import { ProgressData, ProgressState } from '../../../models/progress-data.model';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { WebsocketService } from '../../../services/websocket.service';
+import { WebSocketResponseList, WebsocketService } from '../../../services/websocket.service';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -73,34 +73,13 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
     this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
       this.isLoading = true;
-      if (Array.isArray(msg) && msg.every(item => item instanceof ProgressData)) {
-        const processed: ProgressData[] = msg.map((item) => new ProgressData(item));
+      const response: WebSocketResponseList = msg as WebSocketResponseList;
+      if (response.name == 'ProgressData') {
+        const processed: ProgressData[] = response.payload.map((item) => new ProgressData(item));
         const status: ProcessingStatus = this.convertToProcessingStatus(processed);
         this.statusSubject.next(status);
         this.isLoading = false;
         console.log('Received data', msg);
-      }
-
-      if (msg.name == 'ProgressData') {
-        const incoming = new ProgressData(msg);
-        const current: ProgressData[] = this.statusSubject.value.items ?? [];
-      
-        const existingIndex = current.findIndex(item => item.id === incoming.id);
-      
-        let updated: ProgressData[];
-        if (existingIndex !== -1) {
-          updated = [
-            ...current.slice(0, existingIndex),
-            incoming,
-            ...current.slice(existingIndex + 1)
-          ];
-        } else {
-          updated = [...current, incoming];
-        }
-      
-        this.statusSubject.next(this.convertToProcessingStatus(updated));
-        this.isLoading = false;
-        console.log('Received ProgressData (id:', incoming.id, ')', incoming);
       }
     });
   }

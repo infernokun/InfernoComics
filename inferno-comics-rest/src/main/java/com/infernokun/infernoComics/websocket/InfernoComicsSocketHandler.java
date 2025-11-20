@@ -1,11 +1,13 @@
 package com.infernokun.infernoComics.websocket;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
@@ -28,10 +30,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class InfernoComicsSocketHandler extends TextWebSocketHandler {
     private final List<WebSocketSession> currentSessions = new CopyOnWriteArrayList<>();
     private final ObjectWriter writer;
-    private final ObjectMapper mapper;
+    private final JsonMapper mapper;
 
     public InfernoComicsSocketHandler() {
-        mapper = new ObjectMapper();
+        mapper = JsonMapper.builder().disable(MapperFeature.REQUIRE_HANDLERS_FOR_JAVA8_TIMES).build();
         writer = new ObjectMapper().writerFor(HeartbeatDTO.class);
     }
 
@@ -47,19 +49,28 @@ public class InfernoComicsSocketHandler extends TextWebSocketHandler {
         log.info("WEBSOCKET Connection Closed for ID: {}", session.getId());
     }
 
-    public void broadcastObjUpdate(Object storedObject) {
-        // 1️⃣ Convert the POJO to a mutable JSON node (uses the configured mapper)
-        mapper.disable(MapperFeature.REQUIRE_HANDLERS_FOR_JAVA8_TIMES);
-        ObjectNode jsonNode = mapper.valueToTree(storedObject);
+    public void broadcastObjUpdate(Object storedObject, String objName) {
+        // Convert to a generic JsonNode
+        JsonNode rootNode = mapper.valueToTree(storedObject);
 
-        // 2️⃣ Add a simple class‑name field for the client
-        jsonNode.put("name", storedObject.getClass().getSimpleName());
+        // Ensure we have an ObjectNode to which we can add the "name" field
+        ObjectNode wrapper;
+        if (rootNode.isObject()) {
+            wrapper = (ObjectNode) rootNode;
+        } else {
+            // It is an array or primitive → wrap it inside an object
+            wrapper = mapper.createObjectNode();
+            wrapper.set("payload", rootNode);
+        }
 
-        // 3️⃣ Serialize once – the same payload is sent to all sessions
-        String payload = jsonNode.toString();
+        // Add the simple class‑name field
+        wrapper.put("name", objName);
+
+        // Serialize once – the same payload is sent to all sessions
+        String payload = wrapper.toString();
         TextMessage message = new TextMessage(payload);
 
-        // 4️⃣ Send to each open session
+        // Send to each open session
         for (WebSocketSession session : currentSessions) {
             if (!session.isOpen()) {
                 log.warn("WebSocket session is not open: {}", session.getId());

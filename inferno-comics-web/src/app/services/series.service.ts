@@ -137,10 +137,7 @@ export class SeriesService {
     // Listen for the specific "progress" event name (not onmessage)
     eventSource.addEventListener('progress', (event: any) => {
       try {
-        console.log('SSE progress event received:', event.data);
         const data: SSEProgressData = JSON.parse(event.data);
-
-        console.log('Parsed SSE progress data:', data);
 
         // Skip heartbeat events (just for connection keep-alive)
         if (data.type === 'heartbeat') {
@@ -148,13 +145,11 @@ export class SeriesService {
           return;
         }
 
-        console.log('Processing SSE progress data:', data);
         progressSubject.next(data);
 
         // Close connection when complete or error
         if (data.type === 'complete' || data.type === 'error') {
           console.log('SSE stream ending for session:', sessionId, 'type:', data.type);
-          console.log('SSE result data:', data.result);
           eventSource.close();
           progressSubject.complete();
         }

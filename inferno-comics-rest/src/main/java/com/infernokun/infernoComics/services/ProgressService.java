@@ -6,29 +6,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
-import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
+import com.infernokun.infernoComics.websocket.InfernoComicsSocketHandler;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.core.io.Resource;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
-import reactor.core.publisher.Mono;
 
 import javax.annotation.PreDestroy;
 import java.io.IOException;
@@ -45,8 +41,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class ProgressService {
-
     private final WeirdService weirdService;
+    private final InfernoComicsSocketHandler websocket;
     private final ProgressDataRepository progressDataRepository;
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();
@@ -59,8 +55,9 @@ public class ProgressService {
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
 
-    public ProgressService(WeirdService weirdService, ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig, RedisTemplate<String, Object> redisTemplate) {
+    public ProgressService(WeirdService weirdService, InfernoComicsSocketHandler websocket, ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig, RedisTemplate<String, Object> redisTemplate) {
         this.weirdService = weirdService;
+        this.websocket = websocket;
         this.progressDataRepository = progressDataRepository;
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
@@ -168,6 +165,8 @@ public class ProgressService {
         progressData.setStartedBy(startedBy);
 
         weirdService.saveProgressData(progressData);
+
+        sendToWebSocket();
     }
 
     public void updateProgress(ProgressUpdateRequest request) {
@@ -270,6 +269,7 @@ public class ProgressService {
                 }
 
                 weirdService.saveProgressData(progressData);
+                sendToWebSocket();
                 log.info("✅ Database updated with completion data for session: {}", sessionId);
             }
         } catch (Exception e) {
@@ -312,6 +312,7 @@ public class ProgressService {
                 progressData.setTimeFinished(LocalDateTime.now());
 
                 weirdService.saveProgressData(progressData);
+                sendToWebSocket();
                 log.info("✅ Database updated with error state for session: {}", sessionId);
             }
         } catch (Exception e) {
@@ -611,6 +612,10 @@ public class ProgressService {
         return sessions;
     }
 
+    public void sendToWebSocket() {
+        websocket.broadcastObjUpdate(getSessionsByRelevance(), ProgressData.class.getSimpleName());
+    }
+
     public List<ProgressData> dismissProgressData(long id) {
         Optional<ProgressData> progressDataOpt = progressDataRepository.findById(id);
 
@@ -620,6 +625,7 @@ public class ProgressService {
 
         progressData.setDismissed(true);
         weirdService.saveProgressData(progressData);
+        sendToWebSocket();
 
         return getSessionsByRelevance();
     }

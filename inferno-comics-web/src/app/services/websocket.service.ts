@@ -7,6 +7,16 @@ import {
 import { Subject, Subscription, BehaviorSubject, retry } from 'rxjs';
 import { EnvironmentService } from './environment.service';
 
+export interface WebSocketResponse {
+  name: string,
+  payload: any
+}
+
+export interface WebSocketResponseList {
+  name: string,
+  payload: any[]
+}
+
 @Injectable({ providedIn: 'root' })
 export class WebsocketService<TIncoming = unknown, TOutgoing = unknown> implements OnDestroy {
   private readonly inbound$ = new Subject<TIncoming>();
