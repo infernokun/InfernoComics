@@ -1,5 +1,6 @@
 {
   "production": true,
   "baseUrl": "${BASE_URL}",
-  "restUrl": "${REST_URL}"
+  "restUrl": "${REST_URL}",
+  "websocketUrl": "${WS_URL}"
 }
