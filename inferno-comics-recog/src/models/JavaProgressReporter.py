@@ -233,7 +233,7 @@ class JavaProgressReporter:
         except requests.exceptions.ConnectionError:
             logger.warning(f" Java progress service unavailable for session {self.session_id}")
         except Exception as e:
-            logger.error(f"❌ Error sending progress to Java for session {self.session_id}: {e}")
+            logger.error(f"Error sending progress to Java for session {self.session_id}: {e}")
     
     def send_complete(self, result):
         """Send completion to Java progress service with final statistics"""
@@ -274,7 +274,7 @@ class JavaProgressReporter:
             if response.status_code == 200:
                 logger.success(f"COMPLETION with results sent successfully to Java for session {self.session_id}")
             else:
-                logger.error(f"❌ CRITICAL: Java completion notification failed: {response.status_code} - {response.text}")
+                logger.error(f"CRITICAL: Java completion notification failed: {response.status_code} - {response.text}")
                 
                 # Try once more for completion events
                 logger.info(f" Retrying completion send for session {self.session_id}")
@@ -288,12 +288,12 @@ class JavaProgressReporter:
                     if retry_response.status_code == 200:
                         logger.success(f"COMPLETION sent on retry for session {self.session_id}")
                     else:
-                        logger.error(f"❌ CRITICAL: Completion retry also failed: {retry_response.status_code}")
+                        logger.error(f"CRITICAL: Completion retry also failed: {retry_response.status_code}")
                 except Exception as retry_error:
-                    logger.error(f"❌ CRITICAL: Completion retry exception: {retry_error}")
+                    logger.error(f"CRITICAL: Completion retry exception: {retry_error}")
                 
         except Exception as e:
-            logger.error(f"❌ CRITICAL: Error sending completion to Java for session {self.session_id}: {e}")
+            logger.error(f"CRITICAL: Error sending completion to Java for session {self.session_id}: {e}")
     
     def send_processed_file_info(self, data):
         response = requests.post(
@@ -306,7 +306,7 @@ class JavaProgressReporter:
         if response.status_code == 200:
             logger.success(f"Processed file info sent to Java for session {self.session_id} image: {data['stored_file_name']}")
         else:
-            logger.error(f"❌ CRITICAL: Java processed file info notification failed: {response.status_code} - {response.text}")
+            logger.error(f"CRITICAL: Java processed file info notification failed: {response.status_code} - {response.text}")
 
     def _extract_final_stats_from_result(self, result):
         """Extract final statistics from the result for the completion payload"""
@@ -388,7 +388,7 @@ class JavaProgressReporter:
                 logger.warning(f"Java error notification failed: {response.status_code}")
                 
         except Exception as e:
-            logger.error(f"❌ Error sending error to Java for session {self.session_id}: {e}")
+            logger.error(f"Error sending error to Java for session {self.session_id}: {e}")
     
     def _sanitize_result(self, result):
         """Sanitize result object for JSON serialization"""

@@ -270,7 +270,7 @@ public class ProgressService {
 
                 weirdService.saveProgressData(progressData);
                 sendToWebSocket();
-                log.info("✅ Database updated with completion data for session: {}", sessionId);
+                log.info("Database updated with completion data for session: {}", sessionId);
             }
         } catch (Exception e) {
             log.error("Failed to update database with completion for session {}: {}", sessionId, e.getMessage());
@@ -404,6 +404,9 @@ public class ProgressService {
                         sessionId, data.getType(), data.getStage(), data.getProgress());
                 sendEvent(emitter, data);
                 log.info("SSE event sent successfully to session: {}", sessionId);
+            } catch (IOException e) {
+                log.warn("Emitter disconnected from SSE event to session {}...:", sessionId);
+                cleanupSession(sessionId);
             } catch (Exception e) {
                 log.warn("Failed to send SSE event to session {}: {}", sessionId, e.getMessage());
                 cleanupSession(sessionId);
@@ -429,9 +432,20 @@ public class ProgressService {
             redisTemplate.opsForList().trim(listKey, 0, 99);
             redisTemplate.expire(listKey, PROGRESS_TTL);
 
+            Long seriesId = getSeriesIdBySessionId(sessionId);
+            if (seriesId != -1) {
+                List<ProgressData> progressDataList = getSessionsBySeriesId(seriesId);
+                websocket.broadcastObjUpdate(progressDataList, ProgressData.class.getSimpleName() + "ListTable", seriesId);
+            }
+
         } catch (Exception e) {
             log.error("Failed to store progress data in Redis for session {}: {}", sessionId, e.getMessage(), e);
         }
+    }
+
+    public Long getSeriesIdBySessionId(String sessionId) {
+        Optional<ProgressData> dataOptional =  progressDataRepository.findBySessionId(sessionId);
+        return dataOptional.isPresent() ? dataOptional.get().getSeries().getId() : -1;
     }
 
     public SSEProgressData getLatestProgressFromRedis(String sessionId) {
@@ -491,27 +505,13 @@ public class ProgressService {
 
     private void updateInMemoryProgressFromRedis(ProgressData progressData, SSEProgressData latestProgress) {
         try {
-            // Update progress percentage
-            if (latestProgress.getProgress() != null) {
-                progressData.setPercentageComplete(latestProgress.getProgress());
-            }
+            Objects.requireNonNull(progressData, "progressData must not be null");
+            Objects.requireNonNull(latestProgress, "latestProgress must not be null");
 
-            // Update current stage
-            if (latestProgress.getStage() != null) {
-                progressData.setCurrentStage(latestProgress.getStage());
-            }
-
-            // Update status message
-            if (latestProgress.getMessage() != null) {
-                progressData.setStatusMessage(latestProgress.getMessage());
-            }
-
-            // Parse additional data from Redis if available
-            if (latestProgress.getData() != null) {
-                updateProgressFromAdditionalDataInMemory(progressData, latestProgress.getData());
-            }
-
-            // Update last updated timestamp
+            updatePercentageComplete(progressData, latestProgress);
+            progressData.setCurrentStage(latestProgress.getStage());
+            progressData.setStatusMessage(latestProgress.getMessage());
+            updateProgressFromAdditionalDataInMemory(progressData, latestProgress.getData());
             progressData.setLastUpdated(LocalDateTime.ofInstant(
                     Instant.ofEpochMilli(latestProgress.getTimestamp()),
                     java.time.ZoneId.systemDefault()));
@@ -521,6 +521,33 @@ public class ProgressService {
         } catch (Exception e) {
             log.error("Failed to update in-memory progress data from Redis for session {}: {}",
                     progressData.getSessionId(), e.getMessage());
+        }
+    }
+
+    private void updatePercentageComplete(ProgressData progressData,
+                                          SSEProgressData latestProgress) {
+        Objects.requireNonNull(progressData, "progressData must not be null");
+        Objects.requireNonNull(latestProgress, "latestProgress must not be null");
+
+        Integer current = progressData.getPercentageComplete();
+        Integer incoming = latestProgress.getProgress();
+
+        if (current == null) {
+            progressData.setPercentageComplete(incoming != null ? incoming : 0);
+            log.debug("Session {}: percentageComplete initialised to {}",
+                    progressData.getSessionId(),
+                    progressData.getPercentageComplete());
+            return;
+        }
+
+        if (incoming != null && incoming > current) {
+            progressData.setPercentageComplete(incoming);
+            log.debug("Session {}: percentageComplete advanced from {} to {}",
+                    progressData.getSessionId(), current, incoming);
+        } else {
+            // No change needed – either incoming is null or not greater
+            log.debug("Session {}: percentageComplete unchanged (current={})",
+                    progressData.getSessionId(), current);
         }
     }
 
@@ -589,7 +616,6 @@ public class ProgressService {
 
                         // FIXED: Added the missing method call
                         updateInMemoryProgressFromRedis(progressData, latestProgress);
-
                     } else if (progressData.isStale()) {
                         log.debug("Session {} appears stale but leaving as PROCESSING - will be updated on next complete/error event",
                                 progressData.getSessionId());
@@ -613,7 +639,9 @@ public class ProgressService {
     }
 
     public void sendToWebSocket() {
-        websocket.broadcastObjUpdate(getSessionsByRelevance(), ProgressData.class.getSimpleName());
+        List<ProgressData> progressDataList = getSessionsByRelevance();
+        Long id = progressDataList.getLast().getSeries().getId();
+        websocket.broadcastObjUpdate(progressDataList, ProgressData.class.getSimpleName() + "ListRelevance", id);
     }
 
     public List<ProgressData> dismissProgressData(long id) {

@@ -14,6 +14,7 @@ export interface WebSocketResponse {
 
 export interface WebSocketResponseList {
   name: string,
+  seriesId?: number;
   payload: any[]
 }
 

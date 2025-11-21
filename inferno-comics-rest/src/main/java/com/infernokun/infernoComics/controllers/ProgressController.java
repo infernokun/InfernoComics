@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @RestController
@@ -49,7 +50,7 @@ public class ProgressController {
             return ResponseEntity.ok(status);
 
         } catch (Exception e) {
-            log.error("❌ Error getting session status: {}", e.getMessage(), e);
+            log.error("Error getting session status: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -86,7 +87,7 @@ public class ProgressController {
             return ResponseEntity.ok(Map.of("status", "success"));
 
         } catch (Exception e) {
-            log.error("❌ Error processing progress update from Python: {}", e.getMessage(), e);
+            log.error("Error processing progress update from Python: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -95,14 +96,15 @@ public class ProgressController {
     @PostMapping("/complete")
     public ResponseEntity<Map<String, String>> receiveCompletion(@RequestBody CompletionRequest request) {
         try {
-            log.info("✅ Received completion from Python for session: {}", request.getSessionId());
+            log.info("Received completion from Python for session: {}", request.getSessionId());
 
-            progressService.sendComplete(request.getSessionId(), request.getResult());
+            CompletableFuture.runAsync(() ->
+                    progressService.sendComplete(request.getSessionId(),
+                            request.getResult()));
 
-            return ResponseEntity.ok(Map.of("status", "completed"));
-
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
-            log.error("❌ Error processing completion from Python: {}", e.getMessage(), e);
+            log.error("Error processing completion from Python: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -169,14 +171,14 @@ public class ProgressController {
     @PostMapping("/error")
     public ResponseEntity<Map<String, String>> receiveError(@RequestBody ErrorRequest request) {
         try {
-            log.error("❌ Received error from Python for session {}: {}", request.getSessionId(), request.getError());
+            log.error("Received error from Python for session {}: {}", request.getSessionId(), request.getError());
 
             progressService.sendError(request.getSessionId(), request.getError());
 
             return ResponseEntity.ok(Map.of("status", "error_sent"));
 
         } catch (Exception e) {
-            log.error("❌ Error processing error notification from Python: {}", e.getMessage(), e);
+            log.error("Error processing error notification from Python: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

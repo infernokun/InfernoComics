@@ -49,7 +49,7 @@ public class InfernoComicsSocketHandler extends TextWebSocketHandler {
         log.info("WEBSOCKET Connection Closed for ID: {}", session.getId());
     }
 
-    public void broadcastObjUpdate(Object storedObject, String objName) {
+    public void broadcastObjUpdate(Object storedObject, String objName, Long seriesId) {
         // Convert to a generic JsonNode
         JsonNode rootNode = mapper.valueToTree(storedObject);
 
@@ -65,6 +65,9 @@ public class InfernoComicsSocketHandler extends TextWebSocketHandler {
 
         // Add the simple class‑name field
         wrapper.put("name", objName);
+        if (seriesId != -1) {
+            wrapper.put("seriesId", seriesId);
+        }
 
         // Serialize once – the same payload is sent to all sessions
         String payload = wrapper.toString();

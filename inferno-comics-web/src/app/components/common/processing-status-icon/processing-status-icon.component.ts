@@ -54,7 +54,6 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   currentStatus: ProcessingStatus;
   pendingDismissIds = new Set<number>();
 
-
   public status$ = this.statusSubject.asObservable();
 
   constructor(
@@ -74,12 +73,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
       this.isLoading = true;
       const response: WebSocketResponseList = msg as WebSocketResponseList;
-      if (response.name == 'ProgressData') {
+      if (response.name == 'ProgressDataListRelevance') {
         const processed: ProgressData[] = response.payload.map((item) => new ProgressData(item));
         const status: ProcessingStatus = this.convertToProcessingStatus(processed);
         this.statusSubject.next(status);
         this.isLoading = false;
-        console.log('Received data', msg);
       }
     });
   }
@@ -87,6 +85,10 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.pollingSubscription) {
       this.pollingSubscription.unsubscribe();
+    }
+
+    if (this.wsSub) {
+      this.wsSub.unsubscribe();
     }
   }
 

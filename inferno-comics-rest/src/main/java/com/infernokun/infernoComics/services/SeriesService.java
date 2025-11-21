@@ -122,16 +122,16 @@ public class SeriesService {
                                 newGcdIds.add(gcdId);
                                 log.debug("✅ Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
                             } else {
-                                log.warn("❌ No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                                log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
                             }
                         } catch (Exception e) {
-                            log.error("❌ Error finding GCD mapping for Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                            log.error("Error finding GCD mapping for Comic Vine ID {}: {}", comicVineId, e.getMessage());
                         }
                     } else {
-                        log.warn("❌ No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("❌ Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
         }
@@ -403,20 +403,20 @@ public class SeriesService {
                             newGcdIds.add(gcdId);
                             log.debug("✅ Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
                         } else {
-                            log.warn("❌ No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                            log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
                         }
                     } else {
-                        log.warn("❌ No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("❌ Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
                     // Continue with other IDs even if one fails
                 }
             }
 
             series.setGcdIds(new ArrayList<>(newGcdIds));
         } catch (Exception e) {
-            log.error("❌ Error updating GCD mappings for series {}: {}", series.getId(), e.getMessage(), e);
+            log.error("Error updating GCD mappings for series {}: {}", series.getId(), e.getMessage(), e);
         }
     }
 
@@ -434,10 +434,10 @@ public class SeriesService {
                         log.debug("✅ Got metadata: name='{}', startYear={}, endYear={}, issueCount={}",
                                 dto.getName(), dto.getStartYear(), dto.getEndYear(), dto.getIssueCount());
                     } else {
-                        log.warn("❌ No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("❌ Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
 
@@ -485,7 +485,7 @@ public class SeriesService {
                 series.setIssuesAvailableCount(totalIssueCount);
             }
         } catch (Exception e) {
-            log.error("❌ Error recalculating series metadata from Comic Vine for series {}: {}", series.getId(), e.getMessage(), e);
+            log.error("Error recalculating series metadata from Comic Vine for series {}: {}", series.getId(), e.getMessage(), e);
         }
     }
 
@@ -716,7 +716,7 @@ public class SeriesService {
 
     @Async("imageProcessingExecutor")
     public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId, Long seriesId, List<SeriesController.ImageData> imageDataList, StartedBy startedBy, String name, int year) {
-        log.info("🚀 Starting image processing session: {} for series '{}' with {} images", sessionId, name, imageDataList.size());
+        log.info("Starting image processing session: {} for series '{}' with {} images", sessionId, name, imageDataList.size());
         List<ProcessedFile> filesToRecord = new ArrayList<>();
         JsonNode root;
 
@@ -832,7 +832,7 @@ public class SeriesService {
                     String.format("Sending %d images with %d candidates to image matcher...",
                             imageDataList.size(), candidateCovers.size())));
 
-            log.info("📤 Sending {} images with {} candidates to matcher service for session: {}",
+            log.info("Sending {} images with {} candidates to matcher service for session: {}",
                     imageDataList.size(), candidateCovers.size(), sessionId);
 
             MultipartBodyBuilder builder = new MultipartBodyBuilder();
@@ -873,7 +873,7 @@ public class SeriesService {
                 String candidateCoversJson = mapper.writeValueAsString(candidateCovers);
                 builder.part("candidate_covers", candidateCoversJson);
             } catch (JsonProcessingException e) {
-                log.error("❌ Failed to serialize candidate covers to JSON: {}", e.getMessage());
+                log.error("Failed to serialize candidate covers to JSON: {}", e.getMessage());
                 return null;
             }
 
@@ -895,22 +895,22 @@ public class SeriesService {
                     .block();
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("📥 Matcher response received in {}ms for session: {}", duration, sessionId);
+            log.info("Matcher response received in {}ms for session: {}", duration, sessionId);
 
             root = mapper.readTree(response);
             JsonNode results = root.get("results");
 
             if (results != null && results.isArray()) {
-                log.info("🎯 Matcher found results for {} images (session: {})", results.size(), sessionId);
+                log.info("Matcher found results for {} images (session: {})", results.size(), sessionId);
             } else {
-                log.warn("⚠️ No results found in matcher response (session: {})", sessionId);
+                log.warn("⚠No results found in matcher response (session: {})", sessionId);
             }
 
 
-            log.info("✅ Image processing completed for session: {}", sessionId);
+            log.info("Image processing completed for session: {}", sessionId);
 
         } catch (Exception e) {
-            log.error("❌ Error in image processing for session {}: {}", sessionId, e.getMessage());
+            log.error("Error in image processing for session {}: {}", sessionId, e.getMessage());
             filesToRecord.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED));
             weirdService.saveProcessedFiles(filesToRecord);
             progressService.sendError(sessionId, "Error processing images: " + e.getMessage());

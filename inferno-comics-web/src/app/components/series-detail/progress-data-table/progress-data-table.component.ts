@@ -26,6 +26,8 @@ import { HttpClient } from '@angular/common/http';
 import { Subscription, interval } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RecognitionService } from '../../../services/recognition.service';
+import { WebSocketResponseList, WebsocketService } from '../../../services/websocket.service';
+import { ProgressData } from '../../../models/progress-data.model';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -188,6 +190,9 @@ export class ProgressDataTable implements OnInit, OnDestroy {
 
   progressData: WritableSignal<any[]> = signal<any[]>([]);
 
+  private wsSub!: Subscription;
+  isLoading = true;
+
   gridApi?: GridApi;
   gridOptions: GridOptions;
   defaultColDef: ColDef = {
@@ -206,7 +211,8 @@ export class ProgressDataTable implements OnInit, OnDestroy {
     private seriesService: SeriesService,
     private recognitionService: RecognitionService,
     private environmentService: EnvironmentService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private websocket: WebsocketService
   ) {
     this.gridOptions = {
       animateRows: false,
@@ -226,11 +232,32 @@ export class ProgressDataTable implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadProgressData();
-    this.startAutoRefresh();
+
+    this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
+      this.isLoading = true;
+      const response: WebSocketResponseList = msg as WebSocketResponseList;
+      if (response.name == 'ProgressDataListTable' && response.seriesId == this.id) {
+        const processed: ProgressData[] = response.payload.map((item) => new ProgressData(item));
+        this.progressData.set(processed);
+        
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.progressData());
+          this.gridApi.refreshCells();
+          this.gridApi?.sizeColumnsToFit();
+        }
+
+        this.isLoading = false;
+        console.log('Received data', processed.forEach((data: ProgressData) => console.log(`percent complete=${data.getProgressPercentage()}%`)));
+      }
+    });
+    //this.startAutoRefresh();
   }
 
   ngOnDestroy(): void {
     this.stopAutoRefresh();
+    if (this.wsSub) {
+      this.wsSub.unsubscribe();
+    }
   }
 
   private loadProgressData(): void {
