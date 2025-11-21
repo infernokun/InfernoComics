@@ -5,7 +5,6 @@ services:
     environment:
       - BASE_URL=http://inferno-comics-web
       - REST_URL=/api
-      - WS_URL=/ws
     ports:
       - "8784:80"
     volumes:

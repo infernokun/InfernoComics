@@ -34,7 +34,9 @@ export class WebsocketService<TIncoming = unknown, TOutgoing = unknown> implemen
       throw new Error('WebSocket URL missing in EnvironmentService.');
     }
 
-    const wsUrl = `${base}/socket-handler/update`;
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = this.env.settings.production ? `${protocol}//${host}/ws/socket-handler/update` : `${base}/socket-handler/update`;
 
     const cfg: WebSocketSubjectConfig<TIncoming | TOutgoing> = {
       url: wsUrl,
