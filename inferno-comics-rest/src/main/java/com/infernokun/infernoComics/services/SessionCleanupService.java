@@ -35,13 +35,4 @@ public class SessionCleanupService {
                     totalBefore - totalAfter, activeAfter, totalAfter);
         }
     }
-
-    @Scheduled(fixedDelay = 60 * 60 * 1000) // 1 hour
-    public void logSessionStatistics() {
-        int activeCount = progressService.getActiveSessionCount();
-        int totalCount = progressService.getTotalSessionCount();
-
-        log.info("SSE Session Statistics - Active connections: {}, Total sessions: {}",
-                activeCount, totalCount);
-    }
 }
