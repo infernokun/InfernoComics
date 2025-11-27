@@ -5,14 +5,18 @@ from waitress import serve
 from flask_cors import CORS
 from config.FlaskConfig import FlaskConfig
 from config.ComicMatcherConfig import ComicMatcherConfig
-from util.Logger import initialize_logger, set_global_log_config
 from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 
-# Set up logging
-set_global_log_config(log_file="./logs/app.log")
-logger = initialize_logger(name=__name__, log_file="./logs/app.log", use_colors=True)
+from util.Logger import set_global_log_config, get_logger
 
-# Global matcher instance - initialized once
+set_global_log_config(
+    log_file="./logs/app.log",
+    level=os.getenv('FLASK_ENV', 'development') == 'production' and "INFO" or "DEBUG",
+    use_colors=True,
+)
+
+logger = get_logger(__name__)
+
 global_matcher = None
 global_matcher_config = None
 
@@ -58,7 +62,6 @@ def create_app():
     
     CORS(app)
     
-    # Initialize the global matcher during app creation
     logger.info("Initializing application components...")
     try:
         create_matcher()
@@ -76,17 +79,19 @@ def create_app():
     app.config['GET_MATCHER'] = get_matcher
     app.config['GET_MATCHER_CONFIG'] = get_matcher_config
     
-    app.register_blueprint(health_bp, url_prefix=app.config['API_URL_PREFIX'])
-    logger.debug(f"Health blueprint registered at {app.config['API_URL_PREFIX']}")
+    url_prefix = app.config['API_URL_PREFIX']
     
-    app.register_blueprint(image_matcher_bp, url_prefix=app.config['API_URL_PREFIX'])
-    logger.debug(f"Image matcher blueprint registered at {app.config['API_URL_PREFIX']}")
+    app.register_blueprint(health_bp, url_prefix=url_prefix)
+    logger.debug(f"Health blueprint registered at {url_prefix}")
     
-    app.register_blueprint(evaluation_bp, url_prefix=app.config['API_URL_PREFIX'])
-    logger.debug(f"Evaluation blueprint registered at {app.config['API_URL_PREFIX']}")
+    app.register_blueprint(image_matcher_bp, url_prefix=url_prefix)
+    logger.debug(f"Image matcher blueprint registered at {url_prefix}")
+    
+    app.register_blueprint(evaluation_bp, url_prefix=url_prefix)
+    logger.debug(f"Evaluation blueprint registered at {url_prefix}")
 
-    app.register_blueprint(config_bp, url_prefix=app.config['API_URL_PREFIX'])
-    logger.debug(f"Config blueprint registered at {app.config['API_URL_PREFIX']}")
+    app.register_blueprint(config_bp, url_prefix=url_prefix)
+    logger.debug(f"Config blueprint registered at {url_prefix}")
     
     return app
 
@@ -107,7 +112,6 @@ def main():
         # Production environment check
         if app.config.get('FLASK_ENV') == 'production':
             logger.success(f"Starting production server on {host}:{port} with {threads} threads")
-            logger.info("Production server configuration:")
             serve(
                 app,
                 host=host,
@@ -120,7 +124,7 @@ def main():
         else:
             logger.warning("Running in development mode!")
             logger.info(f"Server available at: http://{host}:{port}{url_prefix}")
-            logger.info("Debug mode is enabled")
+            logger.debug("Debug mode is enabled")
             app.run(host=host, port=port, debug=True)
             
     except Exception as e:
@@ -131,7 +135,7 @@ def main():
 if __name__ == '__main__':
     title = "INFERNO COMICS RECOGNITION SERVICE"
     logger.success("=" * len(title))
-    logger.success("INFERNO COMICS RECOGNITION SERVICE")
+    logger.success(title)
     logger.success("=" * len(title))
     try:
         main()
