@@ -42,9 +42,7 @@ def create_matcher():
         db_path = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
         
         try:
-            global_matcher = FeatureMatchingComicMatcher(get_matcher_config(), cache_dir=cache_dir, db_path=db_path)
-            global_matcher.print_config_summary()
-            
+            global_matcher = FeatureMatchingComicMatcher(get_matcher_config(), cache_dir=cache_dir, db_path=db_path)            
         except Exception as e:
             logger.error(f"Failed to initialize global matcher: {e}")
             raise
