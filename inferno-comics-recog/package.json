@@ -1,6 +1,6 @@
 {
   "name": "inferno-comics-recog",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "scripts": {
     "start": "venv/bin/python3 src/recog.py",
     "start:debug": "/usr/bin/python3 src/recog.py --debug",
