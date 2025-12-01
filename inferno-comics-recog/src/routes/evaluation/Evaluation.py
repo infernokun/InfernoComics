@@ -8,10 +8,13 @@ import hashlib
 import shutil
 import requests
 import threading
+
 from queue import Queue
 from urllib.parse import urljoin
 from util.Logger import get_logger
 from datetime import datetime, timedelta
+from config.EnvironmentConfig import CACHE_DIR
+from util.Globals import get_global_matcher_config
 from flask import Blueprint, render_template, request, jsonify, Response, current_app, send_file, abort
 
 logger = get_logger(__name__)
@@ -21,9 +24,6 @@ evaluation_bp = Blueprint('evaluation', __name__)
 # Global variables for progress tracking
 progress_queues = {}  # Dictionary to store progress queues by session
 active_evaluations = {}  # Dictionary to store active evaluations by session
-
-# Your existing constants
-SIMILARITY_THRESHOLD = 0.55
 
 def ensure_results_directory():
     """Ensure the results directory exists"""
@@ -106,8 +106,7 @@ def copy_external_image_to_storage(image_url, session_id, comic_name, issue_numb
         try:
             # Check if we can access the global matcher's cache
             url_hash = hashlib.md5(image_url.encode()).hexdigest()
-            cache_dir = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
-            cache_file_path = os.path.join(cache_dir, f"{url_hash}.jpg")
+            cache_file_path = os.path.join(CACHE_DIR, f"{url_hash}.jpg")
             
             if os.path.exists(cache_file_path):
                 logger.debug(f"Found in cache: {cache_file_path}")
@@ -214,7 +213,7 @@ def save_evaluation_result(session_id, evaluation_state):
             'no_matches': int(evaluation_state.get('no_matches', 0)),
             'overall_success': bool(evaluation_state.get('overall_success', False)),
             'best_similarity': float(evaluation_state.get('best_similarity', 0.0)),
-            'similarity_threshold': float(SIMILARITY_THRESHOLD),
+            'similarity_threshold': float(get_global_matcher_config().get_similarity_threshold()),
             'results': []
         }
         
@@ -254,7 +253,7 @@ def save_evaluation_result(session_id, evaluation_state):
                         'similarity': float(match.get('similarity', 0)),
                         'url': candidate_url,  # Keep original URL
                         'local_url': local_candidate_url,  # Add local stored URL
-                        'meets_threshold': bool(match.get('similarity', 0) >= SIMILARITY_THRESHOLD)
+                        'meets_threshold': bool(match.get('similarity', 0) >= float(get_global_matcher_config().get_similarity_threshold()))
                     }
                     result_item['matches'].append(match_item)
                 result_item['total_matches'] = int(result['response_data'].get('total_matches', 0))
@@ -350,7 +349,7 @@ def load_evaluation_result(session_id):
                     'no_matches': 0,
                     'overall_success': False,
                     'best_similarity': 0.0,
-                    'similarity_threshold': SIMILARITY_THRESHOLD,
+                    'similarity_threshold': float(get_global_matcher_config().get_similarity_threshold()),
                     'error': f'Original file corrupted: {str(json_error)}',
                     'results': []
                 }
@@ -546,10 +545,12 @@ def image_to_base64(image_path):
         logger.error(f"❌ Error converting image to base64: {e}")
         return None
 
-def check_match_success(response_data, threshold=SIMILARITY_THRESHOLD):
+def check_match_success(response_data):
     """Check if any match meets the similarity threshold"""
     if not response_data or 'top_matches' not in response_data:
         return False, 0.0
+    
+    threshold = float(get_global_matcher_config().get_similarity_threshold())
     
     best_similarity = 0.0
     for match in response_data['top_matches']:
@@ -854,7 +855,7 @@ def run_evaluation(folder_path, session_id, series_id):
                         'similarity': match.get('similarity', 0),
                         'url': original_url,  # Keep original URL
                         'local_url': local_candidate_url,  # Add local stored URL
-                        'meets_threshold': match.get('similarity', 0) >= SIMILARITY_THRESHOLD
+                        'meets_threshold': match.get('similarity', 0) >= float(get_global_matcher_config().get_similarity_threshold())
                     })
                 detailed_result['total_matches'] = result['response_data'].get('total_matches', 0)
 

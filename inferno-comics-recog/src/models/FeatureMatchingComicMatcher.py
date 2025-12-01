@@ -10,18 +10,17 @@ import sqlite3
 import hashlib
 import threading
 import numpy as np
+
 from pathlib import Path
 from enum import Enum, auto
 from datetime import datetime
+from util.Logger import get_logger
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import (
-    Dict, Optional, Tuple, List, Any, 
-    Callable
-)
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from curl_cffi.requests import Session as CurlSession
-from util.Logger import get_logger
+from config.EnvironmentConfig import CACHE_DIR, DB_PATH
+from typing import Dict, Optional, Tuple, List, Any, Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = get_logger(__name__)
 
@@ -33,17 +32,6 @@ logger = get_logger(__name__)
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 os.environ.setdefault('OPENCV_LOG_LEVEL', 'ERROR')
 cv2.setNumThreads(1)
-
-# Default paths
-DEFAULT_DB_PATH = os.environ.get(
-    'COMIC_CACHE_DB_PATH', 
-    '/var/tmp/inferno-comics/comic_cache.db'
-)
-DEFAULT_CACHE_DIR = os.environ.get(
-    'COMIC_CACHE_IMAGE_PATH', 
-    '/var/tmp/inferno-comics/image_cache'
-)
-
 
 # ============================================================================
 # Custom Exceptions
@@ -73,18 +61,6 @@ class CacheError(ComicMatcherError):
 # Enums and Constants
 # ============================================================================
 
-class DetectorType(Enum):
-    """Supported feature detector types."""
-    SIFT = auto()
-    ORB = auto()
-    AKAZE = auto()
-    KAZE = auto()
-    
-    @property
-    def name_lower(self) -> str:
-        return self.name.lower()
-
-
 class MatchStatus(Enum):
     """Status of a match operation."""
     SUCCESS = "success"
@@ -110,47 +86,6 @@ class CacheItem:
         """Update last accessed time and increment count."""
         self.last_accessed = datetime.now()
         self.access_count += 1
-
-
-@dataclass
-class FeatureData:
-    """Container for extracted features from a single detector."""
-    keypoints: List[cv2.KeyPoint] = field(default_factory=list)
-    descriptors: Optional[np.ndarray] = None
-    count: int = 0
-    
-    @classmethod
-    def empty(cls) -> FeatureData:
-        """Create an empty feature data container."""
-        return cls(keypoints=[], descriptors=None, count=0)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        return {
-            'keypoints': self.keypoints,
-            'descriptors': self.descriptors,
-            'count': self.count
-        }
-
-
-@dataclass
-class MatchResult:
-    """Result of matching a query against a candidate."""
-    url: str
-    similarity: float
-    status: MatchStatus
-    match_details: Dict[str, Any] = field(default_factory=dict)
-    candidate_features: Dict[str, int] = field(default_factory=dict)
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
-        return {
-            'url': self.url,
-            'similarity': self.similarity,
-            'status': self.status.value,
-            'match_details': self.match_details,
-            'candidate_features': self.candidate_features
-        }
 
 
 @dataclass  
@@ -1150,8 +1085,8 @@ class FeatureMatchingComicMatcher:
     def __init__(
         self, 
         config: Any,
-        cache_dir: str = DEFAULT_CACHE_DIR,
-        db_path: str = DEFAULT_DB_PATH
+        cache_dir: str = CACHE_DIR,
+        db_path: str = DB_PATH
     ):
         self.config = config
         self.cache_dir = cache_dir

@@ -9,12 +9,16 @@ import hashlib
 import traceback
 import threading
 import numpy as np
+
 from util.Logger import get_logger
 from concurrent.futures import ThreadPoolExecutor
 from models.SSEProgressTracker import SSEProgressTracker
 from models.JavaProgressReporter import JavaProgressReporter
 from services.ImageMatcherService import get_service, get_global_matcher
-from flask import Blueprint, jsonify, request, Response, current_app, render_template, send_file, abort
+from flask import (
+    Blueprint, jsonify, request, Response,
+    current_app, render_template, send_file, abort
+)
 from util.ImageUtils import image_to_base64
 from util.FileOperations import (
     load_image_matcher_result, 
@@ -35,7 +39,7 @@ processing_semaphore = threading.Semaphore(1)
 def image_matcher_operation():
     """Enhanced image matching API that handles both regular and SSE progress reporting"""
     
-    logger.debug(" Received image matcher request")
+    logger.debug("Received image matcher request")
     
     # Check for image file in request
     if 'image' not in request.files:
@@ -88,7 +92,7 @@ def image_matcher_operation():
 
     # If session_id is provided, this is a CENTRALIZED progress request from Java
     if session_id:
-        logger.info(f" Processing CENTRALIZED progress request for session: {session_id}")
+        logger.info(f"Processing CENTRALIZED progress request for session: {session_id}")
         
         try:
             # Process with centralized progress reporting to Java AND save to JSON
@@ -261,7 +265,7 @@ def start_image_processing():
     # Start async processing
     executor.submit(service.process_image_with_progress, session_id, query_image, candidate_covers, query_filename)
     
-    logger.info(f" Started SSE image processing session: {session_id}")
+    logger.info(f"Started SSE image processing session: {session_id}")
     
     return jsonify({'sessionId': session_id})
 

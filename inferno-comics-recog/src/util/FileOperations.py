@@ -1,16 +1,17 @@
 import os
 import cv2
 import json
-import requests
+import base64
 import shutil
 import hashlib
-import base64
+import requests
 import numpy as np
-from flask import jsonify
-from util.Logger import get_logger
+
 from datetime import datetime
+from util.Logger import get_logger
 from util.Util import get_full_image_url
 from util.Globals import get_global_matcher_config
+from config.EnvironmentConfig import CACHE_DIR
 from models.JavaProgressReporter import JavaProgressReporter
 
 logger = get_logger(__name__)
@@ -92,8 +93,7 @@ def copy_external_image_to_storage(image_url, session_id, comic_name, issue_numb
         try:
             # Check if we can access the global matcher's cache
             url_hash = hashlib.md5(image_url.encode()).hexdigest()
-            cache_dir = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
-            cache_file_path = os.path.join(cache_dir, f"{url_hash}.jpg")
+            cache_file_path = os.path.join(CACHE_DIR, f"{url_hash}.jpg")
             
             if os.path.exists(cache_file_path):
                 logger.debug(f"Found in cache: {cache_file_path}")

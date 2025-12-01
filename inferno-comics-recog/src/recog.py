@@ -4,10 +4,10 @@ from flask import Flask
 from waitress import serve
 from flask_cors import CORS
 from config.FlaskConfig import FlaskConfig
+from config.EnvironmentConfig import CACHE_DIR, DB_PATH
 from config.ComicMatcherConfig import ComicMatcherConfig
-from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
-
 from util.Logger import set_global_log_config, get_logger
+from models.FeatureMatchingComicMatcher import FeatureMatchingComicMatcher
 
 set_global_log_config(
     log_file="./logs/app.log",
@@ -35,14 +35,10 @@ def create_matcher():
     global global_matcher
     
     if global_matcher is None:
-        logger.info("🔧 Initializing global FeatureMatchingComicMatcher...")
-        
-        # Get config path from environment or use default
-        cache_dir = os.environ.get('COMIC_CACHE_IMAGE_PATH', '/var/tmp/inferno-comics/image_cache')
-        db_path = os.environ.get('COMIC_CACHE_DB_PATH', '/var/tmp/inferno-comics/comic_cache.db')
+        logger.info("Initializing global FeatureMatchingComicMatcher...")
         
         try:
-            global_matcher = FeatureMatchingComicMatcher(get_matcher_config(), cache_dir=cache_dir, db_path=db_path)            
+            global_matcher = FeatureMatchingComicMatcher(get_matcher_config(), cache_dir=CACHE_DIR, db_path=DB_PATH)            
         except Exception as e:
             logger.error(f"Failed to initialize global matcher: {e}")
             raise

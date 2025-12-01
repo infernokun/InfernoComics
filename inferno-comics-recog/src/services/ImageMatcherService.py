@@ -2,8 +2,9 @@ import os
 import json
 import traceback
 import threading
-from util.Logger import get_logger
+
 from datetime import datetime
+from util.Logger import get_logger
 from models.JavaProgressReporter import JavaProgressReporter
 from util.Globals import get_global_matcher, get_global_matcher_config
 from util.FileOperations import sanitize_for_json, copy_external_image_to_storage, ensure_results_directory, save_image_to_storage

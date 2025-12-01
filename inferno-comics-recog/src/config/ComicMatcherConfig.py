@@ -1,14 +1,14 @@
-# Simple YAML Configuration for Comic Matcher
-
-import yaml
 import os
+import yaml
+
 from util.Logger import get_logger
+from config.EnvironmentConfig import CONFIG_PATH, ENV_LEVEL
 
 logger = get_logger(__name__)
 
 DEFAULT_CONFIG = ""
 
-with open('src/config/config.yml') as f:
+with open('src/config/default/config.yml') as f:
     DEFAULT_CONFIG = f.read()
 
 # Processing Power Reference (from lowest to highest):
@@ -16,8 +16,6 @@ with open('src/config/config.yml') as f:
 # 2. AKAZE - Medium speed, excellent accuracy/speed ratio  
 # 3. KAZE - Slower, non-linear diffusion
 # 4. SIFT - Slowest, most CPU intensive, very robust
-
-CONFIG_PATH = os.environ.get('CONFIG_PATH', '/var/tmp/inferno-comics/config.yml')
 
 class ComicMatcherConfig:
     def __init__(self, config_path=CONFIG_PATH, create_default=True):
@@ -62,7 +60,7 @@ class ComicMatcherConfig:
     def _apply_performance_level(self):
         """Apply performance level preset, prioritizing environment variable"""
         # Check environment variable first, then config file, default to balanced
-        env_level = os.environ.get('PERFORMANCE_LEVEL', '').lower()
+        env_level = ENV_LEVEL.lower()
         config_level = self.config.get('performance_level', 'balanced')
         
         # Use environment variable if set, otherwise use config file

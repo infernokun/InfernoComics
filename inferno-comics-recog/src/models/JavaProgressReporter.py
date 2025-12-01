@@ -1,19 +1,12 @@
-import os
-import requests
 import re
+import requests
+
 from time import time
 from flask import current_app
 from util.Logger import get_logger
+from config.EnvironmentConfig import JAVA_REQUEST_TIMEOUT, JAVA_PROGRESS_TIMEOUT
 
 logger = get_logger(__name__)
-
-# Timeout settings for Java communication
-JAVA_REQUEST_TIMEOUT = int(os.getenv('JAVA_REQUEST_TIMEOUT', '5'))  # seconds
-JAVA_PROGRESS_TIMEOUT = int(os.getenv('JAVA_PROGRESS_TIMEOUT', '2'))  # seconds
-
-# Progress reporting settings
-PROGRESS_BATCH_SIZE = int(os.getenv('PROGRESS_BATCH_SIZE', '5'))  # Update every N candidates
-MAX_PROGRESS_UPDATES = int(os.getenv('MAX_PROGRESS_UPDATES', '20'))  # Max updates during matching
 
 class JavaProgressReporter:
     """Enhanced class to report progress back to Java's progress service"""

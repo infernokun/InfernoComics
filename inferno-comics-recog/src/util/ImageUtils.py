@@ -1,6 +1,6 @@
 import cv2
-import hashlib
 import base64
+import hashlib
 import numpy as np
 from util.Logger import get_logger
 
