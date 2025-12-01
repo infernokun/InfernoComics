@@ -11,8 +11,8 @@ import hashlib
 import threading
 import numpy as np
 
+from enum import Enum
 from pathlib import Path
-from enum import Enum, auto
 from datetime import datetime
 from util.Logger import get_logger
 from contextlib import contextmanager
