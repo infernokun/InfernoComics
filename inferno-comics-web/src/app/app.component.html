@@ -28,7 +28,6 @@
     <button mat-icon-button class="theme-toggle" routerLink="/config">
       <mat-icon>settings</mat-icon>
     </button>
-    <!-- Theme Toggle Button -->
     <button mat-icon-button class="theme-toggle" (click)="toggleTheme()"
             [attr.aria-label]="(isDarkMode$ | async) ? 'Switch to light mode' : 'Switch to dark mode'">
       <mat-icon>{{ (isDarkMode$ | async) ? 'light_mode' : 'dark_mode' }}</mat-icon>

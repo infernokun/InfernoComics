@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Series } from '../../models/series.model';
-import { CommonModule } from '@angular/common';
+
 import { MaterialModule } from '../../material.module';
 import { SeriesService } from '../../services/series.service';
 
@@ -13,7 +13,7 @@ import { SeriesService } from '../../services/series.service';
   selector: 'app-series-admin',
   templateUrl: './series-admin.component.html',
   styleUrls: ['./series-admin.component.scss'],
-  imports: [CommonModule, MaterialModule, RouterModule],
+  imports: [MaterialModule, RouterModule],
 })
 export class SeriesAdminComponent implements OnInit {
   seriesId: number;

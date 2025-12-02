@@ -1,11 +1,9 @@
-import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
-
+import { provideZoneChangeDetection } from "@angular/core";
 import { AppModule } from './app/app.module';
+import { platformBrowser } from "@angular/platform-browser";
 
-platformBrowserDynamic()
-  .bootstrapModule(AppModule, {
-    ngZoneEventCoalescing: true,
-  })
+platformBrowser()
+  .bootstrapModule(AppModule, { applicationProviders: [provideZoneChangeDetection({ eventCoalescing: true })], })
   .catch((err) => console.error(err));
 
 (window as any).MonacoEnvironment = {

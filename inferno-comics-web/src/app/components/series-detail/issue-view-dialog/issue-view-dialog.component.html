@@ -1,128 +1,140 @@
 <div class="comic-view-container">
-    <div class="comic-view-header">
-        <h2 mat-dialog-title>
-            {{ data.issue.title || 'Issue #' + data.issue.issueNumber }}
-        </h2>
-        <button mat-icon-button mat-dialog-close class="close-button">
-            <mat-icon>close</mat-icon>
-        </button>
-    </div>
+  <div class="comic-view-header">
+    <h2 mat-dialog-title>
+      {{ data.issue.title || 'Issue #' + data.issue.issueNumber }}
+    </h2>
+    <button mat-icon-button mat-dialog-close class="close-button">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
 
-    <mat-dialog-content class="comic-view-content">
-        <div class="comic-view-layout">
-            <div class="comic-image-section">
-                <div class="comic-image-container">
-                    <!-- Image Toggle Controls -->
-                    <div class="image-controls" *ngIf="hasUploadedImage()">
-                        <button mat-button 
-                                class="image-toggle-btn" 
-                                (click)="toggleImageView()"
-                                [class.active]="!showUploadedImage">
-                            <mat-icon>image</mat-icon>
-                            Cover
-                        </button>
-                        <button mat-button 
-                                class="image-toggle-btn" 
-                                (click)="toggleImageView()"
-                                [class.active]="showUploadedImage">
-                            <mat-icon>photo_library</mat-icon>
-                            Uploaded
-                        </button>
-                    </div>
-
-                    <img [src]="getCurrentImageUrl()"
-                        [alt]="'Issue #' + data.issue.issueNumber"
-                        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}" />
-                    
-                    <div class="key-issue-badge" *ngIf="data.issue.keyIssue">
-                        <mat-icon>star</mat-icon>
-                        <span>Key Issue</span>
-                    </div>
-
-                    <!-- Current Image Type Indicator -->
-                    <div class="image-type-indicator" *ngIf="hasUploadedImage()">
-                        <mat-icon>{{ showUploadedImage ? 'photo_library' : 'image' }}</mat-icon>
-                        <span>{{ showUploadedImage ? 'Uploaded Image' : 'Cover Image' }}</span>
-                    </div>
-                </div>
+  <mat-dialog-content class="comic-view-content">
+    <div class="comic-view-layout">
+      <div class="comic-image-section">
+        <div class="comic-image-container">
+          <!-- Image Toggle Controls -->
+          @if (hasUploadedImage()) {
+            <div class="image-controls">
+              <button mat-button
+                class="image-toggle-btn"
+                (click)="toggleImageView()"
+                [class.active]="!showUploadedImage">
+                <mat-icon>image</mat-icon>
+                Cover
+              </button>
+              <button mat-button
+                class="image-toggle-btn"
+                (click)="toggleImageView()"
+                [class.active]="showUploadedImage">
+                <mat-icon>photo_library</mat-icon>
+                Uploaded
+              </button>
             </div>
+          }
 
-            <div class="comic-details-section">
-                <div class="detail-group">
-                    <h3>Basic Information</h3>
-                    <div class="detail-grid">
-                        <div class="detail-item">
-                            <span class="label">Issue Number:</span>
-                            <span class="value">#{{ data.issue.issueNumber }}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">Cover Date:</span>
-                            <span class="value">{{
-                                data.issue.coverDate || 'Not specified'
-                                }}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="label">Condition:</span>
-                            <span class="value condition-badge" [class]="getConditionClass(data.issue.condition)">
-                                {{ formatCondition(data.issue.condition) }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
+          <img [src]="getCurrentImageUrl()"
+            [alt]="'Issue #' + data.issue.issueNumber"
+            onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}" />
 
-                <div class="detail-group" *ngIf="data.issue.description">
-                    <h3>Description</h3>
-                    <p class="description-text">{{ data.issue.description }}</p>
-                </div>
-
-                <div class="detail-group">
-                    <h3>Financial Information</h3>
-                    <div class="financial-grid">
-                        <div class="financial-card purchase">
-                            <div class="financial-label">Purchase Price</div>
-                            <div class="financial-value">
-                                \${{ data.issue.purchasePrice || 0 }}
-                            </div>
-                        </div>
-                        <div class="financial-card current">
-                            <div class="financial-label">Current Value</div>
-                            <div class="financial-value">
-                                \${{ data.issue.currentValue || 0 }}
-                            </div>
-                        </div>
-                        <div class="financial-card profit" *ngIf="getProfitLoss() !== 0">
-                            <div class="financial-label">
-                                {{ getProfitLoss() >= 0 ? 'Profit' : 'Loss' }}
-                            </div>
-                            <div class="financial-value" [class.profit]="getProfitLoss() >= 0"
-                                [class.loss]="getProfitLoss() < 0">
-                                {{ getProfitLoss() >= 0 ? '+' : '' }}\${{
-                                Math.abs(getProfitLoss())
-                                }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="detail-group" *ngIf="data.issue.comicVineId">
-                    <h3>Comic Vine Integration</h3>
-                    <div class="comic-vine-info">
-                        <mat-icon>link</mat-icon>
-                        <span>Linked to Comic Vine ID: {{ data.issue.comicVineId }}</span>
-                    </div>
-                </div>
+          @if (data.issue.keyIssue) {
+            <div class="key-issue-badge">
+              <mat-icon>star</mat-icon>
+              <span>Key Issue</span>
             </div>
+          }
+
+          <!-- Current Image Type Indicator -->
+          @if (hasUploadedImage()) {
+            <div class="image-type-indicator">
+              <mat-icon>{{ showUploadedImage ? 'photo_library' : 'image' }}</mat-icon>
+              <span>{{ showUploadedImage ? 'Uploaded Image' : 'Cover Image' }}</span>
+            </div>
+          }
         </div>
-    </mat-dialog-content>
+      </div>
 
-    <mat-dialog-actions class="comic-view-actions">
-        <button mat-button mat-dialog-close>
-            <mat-icon>close</mat-icon>
-            Close
-        </button>
-        <button mat-raised-button color="primary" (click)="editComic()">
-            <mat-icon>edit</mat-icon>
-            Edit
-        </button>
-    </mat-dialog-actions>
+      <div class="comic-details-section">
+        <div class="detail-group">
+          <h3>Basic Information</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="label">Issue Number:</span>
+              <span class="value">#{{ data.issue.issueNumber }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Cover Date:</span>
+              <span class="value">{{
+                data.issue.coverDate || 'Not specified'
+              }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Condition:</span>
+              <span class="value condition-badge" [class]="getConditionClass(data.issue.condition)">
+                {{ formatCondition(data.issue.condition) }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        @if (data.issue.description) {
+          <div class="detail-group">
+            <h3>Description</h3>
+            <p class="description-text">{{ data.issue.description }}</p>
+          </div>
+        }
+
+        <div class="detail-group">
+          <h3>Financial Information</h3>
+          <div class="financial-grid">
+            <div class="financial-card purchase">
+              <div class="financial-label">Purchase Price</div>
+              <div class="financial-value">
+                \${{ data.issue.purchasePrice || 0 }}
+              </div>
+            </div>
+            <div class="financial-card current">
+              <div class="financial-label">Current Value</div>
+              <div class="financial-value">
+                \${{ data.issue.currentValue || 0 }}
+              </div>
+            </div>
+            @if (getProfitLoss() !== 0) {
+              <div class="financial-card profit">
+                <div class="financial-label">
+                  {{ getProfitLoss() >= 0 ? 'Profit' : 'Loss' }}
+                </div>
+                <div class="financial-value" [class.profit]="getProfitLoss() >= 0"
+                  [class.loss]="getProfitLoss() < 0">
+                  {{ getProfitLoss() >= 0 ? '+' : '' }}\${{
+                  Math.abs(getProfitLoss())
+                  }}
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (data.issue.comicVineId) {
+          <div class="detail-group">
+            <h3>Comic Vine Integration</h3>
+            <div class="comic-vine-info">
+              <mat-icon>link</mat-icon>
+              <span>Linked to Comic Vine ID: {{ data.issue.comicVineId }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="comic-view-actions">
+    <button mat-button mat-dialog-close>
+      <mat-icon>close</mat-icon>
+      Close
+    </button>
+    <button mat-raised-button color="primary" (click)="editComic()">
+      <mat-icon>edit</mat-icon>
+      Edit
+    </button>
+  </mat-dialog-actions>
 </div>

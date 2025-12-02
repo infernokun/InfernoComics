@@ -198,7 +198,11 @@ public class ProgressController {
 
         progressService.deleteProgressDataSession(progressDataOpt.get());
         processedFileRepository.deleteAll(processedFileRepository.findBySessionId(sessionId));
-        recognitionService.cleanSession(sessionId);
+        try {
+            recognitionService.cleanSession(sessionId);
+        } catch (Exception e) {
+            log.warn("Error cleaning session: {}", e.getMessage());
+        }
 
         return ResponseEntity.ok().body(recognitionService.cleanSession(sessionId));
     }

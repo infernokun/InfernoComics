@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { DragDropModule } from '@angular/cdk/drag-drop';
-import { MatCommonModule, MatNativeDateModule, MatOptionModule } from '@angular/material/core';
+import { MatNativeDateModule, MatOptionModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatInputModule } from '@angular/material/input';
@@ -33,7 +33,6 @@ import { MatSliderModule } from '@angular/material/slider';
   imports: [
     DragDropModule,
     MatButtonModule,
-    MatCommonModule,
     MatDatepickerModule,
     MatNativeDateModule,
     MatDialogModule,

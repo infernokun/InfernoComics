@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, Input, ChangeDetectionStrategy, HostListener } from '@angular/core';
 
 @Component({
@@ -6,12 +6,14 @@ import { Component, Input, ChangeDetectionStrategy, HostListener } from '@angula
   template: `
     <div class="preview-wrapper" (mouseenter)="show = true" (mouseleave)="show = false">
       <ng-content></ng-content>
-      <div class="preview-container" *ngIf="show">
-        <img class="preview-img" [src]="src" [alt]="alt" />
-        <img class="match-img" [src]="matchSrc" [alt]="matchAlt" />
-      </div>
+      @if (show) {
+        <div class="preview-container">
+          <img class="preview-img" [src]="src" [alt]="alt" />
+          <img class="match-img" [src]="matchSrc" [alt]="matchAlt" />
+        </div>
+      }
     </div>
-  `,
+    `,
   styles: [
     `
       .preview-wrapper {
@@ -59,7 +61,7 @@ import { Component, Input, ChangeDetectionStrategy, HostListener } from '@angula
       }
     `,
   ],
-  imports: [CommonModule],
+  imports: [],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HoverPreviewComponent {

@@ -1,4 +1,4 @@
-import { CommonModule } from "@angular/common";
+
 import { Component, Inject } from "@angular/core";
 import { MatDialogRef, MAT_DIALOG_DATA } from "@angular/material/dialog";
 import { MaterialModule } from "../../../material.module";
@@ -14,17 +14,19 @@ import { FormsModule } from "@angular/forms";
           <mat-label>Start Issue</mat-label>
           <input matInput type="number" [(ngModel)]="startIssue" min="1" />
         </mat-form-field>
-
+    
         <mat-form-field appearance="outline">
           <mat-label>End Issue</mat-label>
           <input matInput type="number" [(ngModel)]="endIssue" min="1" />
         </mat-form-field>
       </div>
-
-      <p class="range-preview" *ngIf="startIssue && endIssue">
-        Will select {{ getIssueCount() }} issues ({{ startIssue }} -
-        {{ endIssue }})
-      </p>
+    
+      @if (startIssue && endIssue) {
+        <p class="range-preview">
+          Will select {{ getIssueCount() }} issues ({{ startIssue }} -
+          {{ endIssue }})
+        </p>
+      }
     </mat-dialog-content>
     <mat-dialog-actions>
       <button mat-button (click)="cancel()">Cancel</button>
@@ -33,11 +35,11 @@ import { FormsModule } from "@angular/forms";
         color="primary"
         (click)="confirm()"
         [disabled]="!isValid()"
-      >
+        >
         Select Range
       </button>
     </mat-dialog-actions>
-  `,
+    `,
   styles: [
     `
       .range-form {
@@ -51,7 +53,7 @@ import { FormsModule } from "@angular/forms";
       }
     `,
   ],
-  imports: [CommonModule, MaterialModule, FormsModule]
+  imports: [MaterialModule, FormsModule]
 })
 export class RangeSelectionDialog {
   startIssue: number = 1;

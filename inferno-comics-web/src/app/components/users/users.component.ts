@@ -1,10 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { User, UserFormData } from '../../models/user.model';
 import { UserService } from '../../services/user.service';
-import { TeamService } from '../../services/team.service';
 import { EditDialogService } from '../../services/edit-dialog.service';
 import { Observable } from 'rxjs';
-import { Team } from '../../models/team.model';
 import { MessageService } from '../../services/message.service';
 import { AuthService } from '../../services/auth.service';
 import {
@@ -50,7 +48,6 @@ export class UsersComponent implements OnInit {
 
   constructor(
     private userService: UserService,
-    private teamService: TeamService,
     private dialog: EditDialogService,
     private messageService: MessageService,
     private authService: AuthService
@@ -201,11 +198,7 @@ export class UsersComponent implements OnInit {
   }
 
   editUsers() {
-    const teams$: Observable<Team[]> = this.teamService.getAllTeams();
-
-    const userFormData = new UserFormData(this.users, (k: any, v: any) => { }, {
-      teams: teams$,
-    });
+    const userFormData = new UserFormData(this.users, (k: any, v: any) => { });
 
     this.dialog
       .openDialog<any>(userFormData, (data: { user: string; team: string }) => {
@@ -219,10 +212,6 @@ export class UsersComponent implements OnInit {
               u.id === updatedUser.id ? updatedUser : u
             );
             this.authService.setUser(updatedUser);
-            this.messageService.snackbar(
-              `User ${updatedUser.username} updated team to ${updatedUser.team!.name ?? ''
-              }`
-            );
 
             // Update grid after user update
             this.gridApi?.setGridOption('rowData', this.users);
@@ -246,10 +235,5 @@ export class UsersComponent implements OnInit {
   getActiveUsersCount(): number {
     return -1;
     //return this.users.filter(user => user.active !== false).length;
-  }
-
-  getTeamsCount(): number {
-    const uniqueTeams = new Set(this.users.map(user => user.team?.id).filter(id => id));
-    return uniqueTeams.size;
   }
 }

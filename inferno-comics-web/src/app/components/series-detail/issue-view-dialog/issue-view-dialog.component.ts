@@ -2,7 +2,7 @@ import { Component, Inject } from "@angular/core";
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from "@angular/material/dialog";
 import { IssueFormComponent } from "../../issue-form/issue-form.component";
 import { MaterialModule } from "../../../material.module";
-import { CommonModule } from "@angular/common";
+
 import { EnvironmentService } from "../../../services/environment.service";
 import { RecognitionService } from "../../../services/recognition.service";
 
@@ -10,7 +10,7 @@ import { RecognitionService } from "../../../services/recognition.service";
   selector: 'comic-book-view-dialog',
   templateUrl: './issue-view-dialog.component.html',
   styleUrls: ['./issue-view-dialog.component.scss'],
-  imports: [CommonModule, MaterialModule],
+  imports: [MaterialModule],
 })
 export class IssueViewDialog {
   Math = Math;

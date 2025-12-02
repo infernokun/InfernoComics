@@ -4,11 +4,13 @@
   </h2>
   <br />
   <div class="questions-container" *skeleton="!data || !data.questions || !(data.questions.length > 0); height: '100px'">
-    <div *ngFor="let q of data.questions; let i = index" class="question-row">
-      <amaterasu-dialog-question [question]="q" class="width-100"
-        (radioSelectionChanged)="radioSelectionChanged($event)" (dropdownSelectionChanged)="dropdownSelectionChanged($event)"
-         (buttonClicked)="q.action!(this.buttonQuestionFunction.bind(this)(q.key))"></amaterasu-dialog-question>
-    </div>
+    @for (q of data.questions; track q; let i = $index) {
+      <div class="question-row">
+        <amaterasu-dialog-question [question]="q" class="width-100"
+          (radioSelectionChanged)="radioSelectionChanged($event)" (dropdownSelectionChanged)="dropdownSelectionChanged($event)"
+        (buttonClicked)="q.action!(this.buttonQuestionFunction.bind(this)(q.key))"></amaterasu-dialog-question>
+      </div>
+    }
   </div>
 </div>
 

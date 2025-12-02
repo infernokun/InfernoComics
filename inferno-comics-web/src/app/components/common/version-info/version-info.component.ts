@@ -7,41 +7,42 @@ import { WebsocketService } from '../../../services/websocket.service';
 @Component({
   selector: 'app-version-info',
   template: `
-    <div class="version-info-container" 
-         (mouseenter)="showPanel = true" 
-         (mouseleave)="showPanel = false">
+    <div class="version-info-container"
+      (mouseenter)="showPanel = true"
+      (mouseleave)="showPanel = false">
       <mat-icon class="info-icon" [ngClass]="{ connected: webSocketConnected }">info</mat-icon>
-      
-      <div class="version-panel" *ngIf="showPanel">
-        <div class="panel-header">
-          <mat-icon>info_outline</mat-icon>
-          <span>Version Information ({{webSocketConnected ? 'connected' : 'disconnected'}})</span>
+    
+      @if (showPanel) {
+        <div class="version-panel">
+          <div class="panel-header">
+            <mat-icon>info_outline</mat-icon>
+            <span>Version Information ({{webSocketConnected ? 'connected' : 'disconnected'}})</span>
+          </div>
+          @if (versions) {
+            <div class="panel-content">
+              <div class="version-item">
+                <span class="label">Web</span>
+                <span class="version">{{ versions.web.version }}</span>
+              </div>
+              <div class="version-item">
+                <span class="label">REST API</span>
+                <span class="version">{{ versions.backend.rest.version }}</span>
+              </div>
+              <div class="version-item">
+                <span class="label">Recognition</span>
+                <span class="version">{{ versions.backend.recog.version }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="loading">
+              <mat-spinner diameter="24"></mat-spinner>
+              <span>Loading versions...</span>
+            </div>
+          }
         </div>
-        
-        <div class="panel-content" *ngIf="versions; else loading">
-          <div class="version-item">
-            <span class="label">Web</span>
-            <span class="version">{{ versions.web.version }}</span>
-          </div>
-          <div class="version-item">
-            <span class="label">REST API</span>
-            <span class="version">{{ versions.backend.rest.version }}</span>
-          </div>
-          <div class="version-item">
-            <span class="label">Recognition</span>
-            <span class="version">{{ versions.backend.recog.version }}</span>
-          </div>
-        </div>
-        
-        <ng-template #loading>
-          <div class="loading">
-            <mat-spinner diameter="24"></mat-spinner>
-            <span>Loading versions...</span>
-          </div>
-        </ng-template>
-      </div>
+      }
     </div>
-  `,
+    `,
   styles: [`
     .version-info-container {
       position: relative;

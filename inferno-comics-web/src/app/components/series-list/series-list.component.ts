@@ -3,14 +3,14 @@ import { Router, RouterModule } from '@angular/router';
 import { SeriesService } from '../../services/series.service';
 import { Series } from '../../models/series.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
-import { trigger, transition, style, animate } from '@angular/animations';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
+import { SlicePipe } from '@angular/common';
+import { CARD_ANIMATION, FADE_IN_UP, SLIDE_IN_UP } from '../../utils/animations';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';
@@ -20,26 +20,11 @@ type ViewMode = 'grid' | 'list';
   selector: 'app-series-list',
   templateUrl: './series-list.component.html',
   styleUrls: ['./series-list.component.scss'],
-  imports: [CommonModule, MaterialModule, FormsModule, RouterModule],
+  imports: [MaterialModule, FormsModule, RouterModule, SlicePipe],
   animations: [
-    trigger('fadeInUp', [
-      transition(':enter', [
-        style({ transform: 'translateY(30px)', opacity: 0 }),
-        animate('400ms ease-out', style({ transform: 'translateY(0)', opacity: 1 }))
-      ])
-    ]),
-    trigger('slideInUp', [
-      transition(':enter', [
-        style({ transform: 'translateY(20px)', opacity: 0 }),
-        animate('300ms ease-out', style({ transform: 'translateY(0)', opacity: 1 }))
-      ])
-    ]),
-    trigger('cardAnimation', [
-      transition(':enter', [
-        style({ transform: 'scale(0.95) translateY(20px)', opacity: 0 }),
-        animate('350ms ease-out', style({ transform: 'scale(1) translateY(0)', opacity: 1 }))
-      ])
-    ])
+    FADE_IN_UP,
+    SLIDE_IN_UP,
+    CARD_ANIMATION
   ]
 })
 export class SeriesListComponent implements OnInit, OnDestroy {

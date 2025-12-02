@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MaterialModule } from '../../../material.module';
@@ -34,7 +34,7 @@ export interface ComicMatchDialogData {
   selector: 'app-comic-match-selection',
   templateUrl: './comic-match-selection.component.html',
   styleUrls: ['./comic-match-selection.component.scss'],
-  imports: [CommonModule, MaterialModule],
+  imports: [MaterialModule],
 })
 export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   sessionId: string = '';

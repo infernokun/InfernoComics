@@ -1,9 +1,4 @@
 export class DateUtils {
-  /**
-   * Format date with time in a readable format
-   * @param date The date to format
-   * @returns Formatted date string
-   */
   static formatDateWithTime(date: Date | null | undefined): string {
     if (!date) return '';
 

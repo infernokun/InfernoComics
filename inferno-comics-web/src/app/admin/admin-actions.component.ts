@@ -6,7 +6,7 @@ import {
 import { ICellRendererParams } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
 import { MaterialModule } from '../material.module';
-import { CommonModule } from '@angular/common';
+
 
 export interface AdminActionRendererParams extends ICellRendererParams {
   viewClick: (data: any) => void;
@@ -26,29 +26,39 @@ export interface AdminActionRendererParams extends ICellRendererParams {
         <mat-icon class="sm-icon">more_vert</mat-icon>
       </button>
       <mat-menu #menu="matMenu">
-        <button *ngIf="params?.showPlay" mat-menu-item (click)="play()">
-          <mat-icon>play_arrow</mat-icon>
-          <span>Play</span>
-        </button>
-        <button *ngIf="params?.showAdd" mat-menu-item (click)="add()">
-          <mat-icon>add</mat-icon>
-          <span>Add</span>
-        </button>
-        <button *ngIf="!params || !params.data || (!!params.data && !!params.viewClick)" mat-menu-item (click)="view()">
-          <mat-icon>visibility</mat-icon>
-          <span>View</span>
-        </button>
-        <button *ngIf="!params || !params.data || (!!params.data && !!params.editClick)" mat-menu-item (click)="edit()">
-          <mat-icon>edit</mat-icon>
-          <span>Edit</span>
-        </button>
-        <button *ngIf="!params || !params.data || (!!params.data && !!params.deleteClick)" mat-menu-item (click)="delete()">
-          <mat-icon color="warn">delete</mat-icon>
-          <span>Delete</span>
-        </button>
+        @if (params?.showPlay) {
+          <button mat-menu-item (click)="play()">
+            <mat-icon>play_arrow</mat-icon>
+            <span>Play</span>
+          </button>
+        }
+        @if (params?.showAdd) {
+          <button mat-menu-item (click)="add()">
+            <mat-icon>add</mat-icon>
+            <span>Add</span>
+          </button>
+        }
+        @if (!params || !params.data || (!!params.data && !!params.viewClick)) {
+          <button mat-menu-item (click)="view()">
+            <mat-icon>visibility</mat-icon>
+            <span>View</span>
+          </button>
+        }
+        @if (!params || !params.data || (!!params.data && !!params.editClick)) {
+          <button mat-menu-item (click)="edit()">
+            <mat-icon>edit</mat-icon>
+            <span>Edit</span>
+          </button>
+        }
+        @if (!params || !params.data || (!!params.data && !!params.deleteClick)) {
+          <button mat-menu-item (click)="delete()">
+            <mat-icon color="warn">delete</mat-icon>
+            <span>Delete</span>
+          </button>
+        }
       </mat-menu>
     </span>
-  `,
+    `,
   styles: [`
     .row {
       display: flex;
@@ -81,7 +91,7 @@ export interface AdminActionRendererParams extends ICellRendererParams {
   `],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, MaterialModule]
+  imports: [MaterialModule]
 })
 export class AdminActionsComponent implements ICellRendererAngularComp {
   params?: AdminActionRendererParams;

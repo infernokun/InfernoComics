@@ -71,8 +71,6 @@ public class IssueService {
     }
 
     public List<Issue> getAllIssues() {
-        log.info("Fetching all issues from database");
-
         List<Issue> cachedIssues = getCachedValue(CacheConstants.CacheNames.ISSUE_LIST, CacheConstants.CacheKeys.ALL_ISSUES_LIST);
 
         if (cachedIssues != null) {

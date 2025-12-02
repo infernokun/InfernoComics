@@ -1,129 +1,158 @@
 <div class="processing-status-container">
-  
+
   <button mat-icon-button
-          [class]="getButtonClass()"
-          [disabled]="false"
-          (click)="toggleOverlay($event)">
+    [class]="getButtonClass()"
+    [disabled]="false"
+    (click)="toggleOverlay($event)">
     <mat-icon [class]="getIconClass()">{{ getIconName() }}</mat-icon>
-    
-    <span *ngIf="currentStatus.totalActive > 0" class="item-count-badge">
-      {{ currentStatus.totalActive }}
-    </span>
+
+    @if (currentStatus.totalActive > 0) {
+      <span class="item-count-badge">
+        {{ currentStatus.totalActive }}
+      </span>
+    }
   </button>
 
-  <div *ngIf="showOverlay" 
-       class="processing-overlay"
-       [@slideIn]>
-    
-    <div class="overlay-header">
-      <div class="header-title">
-        <mat-icon class="header-icon">{{ getIconName() }}</mat-icon>
-        <span>Processing Status</span>
+  @if (showOverlay) {
+    <div
+      class="processing-overlay"
+      [@slideIn]>
+      <div class="overlay-header">
+        <div class="header-title">
+          <mat-icon class="header-icon">{{ getIconName() }}</mat-icon>
+          <span>Processing Status</span>
+        </div>
+        <div class="header-summary">
+          @if (currentStatus.totalProcessing > 0) {
+            <span class="processing-count">
+              {{ currentStatus.totalProcessing }} Processing
+            </span>
+          }
+          @if (currentStatus.totalQueued > 0) {
+            <span class="queued-count">
+              {{ currentStatus.totalQueued }} Queued
+            </span>
+          }
+          @if (currentStatus.totalActive === 0) {
+            <span class="idle-text">
+              No active tasks
+            </span>
+          }
+        </div>
       </div>
-      <div class="header-summary">
-        <span *ngIf="currentStatus.totalProcessing > 0" class="processing-count">
-          {{ currentStatus.totalProcessing }} Processing
-        </span>
-        <span *ngIf="currentStatus.totalQueued > 0" class="queued-count">
-          {{ currentStatus.totalQueued }} Queued
-        </span>
-        <span *ngIf="currentStatus.totalActive === 0" class="idle-text">
-          No active tasks
-        </span>
+      <div class="overlay-content">
+        @if (isLoading) {
+          <div class="skeleton-container">
+            @for (item of [1,2,3]; track item) {
+              <div class="skeleton-item">
+                <div class="skeleton-header">
+                  <div class="skeleton-status">
+                    <div class="skeleton-icon"></div>
+                    <div class="skeleton-text skeleton-status-text"></div>
+                    <div class="skeleton-name"></div>
+                  </div>
+                </div>
+                <div class="skeleton-meta">
+                  <div class="skeleton-text" style="width: 150px; height: 11px;"></div>
+                  <div class="skeleton-text" style="width: 80px; height: 11px;"></div>
+                  <div class="skeleton-progress-percent"></div>
+                </div>
+                <div class="skeleton-progress-bar"></div>
+                <div class="skeleton-details">
+                  <div class="skeleton-time"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+        @if (!isLoading) {
+          <div>
+            @if (currentStatus.items.length === 0) {
+              <div class="no-activity">
+                <mat-icon class="no-activity-icon">hourglass_empty</mat-icon>
+                <div class="no-activity-text">No recent processing activity</div>
+              </div>
+            }
+            @if (getSortedItems().length > 0) {
+              <div class="items-container">
+                @for (item of getSortedItems(); track item; let i = $index) {
+                  <div class="processing-item" [class]="getItemClass(item)">
+                    <button class="dismiss-btn" mat-button (click)="dismissProgressData(item.id!)" [disabled]="pendingDismissIds.has(item.id!)">
+                      @if (pendingDismissIds.has(item.id!)) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      }
+                      @if (!pendingDismissIds.has(item.id!)) {
+                        <span>Dismiss</span>
+                      }
+                    </button>
+                    <div class="item-header">
+                      <div class="item-status">
+                        <span class="item-index">{{i + 1}}.</span>
+                        <mat-icon class="status-icon" [class]="getStatusIconClass(item)">
+                          {{ getStatusIcon(item) }}
+                        </mat-icon>
+                        <span class="status-text">{{ getStatusText(item) }}</span>
+                        <div class="item-name" [title]="item.getDisplayName()">
+                          {{ item.getDisplayName() }}
+                        </div>
+                      </div>
+                      <div class="item-meta">
+                        <div class="item-series" [title]="getSeriesInfo(item)">
+                          {{ getSeriesDisplay(item) }} <span class="series-id">({{ getSeriesId(item) }})</span>
+                        </div>
+                        <div class="item-user" [title]="'Started by: ' + getUserDisplay(item)">
+                          {{ getUserDisplay(item) }}
+                        </div>
+                        @if (item.percentageComplete !== undefined) {
+                          <div class="item-progress">
+                            {{ item.percentageComplete }}%
+                          </div>
+                        }
+                      </div>
+                    </div>
+                    @if (item.state === progressState.PROCESSING && item.percentageComplete !== undefined) {
+                      <div
+                        class="progress-container">
+                        <mat-progress-bar mode="determinate"
+                          [value]="item.percentageComplete"
+                          class="progress-bar">
+                        </mat-progress-bar>
+                      </div>
+                    }
+                    <div class="item-details">
+                      <span class="duration">{{ getItemTimeInfo(item) }}</span>
+                      @if (item.state === progressState.PROCESSING && getEstimatedTime(item)) {
+                        <span
+                          class="estimated-time">
+                          • ETA: {{ getEstimatedTime(item) }}
+                        </span>
+                      }
+                      @if (getItemAdditionalInfo(item)) {
+                        <span class="additional-info">
+                          • {{ getItemAdditionalInfo(item) }}
+                        </span>
+                      }
+                      @if (item.errorMessage && item.state === progressState.ERROR) {
+                        <div
+                          class="error-message">
+                          {{ item.errorMessage }}
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            @if (currentStatus.items.length > maxDisplayItems) {
+              <div class="show-more">
+                <button mat-button class="show-more-btn">
+                  View all {{ currentStatus.items.length }} items
+                </button>
+              </div>
+            }
+          </div>
+        }
       </div>
     </div>
-
-    <div class="overlay-content">
-      <div *ngIf="isLoading" class="skeleton-container">
-        <div *ngFor="let item of [1,2,3]" class="skeleton-item">
-          <div class="skeleton-header">
-            <div class="skeleton-status">
-              <div class="skeleton-icon"></div>
-              <div class="skeleton-text skeleton-status-text"></div>
-              <div class="skeleton-name"></div>
-            </div>
-          </div>
-          <div class="skeleton-meta">
-            <div class="skeleton-text" style="width: 150px; height: 11px;"></div>
-            <div class="skeleton-text" style="width: 80px; height: 11px;"></div>
-            <div class="skeleton-progress-percent"></div>
-          </div>
-          <div class="skeleton-progress-bar"></div>
-          <div class="skeleton-details">
-            <div class="skeleton-time"></div>
-          </div>
-        </div>
-      </div>
-
-      <div *ngIf="!isLoading">
-        <div *ngIf="currentStatus.items.length === 0" class="no-activity">
-          <mat-icon class="no-activity-icon">hourglass_empty</mat-icon>
-          <div class="no-activity-text">No recent processing activity</div>
-        </div>
-
-        <div *ngIf="getSortedItems().length > 0" class="items-container">
-          <div *ngFor="let item of getSortedItems(); let i = index" class="processing-item" [class]="getItemClass(item)">
-            <button class="dismiss-btn" mat-button (click)="dismissProgressData(item.id!)" [disabled]="pendingDismissIds.has(item.id!)">
-              <mat-spinner *ngIf="pendingDismissIds.has(item.id!)" diameter="20"></mat-spinner>
-              <span *ngIf="!pendingDismissIds.has(item.id!)">Dismiss</span>
-            </button>
-            <div class="item-header">
-              <div class="item-status">
-                <span class="item-index">{{i + 1}}.</span>
-                <mat-icon class="status-icon" [class]="getStatusIconClass(item)">
-                  {{ getStatusIcon(item) }}
-                </mat-icon>
-                <span class="status-text">{{ getStatusText(item) }}</span>
-                <div class="item-name" [title]="item.getDisplayName()">
-                  {{ item.getDisplayName() }}
-                </div>
-              </div>
-              
-              <div class="item-meta">
-                <div class="item-series" [title]="getSeriesInfo(item)">
-                  {{ getSeriesDisplay(item) }} <span class="series-id">({{ getSeriesId(item) }})</span>
-                </div>
-                <div class="item-user" [title]="'Started by: ' + getUserDisplay(item)">
-                  {{ getUserDisplay(item) }}
-                </div>
-                <div class="item-progress" *ngIf="item.percentageComplete !== undefined">
-                  {{ item.percentageComplete }}%
-                </div>
-              </div>
-            </div>
-
-            <div *ngIf="item.state === progressState.PROCESSING && item.percentageComplete !== undefined" 
-                 class="progress-container">
-              <mat-progress-bar mode="determinate" 
-                                [value]="item.percentageComplete"
-                                class="progress-bar">
-              </mat-progress-bar>
-            </div>
-
-            <div class="item-details">
-              <span class="duration">{{ getItemTimeInfo(item) }}</span>
-              <span *ngIf="item.state === progressState.PROCESSING && getEstimatedTime(item)" 
-                    class="estimated-time">
-                • ETA: {{ getEstimatedTime(item) }}
-              </span>
-              <span *ngIf="getItemAdditionalInfo(item)" class="additional-info">
-                • {{ getItemAdditionalInfo(item) }}
-              </span>
-
-              <div *ngIf="item.errorMessage && item.state === progressState.ERROR" 
-                   class="error-message">
-                {{ item.errorMessage }}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div *ngIf="currentStatus.items.length > maxDisplayItems" class="show-more">
-          <button mat-button class="show-more-btn">
-            View all {{ currentStatus.items.length }} items
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+  }
 </div>

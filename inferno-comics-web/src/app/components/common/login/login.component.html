@@ -2,60 +2,78 @@
 <div class="login-container">
   <div class="login-header">
     <h2>Sign In</h2>
-    <p *ngIf="!isLocked">Welcome back! Please enter your credentials</p>
-    <p *ngIf="isLocked" class="text-warning">
-      Account temporarily locked. Please try again in {{Math.ceil(lockoutTimeLeft / 1000)}} seconds.
-    </p>
+    @if (!isLocked) {
+      <p>Welcome back! Please enter your credentials</p>
+    }
+    @if (isLocked) {
+      <p class="text-warning">
+        Account temporarily locked. Please try again in {{Math.ceil(lockoutTimeLeft / 1000)}} seconds.
+      </p>
+    }
   </div>
-  
+
   <form [formGroup]="loginForm" (ngSubmit)="loginClick()">
     <div class="form-group">
       <label for="username">Email/Username</label>
       <div class="input-wrapper">
         <i class="material-icons icon-prefix">person</i>
-        <input 
-          type="text" 
-          class="form-control" 
-          id="username" 
+        <input
+          type="text"
+          class="form-control"
+          id="username"
           formControlName="username"
           placeholder="Enter your email or username"
           [class.is-invalid]="usernameControl.invalid && usernameControl.touched"
           autocomplete="username">
       </div>
-      <div *ngIf="usernameControl.invalid && usernameControl.touched" class="error-message">
-        <small *ngIf="usernameControl.errors?.['required']">Username is required</small>
-        <small *ngIf="usernameControl.errors?.['minlength']">Username must be at least 3 characters</small>
-      </div>
+      @if (usernameControl.invalid && usernameControl.touched) {
+        <div class="error-message">
+          @if (usernameControl.errors?.['required']) {
+            <small>Username is required</small>
+          }
+          @if (usernameControl.errors?.['minlength']) {
+            <small>Username must be at least 3 characters</small>
+          }
+        </div>
+      }
     </div>
-    
+
     <div class="form-group">
       <label for="password">Password</label>
       <div class="input-wrapper">
         <i class="material-icons icon-prefix">lock</i>
-        <input 
-          [type]="hidePassword ? 'password' : 'text'" 
-          class="form-control" 
-          id="password" 
+        <input
+          [type]="hidePassword ? 'password' : 'text'"
+          class="form-control"
+          id="password"
           formControlName="password"
           placeholder="Enter your password"
           [class.is-invalid]="passwordControl.invalid && passwordControl.touched"
           autocomplete="current-password">
-        <i 
-          class="material-icons icon-suffix clickable" 
+        <i
+          class="material-icons icon-suffix clickable"
           (click)="hidePassword = !hidePassword">
           {{hidePassword ? 'visibility_off' : 'visibility'}}
         </i>
       </div>
-      <div *ngIf="passwordControl.invalid && passwordControl.touched" class="error-message">
-        <small *ngIf="passwordControl.errors?.['required']">Password is required</small>
-        <small *ngIf="passwordControl.errors?.['minlength']">Password must be at least 6 characters</small>
+      @if (passwordControl.invalid && passwordControl.touched) {
+        <div class="error-message">
+          @if (passwordControl.errors?.['required']) {
+            <small>Password is required</small>
+          }
+          @if (passwordControl.errors?.['minlength']) {
+            <small>Password must be at least 6 characters</small>
+          }
+        </div>
+      }
+    </div>
+
+    @if (errorMessage) {
+      <div class="alert alert-danger" role="alert">
+        {{errorMessage}}
       </div>
-    </div>
-    
-    <div *ngIf="errorMessage" class="alert alert-danger" role="alert">
-      {{errorMessage}}
-    </div>
-    
+    }
+
     <div class="form-options">
       <div class="remember-me">
         <input type="checkbox" id="remember-me" [(ngModel)]="rememberMe" [ngModelOptions]="{standalone: true}">
@@ -63,14 +81,18 @@
       </div>
       <a class="forgot-password" (click)="forgotPassword()">Forgot password?</a>
     </div>
-    
+
     <button type="submit" class="btn btn-primary" [disabled]="busy || isLocked">
-      <span *ngIf="!busy">Sign In</span>
-      <div *ngIf="busy" class="spinner">
-        <mat-spinner diameter="20"></mat-spinner>
-      </div>
+      @if (!busy) {
+        <span>Sign In</span>
+      }
+      @if (busy) {
+        <div class="spinner">
+          <mat-spinner diameter="20"></mat-spinner>
+        </div>
+      }
     </button>
-    
+
 
     <div class="register-prompt">
       Don't have an account? <a (click)="register()">Create one</a>

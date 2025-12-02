@@ -17,7 +17,7 @@ import {
 } from 'ag-grid-community';
 import { AdminActionsComponent } from '../../../admin/admin-actions.component';
 import { SeriesService } from '../../../services/series.service';
-import { CommonModule } from '@angular/common';
+
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { MaterialModule } from '../../../material.module';
 import { ComicMatch } from '../../../models/comic-match.model';
@@ -182,7 +182,7 @@ import { ProgressData } from '../../../models/progress-data.model';
       }
     `,
   ],
-  imports: [CommonModule, MaterialModule, AgGridModule],
+  imports: [MaterialModule, AgGridModule],
 })
 export class ProgressDataTable implements OnInit, OnDestroy {
   @Input() id!: number;
@@ -606,19 +606,25 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
         <span class="time-label">Started:</span>
         <span class="time-value">{{ formatTime(params?.data?.timeStarted) }}</span>
       </div>
-      <div class="time-row finished" *ngIf="params?.data?.timeFinished">
-        <span class="time-label">Finished:</span>
-        <span class="time-value">{{ formatTime(params?.data?.timeFinished) }}</span>
-      </div>
-      <div class="time-row duration" *ngIf="getDuration()">
-        <span class="time-label">Duration:</span>
-        <span class="time-value duration-text">{{ getDuration() }}</span>
-      </div>
-      <div class="time-row processing" *ngIf="!params?.data?.timeFinished">
-        <span class="time-value processing-text">{{ getProcessingStatus() }}</span>
-      </div>
+      @if (params?.data?.timeFinished) {
+        <div class="time-row finished">
+          <span class="time-label">Finished:</span>
+          <span class="time-value">{{ formatTime(params?.data?.timeFinished) }}</span>
+        </div>
+      }
+      @if (getDuration()) {
+        <div class="time-row duration">
+          <span class="time-label">Duration:</span>
+          <span class="time-value duration-text">{{ getDuration() }}</span>
+        </div>
+      }
+      @if (!params?.data?.timeFinished) {
+        <div class="time-row processing">
+          <span class="time-value processing-text">{{ getProcessingStatus() }}</span>
+        </div>
+      }
     </div>
-  `,
+    `,
   styles: [`
     .time-info-container {
       display: flex;
@@ -666,7 +672,7 @@ export class EvaluationLinkCellRenderer implements ICellRendererAngularComp {
       color: #17a2b8;
     }
   `],
-  imports: [CommonModule]
+  imports: []
 })
 export class TimeInfoCellRenderer implements ICellRendererAngularComp {
   params: any;
@@ -758,23 +764,29 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
       <div class="main-status">
         <span class="status-icon" [style.color]="getStatusColor()">{{ getStatusIcon() }}</span>
         <span class="status-text" [style.color]="getStatusColor()">{{ getMainStatusText() }}</span>
-        <span> {{params?.data?.startedBy}} <span *ngIf="params.data.state == 'COMPLETE'"> - <button mat-button class="replay-button" (click)="replaySession()">REPLAY</button></span></span>
+        <span> {{params?.data?.startedBy}} @if (params.data.state == 'COMPLETE') {
+          <span> - <button mat-button class="replay-button" (click)="replaySession()">REPLAY</button></span>
+        }</span>
       </div>
-      
+    
       <!-- Progress bar for processing items -->
-      <div class="progress-section" *ngIf="shouldShowProgress()">
-        <div class="progress-bar" [class.progress-processing]="isProcessing()">
-          <div class="progress-fill" [style.width.%]="getPercentage()"></div>
-          <div class="progress-text">{{ getPercentage() }}%</div>
+      @if (shouldShowProgress()) {
+        <div class="progress-section">
+          <div class="progress-bar" [class.progress-processing]="isProcessing()">
+            <div class="progress-fill" [style.width.%]="getPercentage()"></div>
+            <div class="progress-text">{{ getPercentage() }}%</div>
+          </div>
         </div>
-      </div>
-      
+      }
+    
       <!-- Status message (smaller font) -->
-      <div class="status-message" *ngIf="params?.data?.statusMessage">
-        {{ params.data.statusMessage }}
-      </div>
+      @if (params?.data?.statusMessage) {
+        <div class="status-message">
+          {{ params.data.statusMessage }}
+        </div>
+      }
     </div>
-  `,
+    `,
   styles: [`
     .combined-status-container {
       display: flex;
@@ -871,7 +883,7 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
       background: #0056b3;
     }
   `],
-  imports: [CommonModule]
+  imports: []
 })
 export class CombinedStatusRenderer implements ICellRendererAngularComp {
   params: any;

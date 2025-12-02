@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { CommonModule } from '@angular/common';
+
 import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, finalize, debounceTime } from 'rxjs';
@@ -20,7 +20,7 @@ interface SeriesDisplayState {
   selector: 'app-issues-list',
   templateUrl: './issues-list.component.html',
   styleUrls: ['./issues-list.component.scss'],
-  imports: [CommonModule, MaterialModule, FormsModule, RouterModule]
+  imports: [MaterialModule, FormsModule, RouterModule]
 })
 export class IssuesListComponent implements OnInit, OnDestroy {
   loading = true;

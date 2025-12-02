@@ -1,90 +1,102 @@
-<div class="series-detail-container" *ngIf="!loading"> 
-  <app-progress-data-table [id]="series?.id!" (resultEmitter)="handleProgressDataResult($event)"></app-progress-data-table>
-  <div class="series-header" *ngIf="series">
-    <div class="series-image">
-      <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name"
-        onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-    </div>
-    <div class="series-info">
-      <div class="series-title-header">
-        <h1>{{ series.name }}</h1>
-        <button mat-icon-button 
-                (click)="manageComicVineSeries()" 
-                matTooltip="Manage Comic Vine Series" 
-                class="title-edit-btn">
-          <mat-icon>edit</mat-icon>
-        </button>
-        <a mat-stroked-button color="accent" [routerLink]="['/series', series.id, 'admin']">
-        <mat-icon>admin_panel_settings</mat-icon>
-        Admin View
-        </a>
-        <button mat-stroked-button color="warn" (click)="syncSeries(series.id!)">
-          <mat-icon>key</mat-icon>
-          Sync Series
-        </button>
-      </div>
-      <h2>{{ series.publisher }}</h2>
-      <div class="series-meta">
-        <div class="meta-item">
-          <mat-icon>calendar_today</mat-icon>
-          <span>Started: {{ series.startYear }}</span>
-        </div>
-        
-        <!-- Enhanced collection status item -->
-        <div class="meta-item collection-item">
-          <mat-icon>library_books</mat-icon>
-          <div class="collection-details">
-            <div class="collection-count">
-              <span>{{ series.issuesOwnedCount }} / {{ series.issuesAvailableCount }} issues in collection</span>
-              <span class="completion-badge" *ngIf="isSeriesComplete()">
-                <mat-icon>check_circle</mat-icon>
-                Complete!
-              </span>
-            </div>
-            
-            <div class="collection-progress" *ngIf="(series.issuesAvailableCount || 0) > 0">
-              <div class="progress-bar-wrapper">
-                <div class="progress-bar-fill" 
-                     [style.width.%]="getCompletionPercentage()"
-                     [class.complete]="isSeriesComplete()">
-                </div>
-              </div>
-              <span class="progress-text" [class.complete]="isSeriesComplete()">
-                {{ getCompletionPercentage() }}%
-              </span>
-            </div>
+@if (!loading) {
+  <div class="series-detail-container">
+    <app-progress-data-table [id]="series?.id!" (resultEmitter)="handleProgressDataResult($event)"></app-progress-data-table>
+    @if (series) {
+      <div class="series-header">
+        <div class="series-image">
+          <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name"
+            onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
           </div>
-        </div>
-        
-        <div class="meta-item">
-          <mat-icon>description</mat-icon>
-          Comic Vine Series Identification:
-          <span *ngFor="let id of series.comicVineIds; let last = last">
-            {{ id }}<span *ngIf="!last">, </span>
-          </span>
-        </div>
-        
-        <div class="meta-item">
-          <mat-icon>description</mat-icon>
-          GCD Identification:
-          <span *ngFor="let id of series.gcdIds; let last = last">
-            {{ id }}<span *ngIf="!last">, </span>
-          </span>
+          <div class="series-info">
+            <div class="series-title-header">
+              <h1>{{ series.name }}</h1>
+              <button mat-icon-button
+                (click)="manageComicVineSeries()"
+                matTooltip="Manage Comic Vine Series"
+                class="title-edit-btn">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <a mat-stroked-button color="accent" [routerLink]="['/series', series.id, 'admin']">
+              <mat-icon>admin_panel_settings</mat-icon>
+              Admin View
+            </a>
+            <button mat-stroked-button color="warn" (click)="syncSeries(series.id!)">
+              <mat-icon>key</mat-icon>
+              Sync Series
+            </button>
+          </div>
+          <h2>{{ series.publisher }}</h2>
+          <div class="series-meta">
+            <div class="meta-item">
+              <mat-icon>calendar_today</mat-icon>
+              <span>Started: {{ series.startYear }}</span>
+            </div>
+            <!-- Enhanced collection status item -->
+            <div class="meta-item collection-item">
+              <mat-icon>library_books</mat-icon>
+              <div class="collection-details">
+                <div class="collection-count">
+                  <span>{{ series.issuesOwnedCount }} / {{ series.issuesAvailableCount }} issues in collection</span>
+                  @if (isSeriesComplete()) {
+                    <span class="completion-badge">
+                      <mat-icon>check_circle</mat-icon>
+                      Complete!
+                    </span>
+                  }
+                </div>
+                @if ((series.issuesAvailableCount || 0) > 0) {
+                  <div class="collection-progress">
+                    <div class="progress-bar-wrapper">
+                      <div class="progress-bar-fill"
+                        [style.width.%]="getCompletionPercentage()"
+                        [class.complete]="isSeriesComplete()">
+                      </div>
+                    </div>
+                    <span class="progress-text" [class.complete]="isSeriesComplete()">
+                      {{ getCompletionPercentage() }}%
+                    </span>
+                  </div>
+                }
+              </div>
+            </div>
+            <div class="meta-item">
+              <mat-icon>description</mat-icon>
+              Comic Vine Series Identification:
+              @for (id of series.comicVineIds; track id; let last = $last) {
+                <span>
+                  {{ id }}@if (!last) {
+                  <span>, </span>
+                }
+              </span>
+            }
+          </div>
+          <div class="meta-item">
+            <mat-icon>description</mat-icon>
+            GCD Identification:
+            @for (id of series.gcdIds; track id; let last = $last) {
+              <span>
+                {{ id }}@if (!last) {
+                <span>, </span>
+              }
+            </span>
+          }
         </div>
       </div>
-      <div class="description" *ngIf="series.description">
-        @if (series.generatedDescription) {
-          <p class="generated-description">Generated Description</p>
-        }
-        {{ limitedDescription }}
-
-        <button 
-          *ngIf="series.description.length > DESCRIPTION_LIMIT" 
-          (click)="toggleDescription()" 
-          class="show-more-btn">
-          {{ showFullDescription ? 'Show less' : 'Show more' }}
-        </button>
-      </div>
+      @if (series.description) {
+        <div class="description">
+          @if (series.generatedDescription) {
+            <p class="generated-description">Generated Description</p>
+          }
+          {{ limitedDescription }}
+          @if (series.description.length > DESCRIPTION_LIMIT) {
+            <button
+              (click)="toggleDescription()"
+              class="show-more-btn">
+              {{ showFullDescription ? 'Show less' : 'Show more' }}
+            </button>
+          }
+        </div>
+      }
       @if (calculateTotalPurchasePrice() != 0 && calculateCurrentValue() != 0) {
         <div class="value-info">
           <div class="value-card">
@@ -115,21 +127,22 @@
           Reverify Series
         </button>
         @if (series.generatedDescription) {
-        <button mat-stroked-button color="warn" (click)="generateNewDescription(series.id!)">
-          <mat-icon>key</mat-icon>
-          Generate New Description
-        </button>
+          <button mat-stroked-button color="warn" (click)="generateNewDescription(series.id!)">
+            <mat-icon>key</mat-icon>
+            Generate New Description
+          </button>
         }
       </div>
     </div>
   </div>
-
-  <div class="content-tabs">
-    <mat-tab-group [(selectedIndex)]="selectedTabIndex">
-      <mat-tab label="My Collection">
-        <div class="tab-content">
-          <!-- Collection Controls -->
-          <div class="collection-controls" *ngIf="issues.length > 0">
+}
+<div class="content-tabs">
+  <mat-tab-group [(selectedIndex)]="selectedTabIndex">
+    <mat-tab label="My Collection">
+      <div class="tab-content">
+        <!-- Collection Controls -->
+        @if (issues.length > 0) {
+          <div class="collection-controls">
             <!-- View Toggle -->
             <div class="view-controls">
               <button mat-icon-button [matTooltip]="isCompactView ? 'Switch to Grid View' : 'Switch to Compact View'"
@@ -138,156 +151,171 @@
               </button>
               <span class="view-label">{{ isCompactView ? 'Compact View' : 'Grid View' }}</span>
             </div>
-
             <!-- Collection Management -->
             <div class="collection-actions">
               <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
                 <mat-icon>photo_library</mat-icon>
                 Add Comics By Image
               </button>
-
-              <button mat-stroked-button 
-                      color="warn" 
-                      matTooltip="Delete all issues in this collection" 
-                      (click)="deleteAllIssues()"
-                      [disabled]="issues.length === 0">
+              <button mat-stroked-button
+                color="warn"
+                matTooltip="Delete all issues in this collection"
+                (click)="deleteAllIssues()"
+                [disabled]="issues.length === 0">
                 <mat-icon>delete_sweep</mat-icon>
                 Delete All Issues
               </button>
             </div>
           </div>
-
-          <!-- Single row for buttons when no issues -->
-          <div class="no-issues-actions" *ngIf="issues.length === 0">
+        }
+        <!-- Single row for buttons when no issues -->
+        @if (issues.length === 0) {
+          <div class="no-issues-actions">
             <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
               <mat-icon>photo_library</mat-icon>
               Add Comics By Image
             </button>
           </div>
-
-          <!-- Grid View (Default) -->
-          <div class="collection-grid" *ngIf="issues.length > 0 && !isCompactView">
-            <mat-card *ngFor="let comic of issues" class="comic-card">
-              <div class="comic-image">
-                <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + comic.issueNumber"
-                  onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                <div class="key-issue-badge" *ngIf="comic.keyIssue">
-                  <mat-icon>star</mat-icon>
-                </div>
-              </div>
-              <mat-card-header>
-                <mat-card-title>Issue #{{ comic.issueNumber }}</mat-card-title>
-                <mat-card-subtitle>{{ comic.title }}</mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="comic-details">
-                  <div class="detail-row">
-                    <span class="label">Condition:</span>
-                    <span class="value">{{ comic.condition }}</span>
+        }
+        <!-- Grid View (Default) -->
+        @if (issues.length > 0 && !isCompactView) {
+          <div class="collection-grid">
+            @for (comic of issues; track comic) {
+              <mat-card class="comic-card">
+                <div class="comic-image">
+                  <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + comic.issueNumber"
+                    onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+                    @if (comic.keyIssue) {
+                      <div class="key-issue-badge">
+                        <mat-icon>star</mat-icon>
+                      </div>
+                    }
                   </div>
-                  <div class="detail-row">
-                    <span class="label">Purchase Price:</span>
-                    <span class="value">${{ comic.purchasePrice }}</span>
-                  </div>
-                  <div class="detail-row">
-                    <span class="label">Current Value:</span>
-                    <span class="value">${{ comic.currentValue }}</span>
-                  </div>
-                </div>
-          
-                <!-- Updated issue description with toggle -->
-                <div class="issue-description-container" *ngIf="comic.description">
-                  <p class="issue-description">{{ getIssueDescription(comic) }}</p>
-                  <button *ngIf="shouldShowIssueToggle(comic)" (click)="toggleIssueDescription(comic.id!)"
-                    class="show-more-btn issue-toggle">
-                    {{ isIssueDescriptionExpanded(comic.id!) ? 'Show less' : 'Show more' }}
-                  </button>
-                </div>
-          
-                <p class="cover-date" *ngIf="comic.coverDate">Cover Date: {{ comic.coverDate }}</p>
-              </mat-card-content>
-              <mat-card-actions>
-                <button mat-button color="accent" (click)="viewIssue(comic.id!)">
-                  <mat-icon>visibility</mat-icon>
-                  View
-                </button>
-                <button mat-button color="primary" (click)="editIssue(comic)">
-                  <mat-icon>edit</mat-icon>
-                  Edit
-                </button>
-                <button mat-button color="warn" (click)="deleteIssue(comic.id!)">
-                  <mat-icon>delete</mat-icon>
-                  Delete
-                </button>
-              </mat-card-actions>
-            </mat-card>
-          </div>
-
-          <!-- Compact View -->
-          <div class="collection-list" *ngIf="issues.length > 0 && isCompactView">
-            <mat-card class="compact-card" *ngFor="let issue of issues">
-              <div class="compact-content">
-                <!-- Thumbnail -->
-                <div class="compact-image">
-                  <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" 
-                       [alt]="'Issue #' + issue.issueNumber"
-                       onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                  <div class="key-issue-badge" *ngIf="issue.variant">
-                    <mat-icon>star</mat-icon>
-                  </div>
-                </div>
-
-                <!-- Comic Information -->
-                <div class="compact-info">
-                  <div class="compact-header">
-                    <h3 class="issue-title">Issue #{{ issue.issueNumber }}</h3>
-                    <span class="issue-subtitle" *ngIf="issue.title">{{ issue.title }}</span>
-                  </div>
-
-                  <div class="compact-details">
-                    <span class="detail-item">
-                      <mat-icon class="detail-icon">grade</mat-icon>
-                      {{ issue.condition }}
-                    </span>
-                    <span class="detail-item">
-                      <mat-icon class="detail-icon">attach_money</mat-icon>
-                      ${{ issue.purchasePrice }}
-                    </span>
-                    <span class="detail-item">
-                      <mat-icon class="detail-icon">trending_up</mat-icon>
-                      ${{ issue.currentValue }}
-                    </span>
-                    <span class="detail-item" *ngIf="issue.coverDate">
-                      <mat-icon class="detail-icon">calendar_today</mat-icon>
-                      {{ issue.coverDate | date:'MMM yyyy' }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="compact-actions">
-                  <button mat-icon-button color="accent" 
-                          matTooltip="View Details" 
-                          (click)="viewIssue(issue.id!)">
+                  <mat-card-header>
+                    <mat-card-title>Issue #{{ comic.issueNumber }}</mat-card-title>
+                    <mat-card-subtitle>{{ comic.title }}</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <div class="comic-details">
+                      <div class="detail-row">
+                        <span class="label">Condition:</span>
+                        <span class="value">{{ comic.condition }}</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="label">Purchase Price:</span>
+                        <span class="value">${{ comic.purchasePrice }}</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="label">Current Value:</span>
+                        <span class="value">${{ comic.currentValue }}</span>
+                      </div>
+                    </div>
+                    <!-- Updated issue description with toggle -->
+                    @if (comic.description) {
+                      <div class="issue-description-container">
+                        <p class="issue-description">{{ getIssueDescription(comic) }}</p>
+                        @if (shouldShowIssueToggle(comic)) {
+                          <button (click)="toggleIssueDescription(comic.id!)"
+                            class="show-more-btn issue-toggle">
+                          {{ isIssueDescriptionExpanded(comic.id!) ? 'Show less' : 'Show more' }}
+                        </button>
+                      }
+                    </div>
+                  }
+                  @if (comic.coverDate) {
+                    <p class="cover-date">Cover Date: {{ comic.coverDate }}</p>
+                  }
+                </mat-card-content>
+                <mat-card-actions>
+                  <button mat-button color="accent" (click)="viewIssue(comic.id!)">
                     <mat-icon>visibility</mat-icon>
+                    View
                   </button>
-                  <button mat-icon-button color="primary" 
-                          matTooltip="Edit Comic" 
-                          (click)="editIssue(issue)">
+                  <button mat-button color="primary" (click)="editIssue(comic)">
                     <mat-icon>edit</mat-icon>
+                    Edit
                   </button>
-                  <button mat-icon-button color="warn" 
-                          matTooltip="Delete Comic" 
-                          (click)="deleteIssue(issue.id!)">
+                  <button mat-button color="warn" (click)="deleteIssue(comic.id!)">
                     <mat-icon>delete</mat-icon>
+                    Delete
                   </button>
-                </div>
-              </div>
-            </mat-card>
+                </mat-card-actions>
+              </mat-card>
+            }
           </div>
-
-          <!-- Empty Collection State -->
-          <div class="empty-collection" *ngIf="issues.length === 0">
+        }
+        <!-- Compact View -->
+        @if (issues.length > 0 && isCompactView) {
+          <div class="collection-list">
+            @for (issue of issues; track issue) {
+              <mat-card class="compact-card">
+                <div class="compact-content">
+                  <!-- Thumbnail -->
+                  <div class="compact-image">
+                    <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'"
+                      [alt]="'Issue #' + issue.issueNumber"
+                      onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+                      @if (issue.variant) {
+                        <div class="key-issue-badge">
+                          <mat-icon>star</mat-icon>
+                        </div>
+                      }
+                    </div>
+                    <!-- Comic Information -->
+                    <div class="compact-info">
+                      <div class="compact-header">
+                        <h3 class="issue-title">Issue #{{ issue.issueNumber }}</h3>
+                        @if (issue.title) {
+                          <span class="issue-subtitle">{{ issue.title }}</span>
+                        }
+                      </div>
+                      <div class="compact-details">
+                        <span class="detail-item">
+                          <mat-icon class="detail-icon">grade</mat-icon>
+                          {{ issue.condition }}
+                        </span>
+                        <span class="detail-item">
+                          <mat-icon class="detail-icon">attach_money</mat-icon>
+                          ${{ issue.purchasePrice }}
+                        </span>
+                        <span class="detail-item">
+                          <mat-icon class="detail-icon">trending_up</mat-icon>
+                          ${{ issue.currentValue }}
+                        </span>
+                        @if (issue.coverDate) {
+                          <span class="detail-item">
+                            <mat-icon class="detail-icon">calendar_today</mat-icon>
+                            {{ issue.coverDate | date:'MMM yyyy' }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+                    <!-- Action Buttons -->
+                    <div class="compact-actions">
+                      <button mat-icon-button color="accent"
+                        matTooltip="View Details"
+                        (click)="viewIssue(issue.id!)">
+                      <mat-icon>visibility</mat-icon>
+                    </button>
+                    <button mat-icon-button color="primary"
+                      matTooltip="Edit Comic"
+                      (click)="editIssue(issue)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button color="warn"
+                      matTooltip="Delete Comic"
+                      (click)="deleteIssue(issue.id!)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </mat-card>
+            }
+          </div>
+        }
+        <!-- Empty Collection State -->
+        @if (issues.length === 0) {
+          <div class="empty-collection">
             <mat-icon>library_books</mat-icon>
             <h3>No Issues in Collection</h3>
             <p>Start building your collection by adding comic book issues!</p>
@@ -296,103 +324,123 @@
               Add First Issue
             </button>
           </div>
-        </div>
-      </mat-tab>
-
-      <mat-tab label="Browse Issues" *ngIf="series?.comicVineId">
+        }
+      </div>
+    </mat-tab>
+    @if (series?.comicVineId) {
+      <mat-tab label="Browse Issues">
         <div class="tab-content">
           <!-- Selection Toolbar -->
-          <div class="selection-toolbar" *ngIf="comicVineIssues.length > 0">
-            <div class="selection-info">
-              <span class="selection-count" *ngIf="selectedCount > 0">
-                {{ selectedCount }} selected
-              </span>
-              <span class="selection-hint" *ngIf="selectedCount === 0">
-                Click to select, Ctrl+Click for multiple, Shift+Click for range
-              </span>
-            </div>
-
-            <div class="selection-actions">
-              <button mat-button (click)="selectAll()" [disabled]="selectedCount === comicVineIssues.length">
-                <mat-icon>select_all</mat-icon>
-                Select All
-              </button>
-
-              <button mat-button (click)="selectRange()" [disabled]="comicVineIssues.length === 0">
-                <mat-icon>unfold_more</mat-icon>
-                Select Range
-              </button>
-
-              <button mat-button (click)="selectNone()" [disabled]="selectedCount === 0">
-                <mat-icon>clear</mat-icon>
-                Clear Selection
-              </button>
-
-              <button mat-raised-button color="primary" (click)="addSelectedToCollection()"
-                [disabled]="selectedCount === 0">
-                <mat-icon>add_shopping_cart</mat-icon>
-                Add Selected ({{ selectedCount }})
-              </button>
-            </div>
-          </div>
-
-          <!-- Issues Grid -->
-          <div class="browse-grid" *ngIf="!loadingComicVine && comicVineIssues.length > 0">
-            <mat-card *ngFor="let issue of comicVineIssues; let i = index" class="browse-card"
-              [class.selected]="isIssueSelected(issue.id)"
-              (click)="onIssueClick($event, issue.id, i)">
-              <div class="browse-image">
-                <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + issue.issueNumber"
-                  onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                <div class="selection-indicator" *ngIf="isIssueSelected(issue.id)">
-                  <mat-icon>check_circle</mat-icon>
-                </div>
+          @if (comicVineIssues.length > 0) {
+            <div class="selection-toolbar">
+              <div class="selection-info">
+                @if (selectedCount > 0) {
+                  <span class="selection-count">
+                    {{ selectedCount }} selected
+                  </span>
+                }
+                @if (selectedCount === 0) {
+                  <span class="selection-hint">
+                    Click to select, Ctrl+Click for multiple, Shift+Click for range
+                  </span>
+                }
               </div>
-              <mat-card-header>
-                <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
-                <mat-card-subtitle>{{ issue.name }}</mat-card-subtitle>
-              </mat-card-header>
-              <mat-card-content>
-                <!-- Updated browse issue description with toggle -->
-                <div class="issue-description-container" *ngIf="issue.description">
-                  <p class="issue-description">{{ getIssueDescription(issue) }}</p>
-                  <button *ngIf="shouldShowIssueToggle(issue)"
-                    (click)="toggleIssueDescription(issue.id); $event.stopPropagation()" 
-                    class="show-more-btn issue-toggle">
-                    {{ isIssueDescriptionExpanded(issue.id) ? 'Show less' : 'Show more' }}
-                  </button>
-                </div>
-                <p class="cover-date" *ngIf="issue.coverDate">{{ issue.coverDate }}</p>
-              </mat-card-content>
-              <mat-card-actions>
-                <button mat-button color="primary" (click)="addFromComicVine(issue); $event.stopPropagation()">
-                  <mat-icon>add</mat-icon>
-                  Add to Collection
+              <div class="selection-actions">
+                <button mat-button (click)="selectAll()" [disabled]="selectedCount === comicVineIssues.length">
+                  <mat-icon>select_all</mat-icon>
+                  Select All
                 </button>
-              </mat-card-actions>
-            </mat-card>
-          </div>
-
+                <button mat-button (click)="selectRange()" [disabled]="comicVineIssues.length === 0">
+                  <mat-icon>unfold_more</mat-icon>
+                  Select Range
+                </button>
+                <button mat-button (click)="selectNone()" [disabled]="selectedCount === 0">
+                  <mat-icon>clear</mat-icon>
+                  Clear Selection
+                </button>
+                <button mat-raised-button color="primary" (click)="addSelectedToCollection()"
+                  [disabled]="selectedCount === 0">
+                  <mat-icon>add_shopping_cart</mat-icon>
+                  Add Selected ({{ selectedCount }})
+                </button>
+              </div>
+            </div>
+          }
+          <!-- Issues Grid -->
+          @if (!loadingComicVine && comicVineIssues.length > 0) {
+            <div class="browse-grid">
+              @for (issue of comicVineIssues; track issue; let i = $index) {
+                <mat-card class="browse-card"
+                  [class.selected]="isIssueSelected(issue.id)"
+                  (click)="onIssueClick($event, issue.id, i)">
+                  <div class="browse-image">
+                    <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + issue.issueNumber"
+                      onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+                      @if (isIssueSelected(issue.id)) {
+                        <div class="selection-indicator">
+                          <mat-icon>check_circle</mat-icon>
+                        </div>
+                      }
+                    </div>
+                    <mat-card-header>
+                      <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
+                      <mat-card-subtitle>{{ issue.name }}</mat-card-subtitle>
+                    </mat-card-header>
+                    <mat-card-content>
+                      <!-- Updated browse issue description with toggle -->
+                      @if (issue.description) {
+                        <div class="issue-description-container">
+                          <p class="issue-description">{{ getIssueDescription(issue) }}</p>
+                          @if (shouldShowIssueToggle(issue)) {
+                            <button
+                              (click)="toggleIssueDescription(issue.id); $event.stopPropagation()"
+                              class="show-more-btn issue-toggle">
+                            {{ isIssueDescriptionExpanded(issue.id) ? 'Show less' : 'Show more' }}
+                          </button>
+                        }
+                      </div>
+                    }
+                    @if (issue.coverDate) {
+                      <p class="cover-date">{{ issue.coverDate }}</p>
+                    }
+                  </mat-card-content>
+                  <mat-card-actions>
+                    <button mat-button color="primary" (click)="addFromComicVine(issue); $event.stopPropagation()">
+                      <mat-icon>add</mat-icon>
+                      Add to Collection
+                    </button>
+                  </mat-card-actions>
+                </mat-card>
+              }
+            </div>
+          }
           <!-- Loading State -->
-          <div class="loading-container" *ngIf="loadingComicVine">
-            <mat-spinner></mat-spinner>
-            <p>Loading Comic Vine issues...</p>
-          </div>
-
+          @if (loadingComicVine) {
+            <div class="loading-container">
+              <mat-spinner></mat-spinner>
+              <p>Loading Comic Vine issues...</p>
+            </div>
+          }
           <!-- No Issues Found -->
-          <div class="empty-collection" *ngIf="!loadingComicVine && comicVineIssues.length === 0">
-            <mat-icon>search_off</mat-icon>
-            <h3>No Issues Found</h3>
-            <p>No Comic Vine issues found for this series.</p>
-          </div>
+          @if (!loadingComicVine && comicVineIssues.length === 0) {
+            <div class="empty-collection">
+              <mat-icon>search_off</mat-icon>
+              <h3>No Issues Found</h3>
+              <p>No Comic Vine issues found for this series.</p>
+            </div>
+          }
         </div>
       </mat-tab>
-    </mat-tab-group>
-  </div>
+    }
+  </mat-tab-group>
 </div>
+</div>
+}
 
 <!-- Loading State -->
-<div class="loading-container" *ngIf="loading">
-  <mat-spinner></mat-spinner>
-  <p>Loading series details...</p>
-</div>
+@if (loading) {
+  <div class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading series details...</p>
+  </div>
+}

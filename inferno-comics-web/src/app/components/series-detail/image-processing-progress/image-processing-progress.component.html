@@ -4,14 +4,16 @@
     <div class="header-content">
       <div class="icon-container">
         <mat-icon class="processing-icon">photo_library</mat-icon>
-        <div class="pulse-ring" *ngIf="isProcessing"></div>
+        @if (isProcessing) {
+          <div class="pulse-ring"></div>
+        }
       </div>
       <div class="header-text">
         <h2 mat-dialog-title>
           Analyzing Comic Images
         </h2>
         <p class="subtitle">
-        'Finding the best matches for your comics
+          'Finding the best matches for your comics
         </p>
       </div>
     </div>
@@ -28,10 +30,12 @@
           <mat-icon>photo_library</mat-icon>
           <span>Multiple Images</span>
         </div>
-        <div class="processing-status" *ngIf="isProcessing">
-          <mat-spinner diameter="20"></mat-spinner>
-          <span>{{ getProgressSummary() || 'Processing...' }}</span>
-        </div>
+        @if (isProcessing) {
+          <div class="processing-status">
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>{{ getProgressSummary() || 'Processing...' }}</span>
+          </div>
+        }
       </div>
 
       <div class="image-showcase">
@@ -41,13 +45,17 @@
             <div class="image-frame">
               <img [src]="imagePreviews[currentImageIndex]" [alt]="'Current processing image: ' + currentImageName"
                 class="uploaded-image main-image">
-              <div class="scanning-line" *ngIf="isProcessing"></div>
-              <div class="image-overlay" *ngIf="isProcessing">
-                <div class="processing-indicator">
-                  <mat-icon>play_circle</mat-icon>
-                  <span>Processing</span>
+              @if (isProcessing) {
+                <div class="scanning-line"></div>
+              }
+              @if (isProcessing) {
+                <div class="image-overlay">
+                  <div class="processing-indicator">
+                    <mat-icon>play_circle</mat-icon>
+                    <span>Processing</span>
+                  </div>
                 </div>
-              </div>
+              }
             </div>
             <div class="main-image-info">
               <span class="current-image-name">{{ currentImageName }}</span>
@@ -56,44 +64,49 @@
           </div>
 
           <div class="grid-thumbnails">
-            <div *ngFor="let preview of imagePreviews; let i = index" class="thumbnail-item"
-              [class.active]="i === currentImageIndex" [class.completed]="isThumbnailCompleted(i)"
-              [class.processing]="isThumbnailProcessing(i)" [class.pending]="isThumbnailPending(i)">
-
-              <img [src]="preview" [alt]="'Image ' + (i + 1)" class="thumbnail-image">
-
-              <div class="thumbnail-status">
-                <!-- Completed State -->
-                <div *ngIf="isThumbnailCompleted(i)" class="status-indicator completed">
-                  <mat-icon class="status-icon">check_circle</mat-icon>
+            @for (preview of imagePreviews; track preview; let i = $index) {
+              <div class="thumbnail-item"
+                [class.active]="i === currentImageIndex" [class.completed]="isThumbnailCompleted(i)"
+                [class.processing]="isThumbnailProcessing(i)" [class.pending]="isThumbnailPending(i)">
+                <img [src]="preview" [alt]="'Image ' + (i + 1)" class="thumbnail-image">
+                <div class="thumbnail-status">
+                  <!-- Completed State -->
+                  @if (isThumbnailCompleted(i)) {
+                    <div class="status-indicator completed">
+                      <mat-icon class="status-icon">check_circle</mat-icon>
+                    </div>
+                  }
+                  <!-- Currently Processing State -->
+                  @if (isThumbnailProcessing(i)) {
+                    <div class="status-indicator processing">
+                      <mat-icon class="status-icon spinning">sync</mat-icon>
+                    </div>
+                  }
+                  <!-- Pending/Waiting State -->
+                  @if (isThumbnailPending(i)) {
+                    <div class="status-indicator pending">
+                      <span class="pending-number">{{ i + 1 }}</span>
+                    </div>
+                  }
                 </div>
-
-                <!-- Currently Processing State -->
-                <div *ngIf="isThumbnailProcessing(i)" class="status-indicator processing">
-                  <mat-icon class="status-icon spinning">sync</mat-icon>
-                </div>
-
-                <!-- Pending/Waiting State -->
-                <div *ngIf="isThumbnailPending(i)" class="status-indicator pending">
-                  <span class="pending-number">{{ i + 1 }}</span>
-                </div>
+                <!-- Progress Ring for Current Image -->
+                @if (isThumbnailProcessing(i)) {
+                  <div class="progress-ring">
+                    <svg class="progress-ring-svg" [attr.width]="isSmallScreen() ? 60 : 70"
+                      [attr.height]="isSmallScreen() ? 60 : 70">
+                      <circle class="progress-ring-circle-bg" [attr.cx]="isSmallScreen() ? 30 : 35"
+                        [attr.cy]="isSmallScreen() ? 30 : 35" [attr.r]="isSmallScreen() ? 26 : 30" fill="none"
+                        stroke="rgba(102, 126, 234, 0.2)" stroke-width="3" />
+                      <circle class="progress-ring-circle" [attr.cx]="isSmallScreen() ? 30 : 35"
+                        [attr.cy]="isSmallScreen() ? 30 : 35" [attr.r]="isSmallScreen() ? 26 : 30" fill="none"
+                        stroke="#667eea" stroke-width="3" stroke-linecap="round"
+                        [style.stroke-dasharray]="isSmallScreen() ? 163.4 : 188.4"
+                        [style.stroke-dashoffset]="(isSmallScreen() ? 163.4 : 188.4) - (progress / 100) * (isSmallScreen() ? 163.4 : 188.4)" />
+                    </svg>
+                  </div>
+                }
               </div>
-
-              <!-- Progress Ring for Current Image -->
-              <div *ngIf="isThumbnailProcessing(i)" class="progress-ring">
-                <svg class="progress-ring-svg" [attr.width]="isSmallScreen() ? 60 : 70"
-                  [attr.height]="isSmallScreen() ? 60 : 70">
-                  <circle class="progress-ring-circle-bg" [attr.cx]="isSmallScreen() ? 30 : 35"
-                    [attr.cy]="isSmallScreen() ? 30 : 35" [attr.r]="isSmallScreen() ? 26 : 30" fill="none"
-                    stroke="rgba(102, 126, 234, 0.2)" stroke-width="3" />
-                  <circle class="progress-ring-circle" [attr.cx]="isSmallScreen() ? 30 : 35"
-                    [attr.cy]="isSmallScreen() ? 30 : 35" [attr.r]="isSmallScreen() ? 26 : 30" fill="none"
-                    stroke="#667eea" stroke-width="3" stroke-linecap="round"
-                    [style.stroke-dasharray]="isSmallScreen() ? 163.4 : 188.4"
-                    [style.stroke-dashoffset]="(isSmallScreen() ? 163.4 : 188.4) - (progress / 100) * (isSmallScreen() ? 163.4 : 188.4)" />
-                </svg>
-              </div>
-            </div>
+            }
           </div>
         </div>
       </div>
@@ -106,8 +119,12 @@
         <div class="progress-info">
           <span class="progress-percentage">{{ Math.round(progress) }}%</span>
           <div class="completion-indicator" [class.completed]="progress === 100">
-            <mat-icon *ngIf="progress === 100">check_circle</mat-icon>
-            <mat-icon *ngIf="progress < 100">pending</mat-icon>
+            @if (progress === 100) {
+              <mat-icon>check_circle</mat-icon>
+            }
+            @if (progress < 100) {
+              <mat-icon>pending</mat-icon>
+            }
           </div>
         </div>
       </div>
@@ -125,14 +142,18 @@
             <span class="stat-number">{{ getCompletedImagesCount() }}</span>
             <span class="stat-label">Processed</span>
           </div>
-          <div class="stat-item" *ngIf="successfulImages > 0">
-            <span class="stat-number success">{{ successfulImages }}</span>
-            <span class="stat-label">Successful</span>
-          </div>
-          <div class="stat-item" *ngIf="failedImages > 0">
-            <span class="stat-number error">{{ failedImages }}</span>
-            <span class="stat-label">Failed</span>
-          </div>
+          @if (successfulImages > 0) {
+            <div class="stat-item">
+              <span class="stat-number success">{{ successfulImages }}</span>
+              <span class="stat-label">Successful</span>
+            </div>
+          }
+          @if (failedImages > 0) {
+            <div class="stat-item">
+              <span class="stat-number error">{{ failedImages }}</span>
+              <span class="stat-label">Failed</span>
+            </div>
+          }
           <div class="stat-item">
             <span class="stat-number">{{ getRemainingImagesCount() }}</span>
             <span class="stat-label">Remaining</span>
@@ -142,71 +163,87 @@
 
       <!-- Stage Timeline -->
       <div class="stage-timeline">
-        <div *ngFor="let stage of processingStages; let i = index" class="stage-step"
-          [class.completed]="i < currentStageIndex || (!isProcessing && progress >= 100)"
-          [class.active]="i === currentStageIndex && isProcessing"
-          [class.pending]="i > currentStageIndex && isProcessing">
-  
-          <div class="step-connector" *ngIf="i < processingStages.length - 1"></div>
-  
-          <div class="step-circle">
-            <mat-icon *ngIf="i < currentStageIndex || (!isProcessing && progress >= 100)">check</mat-icon>
-            <span *ngIf="i === currentStageIndex && isProcessing" class="step-number">{{ i + 1 }}</span>
-            <span *ngIf="i > currentStageIndex && isProcessing" class="step-number">{{ i + 1 }}</span>
+        @for (stage of processingStages; track stage; let i = $index) {
+          <div class="stage-step"
+            [class.completed]="i < currentStageIndex || (!isProcessing && progress >= 100)"
+            [class.active]="i === currentStageIndex && isProcessing"
+            [class.pending]="i > currentStageIndex && isProcessing">
+            @if (i < processingStages.length - 1) {
+              <div class="step-connector"></div>
+            }
+            <div class="step-circle">
+              @if (i < currentStageIndex || (!isProcessing && progress >= 100)) {
+                <mat-icon>check</mat-icon>
+              }
+              @if (i === currentStageIndex && isProcessing) {
+                <span class="step-number">{{ i + 1 }}</span>
+              }
+              @if (i > currentStageIndex && isProcessing) {
+                <span class="step-number">{{ i + 1 }}</span>
+              }
+            </div>
+            <div class="step-content">
+              <span class="step-name">{{ stage.name }}</span>
+              @if (i === currentStageIndex && isProcessing) {
+                <span class="step-status">In Progress</span>
+              }
+              @if (i < currentStageIndex || (!isProcessing && progress >= 100)) {
+                <span class="step-status">Completed</span>
+              }
+              @if (i > currentStageIndex && isProcessing) {
+                <span class="step-status">Pending</span>
+              }
+            </div>
           </div>
-  
-          <div class="step-content">
-            <span class="step-name">{{ stage.name }}</span>
-            <span class="step-status" *ngIf="i === currentStageIndex && isProcessing">In Progress</span>
-            <span class="step-status" *ngIf="i < currentStageIndex || (!isProcessing && progress >= 100)">Completed</span>
-            <span class="step-status" *ngIf="i > currentStageIndex && isProcessing">Pending</span>
-          </div>
-        </div>
+        }
       </div>
     </div>
 
     <!-- Live Status Feed -->
-    <div class="status-feed" *ngIf="statusMessages.length > 0">
-      <div class="feed-header">
-        <mat-icon>feed</mat-icon>
-        <h4>Processing Log</h4>
-        <span class="message-count">{{ statusMessages.length }}</span>
-      </div>
-
-      <div class="status-messages">
-        <div *ngFor="let message of statusMessages; let i = index" class="status-message"
-          [class.success]="message.type === 'success'" [class.warning]="message.type === 'warning'"
-          [class.error]="message.type === 'error'" [class.info]="message.type === 'info'"
-          [style.animation-delay.ms]="i * 50">
-
-          <div class="message-indicator">
-            <mat-icon class="message-icon">{{ getMessageIcon(message.type) }}</mat-icon>
-          </div>
-
-          <div class="message-content">
-            <span class="message-text">{{ message.text }}</span>
-            <span class="message-time">{{ message.timestamp | date:'HH:mm:ss.SSS' }}</span>
-          </div>
+    @if (statusMessages.length > 0) {
+      <div class="status-feed">
+        <div class="feed-header">
+          <mat-icon>feed</mat-icon>
+          <h4>Processing Log</h4>
+          <span class="message-count">{{ statusMessages.length }}</span>
+        </div>
+        <div class="status-messages">
+          @for (message of statusMessages; track message; let i = $index) {
+            <div class="status-message"
+              [class.success]="message.type === 'success'" [class.warning]="message.type === 'warning'"
+              [class.error]="message.type === 'error'" [class.info]="message.type === 'info'"
+              [style.animation-delay.ms]="i * 50">
+              <div class="message-indicator">
+                <mat-icon class="message-icon">{{ getMessageIcon(message.type) }}</mat-icon>
+              </div>
+              <div class="message-content">
+                <span class="message-text">{{ message.text }}</span>
+                <span class="message-time">{{ message.timestamp | date:'HH:mm:ss.SSS' }}</span>
+              </div>
+            </div>
+          }
         </div>
       </div>
-    </div>
+    }
 
     <!-- Error Section (Enhanced) -->
-    <div class="error-section" *ngIf="hasError">
-      <div class="error-icon-container">
-        <mat-icon class="error-icon">error_outline</mat-icon>
-      </div>
-      <div class="error-content">
-        <h3>Processing Failed</h3>
-        <p>{{ errorMessage }}</p>
-        <div class="error-actions">
-          <button mat-raised-button color="primary" (click)="retryProcessing()" [disabled]="!canRetry">
-            <mat-icon>refresh</mat-icon>
-            Try Again
-          </button>
+    @if (hasError) {
+      <div class="error-section">
+        <div class="error-icon-container">
+          <mat-icon class="error-icon">error_outline</mat-icon>
+        </div>
+        <div class="error-content">
+          <h3>Processing Failed</h3>
+          <p>{{ errorMessage }}</p>
+          <div class="error-actions">
+            <button mat-raised-button color="primary" (click)="retryProcessing()" [disabled]="!canRetry">
+              <mat-icon>refresh</mat-icon>
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    }
   </mat-dialog-content>
 
   <!-- Enhanced Actions -->
@@ -219,24 +256,30 @@
     </div>
 
     <div class="actions-right">
-      <div class="processing-indicator" *ngIf="isProcessing">
-        <mat-spinner diameter="16"></mat-spinner>
-        <span>Processing images...</span>
-      </div>
+      @if (isProcessing) {
+        <div class="processing-indicator">
+          <mat-spinner diameter="16"></mat-spinner>
+          <span>Processing images...</span>
+        </div>
+      }
 
       <!-- Show Next button when processing is complete -->
-      <button mat-raised-button color="primary" *ngIf="isCompleteWithResults()" (click)="proceedToMatcher()"
-        class="next-btn">
-        <mat-icon>arrow_forward</mat-icon>
-        View Matches
-      </button>
+      @if (isCompleteWithResults()) {
+        <button mat-raised-button color="primary" (click)="proceedToMatcher()"
+          class="next-btn">
+          <mat-icon>arrow_forward</mat-icon>
+          View Matches
+        </button>
+      }
 
-      <button mat-raised-button color="primary"
-        *ngIf="!isProcessing && !hasError && canRetry && !isCompleteWithResults()" (click)="retryProcessing()"
-        class="retry-btn">
-        <mat-icon>refresh</mat-icon>
-        Retry
-      </button>
+      @if (!isProcessing && !hasError && canRetry && !isCompleteWithResults()) {
+        <button mat-raised-button color="primary"
+          (click)="retryProcessing()"
+          class="retry-btn">
+          <mat-icon>refresh</mat-icon>
+          Retry
+        </button>
+      }
     </div>
   </mat-dialog-actions>
 </div>

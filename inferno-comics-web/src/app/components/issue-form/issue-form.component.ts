@@ -5,7 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { IssueService } from '../../services/issue.service';
 import { Issue, IssueCondition, IssueRequest } from '../../models/issue.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
-import { CommonModule } from '@angular/common';
+
 import { MaterialModule } from '../../material.module';
 import { RecognitionService } from '../../services/recognition.service';
 
@@ -25,7 +25,7 @@ export interface IssueFormData {
   selector: 'app-issue-form',
   templateUrl: './issue-form.component.html',
   styleUrls: ['./issue-form.component.scss'],
-  imports: [CommonModule, MaterialModule, ReactiveFormsModule],
+  imports: [MaterialModule, ReactiveFormsModule],
 })
 export class IssueFormComponent implements OnInit {
   issueForm: FormGroup;

@@ -11,83 +11,84 @@
         <mat-icon>person_add</mat-icon>
         Add User
       </button>
-      
-      <button mat-stroked-button (click)="editUsers()" *ngIf="(loggedInUser$ | async)" class="action-btn">
-        <mat-icon>edit</mat-icon>
-        Edit Users
-      </button>
+
+      @if ((loggedInUser$ | async)) {
+        <button mat-stroked-button (click)="editUsers()" class="action-btn">
+          <mat-icon>edit</mat-icon>
+          Edit Users
+        </button>
+      }
     </div>
   </div>
 
   <!-- Stats Cards -->
-  <div class="stats-section" *ngIf="users.length > 0">
-    <div class="stat-card">
-      <div class="stat-number">{{ users.length }}</div>
-      <div class="stat-label">Total Users</div>
+  @if (users.length > 0) {
+    <div class="stats-section">
+      <div class="stat-card">
+        <div class="stat-number">{{ users.length }}</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{ getActiveUsersCount() }}</div>
+        <div class="stat-label">Active</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">{{ getTeamsCount() }}</div>
+        <div class="stat-label">Teams</div>
+      </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-number">{{ getActiveUsersCount() }}</div>
-      <div class="stat-label">Active</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number">{{ getTeamsCount() }}</div>
-      <div class="stat-label">Teams</div>
-    </div>
-  </div>
+  }
 
   <!-- Main Content -->
-  <div *ngIf="users.length > 0; else noUsers" class="content-section">
-    
-    <!-- Data Grid -->
-    <div class="grid-container">
-      <div class="grid-header">
-        <h2 class="grid-title">Users</h2>
-        <div class="grid-actions">
-          <input #importJson 
-                 class="file-input" 
-                 accept="application/json" 
-                 (change)="importUserJson($event)" 
-                 type="file">
-          
-          <button mat-icon-button 
-                  matTooltip="Import Users" 
-                  (click)="importJson.click()" 
-                  class="icon-btn">
-            <mat-icon>upload</mat-icon>
-          </button>
-          
-          <button mat-icon-button 
-                  matTooltip="Export Users" 
-                  (click)="exportUsers()" 
-                  class="icon-btn">
-            <mat-icon>download</mat-icon>
-          </button>
+  @if (users.length > 0) {
+    <div class="content-section">
+      <!-- Data Grid -->
+      <div class="grid-container">
+        <div class="grid-header">
+          <h2 class="grid-title">Users</h2>
+          <div class="grid-actions">
+            <input #importJson
+              class="file-input"
+              accept="application/json"
+              (change)="importUserJson($event)"
+              type="file">
+              <button mat-icon-button
+                matTooltip="Import Users"
+                (click)="importJson.click()"
+                class="icon-btn">
+                <mat-icon>upload</mat-icon>
+              </button>
+              <button mat-icon-button
+                matTooltip="Export Users"
+                (click)="exportUsers()"
+                class="icon-btn">
+                <mat-icon>download</mat-icon>
+              </button>
+            </div>
+          </div>
+          <div class="grid-wrapper">
+            <ag-grid-angular
+              class="ag-theme-quartz grid-content"
+              [rowData]="users"
+              [gridOptions]="gridOptions"
+              [defaultColDef]="defaultColDef">
+            </ag-grid-angular>
+          </div>
         </div>
       </div>
-      
-      <div class="grid-wrapper">
-        <ag-grid-angular 
-          class="ag-theme-quartz grid-content" 
-          [rowData]="users" 
-          [gridOptions]="gridOptions"
-          [defaultColDef]="defaultColDef">
-        </ag-grid-angular>
+    } @else {
+      <div class="empty-state">
+        <div class="empty-icon">
+          <mat-icon>people_outline</mat-icon>
+        </div>
+        <h2 class="empty-title">No Users Found</h2>
+        <p class="empty-description">Get started by adding your first user to the system.</p>
+        <button mat-raised-button color="primary" (click)="addUser()" class="empty-action">
+          <mat-icon>person_add</mat-icon>
+          Add First User
+        </button>
       </div>
-    </div>
-  </div>
+    }
 
-  <!-- Empty State -->
-  <ng-template #noUsers>
-    <div class="empty-state">
-      <div class="empty-icon">
-        <mat-icon>people_outline</mat-icon>
-      </div>
-      <h2 class="empty-title">No Users Found</h2>
-      <p class="empty-description">Get started by adding your first user to the system.</p>
-      <button mat-raised-button color="primary" (click)="addUser()" class="empty-action">
-        <mat-icon>person_add</mat-icon>
-        Add First User
-      </button>
-    </div>
-  </ng-template>
-</div>
+    <!-- Empty State -->
+  </div>

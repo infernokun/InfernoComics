@@ -1,5 +1,6 @@
 <!-- src/app/config/config.component.html -->
-<div class="config-wrapper" *ngIf="configForm">
+@if (configForm) {
+  <div class="config-wrapper">
     <mat-card class="config-card">
       <mat-card-header>
         <div class="header-content">
@@ -23,7 +24,6 @@
           <input #fileInput type="file" accept=".json" (change)="onImport($event)" style="display: none;">
         </div>
       </mat-card-header>
-  
       <mat-card-content [formGroup]="configForm">
         <!-- ----- Global settings ----- -->
         <section class="section-global">
@@ -38,38 +38,36 @@
               </mat-chip>
             </mat-chip-set>
           </div>
-  
           <div class="settings-grid">
             <mat-form-field appearance="outline">
               <mat-label>Performance Level</mat-label>
               <mat-select formControlName="performance_level">
-                <mat-option *ngFor="let lvl of performanceLevels" [value]="lvl.value">
-                  <div class="option-content">
-                    <span class="option-label">{{ lvl.label }}</span>
-                  </div>
-                </mat-option>
+                @for (lvl of performanceLevels; track lvl) {
+                  <mat-option [value]="lvl.value">
+                    <div class="option-content">
+                      <span class="option-label">{{ lvl.label }}</span>
+                    </div>
+                  </mat-option>
+                }
               </mat-select>
               <mat-icon matPrefix>speed</mat-icon>
               <mat-hint>Choose the performance profile</mat-hint>
             </mat-form-field>
-  
             <mat-form-field appearance="outline">
               <mat-label>Result Batch</mat-label>
               <input matInput type="number" formControlName="result_batch" min="1" />
               <mat-icon matPrefix>batch_prediction</mat-icon>
               <mat-hint>Number of results per batch</mat-hint>
             </mat-form-field>
-  
             <mat-form-field appearance="outline">
               <mat-label>Similarity Threshold</mat-label>
-              <input matInput type="text" formControlName="similarity_threshold" 
-                     placeholder="e.g. 55%" />
+              <input matInput type="text" formControlName="similarity_threshold"
+                placeholder="e.g. 55%" />
               <mat-icon matPrefix>tune</mat-icon>
               <mat-hint>Minimum similarity score</mat-hint>
             </mat-form-field>
           </div>
         </section>
-  
         <!-- ----- Preset list ----- -->
         <section class="section-presets">
           <div class="section-header">
@@ -78,146 +76,136 @@
               Presets
             </h3>
           </div>
-  
           <!-- Preset Tabs -->
           <mat-tab-group animationDuration="300ms" [(selectedIndex)]="selectedPresetIndex">
-            <mat-tab *ngFor="let presetKey of Object.keys(presetControls); let i = index" 
-                     [label]="presetKey | titlecase">
-              <ng-template mat-tab-label>
-                <mat-icon class="tab-icon">{{ getPresetIcon(presetKey) }}</mat-icon>
-                {{ presetKey | titlecase }}
-              </ng-template>
-              
-              <div class="preset-content" [formGroup]="presetControls[presetKey]">
-                
-                <!-- Detectors -->
-                <mat-expansion-panel class="sub-section-panel" [expanded]="true">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      <mat-icon>visibility</mat-icon>
-                      Detectors (Max Features)
-                    </mat-panel-title>
-                  </mat-expansion-panel-header>
-                  
-                  <div formGroupName="detectors" class="param-grid">
-                    <ng-container *ngFor="let det of Object.keys(presetControls[presetKey].get('detectors')?.value)">
-                      <mat-form-field appearance="outline" class="compact-field">
-                        <mat-label>{{ det | uppercase }}</mat-label>
-                        <input matInput type="number" [formControlName]="det" min="0" />
-                        <mat-icon matPrefix class="small-icon">photo_filter</mat-icon>
+            @for (presetKey of Object.keys(presetControls); track presetKey; let i = $index) {
+              <mat-tab
+                [label]="presetKey | titlecase">
+                <ng-template mat-tab-label>
+                  <mat-icon class="tab-icon">{{ getPresetIcon(presetKey) }}</mat-icon>
+                  {{ presetKey | titlecase }}
+                </ng-template>
+                <div class="preset-content" [formGroup]="presetControls[presetKey]">
+                  <!-- Detectors -->
+                  <mat-expansion-panel class="sub-section-panel" [expanded]="true">
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon>visibility</mat-icon>
+                        Detectors (Max Features)
+                      </mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <div formGroupName="detectors" class="param-grid">
+                      @for (det of Object.keys(presetControls[presetKey].get('detectors')?.value); track det) {
+                        <mat-form-field appearance="outline" class="compact-field">
+                          <mat-label>{{ det | uppercase }}</mat-label>
+                          <input matInput type="number" [formControlName]="det" min="0" />
+                          <mat-icon matPrefix class="small-icon">photo_filter</mat-icon>
+                        </mat-form-field>
+                      }
+                    </div>
+                  </mat-expansion-panel>
+                  <!-- Feature weights -->
+                  <mat-expansion-panel class="sub-section-panel" [expanded]="true">
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon>linear_scale</mat-icon>
+                        Feature Weights
+                      </mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <div formGroupName="feature_weights" class="param-grid">
+                      @for (ft of Object.keys(presetControls[presetKey].get('feature_weights')?.value); track ft) {
+                        <mat-form-field appearance="outline" class="compact-field">
+                          <mat-label>{{ ft | titlecase }}</mat-label>
+                          <input matInput type="number" step="0.01" [formControlName]="ft"
+                            min="0" max="1" />
+                          <mat-icon matPrefix class="small-icon">balance</mat-icon>
+                          <mat-hint>Range: 0.00 - 1.00</mat-hint>
+                        </mat-form-field>
+                      }
+                    </div>
+                  </mat-expansion-panel>
+                  <!-- Performance Settings -->
+                  <mat-expansion-panel class="sub-section-panel" [expanded]="true">
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon>tune</mat-icon>
+                        Performance Settings
+                      </mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <div class="settings-row">
+                      <mat-form-field appearance="outline">
+                        <mat-label>Image Size</mat-label>
+                        <input matInput type="number" formControlName="image_size" min="1" />
+                        <mat-icon matPrefix>photo_size_select_large</mat-icon>
+                        <mat-hint>Processing image dimensions</mat-hint>
                       </mat-form-field>
-                    </ng-container>
-                  </div>
-                </mat-expansion-panel>
-  
-                <!-- Feature weights -->
-                <mat-expansion-panel class="sub-section-panel" [expanded]="true">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      <mat-icon>linear_scale</mat-icon>
-                      Feature Weights
-                    </mat-panel-title>
-                  </mat-expansion-panel-header>
-                  
-                  <div formGroupName="feature_weights" class="param-grid">
-                    <ng-container *ngFor="let ft of Object.keys(presetControls[presetKey].get('feature_weights')?.value)">
-                      <mat-form-field appearance="outline" class="compact-field">
-                        <mat-label>{{ ft | titlecase }}</mat-label>
-                        <input matInput type="number" step="0.01" [formControlName]="ft" 
-                               min="0" max="1" />
-                        <mat-icon matPrefix class="small-icon">balance</mat-icon>
-                        <mat-hint>Range: 0.00 - 1.00</mat-hint>
+                      <mat-form-field appearance="outline">
+                        <mat-label>Max Workers</mat-label>
+                        <input matInput type="number" formControlName="max_workers" min="1" />
+                        <mat-icon matPrefix>groups</mat-icon>
+                        <mat-hint>Parallel processing threads</mat-hint>
                       </mat-form-field>
-                    </ng-container>
-                  </div>
-                </mat-expansion-panel>
-  
-                <!-- Performance Settings -->
-                <mat-expansion-panel class="sub-section-panel" [expanded]="true">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      <mat-icon>tune</mat-icon>
-                      Performance Settings
-                    </mat-panel-title>
-                  </mat-expansion-panel-header>
-                  
-                  <div class="settings-row">
-                    <mat-form-field appearance="outline">
-                      <mat-label>Image Size</mat-label>
-                      <input matInput type="number" formControlName="image_size" min="1" />
-                      <mat-icon matPrefix>photo_size_select_large</mat-icon>
-                      <mat-hint>Processing image dimensions</mat-hint>
-                    </mat-form-field>
-  
-                    <mat-form-field appearance="outline">
-                      <mat-label>Max Workers</mat-label>
-                      <input matInput type="number" formControlName="max_workers" min="1" />
-                      <mat-icon matPrefix>groups</mat-icon>
-                      <mat-hint>Parallel processing threads</mat-hint>
-                    </mat-form-field>
-                  </div>
-                </mat-expansion-panel>
-  
-                <!-- Options (toggles) -->
-                <mat-expansion-panel class="sub-section-panel options-panel" [expanded]="true">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>
-                      <mat-icon>toggle_on</mat-icon>
-                      Processing Options
-                    </mat-panel-title>
-                  </mat-expansion-panel-header>
-                  
-                  <div formGroupName="options" class="options-container">
-                    <mat-card class="option-card">
-                      <mat-slide-toggle formControlName="use_advanced_matching" color="primary">
-                        <div class="toggle-content">
-                          <strong>Advanced Matching</strong>
-                          <span class="toggle-hint">Uses sophisticated algorithms for better accuracy</span>
-                        </div>
-                      </mat-slide-toggle>
-                    </mat-card>
-  
-                    <mat-card class="option-card">
-                      <mat-slide-toggle formControlName="use_comic_detection" color="primary">
-                        <div class="toggle-content">
-                          <strong>Comic Detection</strong>
-                          <span class="toggle-hint">Optimized for comic book and manga recognition</span>
-                        </div>
-                      </mat-slide-toggle>
-                    </mat-card>
-  
-                    <mat-card class="option-card">
-                      <mat-slide-toggle formControlName="cache_only" color="primary">
-                        <div class="toggle-content">
-                          <strong>Cache Only</strong>
-                          <span class="toggle-hint">Use cached results only (minimal preset)</span>
-                        </div>
-                      </mat-slide-toggle>
-                    </mat-card>
-                  </div>
-                </mat-expansion-panel>
-  
-              </div>
-            </mat-tab>
+                    </div>
+                  </mat-expansion-panel>
+                  <!-- Options (toggles) -->
+                  <mat-expansion-panel class="sub-section-panel options-panel" [expanded]="true">
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon>toggle_on</mat-icon>
+                        Processing Options
+                      </mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <div formGroupName="options" class="options-container">
+                      <mat-card class="option-card">
+                        <mat-slide-toggle formControlName="use_advanced_matching" color="primary">
+                          <div class="toggle-content">
+                            <strong>Advanced Matching</strong>
+                            <span class="toggle-hint">Uses sophisticated algorithms for better accuracy</span>
+                          </div>
+                        </mat-slide-toggle>
+                      </mat-card>
+                      <mat-card class="option-card">
+                        <mat-slide-toggle formControlName="use_comic_detection" color="primary">
+                          <div class="toggle-content">
+                            <strong>Comic Detection</strong>
+                            <span class="toggle-hint">Optimized for comic book and manga recognition</span>
+                          </div>
+                        </mat-slide-toggle>
+                      </mat-card>
+                      <mat-card class="option-card">
+                        <mat-slide-toggle formControlName="cache_only" color="primary">
+                          <div class="toggle-content">
+                            <strong>Cache Only</strong>
+                            <span class="toggle-hint">Use cached results only (minimal preset)</span>
+                          </div>
+                        </mat-slide-toggle>
+                      </mat-card>
+                    </div>
+                  </mat-expansion-panel>
+                </div>
+              </mat-tab>
+            }
           </mat-tab-group>
         </section>
       </mat-card-content>
-  
       <mat-card-actions align="end" class="action-bar">
         <button mat-button (click)="onCancel()" [disabled]="!hasUnsavedChanges">
           Cancel
         </button>
-        <button mat-raised-button color="primary" (click)="onSave()" 
-                [disabled]="configForm.invalid || !hasUnsavedChanges">
+        <button mat-raised-button color="primary" (click)="onSave()"
+          [disabled]="configForm.invalid || !hasUnsavedChanges">
           <mat-icon>save</mat-icon>
           Save Configuration
         </button>
       </mat-card-actions>
     </mat-card>
   </div>
-  
-  <!-- Loading spinner while the form is being built -->
-  <div class="loading" *ngIf="!configForm">
+}
+
+<!-- Loading spinner while the form is being built -->
+@if (!configForm) {
+  <div class="loading">
     <mat-spinner diameter="60"></mat-spinner>
     <p class="loading-text">Loading configuration...</p>
   </div>
+}

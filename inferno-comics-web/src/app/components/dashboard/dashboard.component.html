@@ -3,7 +3,7 @@
   <div class="header-section">
     <h1 class="main-title">Inferno Comics</h1>
     <p class="subtitle">Discover, track, and explore your comic universe</p>
-    
+
     <!-- Quick Actions -->
     <div class="quick-actions">
       <button mat-raised-button class="action-btn primary" [routerLink]="['/series/new']">
@@ -18,97 +18,99 @@
   </div>
 
   <!-- Enhanced Stats Grid -->
-  <div class="stats-container" *ngIf="!loading">
-    <div class="stats-grid">
-      <div class="stat-card total-series" [@slideInUp]>
-        <div class="stat-icon">
-          <mat-icon>library_books</mat-icon>
+  @if (!loading) {
+    <div class="stats-container">
+      <div class="stats-grid">
+        <div class="stat-card total-series" [@slideInUp]>
+          <div class="stat-icon">
+            <mat-icon>library_books</mat-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ totalSeries | number }}</div>
+            <div class="stat-label">Total Series</div>
+          </div>
         </div>
-        <div class="stat-content">
-          <div class="stat-number">{{ totalSeries | number }}</div>
-          <div class="stat-label">Total Series</div>
+        <div class="stat-card total-issues" [@slideInUp]>
+          <div class="stat-icon">
+            <mat-icon>auto_stories</mat-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ totalIssues | number }}</div>
+            <div class="stat-label">Total Issues</div>
+          </div>
         </div>
-      </div>
-
-      <div class="stat-card total-issues" [@slideInUp]>
-        <div class="stat-icon">
-          <mat-icon>auto_stories</mat-icon>
+        <div class="stat-card publishers" [@slideInUp]>
+          <div class="stat-icon">
+            <mat-icon>business</mat-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ uniquePublishers }}</div>
+            <div class="stat-label">Publishers</div>
+            <div class="stat-detail">{{ favoritePublisher || 'Various' }}</div>
+          </div>
         </div>
-        <div class="stat-content">
-          <div class="stat-number">{{ totalIssues | number }}</div>
-          <div class="stat-label">Total Issues</div>
-        </div>
-      </div>
-
-      <div class="stat-card publishers" [@slideInUp]>
-        <div class="stat-icon">
-          <mat-icon>business</mat-icon>
-        </div>
-        <div class="stat-content">
-          <div class="stat-number">{{ uniquePublishers }}</div>
-          <div class="stat-label">Publishers</div>
-          <div class="stat-detail">{{ favoritePublisher || 'Various' }}</div>
-        </div>
-      </div>
-
-      <div class="stat-card complete-series" [@slideInUp]>
-        <div class="stat-icon">
-          <mat-icon>check_circle</mat-icon>
-        </div>
-        <div class="stat-content">
-          <div class="stat-number">{{ completedSeriesCount | number }}</div>
-          <div class="stat-label">Completed Series</div>
-          <div class="stat-detail">{{ completionPercentage }}% Complete</div>
+        <div class="stat-card complete-series" [@slideInUp]>
+          <div class="stat-icon">
+            <mat-icon>check_circle</mat-icon>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ completedSeriesCount | number }}</div>
+            <div class="stat-label">Completed Series</div>
+            <div class="stat-detail">{{ completionPercentage }}% Complete</div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  }
 
   <!-- Content Sections -->
-  <div class="content-sections" *ngIf="!loading">
-    
-    <!-- Publisher Breakdown -->
-    <section class="publisher-section" [@fadeInUp]>
-      <div class="section-header">
-        <h2>
-          <mat-icon>business</mat-icon>
-          Publisher Breakdown
-        </h2>
-        <button mat-button color="primary" (click)="showAllPublishers = !showAllPublishers">
-          {{ showAllPublishers ? 'Show Less' : 'Show All' }}
-        </button>
-      </div>
-      
-      <div class="publisher-grid">
-        <div *ngFor="let pub of (showAllPublishers ? publisherStats : publisherStats.slice(0, 6))" 
-             class="publisher-card" 
-             [@scaleIn]>
-          <div class="publisher-logo">
-            <div class="publisher-fallback">{{ pub.name.charAt(0) }}</div>
-          </div>
-          <div class="publisher-info">
-            <h3>{{ pub.name }}</h3>
-            <p>{{ pub.count }} series</p>
-            <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="(pub.count / totalSeries) * 100"></div>
-            </div>
-          </div>
+  @if (!loading) {
+    <div class="content-sections">
+      <!-- Publisher Breakdown -->
+      <section class="publisher-section" [@fadeInUp]>
+        <div class="section-header">
+          <h2>
+            <mat-icon>business</mat-icon>
+            Publisher Breakdown
+          </h2>
+          <button mat-button color="primary" (click)="showAllPublishers = !showAllPublishers">
+            {{ showAllPublishers ? 'Show Less' : 'Show All' }}
+          </button>
         </div>
-      </div>
-    </section>
-
-    <!-- All Series -->
-    <section class="series-section" [@fadeInUp]>
-      <app-series-list></app-series-list>
-    </section>
-  </div>
+        <div class="publisher-grid">
+          @for (pub of (showAllPublishers ? publisherStats : publisherStats.slice(0, 6)); track pub) {
+            <div
+              class="publisher-card"
+              [@scaleIn]>
+              <div class="publisher-logo">
+                <div class="publisher-fallback">{{ pub.name.charAt(0) }}</div>
+              </div>
+              <div class="publisher-info">
+                <h3>{{ pub.name }}</h3>
+                <p>{{ pub.count }} series</p>
+                <div class="progress-bar">
+                  <div class="progress-fill" [style.width.%]="(pub.count / totalSeries) * 100"></div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+      <!-- All Series -->
+      <section class="series-section" [@fadeInUp]>
+        <app-series-list></app-series-list>
+      </section>
+    </div>
+  }
 
   <!-- Loading State -->
-  <div class="loading-container" *ngIf="loading">
-    <div class="loading-content">
-      <mat-spinner diameter="60"></mat-spinner>
-      <h3>Loading your collection...</h3>
-      <p>Gathering your comic data</p>
+  @if (loading) {
+    <div class="loading-container">
+      <div class="loading-content">
+        <mat-spinner diameter="60"></mat-spinner>
+        <h3>Loading your collection...</h3>
+        <p>Gathering your comic data</p>
+      </div>
     </div>
-  </div>
+  }
 </div>

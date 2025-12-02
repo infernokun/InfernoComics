@@ -35,3 +35,24 @@ export const TABLE_ANIMATION = trigger('tableRowAnimation', [
     ),
   ]),
 ]);
+
+export const CARD_ANIMATION = trigger('cardAnimation', [
+  transition(':enter', [
+    style({ transform: 'scale(0.95) translateY(20px)', opacity: 0 }),
+    animate('350ms ease-out', style({ transform: 'scale(1) translateY(0)', opacity: 1 }))
+  ])
+]);
+
+export const SLIDE_IN_UP = trigger('slideInUp', [
+  transition(':enter', [
+    style({ transform: 'translateY(20px)', opacity: 0 }),
+    animate('300ms ease-out', style({ transform: 'translateY(0)', opacity: 1 }))
+  ])
+]);
+
+export const FADE_IN_UP = trigger('fadeInUp', [
+  transition(':enter', [
+    style({ transform: 'translateY(30px)', opacity: 0 }),
+    animate('400ms ease-out', style({ transform: 'translateY(0)', opacity: 1 }))
+  ])
+]);

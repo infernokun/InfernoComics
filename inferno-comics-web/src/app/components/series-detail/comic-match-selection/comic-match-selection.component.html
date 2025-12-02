@@ -19,34 +19,39 @@
       </div>
     </div>
   </div>
-  
+
   <div mat-dialog-content class="content">
     <!-- Compact Navigation for Multiple Images -->
-    <div class="image-navigation" *ngIf="hasMultipleImages && imageGroups.length > 1">
-      <div class="navigation-tabs">
-        <button mat-button 
-                class="nav-tab"
-                [class.active]="showAllMatches"
-                (click)="showAllMatchesView()">
-          <mat-icon>view_module</mat-icon>
-          All ({{ totalMatchesFound }})
-        </button>
-        
-        <button *ngFor="let group of imageGroups; let i = index"
-                mat-button 
-                class="nav-tab image-tab"
-                [class.active]="!showAllMatches && selectedImageGroup === i"
-                (click)="selectImageGroup(i)">
-          <div class="tab-image" *ngIf="group.previewUrl">
-            <img [src]="group.previewUrl" [alt]="group.name" class="tab-thumbnail">
-          </div>
-          <div class="tab-info">
-            <span class="tab-name">{{ group.name }}</span>
-            <span class="tab-stats">{{ group.matches.length }} matches</span>
-          </div>
-        </button>
+    @if (hasMultipleImages && imageGroups.length > 1) {
+      <div class="image-navigation">
+        <div class="navigation-tabs">
+          <button mat-button
+            class="nav-tab"
+            [class.active]="showAllMatches"
+            (click)="showAllMatchesView()">
+            <mat-icon>view_module</mat-icon>
+            All ({{ totalMatchesFound }})
+          </button>
+          @for (group of imageGroups; track group; let i = $index) {
+            <button
+              mat-button
+              class="nav-tab image-tab"
+              [class.active]="!showAllMatches && selectedImageGroup === i"
+              (click)="selectImageGroup(i)">
+              @if (group.previewUrl) {
+                <div class="tab-image">
+                  <img [src]="group.previewUrl" [alt]="group.name" class="tab-thumbnail">
+                </div>
+              }
+              <div class="tab-info">
+                <span class="tab-name">{{ group.name }}</span>
+                <span class="tab-stats">{{ group.matches.length }} matches</span>
+              </div>
+            </button>
+          }
+        </div>
       </div>
-    </div>
+    }
 
     <!-- Side-by-side Layout: Original + Matches -->
     <div class="main-layout">
@@ -56,131 +61,142 @@
           <mat-icon>upload</mat-icon>
           <span>Original Image</span>
         </div>
-        
+
         <div class="original-preview">
-          <img *ngIf="currentImagePreview; else noImageTemplate"
-               [src]="currentImagePreview" 
-               [alt]="getDisplayFileName()" 
-               class="original-image" 
-               (error)="onImageError($event)" />
-          
-          <ng-template #noImageTemplate>
+          @if (currentImagePreview) {
+            <img
+              [src]="currentImagePreview"
+              [alt]="getDisplayFileName()"
+              class="original-image"
+              (error)="onImageError($event)" />
+          } @else {
             <div class="no-image-placeholder">
               <mat-icon>image</mat-icon>
               <span>No preview available</span>
             </div>
-          </ng-template>
+          }
+
         </div>
-        
+
         <div class="original-info">
           <p class="filename">{{ getDisplayFileName() }}</p>
-          <div class="match-context" *ngIf="hasMultipleImages && !showAllMatches">
-            <mat-icon>info</mat-icon>
-            <span>Viewing matches for this image</span>
-          </div>
+          @if (hasMultipleImages && !showAllMatches) {
+            <div class="match-context">
+              <mat-icon>info</mat-icon>
+              <span>Viewing matches for this image</span>
+            </div>
+          }
         </div>
       </div>
 
       <!-- Matches Section -->
       <div class="matches-section">
         <!-- Instructions -->
-        <div class="instructions" *ngIf="sortedMatches.length > 0">
-          <mat-icon>info</mat-icon>
-          <span>Select the comic that best matches your image. Higher percentages indicate better matches.</span>
-        </div>
+        @if (sortedMatches.length > 0) {
+          <div class="instructions">
+            <mat-icon>info</mat-icon>
+            <span>Select the comic that best matches your image. Higher percentages indicate better matches.</span>
+          </div>
+        }
 
         <!-- No Matches Message -->
-        <div class="no-matches" *ngIf="sortedMatches.length === 0">
-          <mat-icon>search_off</mat-icon>
-          <h3>No Matches Found</h3>
-          <p>No matches were found for this image.</p>
-        </div>
+        @if (sortedMatches.length === 0) {
+          <div class="no-matches">
+            <mat-icon>search_off</mat-icon>
+            <h3>No Matches Found</h3>
+            <p>No matches were found for this image.</p>
+          </div>
+        }
 
         <!-- Compact Matches Grid -->
-        <div class="matches-grid" *ngIf="sortedMatches.length > 0">
-          <div *ngFor="let match of sortedMatches; let i = index" 
-               class="match-card" 
-               [class.best]="i === 0"
-               (click)="selectMatch(match)">
-            
-            <div class="match-rank" [class.gold]="i === 0">#{{ i + 1 }}</div>
-            
-            <!-- Source Image Indicator for Multiple Images -->
-            <div class="source-indicator" *ngIf="getSourceImageIndicator(match)">
-              <mat-icon>image</mat-icon>
-              <span>{{ getSourceImageIndicator(match) }}</span>
-            </div>
-            
-            <div class="image-container">
-              <img [src]="match.url" 
-                   [alt]="match.comic_name" 
-                   (error)="onImageError($event)" 
-                   loading="lazy" />
-              <div class="similarity-overlay">{{ (match.similarity * 100).toFixed(1) }}%</div>
-            </div>
-            
-            <div class="match-info">
-              <h3 class="comic-title">{{ match.comic_name }}</h3>
-              <p class="issue-number">Issue #{{ match.issue_number }}</p>
-              
-              <!-- Compact Feature Bars -->
-              <div class="features-compact">
-                <div class="feature" *ngIf="match.match_details?.orb">
-                  <span class="label">ORB</span>
-                  <div class="bar">
-                    <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.orb)"></div>
+        @if (sortedMatches.length > 0) {
+          <div class="matches-grid">
+            @for (match of sortedMatches; track match; let i = $index) {
+              <div
+                class="match-card"
+                [class.best]="i === 0"
+                (click)="selectMatch(match)">
+                <div class="match-rank" [class.gold]="i === 0">#{{ i + 1 }}</div>
+                <!-- Source Image Indicator for Multiple Images -->
+                @if (getSourceImageIndicator(match)) {
+                  <div class="source-indicator">
+                    <mat-icon>image</mat-icon>
+                    <span>{{ getSourceImageIndicator(match) }}</span>
                   </div>
-                  <span class="value">{{ match.match_details.orb.good_matches }}/{{ match.match_details.orb.total_matches }}</span>
+                }
+                <div class="image-container">
+                  <img [src]="match.url"
+                    [alt]="match.comic_name"
+                    (error)="onImageError($event)"
+                    loading="lazy" />
+                  <div class="similarity-overlay">{{ (match.similarity * 100).toFixed(1) }}%</div>
                 </div>
-                
-                <div class="feature" *ngIf="match.match_details?.sift">
-                  <span class="label">SIFT</span>
-                  <div class="bar">
-                    <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.sift)"></div>
+                <div class="match-info">
+                  <h3 class="comic-title">{{ match.comic_name }}</h3>
+                  <p class="issue-number">Issue #{{ match.issue_number }}</p>
+                  <!-- Compact Feature Bars -->
+                  <div class="features-compact">
+                    @if (match.match_details.orb) {
+                      <div class="feature">
+                        <span class="label">ORB</span>
+                        <div class="bar">
+                          <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.orb)"></div>
+                        </div>
+                        <span class="value">{{ match.match_details.orb.good_matches }}/{{ match.match_details.orb.total_matches }}</span>
+                      </div>
+                    }
+                    @if (match.match_details.sift) {
+                      <div class="feature">
+                        <span class="label">SIFT</span>
+                        <div class="bar">
+                          <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.sift)"></div>
+                        </div>
+                        <span class="value">{{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}</span>
+                      </div>
+                    }
+                    @if (match.match_details.akaze) {
+                      <div class="feature">
+                        <span class="label">AKAZE</span>
+                        <div class="bar">
+                          <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.akaze)"></div>
+                        </div>
+                        <span class="value">{{ match.match_details.akaze.good_matches }}/{{ match.match_details.akaze.total_matches }}</span>
+                      </div>
+                    }
+                    @if (match.match_details.kaze) {
+                      <div class="feature">
+                        <span class="label">KAZE</span>
+                        <div class="bar">
+                          <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.kaze)"></div>
+                        </div>
+                        <span class="value">{{ match.match_details.kaze.good_matches }}/{{ match.match_details.kaze.total_matches }}</span>
+                      </div>
+                    }
                   </div>
-                  <span class="value">{{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}</span>
-                </div>
-
-                <div class="feature" *ngIf="match.match_details?.akaze">
-                  <span class="label">AKAZE</span>
-                  <div class="bar">
-                    <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.akaze)"></div>
+                  <!-- Confidence -->
+                  <div class="confidence">
+                    <div class="confidence-bar">
+                      <div class="confidence-fill"
+                        [style.width.%]="match.similarity * 100"
+                        [class.high]="match.similarity >= 0.25"
+                        [class.medium]="match.similarity >= 0.15 && match.similarity < 0.25"
+                        [class.low]="match.similarity < 0.15">
+                      </div>
+                    </div>
+                    <span class="confidence-text">{{ getConfidenceText(match.similarity) }}</span>
                   </div>
-                  <span class="value">{{ match.match_details.akaze.good_matches }}/{{ match.match_details.akaze.total_matches }}</span>
                 </div>
-
-                <div class="feature" *ngIf="match.match_details?.kaze">
-                  <span class="label">KAZE</span>
-                  <div class="bar">
-                    <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.kaze)"></div>
-                  </div>
-                  <span class="value">{{ match.match_details.kaze.good_matches }}/{{ match.match_details.kaze.total_matches }}</span>
-                </div>
+                <button mat-raised-button
+                  [color]="i === 0 ? 'primary' : 'accent'"
+                  class="select-btn"
+                  (click)="selectMatch(match); $event.stopPropagation()">
+                  <mat-icon>check</mat-icon>
+                  {{ i === 0 ? 'Select Best' : 'Select' }}
+                </button>
               </div>
-
-              <!-- Confidence -->
-              <div class="confidence">
-                <div class="confidence-bar">
-                  <div class="confidence-fill" 
-                       [style.width.%]="match.similarity * 100"
-                       [class.high]="match.similarity >= 0.25"
-                       [class.medium]="match.similarity >= 0.15 && match.similarity < 0.25"
-                       [class.low]="match.similarity < 0.15">
-                  </div>
-                </div>
-                <span class="confidence-text">{{ getConfidenceText(match.similarity) }}</span>
-              </div>
-            </div>
-            
-            <button mat-raised-button 
-                    [color]="i === 0 ? 'primary' : 'accent'"
-                    class="select-btn"
-                    (click)="selectMatch(match); $event.stopPropagation()">
-              <mat-icon>check</mat-icon>
-              {{ i === 0 ? 'Select Best' : 'Select' }}
-            </button>
+            }
           </div>
-        </div>
+        }
       </div>
     </div>
   </div>
@@ -195,11 +211,12 @@
       <mat-icon>block</mat-icon>
       Reject
     </button>
-    <button mat-raised-button color="primary" 
-            *ngIf="sortedMatches.length > 0"
-            (click)="selectMatch(sortedMatches[0])">
-      <mat-icon>star</mat-icon>
-      Select Best
-    </button>
+    @if (sortedMatches.length > 0) {
+      <button mat-raised-button color="primary"
+        (click)="selectMatch(sortedMatches[0])">
+        <mat-icon>star</mat-icon>
+        Select Best
+      </button>
+    }
   </div>
 </div>
