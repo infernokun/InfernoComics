@@ -82,7 +82,7 @@ services:
       FLASK_ENV: "production"
       PERFORMANCE_LEVEL: "akaze_focused"
     volumes:
-      - /var/tmp/inferno-comics:/var/tmp/inferno-comics
+      - inferno-comics-recog:/var/tmp/inferno-comics
     networks:
       - inferno-comics-network
 
@@ -111,4 +111,6 @@ volumes:
   inferno-comics-redis:
     driver: local
   inferno-comics-web:
+    driver: local
+  inferno-comics-recog:
     driver: local

@@ -43,3 +43,27 @@ pnpm install
 ng serve
 
 # Navigate to http://localhost:4200/
+```
+
+## Docker Compose
+```yaml
+services:
+  inferno-comics-web:
+    image: infernokun/inferno-comics-web:latest
+    restart: always
+    environment:
+      - BASE_URL=http://inferno-comics-web
+      - REST_URL=/api
+    ports:
+      - "8784:80"
+    volumes:
+      - inferno-comics-web:/var/log/nginx
+    networks:
+      - inferno-comics-network
+
+volumes:
+  inferno-comics-web:
+
+networks:
+  inferno-comics-network:
+```
