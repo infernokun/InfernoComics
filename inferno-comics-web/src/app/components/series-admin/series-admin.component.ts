@@ -1,12 +1,11 @@
 // series-admin.component.ts
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Series } from '../../models/series.model';
 
 import { MaterialModule } from '../../material.module';
-import { SeriesService } from '../../services/series.service';
+import { SeriesService } from '../../services/series/series.service';
 
 
 @Component({
@@ -34,7 +33,6 @@ export class SeriesAdminComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-    private http: HttpClient,
     private snackBar: MatSnackBar,
     private seriesService: SeriesService
   ) {

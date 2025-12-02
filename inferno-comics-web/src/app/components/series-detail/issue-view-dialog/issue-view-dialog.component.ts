@@ -2,9 +2,7 @@ import { Component, Inject } from "@angular/core";
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from "@angular/material/dialog";
 import { IssueFormComponent } from "../../issue-form/issue-form.component";
 import { MaterialModule } from "../../../material.module";
-
-import { EnvironmentService } from "../../../services/environment.service";
-import { RecognitionService } from "../../../services/recognition.service";
+import { RecognitionService } from "../../../services/recognition/recognition.service";
 
 @Component({
   selector: 'comic-book-view-dialog',
@@ -20,7 +18,6 @@ export class IssueViewDialog {
     public dialogRef: MatDialogRef<IssueViewDialog>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private dialog: MatDialog,
-    private environmentService: EnvironmentService,
     private recognitionService: RecognitionService
   ) {
     console.log('IssueViewDialog initialized with data:', data);

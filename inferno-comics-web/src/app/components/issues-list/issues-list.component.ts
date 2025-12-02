@@ -5,11 +5,11 @@ import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, finalize, debounceTime } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { SeriesService } from '../../services/series.service';
 import { Issue } from '../../models/issue.model';
-import { EnvironmentService } from '../../services/environment.service';
+import { EnvironmentService } from '../../services/environment/environment.service';
 import { SeriesWithIssues } from '../../models/series.model';
-import { RecognitionService } from '../../services/recognition.service';
+import { RecognitionService } from '../../services/recognition/recognition.service';
+import { SeriesService } from '../../services/series/series.service';
 
 interface SeriesDisplayState {
   seriesId: number;

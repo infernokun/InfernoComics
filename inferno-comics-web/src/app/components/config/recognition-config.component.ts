@@ -3,9 +3,9 @@ import { OnInit, OnDestroy, Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RecognitionConfig, RecognitionService } from '../../services/recognition.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subscription } from 'rxjs';
+import { RecognitionConfig, RecognitionService } from '../../services/recognition/recognition.service';
 
 interface PerformanceLevel {
   value: string;
@@ -15,11 +15,11 @@ interface PerformanceLevel {
 
 @Component({
   selector: 'app-config',
-  templateUrl: './config.component.html',
-  styleUrls: ['./config.component.scss'],
+  templateUrl: './recognition-config.component.html',
+  styleUrls: ['./recognition-config.component.scss'],
   imports: [CommonModule, MaterialModule, FormsModule, RouterModule, ReactiveFormsModule],
 })
-export class ConfigComponent implements OnInit, OnDestroy {
+export class RecognitionConfigComponent implements OnInit, OnDestroy {
   config?: RecognitionConfig;
   configForm!: FormGroup;
   private sub = new Subscription();

@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { EnvironmentService } from './environment.service';
-import { APP_VERSION } from '../version';
+import { EnvironmentService } from '../environment/environment.service';
+import { APP_VERSION } from '../../version';
 import { forkJoin, map, Observable, of } from 'rxjs';
 import { Injectable } from '@angular/core';
 

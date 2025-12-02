@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { SeriesService } from '../../services/series.service';
+import { SeriesService } from '../../services/series/series.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ComicVineSeries } from '../../models/comic-vine.model';
 import { Series } from '../../models/series.model';
-import { ComicVineService } from '../../services/comic-vine.service';
+import { ComicVineService } from '../../services/comic-vine/comic-vine.service';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 

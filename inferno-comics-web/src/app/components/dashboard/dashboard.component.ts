@@ -2,14 +2,14 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { SeriesService } from '../../services/series.service';
-import { IssueService } from '../../services/issue.service';
 import { Series } from '../../models/series.model';
 import { SeriesListComponent } from '../series-list/series-list.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
+import { IssueService } from '../../services/issue/issue.service';
+import { SeriesService } from '../../services/series/series.service';
 
 interface PublisherStat {
   name: string;

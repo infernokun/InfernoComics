@@ -6,12 +6,12 @@ import { SeriesDetailComponent } from './components/series-detail/series-detail.
 import { SeriesFormComponent } from './components/series-form/series-form.component';
 import { SeriesAdminComponent } from './components/series-admin/series-admin.component';
 import { IssuesListComponent } from './components/issues-list/issues-list.component';
-import { ConfigComponent } from './components/config/config.component';
+import { RecognitionConfigComponent } from './components/config/recognition-config.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent },
-  { path: 'config', component: ConfigComponent },
+  { path: 'config', component: RecognitionConfigComponent },
   { path: 'series', component: SeriesListComponent },
   { path: 'issues', component: IssuesListComponent },
   { path: 'series/new', component: SeriesFormComponent },

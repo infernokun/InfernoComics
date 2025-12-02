@@ -1,10 +1,10 @@
 import { Component, OnInit, OnDestroy, HostListener, ElementRef } from '@angular/core';
 import { BehaviorSubject, finalize, interval, Subscription } from 'rxjs';
-import { SeriesService } from '../../../services/series.service';
 import { ProgressData, ProgressState } from '../../../models/progress-data.model';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { WebSocketResponseList, WebsocketService } from '../../../services/websocket.service';
+import { WebSocketResponseList, WebsocketService } from '../../../services/websocket/websocket.service';
+import { SeriesService } from '../../../services/series/series.service';
 
 export interface ProcessingStatus {
   items: ProgressData[];

@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
-import { EnvironmentService } from './environment.service';
 import { HttpClient } from '@angular/common/http';
+import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { Issue } from '../models/issue.model';
-import { ComicVineSeriesDto } from '../models/comic-vine.model';
+import { ComicVineSeriesDto } from '../../models/comic-vine.model';
+import { Issue } from '../../models/issue.model';
+import { EnvironmentService } from '../environment/environment.service';
 
 @Injectable({
   providedIn: 'root',

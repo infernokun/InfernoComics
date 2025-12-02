@@ -16,18 +16,17 @@ import {
   FirstDataRenderedEvent,
 } from 'ag-grid-community';
 import { AdminActionsComponent } from '../../../admin/admin-actions.component';
-import { SeriesService } from '../../../services/series.service';
-
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { MaterialModule } from '../../../material.module';
 import { ComicMatch } from '../../../models/comic-match.model';
-import { EnvironmentService } from '../../../services/environment.service';
+import { EnvironmentService } from '../../../services/environment/environment.service';
 import { HttpClient } from '@angular/common/http';
 import { Subscription, interval } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { RecognitionService } from '../../../services/recognition.service';
-import { WebSocketResponseList, WebsocketService } from '../../../services/websocket.service';
+import { WebSocketResponseList, WebsocketService } from '../../../services/websocket/websocket.service';
 import { ProgressData } from '../../../models/progress-data.model';
+import { RecognitionService } from '../../../services/recognition/recognition.service';
+import { SeriesService } from '../../../services/series/series.service';
 
 @Component({
   selector: 'app-progress-data-table',

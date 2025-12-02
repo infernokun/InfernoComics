@@ -2,10 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { SeriesService, SSEProgressData } from '../../services/series.service';
-import { IssueService } from '../../services/issue.service';
 import { IssueFormComponent } from '../issue-form/issue-form.component';
-import { ComicVineService } from '../../services/comic-vine.service';
 import { Series } from '../../models/series.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
 import { RangeSelectionDialog } from './range-selection-dialog/range-selection-dialog';
@@ -23,6 +20,9 @@ import {
 import { AgGridModule } from 'ag-grid-angular';
 import { ProgressDataTable } from './progress-data-table/progress-data-table.component';
 import { ComicMatch } from '../../models/comic-match.model';
+import { ComicVineService } from '../../services/comic-vine/comic-vine.service';
+import { IssueService } from '../../services/issue/issue.service';
+import { SeriesService, SSEProgressData } from '../../services/series/series.service';
 
 @Component({
   selector: 'app-series-detail',

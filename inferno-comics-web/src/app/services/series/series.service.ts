@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
-import { EnvironmentService } from './environment.service';
-import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
-import { Series, SeriesWithIssues } from '../models/series.model';
-import { ProgressData } from '../models/progress-data.model';
+import { ImageMatcherResponse } from '../../components/series-detail/comic-match-selection/comic-match-selection.component';
+import { ProgressData } from '../../models/progress-data.model';
+import { Series, SeriesWithIssues } from '../../models/series.model';
+import { EnvironmentService } from '../environment/environment.service';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';

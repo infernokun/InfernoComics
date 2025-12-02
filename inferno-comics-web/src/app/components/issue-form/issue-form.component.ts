@@ -1,13 +1,13 @@
 import { Component, Inject, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { IssueService } from '../../services/issue.service';
 import { Issue, IssueCondition, IssueRequest } from '../../models/issue.model';
 import { ComicVineIssue } from '../../models/comic-vine.model';
 
 import { MaterialModule } from '../../material.module';
-import { RecognitionService } from '../../services/recognition.service';
+import { IssueService } from '../../services/issue/issue.service';
+import { RecognitionService } from '../../services/recognition/recognition.service';
 
 export interface IssueFormData {
   seriesId: number;

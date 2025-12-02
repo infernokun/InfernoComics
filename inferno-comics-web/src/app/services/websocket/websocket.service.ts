@@ -5,7 +5,7 @@ import {
   WebSocketSubjectConfig,
 } from 'rxjs/webSocket';
 import { Subject, Subscription, BehaviorSubject, retry } from 'rxjs';
-import { EnvironmentService } from './environment.service';
+import { EnvironmentService } from '../environment/environment.service';
 
 export interface WebSocketResponse {
   name: string,
