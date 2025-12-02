@@ -1,27 +1,45 @@
-# InfernoComicsWeb
+# Inferno Comics Web
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.6.
+[![Docker Image](https://img.shields.io/docker/v/infernokun/inferno-comics-web?label=Docker%20Image)](https://hub.docker.com/r/infernokun/inferno-comics-web)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/infernokun/inferno-comics-web/ci.yml?label=CI%20Build)](https://github.com/infernokun/inferno-comics-web/actions)
 
-## Development server
+A modern web application built with **Angular** to discover, track, and explore your comic book universe.
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+> **Angular Version**: 21 
+> **Base URL**: http://inferno-comics-web  
+> **REST API Endpoint**: `/api`
 
-## Code scaffolding
+---
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+## Features
 
-## Build
+- Browse and search comic book series
+- Track progress through ongoing series
+- Publisher breakdown and filtering
+- Responsive UI using Angular Material
+- Integrated with AG Grid for data tables
+- Docker-ready deployment
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+---
 
-## Running unit tests
+## Getting Started
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+### Prerequisites
 
-## Running end-to-end tests
+Ensure you have the following installed:
+- Node.js (v18+ recommended)
+- Angular CLI (`pnpm install -g @angular/cli`)
+- Docker (optional, for containerized deployments)
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+---
 
-## Further help
+## Development Setup
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+```bash
+# Install dependencies
+pnpm install
+
+# Start the development server
+ng serve
+
+# Navigate to http://localhost:4200/
