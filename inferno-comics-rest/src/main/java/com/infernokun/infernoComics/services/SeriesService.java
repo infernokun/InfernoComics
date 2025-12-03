@@ -903,7 +903,7 @@ public class SeriesService {
             if (results != null && results.isArray()) {
                 log.info("Matcher found results for {} images (session: {})", results.size(), sessionId);
             } else {
-                log.warn("⚠No results found in matcher response (session: {})", sessionId);
+                log.warn("No results found in matcher response (session: {})", sessionId);
             }
 
 
