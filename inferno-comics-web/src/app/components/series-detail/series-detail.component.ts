@@ -23,6 +23,7 @@ import { ComicMatch } from '../../models/comic-match.model';
 import { ComicVineService } from '../../services/comic-vine/comic-vine.service';
 import { IssueService } from '../../services/issue/issue.service';
 import { SeriesService, SSEProgressData } from '../../services/series/series.service';
+import { DateUtils } from '../../utils/date-utils';
 
 @Component({
   selector: 'app-series-detail',
@@ -45,6 +46,8 @@ export class SeriesDetailComponent implements OnInit {
   readonly DESCRIPTION_LIMIT = 100;
   readonly ISSUE_DESCRIPTION_LIMIT = 150;
   expandedIssues: Set<number> = new Set();
+
+  DateUtils = DateUtils;
   
   constructor(
     private route: ActivatedRoute,
@@ -1238,7 +1241,7 @@ export class SeriesDetailComponent implements OnInit {
 
     this.seriesService.reverifySeries(this.series.id).subscribe({
       next: (updatedSeries) => {
-        this.series = updatedSeries;
+        this.series = new Series(updatedSeries);
         this.snackBar.open('Series reverified successfully', 'Close', {
           duration: 3000,
         });

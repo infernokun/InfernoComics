@@ -43,6 +43,7 @@
 
   .series-image {
     flex-shrink: 0;
+
     img {
       width: 220px;
       height: 330px;
@@ -51,7 +52,10 @@
       box-shadow: var(--shadow-lg);
       border: 3px solid var(--border-color);
       transition: transform 0.3s ease-in-out;
-      &:hover { transform: scale(1.02); }
+
+      &:hover {
+          transform: scale(1.02);
+        }
     }
   }
 

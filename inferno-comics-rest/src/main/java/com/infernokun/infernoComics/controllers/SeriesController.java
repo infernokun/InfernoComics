@@ -80,6 +80,18 @@ public class SeriesController {
         }
     }
 
+    @GetMapping("/with-issues/{id}")
+    public ResponseEntity<SeriesWithIssues> getSeriesByIdWithIssues(@PathVariable Long id) {
+       Series series = seriesService.getSeriesById(id);
+
+       SeriesWithIssues seriesWithIssues = new SeriesWithIssues(series);
+       List<Issue> issues = issueService.getIssuesBySeriesId(series.getId());
+
+       seriesWithIssues.setIssues(issues);
+
+       return ResponseEntity.ok(seriesWithIssues);
+    }
+
     @GetMapping("/folder")
     public ResponseEntity<List<Series.FolderMapping>> getSeriesFolderStructure() {
         try {

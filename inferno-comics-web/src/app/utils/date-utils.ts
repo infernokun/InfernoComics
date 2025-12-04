@@ -1,29 +1,35 @@
 export class DateUtils {
-  static formatDateWithTime(date: Date | null | undefined): string {
+  static formatDateTime(date: Date | null | undefined): string {
     if (!date) return '';
 
     const options: Intl.DateTimeFormatOptions = {
-      year: 'numeric',
+      weekday: 'short',
       month: 'short',
-      day: '2-digit',
+      day: 'numeric',
+      year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
+      timeZoneName: 'short'
     };
 
-    return date.toLocaleString('en-US', options).replace(
-      /,/g,
-      (
-        (count = 0) =>
-        (match: any) => {
-          count++;
-          return count === 2 ? ' @' : match;
-        }
-      )()
-    );
+    return date.toLocaleString('en-US', options);
   }
 
-  static parseArrayDate(dateArray: number[]): Date {
+  static formatDate(date: Date | null | undefined): string {
+    if (!date) return '';
+
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    };
+
+    return date.toLocaleString('en-US', options);
+  }
+
+  static parseDateTimeArray(dateArray: number[]): Date {
     if (!Array.isArray(dateArray) || dateArray.length < 6) {
       return new Date(); // fallback to current date
     }
@@ -38,6 +44,20 @@ export class DateUtils {
       minute,
       second,
       Math.floor(nanoseconds / 1000000)
+    );
+  }
+
+  static parseDateArray(dateArray: number[]): Date {
+    if (!Array.isArray(dateArray) || dateArray.length < 2) {
+      return new Date();
+    }
+
+    const [year, month, day] = dateArray;
+    // Note: JavaScript Date months are 0-indexed, so subtract 1 from month
+    return new Date(
+      year,
+      month - 1,
+      day,
     );
   }
 }

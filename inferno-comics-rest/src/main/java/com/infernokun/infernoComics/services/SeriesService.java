@@ -42,37 +42,40 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Service
 @Transactional
 public class SeriesService {
-    private final SeriesRepository seriesRepository;
-    private final IssueRepository issueRepository;
-    private final ComicVineService comicVineService;
-    private final DescriptionGeneratorService descriptionGeneratorService;
-    private final GCDatabaseService gcDatabaseService;
-    private final ModelMapper modelMapper;
-    private final ProgressService progressService;
-    private final CacheManager cacheManager;
     private final WeirdService weirdService;
+    private final ProgressService progressService;
+    private final ComicVineService comicVineService;
+    private final GCDatabaseService gcDatabaseService;
+    private final DescriptionGeneratorService descriptionGeneratorService;
 
-    private final WebClient webClient;
-
+    private final IssueRepository issueRepository;
+    private final SeriesRepository seriesRepository;
     private final ProcessedFileRepository processedFileRepository;
 
-    public SeriesService(SeriesRepository seriesRepository,
-                         IssueRepository issueRepository,
-                         ComicVineService comicVineService,
-                         DescriptionGeneratorService descriptionGeneratorService,
-                         GCDatabaseService gcDatabaseService,
-                         ModelMapper modelMapper,
-                         InfernoComicsConfig infernoComicsConfig,
+    private final WebClient webClient;
+    private final ModelMapper modelMapper;
+    private final CacheManager cacheManager;
+
+    public SeriesService(WeirdService weirdService,
                          ProgressService progressService,
-                         CacheManager cacheManager, WeirdService weirdService,
-                         ProcessedFileRepository processedFileRepository) {
-        this.seriesRepository = seriesRepository;
-        this.issueRepository = issueRepository;
-        this.comicVineService = comicVineService;
-        this.descriptionGeneratorService = descriptionGeneratorService;
-        this.gcDatabaseService = gcDatabaseService;
-        this.modelMapper = modelMapper;
+                         ComicVineService comicVineService,
+                         GCDatabaseService gcDatabaseService,
+                         DescriptionGeneratorService descriptionGeneratorService,
+                         IssueRepository issueRepository,
+                         SeriesRepository seriesRepository,
+                         ProcessedFileRepository processedFileRepository,
+                         ModelMapper modelMapper,
+                         CacheManager cacheManager,
+                         InfernoComicsConfig infernoComicsConfig) {
+        this.weirdService = weirdService;
         this.progressService = progressService;
+        this.comicVineService = comicVineService;
+        this.gcDatabaseService = gcDatabaseService;
+        this.descriptionGeneratorService = descriptionGeneratorService;
+        this.issueRepository = issueRepository;
+        this.seriesRepository = seriesRepository;
+        this.processedFileRepository = processedFileRepository;
+        this.modelMapper = modelMapper;
         this.cacheManager = cacheManager;
         this.webClient = WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
@@ -82,8 +85,6 @@ public class SeriesService {
                                 .maxInMemorySize(500 * 1024 * 1024))
                         .build())
                 .build();
-        this.weirdService = weirdService;
-        this.processedFileRepository = processedFileRepository;
     }
 
     @CacheEvict(value = "series", key = "#seriesId")
@@ -140,6 +141,7 @@ public class SeriesService {
         series.setIssuesAvailableCount(totalComics.get());
         series.setGcdIds(newGcdIds);
         series.setCachedCoverUrls(new ArrayList<>());
+        series.setLastReverification(LocalDateTime.now());
 
         Series updatedSeries = seriesRepository.save(series);
 
@@ -169,6 +171,7 @@ public class SeriesService {
 
         log.info("✅ Reverification complete for '{}': {} issues from {} Comic Vine IDs → {} GCD mappings",
                 updatedSeries.getName(), totalComics.get(), originalComicVineIds.size(), newGcdIds.size());
+
 
         return updatedSeries;
     }

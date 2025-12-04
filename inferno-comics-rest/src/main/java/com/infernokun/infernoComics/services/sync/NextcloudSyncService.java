@@ -281,12 +281,6 @@ public class NextcloudSyncService {
         }
     }
 
-    @Scheduled(cron = "0 0 2 * * *")
-    public void runSeriesProcessingScheduler() {
-        List<Series> allSeries = seriesService.getAllSeries();
-        allSeries.forEach(this::processSeries);
-    }
-
     // Manual sync endpoint
     public ProcessingResult manualSync(Long seriesId) {
         Series series = seriesService.getSeriesById(seriesId);

@@ -395,8 +395,8 @@
                             @if (issue.uploadedImageUrl) {
                               <div class="image-container">
                                 <label>Uploaded Image:</label>
-                                <img [src]="issue.uploadedImageUrl" [alt]="'Issue ' + issue.issueNumber + ' uploaded'"
-                                  (click)="openImageInNewTab(issue.uploadedImageUrl)">
+                                <img [src]="getImageUrl(issue)" [alt]="'Issue ' + issue.issueNumber + ' uploaded'"
+                                  (click)="openImageInNewTab(getImageUrl(issue))">
                               </div>
                             }
                           </div>
@@ -455,11 +455,11 @@
           <div class="info-grid">
             <div class="info-item">
               <label>Created At:</label>
-              <span>{{ formatDate(series.createdAt!) }}</span>
+              <span>{{ DateUtils.formatDateTime(series.createdAt!) }}</span>
             </div>
             <div class="info-item">
               <label>Updated At:</label>
-              <span>{{ formatDate(series.updatedAt!) }}</span>
+              <span>{{ DateUtils.formatDateTime(series.updatedAt!) }}</span>
             </div>
           </div>
         </mat-card-content>

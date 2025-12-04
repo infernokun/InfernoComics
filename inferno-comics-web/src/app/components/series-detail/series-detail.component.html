@@ -61,7 +61,7 @@
             </div>
             <div class="meta-item">
               <mat-icon>description</mat-icon>
-              Comic Vine Series Identification:
+              Comic Vine ID:
               @for (id of series.comicVineIds; track id; let last = $last) {
                 <span>
                   {{ id }}@if (!last) {
@@ -72,15 +72,23 @@
           </div>
           <div class="meta-item">
             <mat-icon>description</mat-icon>
-            GCD Identification:
-            @for (id of series.gcdIds; track id; let last = $last) {
-              <span>
-                {{ id }}@if (!last) {
-                <span>, </span>
+            GCD ID:
+            @if (series.gcdIds && series.gcdIds.length > 0) {
+              @for (id of series.gcdIds; track id; let last = $last) {
+                <span>
+                  {{ id }}@if (!last) {
+                    <span>, </span>
+                  }
+                </span>
               }
-            </span>
-          }
-        </div>
+            } @else {
+              N/A
+            }
+          </div>
+          <div class="meta-item">
+            <mat-icon>calendar_today</mat-icon>
+            Last Reverification: {{ series.lastReverification ? DateUtils.formatDateTime(series.lastReverification) : 'N/A' }} 
+          </div>
       </div>
       @if (series.description) {
         <div class="description">
@@ -223,7 +231,7 @@
                     </div>
                   }
                   @if (comic.coverDate) {
-                    <p class="cover-date">Cover Date: {{ comic.coverDate }}</p>
+                    <p class="cover-date">Cover Date: {{ DateUtils.formatDate(comic.coverDate) }}</p>
                   }
                 </mat-card-content>
                 <mat-card-actions>

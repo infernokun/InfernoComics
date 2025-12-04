@@ -25,6 +25,7 @@ export class Series {
   gcdIds?: string[];
   lastCachedCovers?: Date;
   cachedCoverUrls?: GCDCover[];
+  lastReverification?: Date;
 
   constructor(data?: any) {
     if (data) {
@@ -39,13 +40,14 @@ export class Series {
       this.comicVineIds = data.comicVineIds || [];
       this.issuesOwnedCount = data.issuesOwnedCount || 0;
       this.issuesAvailableCount = data.issuesAvailableCount || 0;
-      this.createdAt = data.createdAt ? DateUtils.parseArrayDate(data.createdAt) : undefined;
-      this.updatedAt = data.updatedAt ? DateUtils.parseArrayDate(data.updatedAt) : undefined;
+      this.createdAt = data.createdAt ? DateUtils.parseDateTimeArray(data.createdAt) : undefined;
+      this.updatedAt = data.updatedAt ? DateUtils.parseDateTimeArray(data.updatedAt) : undefined;
       this.issues = data.issues || [];
       this.generatedDescription = data.generatedDescription || false;
       this.gcdIds = data.gcdIds || [];
-      this.lastCachedCovers = data.lastCachedCovers ? DateUtils.parseArrayDate(data.lastCachedCovers) : undefined;
+      this.lastCachedCovers = data.lastCachedCovers ? DateUtils.parseDateTimeArray(data.lastCachedCovers) : undefined;
       this.cachedCoverUrls = data.cachedCoverUrls || [];
+      this.lastReverification = data.lastReverification ? DateUtils.parseDateTimeArray(data.lastReverification) : undefined;
     }
   }
 }

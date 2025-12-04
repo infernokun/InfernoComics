@@ -190,23 +190,23 @@ public class ProgressController {
 
     @DeleteMapping("/{sessionId}")
     public ResponseEntity<?> deleteProgressData(@PathVariable String sessionId) {
-        Optional<ProgressData> progressDataOpt = progressService.getProgressDataBySessionId(sessionId);
-
-        if (progressDataOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Session id: " + sessionId + " not found!");
-        }
-
-        progressService.deleteProgressDataSession(progressDataOpt.get());
-        processedFileRepository.deleteAll(processedFileRepository.findBySessionId(sessionId));
         try {
+            Optional<ProgressData> progressDataOpt = progressService.getProgressDataBySessionId(sessionId);
+            if (progressDataOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body("Session id: " + sessionId + " not found!");
+            }
+
+            progressService.deleteProgressDataBySessionId(sessionId);
+            processedFileRepository.deleteAll(processedFileRepository.findBySessionId(sessionId));
             recognitionService.cleanSession(sessionId);
+            
+            return ResponseEntity.ok().build();
         } catch (Exception e) {
-            log.warn("Error cleaning session: {}", e.getMessage());
+            log.error("Error deleting progress data for session {}: {}", sessionId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error deleting progress data: " + e.getMessage());
         }
-
-        return ResponseEntity.ok().body(recognitionService.cleanSession(sessionId));
     }
-
 
     @Data
     public static class CompletionRequest {

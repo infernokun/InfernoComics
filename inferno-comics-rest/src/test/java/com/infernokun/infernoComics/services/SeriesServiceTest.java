@@ -1,8 +1,11 @@
 package com.infernokun.infernoComics.services;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.controllers.SeriesController;
+import com.infernokun.infernoComics.models.DescriptionGenerated;
+import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
@@ -13,12 +16,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static reactor.core.publisher.Mono.when;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SeriesServiceTest {
@@ -60,7 +73,6 @@ class SeriesServiceTest {
     private Cache cache;
 
     private SeriesService seriesService;
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
@@ -68,20 +80,18 @@ class SeriesServiceTest {
         when(infernoComicsConfig.getRecognitionServerPort()).thenReturn(8080);
 
         seriesService = new SeriesService(
-                seriesRepository,
-                issueRepository,
-                comicVineService,
-                descriptionGeneratorService,
-                gcDatabaseService,
-                modelMapper,
-                infernoComicsConfig,
-                progressService,
-                cacheManager,
                 weirdService,
-                processedFileRepository
+                progressService,
+                comicVineService,
+                gcDatabaseService,
+                descriptionGeneratorService,
+                issueRepository,
+                seriesRepository,
+                processedFileRepository,
+                modelMapper,
+                cacheManager,
+                infernoComicsConfig
         );
-
-        objectMapper = new ObjectMapper();
     }
 
     // Helper methods for creating test data
@@ -189,7 +199,7 @@ class SeriesServiceTest {
 
             List<Series> result = seriesService.getAllSeries();
 
-            assertThat(result.get(0).getIssuesOwnedCount()).isEqualTo(2);
+            assertThat(result.getFirst().getIssuesOwnedCount()).isEqualTo(2);
         }
     }
 
@@ -239,7 +249,7 @@ class SeriesServiceTest {
             List<Series> result = seriesService.searchSeries("spider");
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getName()).isEqualTo("Spider-Man");
+            assertThat(result.getFirst().getName()).isEqualTo("Spider-Man");
         }
     }
 
@@ -257,7 +267,7 @@ class SeriesServiceTest {
             List<ComicVineService.ComicVineSeriesDto> result = seriesService.searchComicVineSeries("Spider-Man");
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getName()).isEqualTo("Spider-Man");
+            assertThat(result.getFirst().getName()).isEqualTo("Spider-Man");
         }
 
         @Test
@@ -323,7 +333,7 @@ class SeriesServiceTest {
         @Test
         @DisplayName("Should create series successfully")
         void shouldCreateSeries() {
-            TestSeriesCreateRequest request = new TestSeriesCreateRequest();
+            SeriesController.SeriesCreateRequestDto request = new SeriesController.SeriesCreateRequestDto();
             request.setName("Spider-Man");
             request.setPublisher("Marvel");
             request.setStartYear(2020);
@@ -349,7 +359,7 @@ class SeriesServiceTest {
         @Test
         @DisplayName("Should generate description when not provided")
         void shouldGenerateDescription() {
-            TestSeriesCreateRequest request = new TestSeriesCreateRequest();
+            SeriesController.SeriesCreateRequestDto request = new SeriesController.SeriesCreateRequestDto();
             request.setName("Spider-Man");
             request.setPublisher("Marvel");
             request.setDescription(null);
@@ -374,13 +384,13 @@ class SeriesServiceTest {
             Series result = seriesService.createSeries(request);
 
             assertThat(result.getDescription()).isEqualTo("Generated description");
-            assertThat(result.getGeneratedDescription()).isTrue();
+            assertThat(result.isGeneratedDescription()).isTrue();
         }
 
         @Test
         @DisplayName("Should map Comic Vine IDs to GCD IDs")
         void shouldMapComicVineToGcd() {
-            TestSeriesCreateRequest request = new TestSeriesCreateRequest();
+            SeriesController.SeriesCreateRequestDto request = new SeriesController.SeriesCreateRequestDto();
             request.setName("Spider-Man");
             request.setComicVineIds(List.of("12345"));
 
@@ -416,7 +426,7 @@ class SeriesServiceTest {
         void shouldUpdateSeries() {
             Series existingSeries = createTestSeries(1L, "Spider-Man");
 
-            TestSeriesUpdateRequest request = new TestSeriesUpdateRequest();
+            SeriesController.SeriesUpdateRequestDto request = new SeriesController.SeriesUpdateRequestDto();
             request.setName("Amazing Spider-Man");
             request.setPublisher("Marvel");
             request.setDescription("Updated description");
@@ -435,7 +445,7 @@ class SeriesServiceTest {
         @Test
         @DisplayName("Should throw exception when series not found")
         void shouldThrowExceptionWhenNotFound() {
-            TestSeriesUpdateRequest request = new TestSeriesUpdateRequest();
+            SeriesController.SeriesUpdateRequestDto request = new SeriesController.SeriesUpdateRequestDto();
 
             when(seriesRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -450,7 +460,7 @@ class SeriesServiceTest {
             Series existingSeries = createTestSeries(1L, "Spider-Man");
             existingSeries.setComicVineIds(new ArrayList<>(List.of("12345")));
 
-            TestSeriesUpdateRequestDto request = new TestSeriesUpdateRequestDto();
+            SeriesController.SeriesUpdateRequestDto request = new SeriesController.SeriesUpdateRequestDto();
             request.setName("Spider-Man");
             request.setComicVineIds(List.of("12345", "67890"));
 
@@ -476,15 +486,13 @@ class SeriesServiceTest {
             existingSeries.setComicVineIds(new ArrayList<>(List.of("12345")));
             existingSeries.setGcdIds(new ArrayList<>(List.of("100")));
 
-            TestSeriesUpdateRequestDto request = new TestSeriesUpdateRequestDto();
+            SeriesController.SeriesUpdateRequestDto request = new SeriesController.SeriesUpdateRequestDto();
             request.setName("Spider-Man");
             request.setComicVineIds(new ArrayList<>());
 
             when(seriesRepository.findById(1L)).thenReturn(Optional.of(existingSeries));
-            when(seriesRepository.save(any(Series.class))).thenAnswer(invocation -> {
-                Series saved = invocation.getArgument(0);
-                return saved;
-            });
+            when(seriesRepository.save(any(Series.class))).thenAnswer(invocation ->
+                    invocation.<Series>getArgument(0));
             setupCacheMocks();
 
             Series result = seriesService.updateSeries(1L, request);
@@ -664,7 +672,7 @@ class SeriesServiceTest {
             List<Series> result = seriesService.searchSeriesByPublisherAndYear("Marvel", null, null);
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getPublisher()).isEqualTo("Marvel");
+            assertThat(result.getFirst().getPublisher()).isEqualTo("Marvel");
         }
 
         @Test
@@ -681,7 +689,7 @@ class SeriesServiceTest {
             List<Series> result = seriesService.searchSeriesByPublisherAndYear(null, 2018, null);
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getStartYear()).isEqualTo(2020);
+            assertThat(result.getFirst().getStartYear()).isEqualTo(2020);
         }
 
         @Test
@@ -698,7 +706,7 @@ class SeriesServiceTest {
             List<Series> result = seriesService.searchSeriesByPublisherAndYear(null, null, 2017);
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getStartYear()).isEqualTo(2015);
+            assertThat(result.getFirst().getStartYear()).isEqualTo(2015);
         }
 
         @Test
@@ -721,7 +729,7 @@ class SeriesServiceTest {
             List<Series> result = seriesService.searchSeriesByPublisherAndYear("Marvel", 2010, 2018);
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getName()).isEqualTo("Spider-Man");
+            assertThat(result.getFirst().getName()).isEqualTo("Spider-Man");
         }
     }
 
@@ -769,7 +777,7 @@ class SeriesServiceTest {
 
             Series result = seriesService.createSeriesFromComicVine("12345", cvDto);
 
-            assertThat(result.getGeneratedDescription()).isTrue();
+            assertThat(result.isGeneratedDescription()).isTrue();
         }
     }
 
@@ -888,82 +896,5 @@ class SeriesServiceTest {
     // Helper method to setup cache mocks
     private void setupCacheMocks() {
         when(cacheManager.getCache(anyString())).thenReturn(cache);
-    }
-
-    // Test implementation classes
-    static class TestSeriesCreateRequest implements SeriesController.SeriesCreateRequestDto {
-        private String name;
-        private String description;
-        private String publisher;
-        private Integer startYear;
-        private Integer endYear;
-        private String imageUrl;
-        private String comicVineId;
-        private List<String> comicVineIds;
-        private Integer issuesAvailableCount;
-
-        @Override
-        public String getName() { return name; }
-        @Override
-        public String getDescription() { return description; }
-        @Override
-        public String getPublisher() { return publisher; }
-        @Override
-        public Integer getStartYear() { return startYear; }
-        @Override
-        public Integer getEndYear() { return endYear; }
-        @Override
-        public String getImageUrl() { return imageUrl; }
-        @Override
-        public String getComicVineId() { return comicVineId; }
-        @Override
-        public List<String> getComicVineIds() { return comicVineIds; }
-        @Override
-        public Integer getIssuesAvailableCount() { return issuesAvailableCount; }
-
-        public void setName(String name) { this.name = name; }
-        public void setDescription(String description) { this.description = description; }
-        public void setPublisher(String publisher) { this.publisher = publisher; }
-        public void setStartYear(Integer startYear) { this.startYear = startYear; }
-        public void setComicVineIds(List<String> comicVineIds) { this.comicVineIds = comicVineIds; }
-    }
-
-    static class TestSeriesUpdateRequest implements SeriesService.SeriesUpdateRequest {
-        private String name;
-        private String description;
-        private String publisher;
-        private Integer startYear;
-        private Integer endYear;
-        private String imageUrl;
-        private String comicVineId;
-
-        @Override
-        public String getName() { return name; }
-        @Override
-        public String getDescription() { return description; }
-        @Override
-        public String getPublisher() { return publisher; }
-        @Override
-        public Integer getStartYear() { return startYear; }
-        @Override
-        public Integer getEndYear() { return endYear; }
-        @Override
-        public String getImageUrl() { return imageUrl; }
-        @Override
-        public String getComicVineId() { return comicVineId; }
-
-        public void setName(String name) { this.name = name; }
-        public void setDescription(String description) { this.description = description; }
-        public void setPublisher(String publisher) { this.publisher = publisher; }
-    }
-
-    static class TestSeriesUpdateRequestDto extends TestSeriesUpdateRequest
-            implements SeriesController.SeriesUpdateRequestDto {
-        private List<String> comicVineIds;
-
-        @Override
-        public List<String> getComicVineIds() { return comicVineIds; }
-
-        public void setComicVineIds(List<String> comicVineIds) { this.comicVineIds = comicVineIds; }
     }
 }

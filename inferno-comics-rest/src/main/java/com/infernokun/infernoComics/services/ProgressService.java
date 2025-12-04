@@ -662,10 +662,9 @@ public class ProgressService {
         return progressDataRepository.findBySessionId(sessionId);
     }
 
-    @Modifying
     @Transactional
-    public void deleteProgressDataSession(ProgressData progressData) {
-        progressDataRepository.delete(progressData);
+    public void deleteProgressDataBySessionId(String sessionId) {
+        progressDataRepository.deleteBySessionId(sessionId);
     }
 
     private Integer getIntegerFromMap(Map<String, Object> map, String... keys) {

@@ -5,6 +5,7 @@ import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.services.IssueService;
 import com.infernokun.infernoComics.services.ComicVineService;
 import jakarta.validation.Valid;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +25,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/issues")
 public class IssueController {
-
     private final IssueService issueService;
 
     public IssueController(IssueService issueService) {
@@ -234,6 +235,7 @@ public class IssueController {
 
     @Setter
     @Getter
+    @Builder
     public static class IssueCreateRequestDto implements IssueService.IssueCreateRequest {
         private Long seriesId;
         private String issueNumber;
@@ -248,7 +250,7 @@ public class IssueController {
         private String notes;
         private String comicVineId;
         private Boolean isKeyIssue;
-        private List<Issue.VariantCover> variantCovers = new ArrayList<>();
+        private List<Issue.VariantCover> variantCovers;
         private Boolean hasVariants;
         private String uploadedImageUrl;
     }

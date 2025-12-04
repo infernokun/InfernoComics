@@ -83,6 +83,9 @@ public class Series {
     @Column(name = "issues_owned_count")
     private int issuesOwnedCount = 0;
 
+    @Column(name = "last_reverification")
+    private LocalDateTime lastReverification = null;
+
     public Series(String name, String description, String publisher) {
         this.name = name;
         this.description = description;

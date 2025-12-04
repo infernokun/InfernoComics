@@ -2,10 +2,13 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Series } from '../../models/series.model';
+import { Series, SeriesWithIssues } from '../../models/series.model';
 
 import { MaterialModule } from '../../material.module';
 import { SeriesService } from '../../services/series/series.service';
+import { DateUtils } from '../../utils/date-utils';
+import { Issue } from '../../models/issue.model';
+import { RecognitionService } from '../../services/recognition/recognition.service';
 
 
 @Component({
@@ -31,10 +34,13 @@ export class SeriesAdminComponent implements OnInit {
     timestamps: false,
   };
 
+  DateUtils = DateUtils;
+
   constructor(
     private route: ActivatedRoute,
     private snackBar: MatSnackBar,
-    private seriesService: SeriesService
+    private seriesService: SeriesService,
+    private recognitionService: RecognitionService
   ) {
     this.seriesId = +this.route.snapshot.paramMap.get('id')!;
   }
@@ -47,9 +53,10 @@ export class SeriesAdminComponent implements OnInit {
     this.loading = true;
     this.error = null;
 
-    this.seriesService.getSeriesById(this.seriesId).subscribe({
-      next: (data: Series) => {
-        this.series = new Series(data);
+    this.seriesService.getSeriesByIdWithIssues(this.seriesId).subscribe({
+      next: (data: SeriesWithIssues) => {
+        this.series = new Series(data.series);
+        this.series.issues = data.issues;
         this.loading = false;
       },
       error: (err) => {
@@ -134,5 +141,9 @@ export class SeriesAdminComponent implements OnInit {
     navigator.clipboard.writeText(text).then(() => {
       this.snackBar.open('Copied to clipboard', 'Close', { duration: 2000 });
     });
+  }
+
+  getImageUrl(issue: Issue) {
+    return this.recognitionService.getCurrentImageUrl({issue: issue});
   }
 }

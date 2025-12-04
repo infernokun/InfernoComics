@@ -1,7 +1,36 @@
 package com.infernokun.infernoComics.services;
 
+import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.controllers.IssueController;
+import com.infernokun.infernoComics.models.DescriptionGenerated;
+import com.infernokun.infernoComics.models.Issue;
+import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.repositories.IssueRepository;
+import com.infernokun.infernoComics.repositories.SeriesRepository;
+import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.*;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.*;
+
+import com.infernokun.infernoComics.controllers.IssueController.IssueCreateRequestDto;
+
 @ExtendWith(MockitoExtension.class)
-class IssueServiceTest {
+public class IssueServiceTest {
 
     @Mock
     private IssueRepository issueRepository;
@@ -31,7 +60,6 @@ class IssueServiceTest {
     private Cache cache;
 
     private IssueService issueService;
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
@@ -49,8 +77,6 @@ class IssueServiceTest {
                 recognitionService,
                 infernoComicsConfig
         );
-
-        objectMapper = new ObjectMapper();
     }
 
     // Helper methods for creating test data
@@ -72,14 +98,10 @@ class IssueServiceTest {
         issue.setCreatedAt(LocalDateTime.now());
         issue.setIsKeyIssue(false);
         issue.setIsVariant(false);
-        issue.setCondition(Issue.Condition.NM);
+        issue.setCondition(Issue.Condition.FAIR);
         issue.setCurrentValue(BigDecimal.valueOf(10.00));
         issue.setVariantCovers(new ArrayList<>());
         return issue;
-    }
-
-    private TestIssueCreateRequest createTestRequest(Long seriesId, String issueNumber) {
-        return new TestIssueCreateRequest(seriesId, issueNumber);
     }
 
     @Nested
@@ -176,7 +198,7 @@ class IssueServiceTest {
             List<Issue> result = issueService.getIssuesBySeriesId(1L);
 
             assertThat(result).hasSize(3);
-            assertThat(result.get(0).getIssueNumber()).isEqualTo("1");
+            assertThat(result.getFirst().getIssueNumber()).isEqualTo("1");
             assertThat(result.get(1).getIssueNumber()).isEqualTo("2");
             assertThat(result.get(2).getIssueNumber()).isEqualTo("10");
         }
@@ -195,7 +217,7 @@ class IssueServiceTest {
 
             List<Issue> result = issueService.getIssuesBySeriesId(1L);
 
-            assertThat(result.get(0).getIssueNumber()).isEqualTo("1");
+            assertThat(result.getFirst().getIssueNumber()).isEqualTo("1");
             assertThat(result.get(1).getIssueNumber()).isEqualTo("1.5");
             assertThat(result.get(2).getIssueNumber()).isEqualTo("2");
         }
@@ -215,7 +237,7 @@ class IssueServiceTest {
 
             List<Issue> result = issueService.getIssuesBySeriesId(1L);
 
-            assertThat(result.get(0).getIssueNumber()).isEqualTo("1");
+            assertThat(result.getFirst().getIssueNumber()).isEqualTo("1");
             assertThat(result.get(1).getIssueNumber()).isEqualTo("1A");
             assertThat(result.get(2).getIssueNumber()).isEqualTo("1B");
             assertThat(result.get(3).getIssueNumber()).isEqualTo("2");
@@ -249,7 +271,7 @@ class IssueServiceTest {
             List<Issue> result = issueService.getKeyIssues();
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getIsKeyIssue()).isTrue();
+            assertThat(result.getFirst().getIsKeyIssue()).isTrue();
         }
     }
 
@@ -270,7 +292,7 @@ class IssueServiceTest {
             List<Issue> result = issueService.getVariantIssues();
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0).getIsVariant()).isTrue();
+            assertThat(result.getFirst().getIsVariant()).isTrue();
         }
     }
 
@@ -296,7 +318,7 @@ class IssueServiceTest {
             List<Issue> result = issueService.getRecentIssues(2);
 
             assertThat(result).hasSize(2);
-            assertThat(result.get(0).getId()).isEqualTo(3L);
+            assertThat(result.getFirst().getId()).isEqualTo(3L);
             assertThat(result.get(1).getId()).isEqualTo(2L);
         }
     }
@@ -398,10 +420,10 @@ class IssueServiceTest {
             Series series = createTestSeries(1L, "Spider-Man");
 
             Issue nmIssue = createTestIssue(1L, "1", series);
-            nmIssue.setCondition(Issue.Condition.NM);
+            nmIssue.setCondition(Issue.Condition.NEAR_MINT);
 
             Issue vfIssue = createTestIssue(2L, "2", series);
-            vfIssue.setCondition(Issue.Condition.VF);
+            vfIssue.setCondition(Issue.Condition.VERY_FINE);
 
             when(issueRepository.findAll()).thenReturn(List.of(nmIssue, vfIssue));
 
@@ -423,7 +445,7 @@ class IssueServiceTest {
         @DisplayName("Should create issue successfully")
         void shouldCreateIssue() {
             Series series = createTestSeries(1L, "Spider-Man");
-            TestIssueCreateRequest request = createTestRequest(1L, "1");
+            IssueCreateRequestDto request = IssueCreateRequestDto.builder().issueNumber("1").title("Spider-Man").build();
 
             when(seriesRepository.findById(1L)).thenReturn(Optional.of(series));
             when(issueRepository.findByUploadedImageUrl(any())).thenReturn(Optional.empty());
@@ -446,7 +468,7 @@ class IssueServiceTest {
         @Test
         @DisplayName("Should throw exception when series not found")
         void shouldThrowExceptionWhenSeriesNotFound() {
-            TestIssueCreateRequest request = createTestRequest(999L, "1");
+            IssueCreateRequestDto request = IssueCreateRequestDto.builder().issueNumber("1").title("Spider-Man").build();
 
             when(seriesRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -459,8 +481,9 @@ class IssueServiceTest {
         @DisplayName("Should generate description when enabled and not provided")
         void shouldGenerateDescription() {
             Series series = createTestSeries(1L, "Spider-Man");
-            TestIssueCreateRequest request = createTestRequest(1L, "1");
-            request.setDescription(null);
+            IssueCreateRequestDto request = IssueCreateRequestDto.
+                    builder().issueNumber("1").title("Spider-Man").description(null).build();
+
 
             DescriptionGenerated generated = new DescriptionGenerated();
             generated.setDescription("Generated description");
@@ -482,7 +505,7 @@ class IssueServiceTest {
             Issue result = issueService.createIssue(request);
 
             assertThat(result.getDescription()).isEqualTo("Generated description");
-            assertThat(result.getGeneratedDescription()).isTrue();
+            assertThat(result.isGeneratedDescription()).isTrue();
         }
     }
 
@@ -494,10 +517,10 @@ class IssueServiceTest {
         @DisplayName("Should create multiple issues in bulk")
         void shouldCreateMultipleIssues() {
             Series series = createTestSeries(1L, "Spider-Man");
-            List<TestIssueCreateRequest> requests = List.of(
-                    createTestRequest(1L, "1"),
-                    createTestRequest(1L, "2"),
-                    createTestRequest(1L, "3")
+            List<IssueController.IssueCreateRequestDto> requests = List.of(
+                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("1").build(),
+                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("2").build(),
+                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("3").build()
             );
 
             when(seriesRepository.findById(1L)).thenReturn(Optional.of(series));
@@ -525,9 +548,10 @@ class IssueServiceTest {
         @DisplayName("Should throw exception when issues have different series IDs")
         void shouldThrowExceptionForDifferentSeriesIds() {
             Series series = createTestSeries(1L, "Spider-Man");
-            List<TestIssueCreateRequest> requests = List.of(
-                    createTestRequest(1L, "1"),
-                    createTestRequest(2L, "2")
+            List<IssueController.IssueCreateRequestDto> requests = List.of(
+                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("1").seriesId(1L).build(),
+                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("2").seriesId(2L).build(),
+                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("3").seriesId(3L).build()
             );
 
             when(seriesRepository.findById(1L)).thenReturn(Optional.of(series));
@@ -561,7 +585,7 @@ class IssueServiceTest {
             Series series = createTestSeries(1L, "Spider-Man");
             Issue existingIssue = createTestIssue(1L, "1", series);
 
-            TestIssueUpdateRequest request = new TestIssueUpdateRequest();
+            IssueController.IssueUpdateRequestDto request = new IssueController.IssueUpdateRequestDto();
             request.setIssueNumber("1");
             request.setTitle("Updated Title");
             request.setDescription("Updated description");
@@ -580,7 +604,7 @@ class IssueServiceTest {
         @Test
         @DisplayName("Should throw exception when issue not found")
         void shouldThrowExceptionWhenIssueNotFound() {
-            TestIssueUpdateRequest request = new TestIssueUpdateRequest();
+            IssueController.IssueUpdateRequestDto request = new IssueController.IssueUpdateRequestDto();
 
             when(issueRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -641,8 +665,8 @@ class IssueServiceTest {
 
             IssueService.BulkDeleteResult result = issueService.deleteIssuesBulk(List.of(1L, 2L));
 
-            assertThat(result.successful).isEqualTo(2);
-            assertThat(result.failed).isEqualTo(0);
+            assertThat(result.successful()).isEqualTo(2);
+            assertThat(result.failed()).isEqualTo(0);
             verify(issueRepository, times(2)).deleteById(anyLong());
         }
 
@@ -660,8 +684,8 @@ class IssueServiceTest {
 
             IssueService.BulkDeleteResult result = issueService.deleteIssuesBulk(List.of(1L, 2L));
 
-            assertThat(result.successful).isEqualTo(1);
-            assertThat(result.failed).isEqualTo(1);
+            assertThat(result.successful()).isEqualTo(1);
+            assertThat(result.failed()).isEqualTo(1);
         }
     }
 
@@ -679,7 +703,7 @@ class IssueServiceTest {
                     "variant-1",
                     "http://example.com/variant.jpg",
                     "Variant A",
-                    List.of("tag1", "tag2")
+                    String.valueOf(List.of("tag1", "tag2"))
             );
 
             when(issueRepository.findById(1L)).thenReturn(Optional.of(issue));
@@ -698,8 +722,8 @@ class IssueServiceTest {
             Series series = createTestSeries(1L, "Spider-Man");
             Issue issue = createTestIssue(1L, "1", series);
             issue.setVariantCovers(new ArrayList<>(List.of(
-                    new Issue.VariantCover("variant-1", "url1", "caption1", List.of()),
-                    new Issue.VariantCover("variant-2", "url2", "caption2", List.of())
+                    new Issue.VariantCover("variant-1", "url1", "caption1", List.of().toString()),
+                    new Issue.VariantCover("variant-2", "url2", "caption2", List.of().toString())
             )));
             issue.setIsVariant(true);
 
@@ -714,7 +738,7 @@ class IssueServiceTest {
 
             Issue savedIssue = captor.getValue();
             assertThat(savedIssue.getVariantCovers()).hasSize(1);
-            assertThat(savedIssue.getVariantCovers().get(0).getId()).isEqualTo("variant-2");
+            assertThat(savedIssue.getVariantCovers().getFirst().getId()).isEqualTo("variant-2");
         }
     }
 
@@ -816,106 +840,4 @@ class IssueServiceTest {
         when(cacheManager.getCache(anyString())).thenReturn(cache);
     }
 
-    // Test implementation classes
-    static class TestIssueCreateRequest implements IssueService.IssueCreateRequest,
-            com.infernokun.infernoComics.controllers.IssueController.IssueCreateRequestDto {
-        private Long seriesId;
-        private String issueNumber;
-        private String title;
-        private String description;
-        private LocalDate coverDate;
-        private String imageUrl;
-        private Issue.Condition condition;
-        private BigDecimal purchasePrice;
-        private BigDecimal currentValue;
-        private LocalDate purchaseDate;
-        private String notes;
-        private String comicVineId;
-        private Boolean isKeyIssue = false;
-        private String uploadedImageUrl;
-
-        TestIssueCreateRequest(Long seriesId, String issueNumber) {
-            this.seriesId = seriesId;
-            this.issueNumber = issueNumber;
-        }
-
-        @Override
-        public Long getSeriesId() { return seriesId; }
-        @Override
-        public String getIssueNumber() { return issueNumber; }
-        @Override
-        public String getTitle() { return title; }
-        @Override
-        public String getDescription() { return description; }
-        @Override
-        public LocalDate getCoverDate() { return coverDate; }
-        @Override
-        public String getImageUrl() { return imageUrl; }
-        @Override
-        public Issue.Condition getCondition() { return condition; }
-        @Override
-        public BigDecimal getPurchasePrice() { return purchasePrice; }
-        @Override
-        public BigDecimal getCurrentValue() { return currentValue; }
-        @Override
-        public LocalDate getPurchaseDate() { return purchaseDate; }
-        @Override
-        public String getNotes() { return notes; }
-        @Override
-        public String getComicVineId() { return comicVineId; }
-        @Override
-        public Boolean getIsKeyIssue() { return isKeyIssue; }
-        @Override
-        public String getUploadedImageUrl() { return uploadedImageUrl; }
-
-        public void setDescription(String description) { this.description = description; }
-        public void setComicVineId(String comicVineId) { this.comicVineId = comicVineId; }
-    }
-
-    static class TestIssueUpdateRequest implements IssueService.IssueUpdateRequest {
-        private String issueNumber;
-        private String title;
-        private String description;
-        private LocalDate coverDate;
-        private String imageUrl;
-        private Issue.Condition condition;
-        private BigDecimal purchasePrice;
-        private BigDecimal currentValue;
-        private LocalDate purchaseDate;
-        private String notes;
-        private String comicVineId;
-        private Boolean isKeyIssue = false;
-        private String uploadedImageUrl;
-
-        @Override
-        public String getIssueNumber() { return issueNumber; }
-        @Override
-        public String getTitle() { return title; }
-        @Override
-        public String getDescription() { return description; }
-        @Override
-        public LocalDate getCoverDate() { return coverDate; }
-        @Override
-        public String getImageUrl() { return imageUrl; }
-        @Override
-        public Issue.Condition getCondition() { return condition; }
-        @Override
-        public BigDecimal getPurchasePrice() { return purchasePrice; }
-        @Override
-        public BigDecimal getCurrentValue() { return currentValue; }
-        @Override
-        public LocalDate getPurchaseDate() { return purchaseDate; }
-        @Override
-        public String getNotes() { return notes; }
-        @Override
-        public String getComicVineId() { return comicVineId; }
-        @Override
-        public Boolean getIsKeyIssue() { return isKeyIssue; }
-        @Override
-        public String getUploadedImageUrl() { return uploadedImageUrl; }
-
-        public void setIssueNumber(String issueNumber) { this.issueNumber = issueNumber; }
-        public void setTitle(String title) { this.title = title; }
-        public void setDescription(String description) { this.description = description; }
-    }
 }

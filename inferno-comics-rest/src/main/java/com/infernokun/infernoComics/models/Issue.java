@@ -16,6 +16,7 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
+@Builder
 @Table(name = "issues")
 @AllArgsConstructor
 @NoArgsConstructor
@@ -61,16 +62,20 @@ public class Issue {
     @Column(name = "comic_vine_id")
     private String comicVineId;
 
+    @Builder.Default
     @Column(name = "gcd_ids")
     private List<String> gcdIds = new ArrayList<>();
 
+    @Builder.Default
     @Column(name = "variant_covers", columnDefinition = "TEXT")
     @Convert(converter = VariantCoverListConverter.class)
     private List<VariantCover> variantCovers = new ArrayList<>();
 
+    @Builder.Default
     @Column(name = "is_variants")
     private Boolean isVariant = false;
 
+    @Builder.Default
     @Column(name = "is_key_issue")
     private Boolean isKeyIssue = false;
 
@@ -80,12 +85,15 @@ public class Issue {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @JsonBackReference
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "series_id", nullable = false)
-    @JsonBackReference
     private Series series;
 
+    @Builder.Default
     private boolean generatedDescription = false;
+
+    @Builder.Default
     private boolean read = false;
 
     private String uploadedImageUrl;

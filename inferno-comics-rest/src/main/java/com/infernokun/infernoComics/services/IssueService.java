@@ -29,6 +29,9 @@ import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -614,7 +617,7 @@ public class IssueService {
         // Parse cover date if available
         if (issueDto.getCoverDate() != null && !issueDto.getCoverDate().isEmpty()) {
             try {
-                issue.setCoverDate(java.time.LocalDate.parse(issueDto.getCoverDate()));
+                issue.setCoverDate(LocalDate.parse(issueDto.getCoverDate()));
             } catch (Exception e) {
                 log.warn("Could not parse cover date: {}", issueDto.getCoverDate());
             }
@@ -780,12 +783,12 @@ public class IssueService {
         String getIssueNumber();
         String getTitle();
         String getDescription();
-        java.time.LocalDate getCoverDate();
+        LocalDate getCoverDate();
         String getImageUrl();
         Issue.Condition getCondition();
-        java.math.BigDecimal getPurchasePrice();
-        java.math.BigDecimal getCurrentValue();
-        java.time.LocalDate getPurchaseDate();
+        BigDecimal getPurchasePrice();
+        BigDecimal getCurrentValue();
+        LocalDate getPurchaseDate();
         String getNotes();
         String getComicVineId();
         Boolean getIsKeyIssue();
@@ -809,13 +812,6 @@ public class IssueService {
     public interface IssueUpdateRequestWithVariants extends IssueUpdateRequest, IssueRequestWithVariants {
     }
 
-    public static class BulkDeleteResult {
-        public final int successful;
-        public final int failed;
-
-        public BulkDeleteResult(int successful, int failed) {
-            this.successful = successful;
-            this.failed = failed;
-        }
+    public record BulkDeleteResult(int successful, int failed) {
     }
 }

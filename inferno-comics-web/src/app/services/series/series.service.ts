@@ -37,6 +37,10 @@ export class SeriesService {
     return this.http.get<Series>(`${this.apiUrl}/${id}`);
   }
 
+  getSeriesByIdWithIssues(id: number): Observable<SeriesWithIssues> {
+    return this.http.get<SeriesWithIssues>(`${this.apiUrl}/with-issues/${id}`);
+  }
+
   getSeriesWithIssues(): Observable<SeriesWithIssues[]> {
     return this.http.get<SeriesWithIssues[]>(`${this.apiUrl}/with-issues`);
   }

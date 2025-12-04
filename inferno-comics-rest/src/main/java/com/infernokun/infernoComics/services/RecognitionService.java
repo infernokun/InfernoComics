@@ -18,6 +18,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -85,8 +86,8 @@ public class RecognitionService {
         seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, startedBy, null, 0);
     }
 
-    public JsonNode cleanSession(String sessionId) {
-        return webClient.post()
+    public void cleanSession(String sessionId) {
+        webClient.post()
                 .uri(uriBuilder -> uriBuilder.path("/health/clean").build())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(BodyInserters.fromFormData("sessionId", sessionId))

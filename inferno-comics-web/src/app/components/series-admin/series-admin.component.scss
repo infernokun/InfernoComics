@@ -421,15 +421,6 @@
                 align-items: center;
                 justify-content: space-between;
                 flex: 1;
-
-                .condition-badge {
-                    padding: 2px 8px;
-                    border-radius: 12px;
-                    color: white;
-                    font-size: 10px;
-                    font-weight: 600;
-                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-                }
             }
         }
     }
@@ -739,6 +730,15 @@
 }
 
 .issues-container {
+    .condition-badge {
+        padding: 2px 8px;
+        border-radius: 12px;
+        color: black;
+        font-size: 10px;
+        font-weight: 600;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    
     .mat-expansion-panel {
         margin-bottom: 8px;
         border-radius: 8px !important;
@@ -785,15 +785,6 @@
                 align-items: center;
                 justify-content: space-between;
                 flex: 1;
-
-                .condition-badge {
-                    padding: 2px 8px;
-                    border-radius: 12px;
-                    color: white;
-                    font-size: 10px;
-                    font-weight: 600;
-                    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-                }
             }
         }
     }
