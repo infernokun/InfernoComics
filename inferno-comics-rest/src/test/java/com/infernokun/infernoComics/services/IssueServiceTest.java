@@ -432,8 +432,8 @@ public class IssueServiceTest {
             @SuppressWarnings("unchecked")
             Map<String, Long> conditionBreakdown = (Map<String, Long>) stats.get("conditionBreakdown");
 
-            assertThat(conditionBreakdown).containsEntry("NM", 1L);
-            assertThat(conditionBreakdown).containsEntry("VF", 1L);
+            assertThat(conditionBreakdown).containsEntry("NEAR_MINT", 1L);
+            assertThat(conditionBreakdown).containsEntry("VERY_FINE", 1L);
         }
     }
 
@@ -445,7 +445,10 @@ public class IssueServiceTest {
         @DisplayName("Should create issue successfully")
         void shouldCreateIssue() {
             Series series = createTestSeries(1L, "Spider-Man");
-            IssueCreateRequestDto request = IssueCreateRequestDto.builder().issueNumber("1").title("Spider-Man").build();
+            IssueCreateRequestDto request = mock(IssueCreateRequestDto.class);
+            when(request.getSeriesId()).thenReturn(series.getId());
+            when(request.getIssueNumber()).thenReturn("1");
+            when(request.getTitle()).thenReturn("Spider-Man");
 
             when(seriesRepository.findById(1L)).thenReturn(Optional.of(series));
             when(issueRepository.findByUploadedImageUrl(any())).thenReturn(Optional.empty());
@@ -468,22 +471,28 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should throw exception when series not found")
         void shouldThrowExceptionWhenSeriesNotFound() {
-            IssueCreateRequestDto request = IssueCreateRequestDto.builder().issueNumber("1").title("Spider-Man").build();
+            IssueCreateRequestDto request = IssueCreateRequestDto.builder()
+                    .seriesId(999L)
+                    .issueNumber("1")
+                    .title("Spider-Man")
+                    .build();
 
             when(seriesRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> issueService.createIssue(request))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Series with ID 999 not found");
+                    .hasMessageContaining("Series with ID " + request.getSeriesId() + " not found");
         }
 
         @Test
         @DisplayName("Should generate description when enabled and not provided")
         void shouldGenerateDescription() {
             Series series = createTestSeries(1L, "Spider-Man");
-            IssueCreateRequestDto request = IssueCreateRequestDto.
-                    builder().issueNumber("1").title("Spider-Man").description(null).build();
-
+            IssueCreateRequestDto request = mock(IssueCreateRequestDto.class);
+            when(request.getSeriesId()).thenReturn(series.getId());
+            when(request.getIssueNumber()).thenReturn("1");
+            when(request.getTitle()).thenReturn("Spider-Man");
+            when(request.getDescription()).thenReturn(null);
 
             DescriptionGenerated generated = new DescriptionGenerated();
             generated.setDescription("Generated description");
@@ -518,9 +527,21 @@ public class IssueServiceTest {
         void shouldCreateMultipleIssues() {
             Series series = createTestSeries(1L, "Spider-Man");
             List<IssueController.IssueCreateRequestDto> requests = List.of(
-                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("1").build(),
-                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("2").build(),
-                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("3").build()
+                    IssueController.IssueCreateRequestDto.builder()
+                            .seriesId(1L)
+                            .title("Spider-Man")
+                            .issueNumber("1")
+                            .build(),
+                    IssueController.IssueCreateRequestDto.builder()
+                            .seriesId(1L)
+                            .title("Spider-Man")
+                            .issueNumber("2")
+                            .build(),
+                    IssueController.IssueCreateRequestDto.builder()
+                            .seriesId(1L)
+                            .title("Spider-Man")
+                            .issueNumber("3")
+                            .build()
             );
 
             when(seriesRepository.findById(1L)).thenReturn(Optional.of(series));
@@ -547,20 +568,25 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should throw exception when issues have different series IDs")
         void shouldThrowExceptionForDifferentSeriesIds() {
-            Series series = createTestSeries(1L, "Spider-Man");
             List<IssueController.IssueCreateRequestDto> requests = List.of(
-                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("1").seriesId(1L).build(),
-                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("2").seriesId(2L).build(),
-                    IssueController.IssueCreateRequestDto.builder().title("Spider-Man").issueNumber("3").seriesId(3L).build()
+                    IssueController.IssueCreateRequestDto.builder()
+                            .seriesId(1L)
+                            .title("Spider-Man")
+                            .issueNumber("1")
+                            .build(),
+                    IssueController.IssueCreateRequestDto.builder()
+                            .seriesId(2L)
+                            .title("Spider-Man")
+                            .issueNumber("2")
+                            .build(),
+                    IssueController.IssueCreateRequestDto.builder()
+                            .seriesId(1L)
+                            .title("Spider-Man")
+                            .issueNumber("3")
+                            .build()
             );
 
-            when(seriesRepository.findById(1L)).thenReturn(Optional.of(series));
-
-            assertThatThrownBy(() -> issueService.createIssuesBulk(
-                    requests.stream()
-                            .map(r -> (com.infernokun.infernoComics.controllers.IssueController.IssueCreateRequestDto) r)
-                            .toList()
-            ))
+            assertThatThrownBy(() -> issueService.createIssuesBulk(requests))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("All issues must belong to the same series");
         }

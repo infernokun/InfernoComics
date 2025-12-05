@@ -224,6 +224,15 @@ public class IssueService {
             return new ArrayList<>();
         }
 
+        long distinctCount = requests.stream()
+                .map(IssueController.IssueCreateRequestDto::getSeriesId)
+                .distinct()
+                .count();
+
+        if (distinctCount > 1) {
+            throw new IllegalArgumentException("All issues must belong to the same series");
+        }
+
         Long seriesId = requests.getFirst().getSeriesId();
 
         // Validate series exists once
