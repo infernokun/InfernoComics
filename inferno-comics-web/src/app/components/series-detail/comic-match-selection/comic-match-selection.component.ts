@@ -42,7 +42,6 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   imagePreviewUrls: string[] = [];
   currentImagePreview: string | null = null;
 
-  // Image groups - now always used
   groupedMatches: { [key: number]: ComicMatch[] } = {};
   imageGroups: {
     index: number;
@@ -53,7 +52,6 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   selectedImageGroup = 0;
   showAllMatches = true;
 
-  // Statistics
   totalImagesProcessed = 0;
   totalMatchesFound = 0;
 
@@ -175,13 +173,11 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   }
 
   private createImagePreviews(): void {
-    // Priority 1: Use provided preview URL (from bulk component)
     if (this.data.imagePreviewUrl) {
       this.imagePreviewUrls = [this.data.imagePreviewUrl];
       return;
     }
 
-    // Priority 2: Multiple images from files
     if (this.data.originalImages && this.data.originalImages.length > 0) {
       this.imagePreviewUrls = this.data.originalImages
         .map((file) => {
@@ -204,7 +200,6 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
         }
       });
     } 
-    // Priority 3: Single image from file
     else if (this.data.originalImage) {
       try {
         if (this.data.originalImage instanceof File) {
@@ -218,7 +213,6 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
         this.imagePreviewUrls = [];
       }
     } 
-    // Priority 4: Fallback to match local URLs
     else {
       const localUrls = this.data.matches
         .map(match => match.local_url)
@@ -234,7 +228,6 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     }
   }
 
-  // UI Helper Methods
   getBestMatchPercentage(): number {
     return this.sortedMatches.length > 0
       ? Math.round(this.sortedMatches[0].similarity * 100)
@@ -253,7 +246,6 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     return 'Low Confidence';
   }
 
-  // Navigation Methods
   selectImageGroup(index: number): void {
     this.selectedImageGroup = index;
     this.showAllMatches = false;
@@ -267,12 +259,10 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     this.setCurrentImagePreview();
   }
 
-  // Utility methods for template
   get hasMultipleImages(): boolean {
     return this.imageGroups.length > 1;
   }
 
-  // Action Methods
   selectMatch(match: ComicMatch): void {
     this.dialogRef.close({
       action: 'select',

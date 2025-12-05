@@ -1,14 +1,11 @@
 <div class="issues-list">
-  <!-- Loading Spinner -->
   @if (loading) {
     <div class="spinner" role="status" aria-label="Loading issues">
       <mat-progress-spinner mode="indeterminate" diameter="60"></mat-progress-spinner>
     </div>
   }
 
-  <!-- Main Content -->
   @if (!loading) {
-    <!-- Toggle Control -->
     <div class="controls-section">
       <div class="control-group">
         <button
@@ -37,7 +34,6 @@
         Show Uploaded Photos
       </mat-slide-toggle>
     </div>
-    <!-- Empty State -->
     @if (seriesWithIssues.length === 0) {
       <div class="empty-state" role="status">
         <mat-icon class="empty-icon">library_books</mat-icon>
@@ -45,7 +41,6 @@
         <p>There are currently no comic series available.</p>
       </div>
     }
-    <!-- Series List -->
     @for (seriesItem of seriesWithIssues; track trackBySeriesId($index, seriesItem)) {
       <div
         class="series-block"
@@ -60,7 +55,6 @@
             </span>
           }
         </h2>
-        <!-- Issues Grid -->
         @if (hasIssues(seriesItem)) {
           <div class="issues-container">
             <div class="issues-grid">
@@ -89,7 +83,6 @@
                 </div>
               }
             </div>
-            <!-- Show More/Less Button -->
             @if (hasMoreIssues(seriesItem)) {
               <div class="show-more-container">
                 <button
@@ -111,7 +104,6 @@
             <span>No issues available for this series.</span>
           </div>
         }
-        <!-- No Issues Template -->
       </div>
     }
   }

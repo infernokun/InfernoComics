@@ -7,7 +7,6 @@
   border: 1px solid #333;
 }
 
-// Compact Header
 .dialog-header {
   background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
   color: #e2e8f0;
@@ -71,23 +70,21 @@
   }
 }
 
-// Content with side-by-side layout
 .content {
   background: #1a1a1a;
   max-height: 70vh;
-  overflow: hidden; // Changed from overflow-y: auto to hidden
+  overflow: hidden;
   padding: 0;
   color: #e2e8f0;
-  position: relative; // Added for positioning context
+  position: relative;
 }
 
-// Compact Navigation
 .image-navigation {
   background: #2d3748;
   padding: 8px 12px;
   border-bottom: 1px solid #333;
   position: relative;
-  z-index: 10; // Ensure navigation stays above content
+  z-index: 10;
 
   .navigation-tabs {
     display: flex;
@@ -177,14 +174,12 @@
   }
 }
 
-// Main Layout - Side by Side
 .main-layout {
   display: flex;
   min-height: 400px;
-  height: 100%; // Added to fill container
+  height: 100%;
 }
 
-// Original Image Sidebar - Now Sticky
 .original-sidebar {
   width: 280px;
   background: #2d3748;
@@ -192,11 +187,11 @@
   padding: 16px;
   display: flex;
   flex-direction: column;
-  position: sticky; // Make it sticky
-  top: 0; // Stick to top
-  height: fit-content; // Only take as much height as needed
-  max-height: 70vh; // Limit height to viewport
-  z-index: 5; // Ensure it stays above scrolling content
+  position: sticky;
+  top: 0;
+  height: fit-content;
+  max-height: 70vh;
+  z-index: 5;
 
   .sidebar-header {
     display: flex;
@@ -224,12 +219,12 @@
     padding: 12px;
     margin-bottom: 12px;
     border: 2px dashed #4a5568;
-    min-height: 200px; // Set a minimum height
-    max-height: 300px; // Limit maximum height
+    min-height: 200px;
+    max-height: 300px;
 
     .original-image {
       max-width: 100%;
-      max-height: 280px; // Reduced to fit within container
+      max-height: 280px;
       object-fit: contain;
       border-radius: 6px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -289,12 +284,11 @@
   }
 }
 
-// Matches Section - Now Scrollable
 .matches-section {
   flex: 1;
   padding: 16px;
-  overflow-y: auto; // Make this section scrollable
-  height: 70vh; // Set explicit height for scrolling
+  overflow-y: auto;
+  height: 70vh;
 
   &::-webkit-scrollbar {
     width: 6px;
@@ -310,7 +304,6 @@
   }
 }
 
-// Compact Instructions
 .instructions {
   background: #2a4365;
   border: 1px solid #3182ce;
@@ -330,14 +323,12 @@
   }
 }
 
-// Compact Matches Grid
 .matches-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
 
-// Compact Match Cards
 .match-card {
   background: #2d3748;
   border-radius: 8px;
@@ -547,7 +538,6 @@
   }
 }
 
-// No matches message
 .no-matches {
   text-align: center;
   padding: 40px 20px;
@@ -574,7 +564,6 @@
   }
 }
 
-// Compact Actions
 .actions {
   background: #2d3748;
   padding: 12px 16px;
@@ -598,22 +587,21 @@
   }
 }
 
-// Responsive adjustments
 @media (max-width: 1024px) {
   .main-layout {
     flex-direction: column;
   }
 
   .original-sidebar {
-    position: relative; // Remove sticky behavior on smaller screens
+    position: relative;
     width: 100%;
     flex-direction: row;
     align-items: center;
     gap: 16px;
     border-right: none;
     border-bottom: 1px solid #333;
-    max-height: none; // Remove height restriction
-    height: auto; // Auto height
+    max-height: none;
+    height: auto;
 
     .original-preview {
       width: 120px;
@@ -633,8 +621,8 @@
   }
 
   .matches-section {
-    height: auto; // Remove fixed height on smaller screens
-    max-height: 60vh; // Set a reasonable max height instead
+    height: auto;
+    max-height: 60vh;
   }
 
   .matches-grid {
@@ -666,7 +654,7 @@
 
   .matches-section {
     padding: 12px;
-    max-height: 50vh; // Reduce height on mobile
+    max-height: 50vh;
   }
 
   .matches-grid {

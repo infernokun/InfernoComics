@@ -25,7 +25,6 @@ export class SeriesFormComponent implements OnInit {
   searchingComicVine = false;
   searchByComicVineId = false;
   
-  // Custom search term for Comic Vine
   customSearchTerm = '';
   
   // Multi-selection properties
@@ -157,7 +156,6 @@ export class SeriesFormComponent implements OnInit {
       return;
     }
 
-    // Get current IDs
     const currentIds = this.existingComicVineData.map(s => s.id);
     
     // Set primary ID (keep current if valid, otherwise use first)
@@ -381,7 +379,6 @@ export class SeriesFormComponent implements OnInit {
     const beforeCount = this.existingComicVineData.length;
     const addedNames = this.selectedSeries.map(s => s.name).join(', ');
     
-    // Add new series to existing data
     this.existingComicVineData.push(...this.selectedSeries);
     
     // Always update cover if selected
@@ -492,7 +489,6 @@ export class SeriesFormComponent implements OnInit {
     }
   }
 
-  // Toggle between append and replace modes
   toggleAppendMode(): void {
     const currentMode = this.seriesForm.get('appendMode')?.value;
     this.seriesForm.patchValue({ appendMode: !currentMode });
@@ -596,7 +592,6 @@ export class SeriesFormComponent implements OnInit {
     return this.isEditMode ? 'Edit Series' : 'Add New Series';
   }
 
-  // Helper methods for display
   getCurrentAvailableCount(): number {
     return this.existingComicVineData
       .map(s => s.issueCount || 0)
@@ -651,7 +646,6 @@ export class SeriesFormComponent implements OnInit {
     return this.existingComicVineData.some(s => s.id === seriesId);
   }
 
-  // Validation message for Comic Vine management mode
   getComicVineValidationMessage(): string {
     if (this.isComicVineManagementMode && this.existingComicVineData.length === 0) {
       return 'At least one Comic Vine series is required';
@@ -659,7 +653,6 @@ export class SeriesFormComponent implements OnInit {
     return '';
   }
 
-  // Get status message for current operation mode
   getOperationModeMessage(): string {
     const hasExisting = this.existingComicVineData.length > 0;
     const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;

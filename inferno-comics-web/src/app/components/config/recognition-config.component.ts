@@ -29,7 +29,6 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
   selectedPresetIndex = 0;
   hasUnsavedChanges = false;
 
-  // Performance level options with descriptions
   performanceLevels: PerformanceLevel[] = [
     { 
       value: 'balanced', 

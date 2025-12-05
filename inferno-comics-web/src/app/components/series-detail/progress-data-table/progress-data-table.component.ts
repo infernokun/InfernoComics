@@ -15,7 +15,7 @@ import {
   GridReadyEvent,
   FirstDataRenderedEvent,
 } from 'ag-grid-community';
-import { AdminActionsComponent } from '../../../admin/admin-actions.component';
+import { AdminActionsComponent } from '../../admin/admin-actions.component';
 import { AgGridModule, ICellRendererAngularComp } from 'ag-grid-angular';
 import { MaterialModule } from '../../../material.module';
 import { ComicMatch } from '../../../models/comic-match.model';

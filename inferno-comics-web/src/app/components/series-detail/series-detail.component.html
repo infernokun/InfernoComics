@@ -148,10 +148,8 @@
   <mat-tab-group [(selectedIndex)]="selectedTabIndex">
     <mat-tab label="My Collection">
       <div class="tab-content">
-        <!-- Collection Controls -->
         @if (issues.length > 0) {
           <div class="collection-controls">
-            <!-- View Toggle -->
             <div class="view-controls">
               <button mat-icon-button [matTooltip]="isCompactView ? 'Switch to Grid View' : 'Switch to Compact View'"
                 (click)="toggleCompactView()">
@@ -159,7 +157,6 @@
               </button>
               <span class="view-label">{{ isCompactView ? 'Compact View' : 'Grid View' }}</span>
             </div>
-            <!-- Collection Management -->
             <div class="collection-actions">
               <button mat-stroked-button color="primary" matTooltip="Add Comics By Image" (click)="addComicsByImage(series?.id!)">
                 <mat-icon>photo_library</mat-icon>
@@ -422,14 +419,12 @@
               }
             </div>
           }
-          <!-- Loading State -->
           @if (loadingComicVine) {
             <div class="loading-container">
               <mat-spinner></mat-spinner>
               <p>Loading Comic Vine issues...</p>
             </div>
           }
-          <!-- No Issues Found -->
           @if (!loadingComicVine && comicVineIssues.length === 0) {
             <div class="empty-collection">
               <mat-icon>search_off</mat-icon>
@@ -445,7 +440,6 @@
 </div>
 }
 
-<!-- Loading State -->
 @if (loading) {
   <div class="loading-container">
     <mat-spinner></mat-spinner>

@@ -30,7 +30,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   canRetry = false;
   startTime = new Date();
 
-  // Multiple images specific properties
   totalImages = 0;
   currentImageIndex = 0;
   currentImageName = '';
@@ -38,24 +37,19 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   successfulImages = 0;
   failedImages = 0;
 
-  // Enhanced thumbnail tracking
   thumbnailStates: Array<'pending' | 'processing' | 'completed' | 'failed'> = [];
   
-  // Status feed scroll tracking
   private hasUnreadMessages = false;
   private messagesContainer: HTMLElement | null = null;
   
-  // Processing result storage
   processingResult: any = null;
 
-  // Progress tracking
   private lastUpdateTime = 0;
   private lastProgressValue = 0;
   private lastStage = '';
   private readonly UPDATE_DEBOUNCE_MS = 100;
   private hasReceivedRealProgress = false;
 
-  // Stage mapping for better progress tracking
   private stageMapping: { [key: string]: number } = {
     processing_data: 0,
     preparing: 0,
@@ -218,13 +212,13 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
           this.currentImageIndex = nextIndex;
         }
         
-        console.log(`✅ Image ${currentImageNum} completed. Moving to next...`);
+        console.log(`Image ${currentImageNum} completed. Moving to next...`);
       } else if (message.includes('Failed') || message.includes('error')) {
         this.failedImages++;
         if (this.currentImageIndex < this.thumbnailStates.length) {
           this.thumbnailStates[this.currentImageIndex] = 'failed';
         }
-        console.log(`❌ Image ${currentImageNum} failed`);
+        console.log(`Image ${currentImageNum} failed`);
       }
     }
 
@@ -291,7 +285,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     }
     
     this.addStatusMessage(`Error: ${errorMessage}`, 'error');
-    console.error('❌ Processing error:', errorMessage);
+    console.error('Processing error:', errorMessage);
   }
 
   setComplete(result?: any) {
@@ -320,7 +314,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
       this.data.onComplete(result);
     }
   
-    console.log('✅ Processing completed successfully');
+    console.log('Processing completed successfully');
   
     // Store the result for the Next button
     this.processingResult = result;
@@ -357,7 +351,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     }, 50);
   }
 
-  // Method to scroll to bottom when user clicks the indicator
   scrollToLatestMessage() {
     if (this.messagesContainer) {
       this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
@@ -365,12 +358,10 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Method to check if there are unread messages
   hasNewMessages(): boolean {
     return this.hasUnreadMessages;
   }
 
-  // Method to proceed to comic matcher
   proceedToMatcher() {
     console.log('🎯 Proceeding to comic matcher with result:', this.processingResult);
     this.dialogRef.close({ 
@@ -379,7 +370,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Method to check if processing is complete and results are available
   isCompleteWithResults(): boolean {
     return !this.isProcessing && !this.hasError && this.processingResult != null;
   }
@@ -415,7 +405,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     console.log('🔄 Retrying processing...');
   }
 
-  // Helper methods
   getCurrentTime(): string {
     return this.startTime.toLocaleTimeString();
   }

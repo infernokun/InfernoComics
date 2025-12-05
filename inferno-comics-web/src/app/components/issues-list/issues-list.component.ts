@@ -27,15 +27,13 @@ export class IssuesListComponent implements OnInit, OnDestroy {
   seriesWithIssues: SeriesWithIssues[] = [];
   uploadedPhotos = false;
   
-  // Show more/less configuration
-  readonly DEFAULT_ISSUE_LIMIT = 12; // Show 12 issues by default
+  readonly DEFAULT_ISSUE_LIMIT = 12;
   private seriesDisplayStates = new Map<number, boolean>(); // Track which series are expanded
   
   private readonly destroy$ = new Subject<void>();
   private readonly placeholderImage = 'assets/placeholder-comic.jpg';
   private readonly imageCache = new Map<string, string>();
   
-  // Local storage keys
   private readonly STORAGE_KEYS = {
     UPLOADED_PHOTOS: 'comicApp_uploadedPhotosToggle',
     SERIES_DISPLAY_STATES: 'comicApp_seriesDisplayStates',
@@ -81,7 +79,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
   }
 
   private loadUserPreferences(): void {
-    // Load uploaded photos toggle preference
     const savedPhotosPreference = localStorage.getItem(this.STORAGE_KEYS.UPLOADED_PHOTOS);
     if (savedPhotosPreference !== null) {
       this.uploadedPhotos = savedPhotosPreference === 'true';

@@ -1,6 +1,32 @@
 import { DateUtils } from "../utils/date-utils";
 import { Series } from "./series.model";
 
+export interface VariantCover {
+  id?: string;
+  originalUrl?: string;
+  caption?: string;
+  imageTags?: string;
+}
+
+export interface IssueRequest {
+  seriesId: number;
+  issueNumber: string;
+  title?: string;
+  description?: string;
+  coverDate?: Date;
+  imageUrl?: string;
+  uploadedImageUrl?: string;
+  condition?: IssueCondition;
+  purchasePrice?: number;
+  currentValue?: number;
+  purchaseDate?: Date;
+  notes?: string;
+  comicVineId?: string;
+  keyIssue?: boolean;
+  variant?: boolean; 
+  generatedDescription: boolean;
+}
+
 export enum IssueCondition {
   MINT = 'MINT',
   NEAR_MINT = 'NEAR_MINT',
@@ -60,30 +86,4 @@ export class Issue {
       this.variantCovers = data.variantCovers || [];
     }
   }
-}
-
-export interface VariantCover {
-  id?: string;
-  originalUrl?: string;
-  caption?: string;
-  imageTags?: string;
-}
-
-export interface IssueRequest {
-  seriesId: number;
-  issueNumber: string;
-  title?: string;
-  description?: string;
-  coverDate?: Date;
-  imageUrl?: string;
-  uploadedImageUrl?: string;
-  condition?: IssueCondition;
-  purchasePrice?: number;
-  currentValue?: number;
-  purchaseDate?: Date;
-  notes?: string;
-  comicVineId?: string;
-  keyIssue?: boolean;
-  variant?: boolean; 
-  generatedDescription: boolean;
 }

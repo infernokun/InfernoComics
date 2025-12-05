@@ -224,7 +224,6 @@ export class SeriesDetailComponent implements OnInit {
     this.lastSelectedIndex = -1;
   }
 
-  // Bulk actions
   addSelectedToCollection(): void {
     if (this.selectedIssues.size === 0) {
       this.snackBar.open('No issues selected', 'Close', { duration: 3000 });
@@ -281,7 +280,6 @@ export class SeriesDetailComponent implements OnInit {
     return this.selectedIssues.size;
   }
 
-  // Value calculation methods
   calculateTotalPurchasePrice(): number {
     return this.issues.reduce(
       (total, book) => total + (book.purchasePrice || 0),
@@ -468,7 +466,7 @@ export class SeriesDetailComponent implements OnInit {
         break;
 
       case 'error':
-        console.error('❌ SSE Error received:', data.error);
+        console.error('SSE Error received:', data.error);
         dialogComponent.setError(data.error || 'Unknown error occurred');
         this.snackBar.open(
           `Error processing images: ${data.error || 'Unknown error'}`,
@@ -478,12 +476,11 @@ export class SeriesDetailComponent implements OnInit {
         break;
 
       default:
-        console.log('❓ Unknown SSE event type:', data.type);
+        console.log('Unknown SSE event type:', data.type);
         break;
     }
   }
 
-  // Updated processMultipleImagesWithSSE method to handle dialog result
   private processMultipleImagesWithSSE(seriesId: number, files: File[]): void {
     const progressDialogRef = this.dialog.open(ImageProcessingDialogComponent, {
       width: '600px',
@@ -501,7 +498,7 @@ export class SeriesDetailComponent implements OnInit {
     progressDialogRef.afterClosed().subscribe((dialogResult) => {
       if (dialogResult && dialogResult.action === 'proceed_to_matcher') {
         console.log(
-          '🎯 User clicked Next for multiple images, opening bulk selector'
+          'User clicked Next for multiple images, opening bulk selector'
         );
 
         const result = dialogResult.result as any;
@@ -510,7 +507,7 @@ export class SeriesDetailComponent implements OnInit {
           console.log('✅ Processing multiple images result format');
           this.openBulkSelectionDialog(result, seriesId, files);
         } else {
-          console.log('❌ No valid results to display');
+          console.log('No valid results to display');
           this.snackBar.open(
             'Processing completed but no results found',
             'Close',
@@ -573,15 +570,16 @@ export class SeriesDetailComponent implements OnInit {
             imageResult.image_name ||
             originalImages[imageIndex]?.name ||
             `Image ${imageIndex + 1}`;
+
           allMatches.push(match);
         });
       }
     });
 
-    console.log(' Total matches for bulk selection:', allMatches.length);
+    console.log('Total matches for bulk selection:', allMatches.length);
 
     if (allMatches.length === 0) {
-      console.log('❌ No matches found in any images');
+      console.log('No matches found in any images');
       const summary = result.summary;
       if (summary && summary.total_images_processed > 0) {
         this.snackBar.open(
@@ -597,7 +595,6 @@ export class SeriesDetailComponent implements OnInit {
       return;
     }
 
-    // Open the new bulk selection dialog
     const dialogData: BulkSelectionDialogData = {
       matches: allMatches,
       seriesId: seriesId,
@@ -623,10 +620,9 @@ export class SeriesDetailComponent implements OnInit {
         console.log('✅ Bulk add selected:', result.results.length, 'comics');
         this.handleBulkAddResults(result.results, seriesId);
       } else if (result && result.action === 'save') {
-        console.log(' Save selections:', result.results);
-        // Handle save logic
+        console.log('Save selections:', result.results);
       } else {
-        console.log(' User cancelled bulk selection');
+        console.log('User cancelled bulk selection');
       }
     });
   }
@@ -635,7 +631,7 @@ export class SeriesDetailComponent implements OnInit {
     results: ProcessedImageResult[],
     seriesId: number
   ): Promise<void> {
-    console.log('🎯 Processing bulk add for', results.length, 'comics');
+    console.log('Processing bulk add for', results.length, 'comics');
     
     // Show loading indicator
     this.snackBar.open(`Adding ${results.length} comics to collection...`, '', {

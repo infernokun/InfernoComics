@@ -5,7 +5,7 @@ import {
 } from '@angular/core';
 import { ICellRendererParams } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
-import { MaterialModule } from '../material.module';
+import { MaterialModule } from '../../material.module';
 
 
 export interface AdminActionRendererParams extends ICellRendererParams {

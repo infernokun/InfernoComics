@@ -50,23 +50,19 @@ interface PublisherStat {
   imports: [CommonModule, MaterialModule, FormsModule, RouterModule, SeriesListComponent]
 })
 export class DashboardComponent implements OnInit, OnDestroy {
-  // Core data
   totalSeries = 0;
   totalIssues = 0;
   allSeries: Series[] = [];
   loading = true;
   
-  // Enhanced features
   uniquePublishers = 0;
   favoritePublisher = '';
   publisherStats: PublisherStat[] = [];
   showAllPublishers = false;
   
-  // Completion tracking
   completedSeriesCount = 0;
   completionPercentage = 0;
   
-  // Series display
   favoriteSeriesIds: Set<number> = new Set();
   viewMode: 'grid' | 'list' = 'grid';
   
@@ -76,7 +72,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private seriesService: SeriesService,
     private issueService: IssueService
   ) {
-    // Load saved preferences
     this.loadUserPreferences();
   }
 
@@ -89,25 +84,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // Data Loading
   loadDashboardData(): void {
     this.loading = true;
     
-    // Load all series
     this.seriesService.getAllSeries()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (series) => {
           this.totalSeries = series.length;
-          // Sort all series by name
+
           this.allSeries = series.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
           this.calculatePublisherStats(series);
           this.calculateCompletionStats(series);
         },
         error: (error) => console.error('Error loading series:', error)
       });
 
-    // Load all issues
     this.issueService.getAllIssues()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -126,7 +119,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadDashboardData();
   }
 
-  // Publisher Statistics
   private calculatePublisherStats(series: Series[]): void {
     const publisherCount = new Map<string, number>();
     
@@ -148,7 +140,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.favoritePublisher = this.publisherStats[0]?.name || '';
   }
 
-  // Completion Statistics
   private calculateCompletionStats(series: Series[]): void {
     const seriesWithIssues = series.filter(s => 
       (s.issuesAvailableCount || 0) > 0
@@ -163,7 +154,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       : 0;
   }
 
-  // Series Completion Logic
   isSeriesComplete(series: Series): boolean {
     const owned = series.issuesOwnedCount || 0;
     const available = series.issuesAvailableCount || 0;
@@ -184,7 +174,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.saveUserPreferences();
   }
 
-  // Favorites Management
   toggleFavorite(series: Series, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
@@ -207,7 +196,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return series.id;
   }
 
-  // User Preferences
   private loadUserPreferences(): void {
     const preferences = localStorage.getItem('dashboardPreferences');
     if (preferences) {

@@ -1,5 +1,4 @@
 <div class="series-list-container">
-  <!-- Header Section -->
   <div class="header">
     <h1>Comic Book Series</h1>
     <div class="header-actions">
@@ -275,7 +274,6 @@
     </div>
   }
 
-  <!-- Empty State -->
   @if (!loading && series.length === 0) {
     <div class="empty-state">
       <mat-icon>library_add</mat-icon>
@@ -288,7 +286,6 @@
     </div>
   }
 
-  <!-- Loading State -->
   @if (loading) {
     <div class="loading-container">
       <mat-spinner diameter="60"></mat-spinner>

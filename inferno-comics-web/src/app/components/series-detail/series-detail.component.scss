@@ -3,7 +3,6 @@
   --success-gradient: linear-gradient(135deg, #10b981, #059669);
 }
 
-// ===== VARIABLES & MIXINS =====
 @mixin card-hover {
   transition: all 0.3s ease-in-out;
   &:hover {
@@ -24,7 +23,6 @@
   justify-content: center;
 }
 
-// ===== LAYOUT CONTAINERS =====
 .series-detail-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -201,7 +199,6 @@
   }
 }
 
-// ===== CONTENT TABS =====
 .content-tabs {
   background: var(--surface-color);
   border-radius: 16px;
@@ -254,7 +251,6 @@
   }
 }
 
-// ===== VIEW CONTROLS =====
 .view-controls {
   display: flex;
   align-items: center;
@@ -280,7 +276,6 @@
   }
 }
 
-// ===== SELECTION TOOLBAR =====
 .selection-toolbar {
   display: flex;
   justify-content: space-between;
@@ -360,7 +355,6 @@
   }
 }
 
-// ===== GRID LAYOUTS =====
 .collection-grid,
 .browse-grid {
   display: grid;
@@ -368,7 +362,6 @@
   gap: 24px;
 }
 
-// ===== COMPACT VIEW =====
 .collection-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
@@ -385,7 +378,7 @@
       align-items: center;
       padding: 16px;
       gap: 16px;
-      height: 120px; // Fixed height for consistency
+      height: 120px;
 
       .compact-image {
         position: relative;
@@ -428,7 +421,7 @@
 
       .compact-info {
         flex: 1;
-        min-width: 0; // Allow text truncation
+        min-width: 0;
         height: 100%;
         display: flex;
         flex-direction: column;
@@ -500,7 +493,6 @@
   }
 }
 
-// ===== CARD STYLES =====
 .comic-card,
 .browse-card {
   @include card-hover;
@@ -647,7 +639,6 @@
   }
 }
 
-// ===== SELECTION STATES =====
 .browse-card {
   cursor: pointer;
   user-select: none;
@@ -665,7 +656,6 @@
   }
 }
 
-// ===== EMPTY & LOADING STATES =====
 .empty-collection,
 .loading-container {
   text-align: center;
@@ -713,7 +703,6 @@
   }
 }
 
-// ===== ANIMATIONS =====
 @keyframes scaleIn {
   from {
     transform: scale(0.8);
@@ -725,7 +714,6 @@
   }
 }
 
-// ===== RESPONSIVE DESIGN =====
 @media (max-width: 1024px) {
   .collection-list {
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -802,7 +790,6 @@
   }
 }
 
-// ===== SHOW MORE/LESS BUTTONS =====
 .show-more-btn {
   background: none;
   border: none;
@@ -836,7 +823,6 @@
   }
 }
 
-// Issue-specific show more button styling
 .issue-toggle {
   font-size: 0.8125rem;
   margin-top: 0.5rem;
@@ -849,7 +835,6 @@
   }
 }
 
-// Issue description containers
 .issue-description-container {
   margin: 0.75rem 0;
   
@@ -863,7 +848,6 @@
   }
 }
 
-// Compact view specific styling
 .compact-card {
   .issue-description-container {
     margin: 0.5rem 0;
@@ -880,7 +864,6 @@
   }
 }
 
-// Browse cards specific styling
 .browse-card {
   .issue-description-container {
     margin: 0.5rem 0;
@@ -892,7 +875,6 @@
   }
 }
 
-// Responsive adjustments for show more buttons
 @media (max-width: 768px) {
   .show-more-btn,
   .issue-toggle {
@@ -909,7 +891,6 @@
   }
 }
 
-// Ensure buttons don't break layout
 .issue-description-container {
   display: flex;
   flex-direction: column;
@@ -1034,7 +1015,6 @@
   }
 }
 
-// Responsive design
 @media (max-width: 768px) {
   .collection-controls {
     flex-direction: column;
@@ -1055,7 +1035,7 @@
         justify-content: center;
 
         span {
-          display: none; // Hide text on mobile, show only icons
+          display: none;
         }
       }
     }
@@ -1090,21 +1070,20 @@
   }
 }
 
-// Enhanced collection meta item
 .meta-item.collection-item {
   display: flex;
-  flex-direction: row; // Keep row direction like other meta items
+  flex-direction: row;
   align-items: flex-start;
-  gap: 12px; // Standard gap between icon and content
+  gap: 12px;
   
   mat-icon {
-    flex-shrink: 0; // Prevent icon from shrinking
-    margin-top: 2px; // Fine-tune vertical alignment
+    flex-shrink: 0;
+    margin-top: 2px;
   }
   
   .collection-details {
     flex: 1;
-    min-width: 0; // Prevent overflow issues
+    min-width: 0;
   }
   
   .collection-count {
@@ -1112,7 +1091,7 @@
     align-items: center;
     gap: 12px;
     margin-bottom: 8px;
-    flex-wrap: wrap; // Allow wrapping on smaller screens
+    flex-wrap: wrap;
     
     .completion-badge {
       display: inline-flex;
@@ -1125,7 +1104,7 @@
       font-size: 0.75rem;
       font-weight: 600;
       animation: pulse 2s infinite;
-      flex-shrink: 0; // Prevent badge from shrinking
+      flex-shrink: 0;
       
       mat-icon {
         font-size: 14px;
@@ -1139,7 +1118,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    max-width: 300px; // Constrain the progress bar width
+    max-width: 300px;
     
     .progress-bar-wrapper {
       flex: 1;
@@ -1147,7 +1126,7 @@
       background: var(--border-color, #e5e7eb);
       border-radius: 3px;
       overflow: hidden;
-      min-width: 100px; // Minimum width for progress bar
+      min-width: 100px;
       
       .progress-bar-fill {
         height: 100%;
@@ -1174,7 +1153,7 @@
       font-weight: 600;
       min-width: 35px;
       text-align: right;
-      flex-shrink: 0; // Keep percentage text from shrinking
+      flex-shrink: 0;
       
       &.complete {
         color: #10b981;

@@ -1,6 +1,29 @@
 import { DateUtils } from "../utils/date-utils";
 import { Issue } from "./issue.model";
 
+export interface PublisherStats {
+  name: string;
+  seriesCount: number;
+  totalIssues: number;
+  percentage: number;
+  logoUrl?: string;
+}
+
+export interface UserPreferences {
+  viewMode: 'grid' | 'list';
+  favoritePublishers: string[];
+}
+
+export interface GCDCover {
+    name?: string;
+    issueNumber?: string;
+    comicVineId?: string;
+    urls?: string[];
+    error?: string;
+    parentComicVineId?: string;
+    showAllImages?: boolean;
+}
+
 export interface SeriesWithIssues {
   series: Series,
   issues: Issue[];
@@ -50,27 +73,4 @@ export class Series {
       this.lastReverification = data.lastReverification ? DateUtils.parseDateTimeArray(data.lastReverification) : undefined;
     }
   }
-}
-
-export interface PublisherStats {
-  name: string;
-  seriesCount: number;
-  totalIssues: number;
-  percentage: number;
-  logoUrl?: string;
-}
-
-export interface UserPreferences {
-  viewMode: 'grid' | 'list';
-  favoritePublishers: string[];
-}
-
-export interface GCDCover {
-    name?: string;
-    issueNumber?: string;
-    comicVineId?: string;
-    urls?: string[];
-    error?: string;
-    parentComicVineId?: string;
-    showAllImages?: boolean;
 }

@@ -20,17 +20,14 @@ export class VersionService {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/version`;
   }
 
-  /** Web‑app version (bundled) */
   getWebAppVersion(): AppVersion {
     return { name: 'inferno-comics-web', version: this.version };
   }
 
-  /** Backend returns an array of two objects */
   getBackendAppVersions(): Observable<AppVersion[]> {
     return this.http.get<AppVersion[]>(this.apiUrl);
   }
 
-  /** Split the array into two named objects */
   getRestAndRecog(): Observable<{
     rest: AppVersion;
     recog: AppVersion;
@@ -44,7 +41,6 @@ export class VersionService {
     );
   }
 
-  /** All three versions in one observable */
   getAllVersions() {
     return forkJoin({
       web: of(this.getWebAppVersion()),

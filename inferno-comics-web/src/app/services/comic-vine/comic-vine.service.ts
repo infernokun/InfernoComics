@@ -15,12 +15,10 @@ export class ComicVineService {
     this.apiUrl = this.environmentService.settings?.restUrl!;
   }
 
-  // Search for series from Comic Vine
   searchSeries(query: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/series/search-comic-vine?query=${encodeURIComponent(query)}`);
   }
 
-  // Search for issues from Comic Vine for a specific series
   searchIssues(seriesId: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/series/${seriesId}/search-comic-vine`);
   }

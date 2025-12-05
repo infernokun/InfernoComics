@@ -65,29 +65,24 @@ export class IssueService {
     return this.http.post<{successful: number, failed: number}>(`${this.apiUrl}/bulk-delete`, issueIds);
   }
 
-  // Search methods
   searchIssues(query: string): Observable<any[]> {
     return this.http.get<any[]>(
       `${this.apiUrl}/search?query=${encodeURIComponent(query)}`
     );
   }
 
-  // Statistics methods
   getIssueStats(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/stats`);
   }
 
-  // Recent additions
   getRecentIssues(limit: number = 10): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/recent?limit=${limit}`);
   }
 
-  // Key issues
   getKeyIssues(): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/key-issues`);
   }
 
-  // Value calculations
   getTotalValue(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/total-value`);
   }

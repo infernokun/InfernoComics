@@ -114,7 +114,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   private processMatches(): void {
-    console.log('🔄 Processing matches in bulk selection component');
+    console.log('Processing matches in bulk selection component');
     console.log('Data matches length:', this.data.matches.length);
     console.log('Is session data:', this.isSessionData);
 
@@ -193,7 +193,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       });
     }
 
-    console.log('✅ Processed results:', this.processedResults);
+    console.log('Processed results:', this.processedResults);
   }
 
   onStatusFilterChange(
@@ -204,7 +204,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
-  // New method for confidence filter changes
   onConfidenceFilterChange(
     newFilter: 'all' | 'high' | 'medium' | 'low'
   ): void {
@@ -219,7 +218,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
     let results = [...this.processedResults];
 
-    // Apply status filter
     if (this.currentStatusFilter !== 'all') {
       switch (this.currentStatusFilter) {
         case 'auto_selected':
@@ -240,7 +238,6 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Apply confidence filter
     if (this.currentConfidenceFilter !== 'all') {
       results = results.filter((r) => r.confidence === this.currentConfidenceFilter);
     }
@@ -278,13 +275,13 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   acceptMatch(result: ProcessedImageResult): void {
     result.status = 'manually_accepted';
     result.selectedMatch = result.selectedMatch || (result.bestMatch ?? undefined);
-    console.log('✅ Manually accepted match for:', result.imageName);
+    console.log('Manually accepted match for:', result.imageName);
   }
 
   rejectMatch(result: ProcessedImageResult): void {
     result.status = 'rejected';
     result.selectedMatch = undefined;
-    console.log('❌ Rejected match for:', result.imageName);
+    console.log('Rejected match for:', result.imageName);
   }
 
   reviewMatch(result: ProcessedImageResult): void {
@@ -298,7 +295,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   manualAdd(result: ProcessedImageResult): void {
     result.status = 'skipped';
     result.selectedMatch = undefined;
-    console.log('📝 Manual add requested for:', result.imageName);
+    console.log('Manual add requested for:', result.imageName);
     this.applyFilters();
   }
 
@@ -311,7 +308,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       result.status = 'no_match';
     }
 
-    console.log('🔄 Reset user action for:', result.imageName);
+    console.log('Reset user action for:', result.imageName);
     this.applyFilters();
   }
 
@@ -351,13 +348,13 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       if (dialogResult && dialogResult.action === 'select') {
         result.status = 'manually_accepted';
         result.selectedMatch = dialogResult.match;
-        console.log('👆 User manually selected match for:', result.imageName);
+        console.log('User manually selected match for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'rejected') {
         result.status = 'rejected';
         result.selectedMatch = undefined;
-        console.log('❌ User rejected all matches for:', result.imageName);
+        console.log('User rejected all matches for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'cancel') {
-        console.log('🚫 User cancelled match selection for:', result.imageName);
+        console.log('User cancelled match selection for:', result.imageName);
       }
 
       this.applyFilters();
@@ -374,7 +371,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       result.selectedMatch = result.bestMatch ?? undefined;
     });
 
-    console.log('✅ Auto-accepted all acceptable matches:', acceptableResults.length);
+    console.log('Auto-accepted all acceptable matches:', acceptableResults.length);
     this.applyFilters();
   }
 
@@ -394,7 +391,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       result.selectedMatch = undefined;
     });
 
-    console.log('❌ Rejected low confidence matches:', lowConfidenceResults.length);
+    console.log('Rejected low confidence matches:', lowConfidenceResults.length);
     this.applyFilters();
   }
 
@@ -413,7 +410,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   saveSelections(): void {
-    console.log('💾 Saving selections');
+    console.log('Saving selections');
 
     this.dialogRef.close({
       action: 'save',
@@ -423,7 +420,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   onCancel(): void {
-    console.log('🚫 Dialog cancelled');
+    console.log('Dialog cancelled');
     this.dialogRef.close({ action: 'cancel' });
   }
 
@@ -672,7 +669,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       result.selectedMatch = result.bestMatch ?? undefined;
     });
 
-    console.log('✅ Auto-accepted high confidence matches:', highConfidenceResults.length);
+    console.log('Auto-accepted high confidence matches:', highConfidenceResults.length);
     this.applyFilters();
   }
 
@@ -686,7 +683,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       result.selectedMatch = result.bestMatch ?? undefined;
     });
 
-    console.log('✅ Auto-accepted medium confidence matches:', mediumConfidenceResults.length);
+    console.log('Auto-accepted medium confidence matches:', mediumConfidenceResults.length);
     this.applyFilters();
   }
 
@@ -700,7 +697,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       result.selectedMatch = undefined;
     });
 
-    console.log('❌ Rejected all no-match items:', noMatchResults.length);
+    console.log('Rejected all no-match items:', noMatchResults.length);
     this.applyFilters();
   }
 
@@ -709,7 +706,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       this.resetUserAction(result);
     });
 
-    console.log('🔄 Reset all user actions');
+    console.log('Reset all user actions');
     this.applyFilters();
   }
 
@@ -772,7 +769,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       });
 
       this.applyFilters();
-      console.log('✅ Successfully imported selections');
+      console.log('Successfully imported selections');
       return true;
     } catch (error) {
       console.error('Failed to import selections:', error);
@@ -834,7 +831,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   private openNextReviewDialog(): void {
     if (this.currentReviewIndex >= this.reviewQueue.length) {
-      console.log('✅ Finished reviewing all items');
+      console.log('Finished reviewing all items');
       this.applyFilters();
       return;
     }
@@ -875,13 +872,13 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       if (dialogResult && dialogResult.action === 'select') {
         result.status = 'manually_accepted';
         result.selectedMatch = dialogResult.match;
-        console.log('👆 User manually selected match for:', result.imageName);
+        console.log('User manually selected match for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'rejected') {
         result.status = 'rejected';
         result.selectedMatch = undefined;
-        console.log('❌ User rejected all matches for:', result.imageName);
+        console.log('User rejected all matches for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'cancel') {
-        console.log('🚫 User cancelled match selection for:', result.imageName);
+        console.log('User cancelled match selection for:', result.imageName);
       }
 
       this.currentReviewIndex++;
@@ -899,7 +896,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       result.status = 'pending';
     });
 
-    console.log('🔄 Restored rejected items to review:', rejectedResults.length);
+    console.log('Restored rejected items to review:', rejectedResults.length);
     this.applyFilters();
   }
 }

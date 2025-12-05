@@ -4,12 +4,11 @@
   </h2>
 
   <mat-dialog-content>
-    <!-- Show notice if this is from image matching -->
     @if (isFromImageMatch) {
-      <div class="prefill-notice">
-        <mat-icon>auto_awesome</mat-icon>
-        <span>The following details were detected from your image. You can edit them if needed.</span>
-      </div>
+    <div class="prefill-notice">
+      <mat-icon>auto_awesome</mat-icon>
+      <span>The following details were detected from your image. You can edit them if needed.</span>
+    </div>
     }
 
     <form [formGroup]="issueForm" class="comic-form">
@@ -18,12 +17,12 @@
           <mat-label>Issue Number *</mat-label>
           <input matInput formControlName="issueNumber" required>
           @if (isFieldAutoFilled('issueNumber')) {
-            <mat-icon matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
+          <mat-icon matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
           }
           @if (issueForm.get('issueNumber')?.hasError('required')) {
-            <mat-error>
-              Issue number is required
-            </mat-error>
+          <mat-error>
+            Issue number is required
+          </mat-error>
           }
         </mat-form-field>
 
@@ -31,7 +30,7 @@
           <mat-label>Title</mat-label>
           <input matInput formControlName="title">
           @if (isFieldAutoFilled('title')) {
-            <mat-icon matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
+          <mat-icon matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
           }
         </mat-form-field>
       </div>
@@ -55,9 +54,9 @@
           <mat-label>Condition</mat-label>
           <mat-select formControlName="condition">
             @for (condition of conditions; track condition) {
-              <mat-option [value]="condition">
-                {{ getConditionDisplayName(condition) }}
-              </mat-option>
+            <mat-option [value]="condition">
+              {{ getConditionDisplayName(condition) }}
+            </mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -103,67 +102,66 @@
           <mat-label>Image URL</mat-label>
           <input matInput formControlName="imageUrl">
           @if (isFieldAutoFilled('imageUrl')) {
-            <mat-icon matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
+          <mat-icon matSuffix class="auto-fill-icon">auto_awesome</mat-icon>
           }
         </mat-form-field>
       </div>
 
       @if (issueForm.get('imageUrl')?.value) {
-        <div class="image-preview">
-          <img [src]="issueForm.get('imageUrl')?.value"
-            [alt]="'Issue #' + issueForm.get('issueNumber')?.value" class="preview-image"
-            onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'; this.style.display='block'} else {this.style.display='none'}">
-            @if (isFromImageMatch) {
-              <div class="image-match-info">
-                <mat-icon>auto_awesome</mat-icon>
-                <span>Cover image detected from your upload</span>
-              </div>
-            }
-          </div>
+      <div class="image-preview">
+        <img [src]="issueForm.get('imageUrl')?.value" [alt]="'Issue #' + issueForm.get('issueNumber')?.value"
+          class="preview-image"
+          onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'; this.style.display='block'} else {this.style.display='none'}">
+        @if (isFromImageMatch) {
+        <div class="image-match-info">
+          <mat-icon>auto_awesome</mat-icon>
+          <span>Cover image detected from your upload</span>
+        </div>
         }
+      </div>
+      }
 
-        <input type="file" #fileInput accept="image/*" (change)="onFileSelected($event)" style="display:none">
+      <input type="file" #fileInput accept="image/*" (change)="onFileSelected($event)" style="display:none">
 
-        @if (isEditMode || !isFromImageMatch) {
-          <div class="image-preview">
-            @if (issueForm.get('uploadedImageUrlPreview')?.value) {
-              <img [src]="issueForm.get('uploadedImageUrlPreview')?.value"
-                [alt]="'Issue #' + issueForm.get('issueNumber')?.value" class="preview-image edit"
-                (click)="fileInput.click()"
-                    onerror="if (this.src!=='assets/placeholder-comic.jpg') {
+      @if (isEditMode || !isFromImageMatch) {
+      <div class="image-preview">
+        @if (issueForm.get('uploadedImageUrlPreview')?.value) {
+        <img [src]="issueForm.get('uploadedImageUrlPreview')?.value"
+          [alt]="'Issue #' + issueForm.get('issueNumber')?.value" class="preview-image edit" (click)="fileInput.click()"
+          onerror="if (this.src!=='assets/placeholder-comic.jpg') {
                             this.src='assets/placeholder-comic.jpg';
                             this.style.display='block'
                         } else {
                             this.style.display='none'
                         }">
-            } @else {
-              <div class="upload-box">
-                <label class="upload-label">
-                  <input type="file" accept="image/*" (change)="onFileSelected($event)" hidden>
-                  <mat-icon>cloud_upload</mat-icon>
-                  <span>Upload a different cover image</span>
-                </label>
-              </div>
-            }
-          </div>
-        }
-
-        <div class="form-row">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Notes</mat-label>
-            <textarea matInput formControlName="notes" rows="3"></textarea>
-          </mat-form-field>
+        } @else {
+        <div class="upload-box">
+          <label class="upload-label">
+            <input type="file" accept="image/*" (change)="onFileSelected($event)" hidden>
+            <mat-icon>cloud_upload</mat-icon>
+            <span>Upload a different cover image</span>
+          </label>
         </div>
-      </form>
-    </mat-dialog-content>
-
-    <mat-dialog-actions align="end">
-      <button mat-button (click)="cancel()">Cancel</button>
-      <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!issueForm.valid || loading">
-        @if (loading) {
-          <mat-spinner diameter="20"></mat-spinner>
         }
-        {{ isEditMode ? 'Update' : (isFromImageMatch ? 'Confirm & Add' : 'Add') }} Comic Book
-      </button>
-    </mat-dialog-actions>
-  </div>
+      </div>
+      }
+
+      <div class="form-row">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Notes</mat-label>
+          <textarea matInput formControlName="notes" rows="3"></textarea>
+        </mat-form-field>
+      </div>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="cancel()">Cancel</button>
+    <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="!issueForm.valid || loading">
+      @if (loading) {
+      <mat-spinner diameter="20"></mat-spinner>
+      }
+      {{ isEditMode ? 'Update' : (isFromImageMatch ? 'Confirm & Add' : 'Add') }} Comic Book
+    </button>
+  </mat-dialog-actions>
+</div>

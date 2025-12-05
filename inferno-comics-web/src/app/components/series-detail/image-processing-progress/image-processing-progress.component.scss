@@ -1,4 +1,3 @@
-// Variables for consistent theming
 $primary-color: #667eea;
 $primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 $success-color: #10b981;
@@ -19,7 +18,6 @@ $spacing-xl: 24px;
 $shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-// Base dialog
 .image-processing-dialog {
   width: 100%;
   max-width: 700px;
@@ -28,7 +26,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 
-// Header
 .dialog-header {
   background: $primary-gradient;
   color: white;
@@ -91,7 +88,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Content
 .dialog-content {
   background: #f8f9fa;
   padding: $spacing-xl;
@@ -107,7 +103,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Shared card styles
 %card-base {
   background: white;
   border-radius: $border-radius;
@@ -117,7 +112,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   border: 1px solid #e2e8f0;
 }
 
-// Image preview card
 .image-preview-card {
   @extend %card-base;
 
@@ -162,7 +156,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Image frame styles
 .image-frame {
   position: relative;
   flex-shrink: 0;
@@ -231,7 +224,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Image details
 .image-details {
   flex: 1;
   display: flex;
@@ -277,7 +269,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Multiple images grid
 .images-grid {
   display: flex;
   flex-direction: column;
@@ -373,7 +364,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
             color: #64748b;
           }
 
-          // Status states
           &.completed {
             background: #dcfce7;
             border-color: $success-color;
@@ -424,7 +414,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
       }
 
-      // Thumbnail states
       &.completed .thumbnail-image {
         border-color: $success-color;
         box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
@@ -457,7 +446,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Progress section
 .progress-section {
   @extend %card-base;
 
@@ -568,7 +556,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Stage timeline
 .stage-timeline {
   display: flex;
   flex-direction: column;
@@ -656,7 +643,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Status feed
 .status-feed {
   @extend %card-base;
   padding: 0;
@@ -696,7 +682,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
   }
 
-  // New message indicator
   .new-messages-indicator {
     position: absolute;
     bottom: 10px;
@@ -769,7 +754,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
       }
 
-      // Message types
       &.success {
         background: rgba(16, 185, 129, 0.02);
         .message-indicator {
@@ -805,7 +789,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Error section
 .error-section {
   @extend %card-base;
   text-align: center;
@@ -839,7 +822,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Dialog actions
 .dialog-actions {
   background: white;
   padding: $spacing-lg $spacing-xl;
@@ -895,7 +877,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
-// Single image view
 .single-image-view {
   display: flex;
   gap: $spacing-xl;
@@ -906,7 +887,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   .image-details { flex: 1; }
 }
 
-// Animations
 @keyframes pulse-ring {
   0% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.2); opacity: 0.3; }
@@ -974,7 +954,6 @@ $shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
   50% { transform: translateX(3px); }
 }
 
-// Responsive design
 @media (max-width: 768px) {
   .image-processing-dialog {
     max-width: 100vw;

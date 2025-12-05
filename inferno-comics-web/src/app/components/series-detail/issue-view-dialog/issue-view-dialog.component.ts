@@ -25,7 +25,6 @@ export class IssueViewDialog {
 
   editComic(): void {
     this.dialogRef.close();
-    // Open edit dialog
     const editDialogRef = this.dialog.open(IssueFormComponent, {
       width: '600px',
       data: {
@@ -56,12 +55,10 @@ export class IssueViewDialog {
     return current - purchase;
   }
 
-  // Toggle between regular image and uploaded image
   toggleImageView(): void {
     this.showUploadedImage = !this.showUploadedImage;
   }
 
-  // Get the current image URL based on toggle state
   getCurrentImageUrl(): string {
     if (this.showUploadedImage) {
       return this.recognitionService.getCurrentImageUrl(this.data);
@@ -69,12 +66,10 @@ export class IssueViewDialog {
     return this.data.issue.imageUrl || 'assets/placeholder-comic.jpg';
   }
 
-  // Check if uploaded image is available
   hasUploadedImage(): boolean {
     return !!(this.data.issue.uploadedImageUrl && this.data.issue.uploadedImageUrl.trim());
   }
 
-  // Get current image type for display
   getCurrentImageType(): string {
     return this.showUploadedImage ? 'Cover Image' : 'Uploaded Image';
   }

@@ -46,7 +46,7 @@ export class ThemeService {
     
     // Force a repaint
     root.style.display = 'none';
-    root.offsetHeight; // Trigger reflow
+    root.offsetHeight;
     root.style.display = '';
   }
 

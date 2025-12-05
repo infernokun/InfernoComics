@@ -57,7 +57,6 @@ export class MessageService {
             showCancel: true,
           },
         })
-        /* return the result of the dialog through an observable */
         .afterClosed()
     );
   }
@@ -72,7 +71,6 @@ export class MessageService {
             showCancel: true,
           },
         })
-        /* return the result of the dialog through an observable */
         .afterClosed()
     );
   }
@@ -92,7 +90,6 @@ export class MessageService {
             showCancel: true,
           },
         })
-        /* return the result of the dialog through an observable */
         .afterClosed()
     );
   }

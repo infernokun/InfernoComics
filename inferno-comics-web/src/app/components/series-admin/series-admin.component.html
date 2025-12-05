@@ -1,7 +1,5 @@
-<!-- series-admin.component.html -->
 @if (!loading && series) {
   <div class="admin-container">
-    <!-- Header -->
     <div class="admin-header">
       <div class="header-content">
         <div class="header-left">
@@ -25,7 +23,6 @@
         </div>
       </div>
     </div>
-    <!-- Basic Information -->
     <mat-card class="admin-section">
       <mat-card-header (click)="toggleSection('basicInfo')" class="clickable-header">
         <mat-card-title>
@@ -87,7 +84,6 @@
         </mat-card-content>
       }
     </mat-card>
-    <!-- Comic Vine Integration -->
     <mat-card class="admin-section">
       <mat-card-header (click)="toggleSection('comicVine')" class="clickable-header">
         <mat-card-title>
@@ -133,7 +129,6 @@
         </mat-card-content>
       }
     </mat-card>
-    <!-- GCD Integration -->
     <mat-card class="admin-section">
       <mat-card-header (click)="toggleSection('gcd')" class="clickable-header">
         <mat-card-title>
@@ -167,7 +162,6 @@
         </mat-card-content>
       }
     </mat-card>
-    <!-- Cache Information -->
     <mat-card class="admin-section">
       <mat-card-header (click)="toggleSection('cache')" class="clickable-header">
         <mat-card-title>
@@ -271,7 +265,6 @@
         </mat-card-content>
       }
     </mat-card>
-    <!-- Issues -->
     <mat-card class="admin-section">
       <mat-card-header (click)="toggleSection('issues')" class="clickable-header">
         <mat-card-title>
@@ -442,7 +435,6 @@
         </mat-card-content>
       }
     </mat-card>
-    <!-- Timestamps -->
     <mat-card class="admin-section">
       <mat-card-header (click)="toggleSection('timestamps')" class="clickable-header">
         <mat-card-title>
@@ -468,7 +460,6 @@
   </div>
 }
 
-<!-- Loading State -->
 @if (loading) {
   <div class="loading-container">
     <mat-spinner></mat-spinner>
@@ -476,7 +467,6 @@
   </div>
 }
 
-<!-- Error State -->
 @if (error && !loading) {
   <div class="error-container">
     <mat-icon color="warn">error</mat-icon>

@@ -35,18 +35,15 @@ export class SeriesListComponent implements OnInit, OnDestroy {
 
   pageSizeOptions: number[] = [3, 6, 9, 15, 18, 50, 100];
   
-  // Core data
   series: Series[] = [];
   filteredSeries: Series[] = [];
   displaySeries: Series[] = [];
   loading: boolean = true;
   searchTerm: string = '';
   
-  // Enhanced features
   favoriteSeriesIds: Set<number> = new Set();
   viewMode: ViewMode = 'grid';
   
-  // Sorting functionality
   currentSortOption: SortOption = 'name';
   currentSortDirection: SortDirection = 'asc';
   
@@ -60,7 +57,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     { value: 'dateAdded', label: 'Date Added', icon: 'schedule' }
   ];
 
-  // Filter options
   showCompletedOnly: boolean = false;
   selectedPublisher: string = '';
   publishers: string[] = [];
@@ -162,7 +158,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     return this.sortOptions.find(option => option.value === this.currentSortOption);
   }
 
-  // View mode toggle
   toggleView(): void {
     console.log(this.viewMode);
     this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
@@ -170,7 +165,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     this.saveUserPreferences();
   }
 
-  // Filter methods
   onPublisherFilterChange(): void {
     this.applyFiltersAndSorting();
     this.saveUserPreferences();
@@ -261,7 +255,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     this.updatePage();
   }
 
-  // Series completion logic
   isSeriesComplete(series: Series): boolean {
     const owned = series.issuesOwnedCount || 0;
     const available = series.issuesAvailableCount || 0;
@@ -281,7 +274,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     return { completed, total, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
   }
 
-  // Favorites management
   toggleFavorite(series: Series, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
@@ -300,7 +292,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     return seriesId ? this.favoriteSeriesIds.has(seriesId) : false;
   }
 
-  // Navigation
   viewSeries(id: number | undefined): void {
     if (id) {
       this.router.navigate(['/series', id]);
@@ -323,7 +314,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Utility methods
   trackBySeries(index: number, series: Series): any {
     return series.id;
   }
@@ -336,7 +326,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     return this.series.length;
   }
 
-  // User preferences
   private loadUserPreferences(): void {
     const preferences = localStorage.getItem('seriesListPreferences');
     if (preferences) {
@@ -473,8 +462,6 @@ export class JsonDialogComponent {
   async copyToClipboard(): Promise<void> {
     try {
       await navigator.clipboard.writeText(this.formatJson(this.data));
-      // You could add a snackbar notification here
-      console.log('JSON copied to clipboard');
     } catch (err) {
       console.error('Failed to copy JSON: ', err);
     }
