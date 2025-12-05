@@ -3,8 +3,10 @@ package com.infernokun.infernoComics.controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.models.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,16 +42,19 @@ public class VersionController {
     }
 
     @GetMapping
-    public List<Map<String, String>> getVersion() {
-        // Get REST service version
+    public ResponseEntity<ApiResponse<List<Map<String, String>>> > getVersion() {
         Map<String, String> restVersion = new HashMap<>();
         restVersion.put("name", appName);
         restVersion.put("version", appVersion);
 
-        // Get Recognition service version
         Map<String, String> recogVersion = getRecognitionVersion();
 
-        return List.of(restVersion, recogVersion);
+        return ResponseEntity.ok(
+                ApiResponse.<List<Map<String, String>>>builder()
+                        .message("Version Success")
+                        .data(List.of(restVersion, recogVersion))
+                        .build()
+        );
     }
 
     private Map<String, String> readPackageJson() {

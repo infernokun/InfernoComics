@@ -3,20 +3,31 @@ import { EnvironmentService } from '../environment/environment.service';
 import { APP_VERSION } from '../../version';
 import { forkJoin, map, Observable, of } from 'rxjs';
 import { Injectable } from '@angular/core';
+import { ApiResponse } from '../../models/api-response.model';
+import { BaseService } from '../base/base.service';
 
 export interface AppVersion {
   name: string;
   version: string;
 }
 
+enum AppName {
+  REST = 'rest',
+  RECOG = 'recog'
+}
+
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
-export class VersionService {
+export class VersionService extends BaseService {
   private apiUrl: string = '';
   version: string = APP_VERSION;
 
-  constructor(private http: HttpClient,private environmentService: EnvironmentService) {
+  constructor(
+    override http: HttpClient,
+    private environmentService: EnvironmentService
+  ) {
+    super(http);
     this.apiUrl = `${this.environmentService.settings?.restUrl}/version`;
   }
 
@@ -24,18 +35,15 @@ export class VersionService {
     return { name: 'inferno-comics-web', version: this.version };
   }
 
-  getBackendAppVersions(): Observable<AppVersion[]> {
-    return this.http.get<AppVersion[]>(this.apiUrl);
+  getBackendAppVersions(): Observable<ApiResponse<AppVersion[]>> {
+    return this.get<ApiResponse<AppVersion[]>>(this.apiUrl);
   }
 
-  getRestAndRecog(): Observable<{
-    rest: AppVersion;
-    recog: AppVersion;
-  }> {
+  getRestAndRecog(): Observable<{ rest: AppVersion; recog: AppVersion }> {
     return this.getBackendAppVersions().pipe(
-      map(arr => {
-        const rest = arr.find(v => v.name.includes('rest'))!;
-        const recog = arr.find(v => v.name.includes('recog'))!;
+      map((arr: ApiResponse<AppVersion[]>) => {
+        const rest: AppVersion = arr.data.find((v) => v.name.includes(AppName.REST))!;
+        const recog: AppVersion = arr.data.find((v) => v.name.includes(AppName.RECOG))!;
         return { rest, recog };
       })
     );
@@ -44,7 +52,7 @@ export class VersionService {
   getAllVersions() {
     return forkJoin({
       web: of(this.getWebAppVersion()),
-      backend: this.getRestAndRecog()
+      backend: this.getRestAndRecog(),
     });
   }
 }
