@@ -6,6 +6,7 @@ import {
 } from 'rxjs/webSocket';
 import { Subject, Subscription, BehaviorSubject, retry } from 'rxjs';
 import { EnvironmentService } from '../environment/environment.service';
+import { dev_log } from '../../utils/utils';
 
 export interface WebSocketResponse {
   name: string,
@@ -72,9 +73,7 @@ export class WebsocketService<TIncoming = unknown, TOutgoing = unknown> implemen
   }
 
   private handleMessage(message: TIncoming): void {
-    if (this.env.settings?.production === false) {
-      console.log('WebSocket ←', message);
-    }
+    dev_log(this.env, "WebSocket ← ", message);
 
     const isHeartbeat =
       typeof message === 'object' &&

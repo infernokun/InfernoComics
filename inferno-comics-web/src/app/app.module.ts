@@ -13,22 +13,24 @@ import { ThemeService } from './services/theme/theme.service';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import { VersionInfoComponent } from './components/common/version-info/version-info.component';
 import { ProcessingStatusIconComponent } from './components/common/processing-status-icon/processing-status-icon.component';
+import { dev_log } from './utils/utils';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 export function init_app(environmentService: EnvironmentService) {
   return () => {
     return environmentService.load().then(() => {
-      console.log('🔧 Environment loaded successfully');
+      dev_log(environmentService, 'Environment loaded successfully');
 
       if (!environmentService.settings?.restUrl) {
-        console.error('🔧 Environment loaded but REST URL is still undefined!');
+        console.error('Environment loaded but REST URL is still undefined!');
         throw new Error('Failed to load environment settings');
       }
     }).then(() => {
-      console.log('🔧 App initialization completed successfully');
+      dev_log(environmentService, 'App initialization completed successfully');
+
     }).catch((error) => {
-      console.error('🔧 App initialization failed:', error);
+      console.error('App initialization failed:', error);
       throw error;
     });
   };

@@ -26,14 +26,8 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Subscribe to theme changes to ensure DOM classes are applied
     this.themeSubscription = this.themeService.isDarkMode$.subscribe(isDark => {
-      // Force apply theme classes
-      if (isDark) {
-        document.documentElement.classList.add('dark-theme');
-        document.documentElement.classList.remove('light-theme');
-      } else {
-        document.documentElement.classList.add('light-theme');
-        document.documentElement.classList.remove('dark-theme');
-      }
+      document.documentElement.classList.add(isDark ? 'dark-theme' : 'light-theme');
+      document.documentElement.classList.remove(isDark ? 'light-theme': 'dark-theme');
     });
 
     this.websocket.isConnected$.subscribe((isConnected: boolean) => {

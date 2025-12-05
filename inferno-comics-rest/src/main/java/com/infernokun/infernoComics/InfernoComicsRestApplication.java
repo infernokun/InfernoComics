@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableCaching
 public class InfernoComicsRestApplication implements CommandLineRunner {
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
 		SpringApplication.run(InfernoComicsRestApplication.class, args);
 	}
 

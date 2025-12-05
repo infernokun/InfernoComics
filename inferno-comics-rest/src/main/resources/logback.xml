@@ -33,20 +33,6 @@
         </encoder>
     </appender>
 
-    <!-- Separate appender for HTTP requests with custom formatting -->
-    <appender name="HTTP_LOGS" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <pattern>%d{HH:mm:ss} %highlight(%-5level) %msg%n</pattern>
-        </encoder>
-        <filter class="ch.qos.logback.core.filter.EvaluatorFilter">
-            <evaluator class="ch.qos.logback.classic.boolex.OnMarkerEvaluator">
-                <marker>HTTP</marker>
-            </evaluator>
-            <onMismatch>DENY</onMismatch>
-            <onMatch>ACCEPT</onMatch>
-        </filter>
-    </appender>
-
     <!-- Logger specifically for AmaterasuLogger with cleaner format -->
     <logger name="com.infernokun.amaterasu.logger.AmaterasuLogger" level="INFO" additivity="false">
         <appender-ref ref="STDOUT" />

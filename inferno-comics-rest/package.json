@@ -6,6 +6,7 @@
   "scripts": {
     "start": "./gradlew bootRun",
     "build": "./gradlew build --no-daemon -x test",
+    "test" : "./gradlew test",
     "version": "./gradlew --version -PnewVersion=${npm_package_version}",
     "docker:build-compile": "export PROJECT=$(jq -r .name package.json) && docker buildx build --target compile-stage --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg PROJECT=$PROJECT -t infernokun/${npm_package_name}:compile .",
     "docker:build-runtime": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && PORT=$(jq -r .port package.json) && docker buildx build --target runtime-stage --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg PORT=$PORT --build-arg PROJECT=$PROJECT -t infernokun/${npm_package_name}:$VERSION -t infernokun/${npm_package_name}:latest .",

@@ -40,6 +40,7 @@ public class RedisConfig {
 
     @Value("${spring.redis.database}")
     private int redisDatabase;
+
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
         log.info("Creating Redis connection to host: {}, port: {}", redisHost, redisPort);

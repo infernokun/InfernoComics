@@ -5,6 +5,12 @@ server:
   servlet:
     contextPath: /${URL_PREFIX}
 
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
 spring:
   application:
     name: inferno-comics-rest
