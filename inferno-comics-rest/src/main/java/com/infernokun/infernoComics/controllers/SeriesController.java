@@ -1,9 +1,6 @@
 package com.infernokun.infernoComics.controllers;
 
-import com.infernokun.infernoComics.models.Issue;
-import com.infernokun.infernoComics.models.ProgressData;
-import com.infernokun.infernoComics.models.Series;
-import com.infernokun.infernoComics.models.StartedBy;
+import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.models.sync.ProcessingResult;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
@@ -29,6 +26,9 @@ import java.util.stream.Collectors;
 
 import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 
+import com.infernokun.infernoComics.services.ComicVineService.ComicVineIssueDto;
+import com.infernokun.infernoComics.services.ComicVineService.ComicVineSeriesDto;
+
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -43,18 +43,12 @@ public class SeriesController {
     private final ProcessedFileRepository processedFileRepository;
 
     @GetMapping
-    public ResponseEntity<List<Series>> getAllSeries() {
-        try {
-            List<Series> series = seriesService.getAllSeries();
-            return ResponseEntity.ok(series);
-        } catch (Exception e) {
-            log.error("Error fetching all series: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Series>>> getAllSeries() {
+        return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(seriesService.getAllSeries()).build());
     }
 
     @GetMapping("/with-issues")
-    public ResponseEntity<List<SeriesWithIssues>> getSeriesWithIssues() {
+    public ResponseEntity<ApiResponse<List<SeriesWithIssues>>> getSeriesWithIssues() {
         List<Series> series = seriesService.getAllSeries();
 
         List<SeriesWithIssues> seriesWithIssuesList = new ArrayList<>();
@@ -68,21 +62,16 @@ public class SeriesController {
             seriesWithIssuesList.add(seriesWithIssues);
         });
 
-        return ResponseEntity.ok(seriesWithIssuesList);
+        return ResponseEntity.ok(ApiResponse.<List<SeriesWithIssues>>builder().data(seriesWithIssuesList).build());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Series> getSeriesById(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(seriesService.getSeriesById(id));
-        } catch (Exception e) {
-            log.error("Error fetching series {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Series>> getSeriesById(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.<Series>builder().data(seriesService.getSeriesById(id)).build());
     }
 
     @GetMapping("/with-issues/{id}")
-    public ResponseEntity<SeriesWithIssues> getSeriesByIdWithIssues(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SeriesWithIssues>> getSeriesByIdWithIssues(@PathVariable Long id) {
        Series series = seriesService.getSeriesById(id);
 
        SeriesWithIssues seriesWithIssues = new SeriesWithIssues(series);
@@ -90,36 +79,25 @@ public class SeriesController {
 
        seriesWithIssues.setIssues(issues);
 
-       return ResponseEntity.ok(seriesWithIssues);
+       return ResponseEntity.ok(ApiResponse.<SeriesWithIssues>builder().data(seriesWithIssues).build());
     }
 
     @GetMapping("/folder")
-    public ResponseEntity<List<Series.FolderMapping>> getSeriesFolderStructure() {
-        try {
-            List<Series> series = seriesService.getAllSeries();
-            List<Series.FolderMapping> folderMappings = series.stream()
-                    .map(Series::getFolderMapping)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(folderMappings);
-        } catch (Exception e) {
-            log.error("Error fetching series folder structure: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Series.FolderMapping>>> getSeriesFolderStructure() {
+        List<Series> series = seriesService.getAllSeries();
+        List<Series.FolderMapping> folderMappings = series.stream()
+                .map(Series::getFolderMapping)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(ApiResponse.<List<Series.FolderMapping>>builder().data(folderMappings).build());
     }
 
     @GetMapping("/search/advanced")
-    public ResponseEntity<List<Series>> searchSeriesAdvanced(
+    public ResponseEntity<ApiResponse<List<Series>>> searchSeriesAdvanced(
             @RequestParam(required = false) String publisher,
             @RequestParam(required = false) Integer startYear,
             @RequestParam(required = false) Integer endYear) {
-        try {
             List<Series> results = seriesService.searchSeriesByPublisherAndYear(publisher, startYear, endYear);
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Error in advanced series search (publisher: {}, years: {}-{}): {}",
-                    publisher, startYear, endYear, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+            return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(results).build());
     }
 
     @GetMapping("/recent")
@@ -134,64 +112,41 @@ public class SeriesController {
     }
 
     @GetMapping("/popular")
-    public ResponseEntity<List<Series>> getPopularSeries(@RequestParam(defaultValue = "10") int limit) {
-        try {
-            List<Series> popularSeries = seriesService.getPopularSeries(limit);
-            return ResponseEntity.ok(popularSeries);
-        } catch (Exception e) {
-            log.error("Error fetching popular series: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Series>>> getPopularSeries(@RequestParam(defaultValue = "10") int limit) {
+        List<Series> popularSeries = seriesService.getPopularSeries(limit);
+        return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(popularSeries).build());
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getSeriesStats() {
-        try {
-            Map<String, Object> stats = seriesService.getSeriesStats();
-            return ResponseEntity.ok(stats);
-        } catch (Exception e) {
-            log.error("Error fetching series statistics: {}", e.getMessage());
-            return ResponseEntity.ok(Map.of("error", "Unable to fetch statistics"));
-        }
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getSeriesStats() {
+        Map<String, Object> stats = seriesService.getSeriesStats();
+        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder().data(stats).build());
     }
 
     // Comic Vine integration endpoints
     @GetMapping("/search-comic-vine")
-    public ResponseEntity<List<ComicVineService.ComicVineSeriesDto>> searchComicVineSeries(@RequestParam String query) {
-        try {
-            List<ComicVineService.ComicVineSeriesDto> results = seriesService.searchComicVineSeries(query);
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Error searching Comic Vine series with query '{}': {}", query, e.getMessage());
-            return ResponseEntity.ok(List.of()); // Return empty list instead of error for UX
-        }
+    public ResponseEntity<ApiResponse<List<ComicVineSeriesDto>>> searchComicVineSeries(@RequestParam String query) {
+        List<ComicVineSeriesDto> results = seriesService.searchComicVineSeries(query);
+        return ResponseEntity.ok(ApiResponse.<List<ComicVineSeriesDto>>builder().data(results).build());
     }
 
     @GetMapping("/{seriesId}/search-comic-vine")
-    public ResponseEntity<List<ComicVineService.ComicVineIssueDto>> searchComicVineIssues(@PathVariable Long seriesId) {
-        try {
-            List<ComicVineService.ComicVineIssueDto> results = seriesService.searchComicVineIssues(seriesId);
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Error searching Comic Vine issues for series {}: {}", seriesId, e.getMessage());
-            return ResponseEntity.ok(List.of()); // Return empty list instead of error for UX
-        }
+    public ResponseEntity<ApiResponse<List<ComicVineIssueDto>>> searchComicVineIssues(@PathVariable Long seriesId) {
+        List<ComicVineIssueDto> results = seriesService.searchComicVineIssues(seriesId);
+        return ResponseEntity.ok(ApiResponse.<List<ComicVineIssueDto>>builder().data(results).build());
     }
 
     @GetMapping("/get-comic-vine/{comicVineId}")
-    public ResponseEntity<ComicVineService.ComicVineSeriesDto> getComicVineSeriesById(@PathVariable Long comicVineId) {
-        return ResponseEntity.ok(seriesService.getComicVineSeriesById(comicVineId));
+    public ResponseEntity<ApiResponse<ComicVineSeriesDto>> getComicVineSeriesById(@PathVariable Long comicVineId) {
+        return ResponseEntity.ok(ApiResponse.<ComicVineSeriesDto>builder()
+                .data(seriesService.getComicVineSeriesById(comicVineId))
+                .build());
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Series>> searchSeries(@RequestParam String query) {
-        try {
-            List<Series> results = seriesService.searchSeries(query);
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Error searching series with query '{}': {}", query, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Series>>> searchSeries(@RequestParam String query) {
+        List<Series> results = seriesService.searchSeries(query);
+        return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(results).build());
     }
 
     @CrossOrigin(origins = "*", allowCredentials = "false")
@@ -223,75 +178,44 @@ public class SeriesController {
     }
 
     @PostMapping
-    public ResponseEntity<Series> createSeries(@Valid @RequestBody SeriesCreateRequestDto request) {
-        try {
-            Series series = seriesService.createSeries(request);
-            return ResponseEntity.ok(series);
-        } catch (Exception e) {
-            log.error("Error creating series '{}': {}", request.getName(), e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Series>> createSeries(@Valid @RequestBody SeriesCreateRequestDto request) {
+        Series series = seriesService.createSeries(request);
+        return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
     }
 
     @PostMapping("/startSync")
-    public ResponseEntity<List<ProcessingResult>> startAllSeriesSync() {
+    public ResponseEntity<ApiResponse<List<ProcessingResult>>> startAllSeriesSync() {
         List<ProcessingResult> results = new ArrayList<>();
         seriesService.getAllSeries().forEach(series -> results.add(syncService.manualSync(series.getId())));
-        try {
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Error syncing series: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+
+        return ResponseEntity.ok(ApiResponse.<List<ProcessingResult>>builder().data(results).build());
     }
 
     @PostMapping("/startSync/{id}")
-    public ResponseEntity<ProcessingResult> startSeriesSync(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(syncService.manualSync(id));
-        } catch (Exception e) {
-            log.error("Error syncing series {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<ProcessingResult>> startSeriesSync(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.<ProcessingResult>builder().data(syncService.manualSync(id)).build());
     }
 
     @PostMapping("/from-comic-vine")
-    public ResponseEntity<Series> createSeriesFromComicVine(
+    public ResponseEntity<ApiResponse<Series>> createSeriesFromComicVine(
             @RequestParam String comicVineId,
             @RequestBody ComicVineService.ComicVineSeriesDto comicVineData) {
-        try {
-            Series series = seriesService.createSeriesFromComicVine(comicVineId, comicVineData);
-            return ResponseEntity.ok(series);
-        } catch (Exception e) {
-            log.error("Error creating series '{}' from Comic Vine ID {}: {}",
-                    comicVineData.getName(), comicVineId, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+        Series series = seriesService.createSeriesFromComicVine(comicVineId, comicVineData);
+        return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
     }
 
     @PostMapping("/batch/from-comic-vine")
-    public ResponseEntity<List<Series>> createMultipleSeriesFromComicVine(
+    public ResponseEntity<ApiResponse<List<Series>>> createMultipleSeriesFromComicVine(
             @RequestBody List<ComicVineService.ComicVineSeriesDto> comicVineSeriesList) {
-        try {
-            List<Series> series = seriesService.createMultipleSeriesFromComicVine(comicVineSeriesList);
-            log.info("Successfully batch created {} series from Comic Vine", series.size());
-            return ResponseEntity.ok(series);
-        } catch (Exception e) {
-            log.error("Error batch creating {} series from Comic Vine: {}",
-                    comicVineSeriesList.size(), e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+        List<Series> series = seriesService.createMultipleSeriesFromComicVine(comicVineSeriesList);
+        log.info("Successfully batch created {} series from Comic Vine", series.size());
+        return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(series).build());
     }
 
     @PostMapping("/reverify-metadata/{seriesId}")
-    public ResponseEntity<Series> reverifyMetadata(@PathVariable Long seriesId) {
-        try {
-            Series series = seriesService.reverifyMetadata(seriesId);
-            return ResponseEntity.ok(series);
-        } catch (Exception e) {
-            log.error("Error reverifying metadata for series {}: {}", seriesId, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Series>> reverifyMetadata(@PathVariable Long seriesId) {
+        Series series = seriesService.reverifyMetadata(seriesId);
+        return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
     }
 
     @PostMapping("{seriesId}/add-comics-by-images/start")
@@ -357,94 +281,82 @@ public class SeriesController {
     }
 
     @PostMapping("/replay/{sessionId}")
-    public ResponseEntity<?> replaySession(@PathVariable String sessionId) {
-        try {
-            log.info("Starting replay for session: {}", sessionId);
+    public ResponseEntity<ApiResponse<ProcessingResult>> replaySession(@PathVariable String sessionId) {
+        log.info("Starting replay for session: {}", sessionId);
 
-            // Fetch processed files for the session
-            List<ProcessedFile> processedFiles = processedFileRepository.findBySessionId(sessionId);
+        // Fetch processed files for the session
+        List<ProcessedFile> processedFiles = processedFileRepository.findBySessionId(sessionId);
 
-            if (processedFiles.isEmpty()) {
-                log.warn("No processed files found for session: {}", sessionId);
-                return ResponseEntity.notFound().build();
-            }
-
-            Optional<ProgressData> progressDataOptional = progressDataService.getProgressDataBySessionId(sessionId);
-
-            if (progressDataOptional.isPresent()) {
-                ProgressData progressData = progressDataOptional.get();
-                progressData.setState(ProgressData.State.REPLAYED);
-                weirdService.saveProgressData(progressData);
-            }
-
-            // Extract seriesId (assuming all files in a session belong to the same series)
-            Long seriesId = processedFiles.getFirst().getSeriesId();
-
-            // Fetch the series
-            Series series = seriesService.getSeriesById(seriesId);
-            if (series == null) {
-                log.error("Series {} not found for session {}", seriesId, sessionId);
-                return ResponseEntity.badRequest()
-                        .body("Series not found: " + seriesId);
-            }
-
-            // Fetch query images from the session
-            List<SeriesController.ImageData> images = recognitionService.getSessionImages(sessionId);
-
-            if (images.isEmpty()) {
-                log.warn("No query images found for session: {}", sessionId);
-                return ResponseEntity.badRequest()
-                        .body("No query images found for session");
-            }
-
-            log.info("Found {} query images for session {}", images.size(), sessionId);
-
-            processedFiles.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.REPLAY));
-            
-            weirdService.saveProcessedFiles(processedFiles);
-
-            sessionId = UUID.randomUUID().toString();
-
-            progressDataService.initializeSession(sessionId, series, StartedBy.AUTOMATIC);
-
-            // Start async processing with the query images
-            recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
-
-            log.info("Successfully initiated replay for session: {}", sessionId);
-
-            return ResponseEntity.ok(Map.of(
-                    "message", "Session replay started",
-                    "sessionId", sessionId,
-                    "seriesId", seriesId,
-                    "imageCount", images.size()
-            ));
-
-        } catch (Exception e) {
-            log.error("Error replaying session {}: {}", sessionId, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body("Error replaying session: " + e.getMessage());
+        if (processedFiles.isEmpty()) {
+            log.warn("No processed files found for session: {}", sessionId);
+            return ResponseEntity.notFound().build();
         }
+
+        Optional<ProgressData> progressDataOptional = progressDataService.getProgressDataBySessionId(sessionId);
+
+        if (progressDataOptional.isPresent()) {
+            ProgressData progressData = progressDataOptional.get();
+            progressData.setState(ProgressData.State.REPLAYED);
+            weirdService.saveProgressData(progressData);
+        }
+
+        // Extract seriesId (assuming all files in a session belong to the same series)
+        Long seriesId = processedFiles.getFirst().getSeriesId();
+
+        // Fetch the series
+        Series series = seriesService.getSeriesById(seriesId);
+        if (series == null) {
+            log.error("Series {} not found for session {}", seriesId, sessionId);
+            return ResponseEntity.ok(ApiResponse.<ProcessingResult>builder()
+                    .code(HttpStatus.BAD_REQUEST.value())
+                    .message("Series not found: " + seriesId)
+                    .data(ProcessingResult.builder().sessionId(sessionId).build())
+                    .build());
+        }
+
+        // Fetch query images from the session
+        List<SeriesController.ImageData> images = recognitionService.getSessionImages(sessionId);
+
+        if (images.isEmpty()) {
+            log.warn("No query images found for session: {}", sessionId);
+            return ResponseEntity.ok(ApiResponse.<ProcessingResult>builder()
+                    .code(HttpStatus.BAD_REQUEST.value())
+                    .message("No query images found for session")
+                    .data(ProcessingResult.builder().sessionId(sessionId).build())
+                    .build());
+        }
+
+        log.info("Found {} query images for session {}", images.size(), sessionId);
+
+        processedFiles.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.REPLAY));
+
+        weirdService.saveProcessedFiles(processedFiles);
+
+        sessionId = UUID.randomUUID().toString();
+
+        progressDataService.initializeSession(sessionId, series, StartedBy.AUTOMATIC);
+
+        // Start async processing with the query images
+        recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
+
+        log.info("Successfully initiated replay for session: {}", sessionId);
+
+        return ResponseEntity.ok(ApiResponse.<ProcessingResult>builder()
+                .data(ProcessingResult.builder().sessionId(sessionId).build())
+                .build());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Series> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesUpdateRequestDto request) {
-        try {
-            Series series = seriesService.updateSeries(id, request);
-            return ResponseEntity.ok(series);
-        } catch (IllegalArgumentException e) {
-            log.warn("Series {} not found for update", id);
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error("Error updating series {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Series>> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesUpdateRequestDto request) {
+        Series series = seriesService.updateSeries(id, request);
+        return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteSeries(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> deleteSeries(@PathVariable Long id) {
         try {
             seriesService.deleteSeries(id);
-            return ResponseEntity.noContent().build();
+            return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
         } catch (IllegalArgumentException e) {
             log.warn("Series {} not found for deletion", id);
             return ResponseEntity.notFound().build();
@@ -455,27 +367,17 @@ public class SeriesController {
     }
 
     @DeleteMapping("/cache")
-    public ResponseEntity<Void> clearSeriesCaches() {
-        try {
-            seriesService.clearAllSeriesCaches();
-            log.info("Successfully cleared all series caches");
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("Error clearing series caches: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Void>> clearSeriesCaches() {
+        seriesService.clearAllSeriesCaches();
+        log.info("Successfully cleared all series caches");
+        return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
     }
 
     @DeleteMapping("/cache/comic-vine")
-    public ResponseEntity<Void> refreshComicVineCache() {
-        try {
-            seriesService.refreshComicVineCache();
-            log.info("Successfully refreshed Comic Vine cache");
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("Error refreshing Comic Vine cache: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Void>> refreshComicVineCache() {
+        seriesService.refreshComicVineCache();
+        log.info("Successfully refreshed Comic Vine cache");
+        return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
     }
 
     @Setter

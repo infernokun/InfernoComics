@@ -2,6 +2,7 @@ package com.infernokun.infernoComics.controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.models.ApiResponse;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
@@ -56,8 +57,9 @@ public class ProgressDataController {
     }
 
     @GetMapping("/data/{seriesId}")
-    public ResponseEntity<List<ProgressData>> getSessionsBySeriesId(@PathVariable Long seriesId) {
-        return ResponseEntity.ok(progressDataService.getSessionsBySeriesId(seriesId));
+    public ResponseEntity<ApiResponse<List<ProgressData>>> getSessionsBySeriesId(@PathVariable Long seriesId) {
+        return ResponseEntity.ok(ApiResponse.<List<ProgressData>>builder()
+                .data(progressDataService.getSessionsBySeriesId(seriesId)).build());
     }
 
     @GetMapping("/evaluation/{sessionId}")
@@ -71,8 +73,9 @@ public class ProgressDataController {
     }
 
     @GetMapping("/data/rel")
-    public ResponseEntity<List<ProgressData>> getSessionsByRelevance() {
-        return ResponseEntity.ok(progressDataService.getSessionsByRelevance());
+    public ResponseEntity<ApiResponse<List<ProgressData>>> getSessionsByRelevance() {
+        return ResponseEntity.ok(ApiResponse.<List<ProgressData>>builder()
+                .data(progressDataService.getSessionsByRelevance()).build());
     }
 
     // receive progress updates from Python
@@ -184,16 +187,21 @@ public class ProgressDataController {
     }
 
     @PostMapping("/data/dismiss/{id}")
-    public ResponseEntity<List<ProgressData>> dismissProgressData(@PathVariable Long id) {
-        return ResponseEntity.ok((progressDataService.dismissProgressData(id)));
+    public ResponseEntity<ApiResponse<List<ProgressData>>> dismissProgressData(@PathVariable Long id) {
+        return ResponseEntity.ok(
+                ApiResponse.<List<ProgressData>>builder()
+                        .data(progressDataService.dismissProgressData(id))
+                        .build());
     }
 
     @DeleteMapping("/{sessionId}")
-    public ResponseEntity<?> deleteProgressData(@PathVariable String sessionId) {
+    public ResponseEntity<ApiResponse<Void>> deleteProgressData(@PathVariable String sessionId) {
         try {
             Optional<ProgressData> progressDataOpt = progressDataService.getProgressDataBySessionId(sessionId);
             if (progressDataOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body("Session id: " + sessionId + " not found!");
+                return ResponseEntity.ok(ApiResponse.<Void>builder().data(null).code(HttpStatus.BAD_REQUEST.value()).message(
+                        "Session id: " + sessionId + " not found!"
+                ).build());
             }
 
             progressDataService.deleteProgressDataBySessionId(sessionId);
@@ -203,8 +211,9 @@ public class ProgressDataController {
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             log.error("Error deleting progress data for session {}: {}", sessionId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error deleting progress data: " + e.getMessage());
+            return ResponseEntity.ok(ApiResponse.<Void>builder().data(null).code(HttpStatus.INTERNAL_SERVER_ERROR.value()).message(
+                    "Error deleting progress data: " + e.getMessage()
+            ).build());
         }
     }
 

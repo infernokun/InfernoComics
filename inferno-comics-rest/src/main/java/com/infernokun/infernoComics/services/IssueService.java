@@ -2,6 +2,7 @@ package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.IssueController;
 import com.infernokun.infernoComics.controllers.SeriesController;
@@ -13,6 +14,7 @@ import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
@@ -25,13 +27,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.ExchangeStrategies;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -42,6 +41,7 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class IssueService {
     private final IssueRepository issueRepository;
     private final SeriesRepository seriesRepository;
@@ -51,27 +51,7 @@ public class IssueService {
     private final GCDatabaseService gcDatabaseService;
     private final CacheManager cacheManager;
     private final RecognitionService recognitionService;
-    private final WebClient webClient;
-
-    public IssueService(IssueRepository issueRepository, SeriesRepository seriesRepository, ComicVineService comicVineService, InfernoComicsConfig infernoComicsConfig1, DescriptionGeneratorService descriptionGeneratorService, GCDatabaseService gcDatabaseService, CacheManager cacheManager, RecognitionService recognitionService, InfernoComicsConfig infernoComicsConfig) {
-        this.issueRepository = issueRepository;
-        this.seriesRepository = seriesRepository;
-        this.comicVineService = comicVineService;
-        this.infernoComicsConfig = infernoComicsConfig1;
-        this.descriptionGeneratorService = descriptionGeneratorService;
-        this.gcDatabaseService = gcDatabaseService;
-        this.cacheManager = cacheManager;
-        this.recognitionService = recognitionService;
-
-        this.webClient = WebClient.builder()
-                .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
-                .exchangeStrategies(ExchangeStrategies.builder()
-                        .codecs(configurer -> configurer
-                                .defaultCodecs()
-                                .maxInMemorySize(500 * 1024 * 1024))
-                        .build())
-                .build();
-    }
+    private final InfernoComicsWebClient webClient;
 
     public List<Issue> getAllIssues() {
         List<Issue> cachedIssues = getCachedValue(CacheConstants.CacheNames.ISSUE_LIST, CacheConstants.CacheKeys.ALL_ISSUES_LIST);
@@ -326,7 +306,7 @@ public class IssueService {
 
             long startTime = System.currentTimeMillis();
 
-            String response = webClient.post()
+            String response = webClient.recognitionClient().post()
                     .uri("/add-issue")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(BodyInserters.fromMultipartData(builder.build()))

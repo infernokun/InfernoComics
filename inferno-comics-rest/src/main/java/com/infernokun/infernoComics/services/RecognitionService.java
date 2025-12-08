@@ -1,10 +1,11 @@
 package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.RecognitionConfig;
 import com.infernokun.infernoComics.models.StartedBy;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.Resource;
@@ -12,37 +13,23 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.ExchangeStrategies;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class RecognitionService {
+    private final InfernoComicsWebClient webClient;
     private final SeriesService seriesService;
-    private final WebClient webClient;
 
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
 
-    public RecognitionService(SeriesService seriesService, InfernoComicsConfig infernoComicsConfig) {
-        this.seriesService = seriesService;
-        this.webClient = WebClient.builder()
-                .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
-                .exchangeStrategies(ExchangeStrategies.builder()
-                        .codecs(configurer -> configurer
-                                .defaultCodecs()
-                                .maxInMemorySize(500 * 1024 * 1024))
-                        .build())
-                .build();
-    }
-
     public RecognitionConfig getRecognitionConfig() {
-        return webClient.get()
+        return webClient.recognitionClient().get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/config")
                         .build())
@@ -59,7 +46,7 @@ public class RecognitionService {
     }
 
     public Boolean saveRecognitionConfig(RecognitionConfig config) {
-        return webClient.post()
+        return webClient.recognitionClient().post()
                 .uri(uriBuilder -> uriBuilder.path("/config").build())
                 .bodyValue(config)
                 .retrieve()
@@ -87,7 +74,7 @@ public class RecognitionService {
     }
 
     public void cleanSession(String sessionId) {
-        webClient.post()
+        webClient.recognitionClient().post()
                 .uri(uriBuilder -> uriBuilder.path("/health/clean").build())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                 .body(BodyInserters.fromFormData("sessionId", sessionId))
@@ -108,7 +95,7 @@ public class RecognitionService {
     }
 
     public JsonNode getSessionJSON(String sessionId) {
-        return webClient.get()
+        return webClient.recognitionClient().get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/json")
                         .queryParam("sessionId", sessionId)
@@ -126,7 +113,7 @@ public class RecognitionService {
     }
 
     public Resource getSessionImage(String sessionId, String fileName) {
-        return webClient.get()
+        return webClient.recognitionClient().get()
                 .uri("/stored_images/" + sessionId + "/" + fileName)
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
@@ -139,7 +126,7 @@ public class RecognitionService {
     }
 
     public List<SeriesController.ImageData> getSessionImages(String sessionId) {
-        return webClient.get()
+        return webClient.recognitionClient().get()
                 .uri("/stored_images/" + sessionId + "/query")
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
@@ -152,7 +139,7 @@ public class RecognitionService {
     }
 
     public String getSessionImageHash(String sessionId, String fileName) {
-        return webClient.get()
+        return webClient.recognitionClient().get()
                 .uri("/stored_images/hash/" + sessionId + "/" + fileName )
                 .retrieve()
                 .onStatus(HttpStatusCode::is4xxClientError, _ ->

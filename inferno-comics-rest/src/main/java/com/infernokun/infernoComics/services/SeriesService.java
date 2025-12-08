@@ -3,7 +3,7 @@ package com.infernokun.infernoComics.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infernokun.infernoComics.config.InfernoComicsConfig;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
@@ -15,6 +15,7 @@ import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.Cacheable;
@@ -27,8 +28,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.ExchangeStrategies;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -41,7 +40,10 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Slf4j
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class SeriesService {
+    private final InfernoComicsWebClient webClient;
+
     private final WeirdService weirdService;
     private final ProgressDataService progressDataService;
     private final ComicVineService comicVineService;
@@ -52,40 +54,8 @@ public class SeriesService {
     private final SeriesRepository seriesRepository;
     private final ProcessedFileRepository processedFileRepository;
 
-    private final WebClient webClient;
     private final ModelMapper modelMapper;
     private final CacheManager cacheManager;
-
-    public SeriesService(WeirdService weirdService,
-                         ProgressDataService progressDataService,
-                         ComicVineService comicVineService,
-                         GCDatabaseService gcDatabaseService,
-                         DescriptionGeneratorService descriptionGeneratorService,
-                         IssueRepository issueRepository,
-                         SeriesRepository seriesRepository,
-                         ProcessedFileRepository processedFileRepository,
-                         ModelMapper modelMapper,
-                         CacheManager cacheManager,
-                         InfernoComicsConfig infernoComicsConfig) {
-        this.weirdService = weirdService;
-        this.progressDataService = progressDataService;
-        this.comicVineService = comicVineService;
-        this.gcDatabaseService = gcDatabaseService;
-        this.descriptionGeneratorService = descriptionGeneratorService;
-        this.issueRepository = issueRepository;
-        this.seriesRepository = seriesRepository;
-        this.processedFileRepository = processedFileRepository;
-        this.modelMapper = modelMapper;
-        this.cacheManager = cacheManager;
-        this.webClient = WebClient.builder()
-                .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
-                .exchangeStrategies(ExchangeStrategies.builder()
-                        .codecs(configurer -> configurer
-                                .defaultCodecs()
-                                .maxInMemorySize(500 * 1024 * 1024))
-                        .build())
-                .build();
-    }
 
     @CacheEvict(value = "series", key = "#seriesId")
     @Transactional
@@ -889,7 +859,7 @@ public class SeriesService {
             builder.part("urls_scraped", "true");
 
             long startTime = System.currentTimeMillis();
-            String response = webClient.post()
+            String response = webClient.recognitionClient().post()
                     .uri("/image-matcher-multiple")
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(BodyInserters.fromMultipartData(builder.build()))
@@ -898,7 +868,10 @@ public class SeriesService {
                     .block();
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Matcher response received in {}ms for session: {}", duration, sessionId);
+            log.info("Matcher response received in {}s ({}ms) for session: {}",
+                    duration / 1000,
+                    duration % 1000,
+                    sessionId);
 
             root = mapper.readTree(response);
             JsonNode results = root.get("results");

@@ -9,6 +9,7 @@ import com.infernokun.infernoComics.repositories.sync.SeriesSyncStatusRepository
 import com.infernokun.infernoComics.services.ProgressDataService;
 import com.infernokun.infernoComics.services.SeriesService;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -21,30 +22,17 @@ import java.util.stream.Collectors;
 
 import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 
-@Service
 @Slf4j
+@Service
 @Transactional
+@RequiredArgsConstructor
 public class NextcloudSyncService {
-
     private final SeriesService seriesService;
     private final NextcloudService nextcloudService;
     private final SeriesSyncStatusRepository syncStatusRepository;
     private final ProcessedFileRepository processedFileRepository;
     private final ProgressDataService progressDataService;
     private final WeirdService weirdService;
-
-    public NextcloudSyncService(SeriesService seriesService,
-                                NextcloudService nextcloudService,
-                                SeriesSyncStatusRepository syncStatusRepository,
-                                ProcessedFileRepository processedFileRepository,
-                                ProgressDataService progressDataService, WeirdService weirdService) {
-        this.seriesService = seriesService;
-        this.nextcloudService = nextcloudService;
-        this.syncStatusRepository = syncStatusRepository;
-        this.processedFileRepository = processedFileRepository;
-        this.progressDataService = progressDataService;
-        this.weirdService = weirdService;
-    }
 
     public ProcessingResult processSeries(Series series) {
         String folderPath = series.getFolderMapping().getName();

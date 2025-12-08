@@ -1,17 +1,17 @@
 package com.infernokun.infernoComics.services.sync;
 
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.exceptions.NextcloudFolderNotFound;
 import com.infernokun.infernoComics.models.sync.NextcloudFile;
 import com.infernokun.infernoComics.models.sync.NextcloudFolderInfo;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.ExchangeStrategies;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -31,37 +31,16 @@ import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Service
 @Slf4j
+@Service
+@RequiredArgsConstructor
 public class NextcloudService {
-
-    private final WebClient webClient;
+    private final InfernoComicsWebClient webClient;
     private final InfernoComicsConfig infernoComicsConfig;
-
-    public NextcloudService(InfernoComicsConfig infernoComicsConfig) {
-        this.infernoComicsConfig = infernoComicsConfig;
-        this.webClient = WebClient.builder()
-                .baseUrl(infernoComicsConfig.getNextcloudUrl())
-                .defaultHeader(HttpHeaders.AUTHORIZATION, createAuthHeader())
-                .exchangeStrategies(ExchangeStrategies.builder()
-                        .codecs(configurer -> configurer
-                                .defaultCodecs()
-                                .maxInMemorySize(500 * 1024 * 1024))
-                        .build())
-                .build();
-    }
-
-    private String createAuthHeader() {
-        String credentials = infernoComicsConfig.getNextcloudUsername() + ":" +
-                infernoComicsConfig.getNextcloudPassword();
-        String encodedCredentials = Base64.getEncoder().encodeToString(credentials.getBytes());
-        return "Basic " + encodedCredentials;
-    }
 
     public NextcloudFolderInfo getFolderInfo(String folderPath) {
         folderPath = infernoComicsConfig.getNextcloudFolderLocation() + folderPath;
@@ -70,7 +49,7 @@ public class NextcloudService {
         try {
             log.info("Starting PROPFIND request...");
 
-            String response = webClient
+            String response = webClient.nextcloudClient()
                     .method(HttpMethod.valueOf("PROPFIND"))
                     .uri(path)
                     .header("Depth", "1")
@@ -116,7 +95,7 @@ public class NextcloudService {
         log.info("Downloading file: {}", path);
 
         try {
-            return webClient
+            return webClient.nextcloudClient()
                     .get()
                     .uri(path)
                     .retrieve()
@@ -230,13 +209,13 @@ public class NextcloudService {
     private static class WebDavNamespaceContext implements NamespaceContext {
         @Override
         public String getNamespaceURI(String prefix) {
-            switch (prefix) {
-                case "d": return "DAV:";
-                case "oc": return "http://owncloud.org/ns";
-                case "nc": return "http://nextcloud.org/ns";
-                case "s": return "http://sabredav.org/ns";
-                default: return XMLConstants.NULL_NS_URI;
-            }
+            return switch (prefix) {
+                case "d" -> "DAV:";
+                case "oc" -> "http://owncloud.org/ns";
+                case "nc" -> "http://nextcloud.org/ns";
+                case "s" -> "http://sabredav.org/ns";
+                default -> XMLConstants.NULL_NS_URI;
+            };
         }
         @Override
         public String getPrefix(String uri) { return null; }
@@ -246,7 +225,7 @@ public class NextcloudService {
 
     private NextcloudFolderInfo retryGetFolderInfo(String folderPath, String path) {
         try {
-            String response = webClient
+            String response = webClient.nextcloudClient()
                     .method(HttpMethod.valueOf("PROPFIND"))
                     .uri(path)
                     .header("Depth", "1")
@@ -292,7 +271,7 @@ public class NextcloudService {
 
     private boolean folderExists(String path) {
         try {
-            webClient
+            webClient.nextcloudClient()
                     .method(HttpMethod.valueOf("PROPFIND"))
                     .uri(path + "/")
                     .header("Depth", "0")
@@ -312,7 +291,7 @@ public class NextcloudService {
 
     private void createSingleFolder(String path) {
         try {
-            webClient
+            webClient.nextcloudClient()
                     .method(HttpMethod.valueOf("MKCOL"))
                     .uri(path + "/")
                     .retrieve()

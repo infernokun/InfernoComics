@@ -2,6 +2,7 @@ package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.utils.GenericTextCleaner;
@@ -11,8 +12,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.ExchangeStrategies;
-import org.springframework.web.reactive.function.client.WebClient;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDate;
@@ -22,37 +21,18 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-@Service
 @Slf4j
+@Service
+@RequiredArgsConstructor
 public class ComicVineService {
-
-    private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final InfernoComicsConfig infernoComicsConfig;
-    private final DescriptionGeneratorService descriptionGeneratorService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final InfernoComicsWebClient webClient;
 
-    private static final String BASE_URL = "https://comicvine.gamespot.com/api";
     private static final String SERIES_CACHE_PREFIX = "comic_vine_series:";
     private static final String ISSUES_CACHE_PREFIX = "comic_vine_issues:";
     private static final long CACHE_TTL_HOURS = 24; // Cache Comic Vine data for 24 hours
-
-    public ComicVineService(InfernoComicsConfig infernoComicsConfig,
-                            DescriptionGeneratorService descriptionGeneratorService,
-                            StringRedisTemplate stringRedisTemplate) {
-        this.infernoComicsConfig = infernoComicsConfig;
-        this.descriptionGeneratorService = descriptionGeneratorService;
-        this.stringRedisTemplate = stringRedisTemplate;
-        this.webClient = WebClient.builder()
-                .baseUrl(BASE_URL)
-                .exchangeStrategies(ExchangeStrategies.builder()
-                        .codecs(configurer -> configurer
-                                .defaultCodecs()
-                                .maxInMemorySize(1024 * 1024))
-                        .build())
-                .build();
-        this.objectMapper = new ObjectMapper();
-    }
 
     private boolean validateApiKey() {
         String apiKey = infernoComicsConfig.getComicVineAPIKey();
@@ -152,7 +132,7 @@ public class ComicVineService {
         if (!validateApiKey()) return null;
 
         try {
-            String response = webClient.get()
+            String response = webClient.comicVineClient().get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/issue/4000-" + comicVineId + "/")
                             .queryParam("api_key", infernoComicsConfig.getComicVineAPIKey())
@@ -181,7 +161,7 @@ public class ComicVineService {
         if (!validateApiKey()) return null;
 
         try {
-            String response = webClient.get()
+            String response = webClient.comicVineClient().get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/volume/4050-" + comicVineId + "/")
                             .queryParam("api_key", infernoComicsConfig.getComicVineAPIKey())
@@ -210,7 +190,7 @@ public class ComicVineService {
         if (!validateApiKey()) return new ArrayList<>();
 
         try {
-            String response = webClient.get()
+            String response = webClient.comicVineClient().get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/search/")
                             .queryParam("api_key", infernoComicsConfig.getComicVineAPIKey())
@@ -247,7 +227,7 @@ public class ComicVineService {
         while (hasMoreResults) {
             try {
                 int finalOffset = offset;
-                String response = webClient.get()
+                String response = webClient.comicVineClient().get()
                         .uri(uriBuilder -> uriBuilder
                                 .path("/issues/")
                                 .queryParam("api_key", infernoComicsConfig.getComicVineAPIKey())

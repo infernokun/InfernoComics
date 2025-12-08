@@ -1,4 +1,4 @@
-package com.infernokun.infernoComics.websocket;
+package com.infernokun.infernoComics.clients;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -27,12 +27,12 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Slf4j
-public class InfernoComicsSocketHandler extends TextWebSocketHandler {
+public class InfernoComicsSocketClient extends TextWebSocketHandler {
     private final List<WebSocketSession> currentSessions = new CopyOnWriteArrayList<>();
     private final ObjectWriter writer;
     private final JsonMapper mapper;
 
-    public InfernoComicsSocketHandler() {
+    public InfernoComicsSocketClient() {
         mapper = JsonMapper.builder().disable(MapperFeature.REQUIRE_HANDLERS_FOR_JAVA8_TIMES).build();
         writer = new ObjectMapper().writerFor(HeartbeatDTO.class);
     }

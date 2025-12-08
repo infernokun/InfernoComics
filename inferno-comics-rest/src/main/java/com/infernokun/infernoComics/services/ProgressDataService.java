@@ -5,24 +5,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
-import com.infernokun.infernoComics.websocket.InfernoComicsSocketHandler;
+import com.infernokun.infernoComics.clients.InfernoComicsSocketClient;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.ExchangeStrategies;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.annotation.PreDestroy;
@@ -39,35 +33,19 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ProgressDataService {
     private final WeirdService weirdService;
-    private final InfernoComicsSocketHandler websocket;
+    private final InfernoComicsSocketClient websocket;
     private final ProgressDataRepository progressDataRepository;
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
-
-    private final WebClient webClient;
     private final RedisTemplate<String, Object> redisTemplate;
 
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
-
-    public ProgressDataService(WeirdService weirdService, InfernoComicsSocketHandler websocket, ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig, RedisTemplate<String, Object> redisTemplate) {
-        this.weirdService = weirdService;
-        this.websocket = websocket;
-        this.progressDataRepository = progressDataRepository;
-        this.webClient = WebClient.builder()
-                .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
-                .exchangeStrategies(ExchangeStrategies.builder()
-                        .codecs(configurer -> configurer
-                                .defaultCodecs()
-                                .maxInMemorySize(500 * 1024 * 1024))
-                        .build())
-                .build();
-        this.redisTemplate = redisTemplate;
-    }
 
     @PreDestroy
     public void shutdown() {

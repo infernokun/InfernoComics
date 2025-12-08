@@ -1,18 +1,17 @@
 package com.infernokun.infernoComics.services;
 
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Series;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.ExchangeStrategies;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.http.MediaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,33 +24,15 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class DescriptionGeneratorService {
-
-    private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final InfernoComicsConfig infernoComicsConfig;
     private final StringRedisTemplate stringRedisTemplate;
+    private final InfernoComicsWebClient webClient;
 
-    private final String apiUrl = "https://api.groq.com/openai/v1/chat/completions";
     private static final String MANUAL_CACHE_KEY_PREFIX = "issue_description_manual:";
     private static final long CACHE_TTL_HOURS = 24 * 7; // Cache for 7 days
-
-    public DescriptionGeneratorService(ObjectMapper objectMapper,
-                                       InfernoComicsConfig infernoComicsConfig,
-                                       StringRedisTemplate stringRedisTemplate,
-                                       RedisTemplate<String, Object> redisTemplate) {
-        this.webClient = WebClient.builder()
-                .baseUrl(apiUrl)
-                .exchangeStrategies(ExchangeStrategies.builder()
-                        .codecs(configurer -> configurer
-                                .defaultCodecs()
-                                .maxInMemorySize(1024 * 1024))
-                        .build())
-                .build();
-        this.objectMapper = objectMapper;
-        this.infernoComicsConfig = infernoComicsConfig;
-        this.stringRedisTemplate = stringRedisTemplate;
-    }
 
     // Annotation-based caching approach (recommended for most use cases)
     @Cacheable(value = "issue-descriptions", key = "#seriesName + ':' + #issueNumber + ':' + (#issueTitle ?: 'no_title')")
@@ -326,8 +307,7 @@ public class DescriptionGeneratorService {
             );
 
             // Make WebClient call
-            Mono<String> responseMono = webClient.post()
-                    .uri(apiUrl)
+            Mono<String> responseMono = webClient.groqClient().post()
                     .header("Authorization", "Bearer " + infernoComicsConfig.getGroqAPIKey())
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(requestBody)
