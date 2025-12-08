@@ -4,6 +4,9 @@ import { AppComponent } from './app.component';
 import { ThemeService } from './services/theme/theme.service';
 import { WebsocketService } from './services/websocket/websocket.service';
 import { of, BehaviorSubject } from 'rxjs';
+import { MaterialModule } from './material.module';
+import { VersionInfoComponent } from './components/common/version-info/version-info.component';
+import { ProcessingStatusIconComponent } from './components/common/processing-status-icon/processing-status-icon.component';
 
 describe('AppComponent', () => {
   let component: AppComponent;
@@ -28,10 +31,13 @@ describe('AppComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [
+        VersionInfoComponent,
+        MaterialModule,
         RouterModule.forRoot([])
       ],
       declarations: [
-        AppComponent
+        AppComponent,
+        ProcessingStatusIconComponent
       ],
       providers: [
         { provide: ThemeService, useValue: mockThemeService },

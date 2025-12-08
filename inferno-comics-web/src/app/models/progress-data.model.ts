@@ -4,7 +4,8 @@ export enum ProgressState {
   PROCESSING = 'PROCESSING',
   COMPLETE = 'COMPLETE',
   ERROR = 'ERROR',
-  QUEUED = 'QUEUED'
+  QUEUED = 'QUEUED',
+  REPLAYED = 'REPLAYED'
 }
 
 export enum StartedBy {
@@ -78,7 +79,7 @@ export class ProgressData {
     return undefined;
   }
 
-  getDuration(): number {
+  getDurationMs(): number {
     if (!this.timeStarted) return 0;
     
     const startTime = this.timeStarted.getTime();
@@ -87,8 +88,40 @@ export class ProgressData {
     return endTime - startTime; // Duration in milliseconds
   }
 
+  getDuration(): string {
+    if (!this.timeStarted || !this.timeFinished) {
+      return '';
+    }
+
+    try {
+
+      if (isNaN(this.timeStarted.getTime()) || isNaN(this.timeFinished.getTime())) {
+        return 'Invalid';
+      }
+
+      const diffMs = this.timeFinished.getTime() - this.timeStarted.getTime();
+
+      if (diffMs < 0) return 'Invalid';
+
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+      } else {
+        return `${seconds}s`;
+      }
+    } catch (error) {
+      console.error('Error calculating duration:', error);
+      return 'Error';
+    }
+  }
+
   getFormattedDuration(): string {
-    const durationMs = this.getDuration();
+    const durationMs = this.getDurationMs();
     const totalSeconds = Math.floor(durationMs / 1000);
     
     const hours = Math.floor(totalSeconds / 3600);

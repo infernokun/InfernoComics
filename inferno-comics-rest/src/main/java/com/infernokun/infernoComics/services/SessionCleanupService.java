@@ -9,26 +9,26 @@ import org.springframework.stereotype.Service;
 @Service
 public class SessionCleanupService {
 
-    private final ProgressService progressService;
+    private final ProgressDataService progressDataService;
 
     @Autowired
-    public SessionCleanupService(ProgressService progressService) {
-        this.progressService = progressService;
+    public SessionCleanupService(ProgressDataService progressDataService) {
+        this.progressDataService = progressDataService;
     }
 
     @Scheduled(fixedDelay = 30 * 60 * 1000) // 30 minutes
     public void cleanupOldSessions() {
         long maxAgeMs = 2 * 60 * 60 * 1000; // 2 hours
 
-        int activeBefore = progressService.getActiveSessionCount();
-        int totalBefore = progressService.getTotalSessionCount();
+        int activeBefore = progressDataService.getActiveSessionCount();
+        int totalBefore = progressDataService.getTotalSessionCount();
 
         log.debug("Starting session cleanup - Active: {}, Total: {}", activeBefore, totalBefore);
 
-        progressService.cleanupOldSessions(maxAgeMs);
+        progressDataService.cleanupOldSessions(maxAgeMs);
 
-        int activeAfter = progressService.getActiveSessionCount();
-        int totalAfter = progressService.getTotalSessionCount();
+        int activeAfter = progressDataService.getActiveSessionCount();
+        int totalAfter = progressDataService.getTotalSessionCount();
 
         if (totalBefore != totalAfter) {
             log.info("Session cleanup completed - Cleaned {} old sessions. Active: {}, Total: {}",

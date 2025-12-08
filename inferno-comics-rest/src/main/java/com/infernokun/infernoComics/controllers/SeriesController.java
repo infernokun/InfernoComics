@@ -1,6 +1,7 @@
 package com.infernokun.infernoComics.controllers;
 
 import com.infernokun.infernoComics.models.Issue;
+import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
@@ -36,7 +37,7 @@ public class SeriesController {
     private final WeirdService weirdService;
     private final SeriesService seriesService;
     private final IssueService issueService;
-    private final ProgressService progressService;
+    private final ProgressDataService progressDataService;
     private final NextcloudSyncService syncService;
     private final RecognitionService recognitionService;
     private final ProcessedFileRepository processedFileRepository;
@@ -202,7 +203,7 @@ public class SeriesController {
         log.debug("SSE connection requested for multiple images session: {} (series: {})", sessionId, seriesId);
 
         try {
-            SseEmitter emitter = progressService.createProgressEmitter(sessionId);
+            SseEmitter emitter = progressDataService.createProgressEmitter(sessionId);
             return emitter;
         } catch (Exception e) {
             log.error("Failed to create SSE emitter for multiple images session {}: {}", sessionId, e.getMessage());
@@ -341,7 +342,7 @@ public class SeriesController {
             log.info("Starting image processing session {} for series {}: {} images ({} MB total)",
                     sessionId, seriesId, imageDataList.size(), totalBytes / (1024 * 1024));
 
-            progressService.initializeSession(sessionId, seriesService.getSeriesById(seriesId), StartedBy.MANUAL);
+            progressDataService.initializeSession(sessionId, seriesService.getSeriesById(seriesId), StartedBy.MANUAL);
 
             // Start async processing with image data list
             seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, StartedBy.MANUAL, name, year);
@@ -368,6 +369,14 @@ public class SeriesController {
                 return ResponseEntity.notFound().build();
             }
 
+            Optional<ProgressData> progressDataOptional = progressDataService.getProgressDataBySessionId(sessionId);
+
+            if (progressDataOptional.isPresent()) {
+                ProgressData progressData = progressDataOptional.get();
+                progressData.setState(ProgressData.State.REPLAYED);
+                weirdService.saveProgressData(progressData);
+            }
+
             // Extract seriesId (assuming all files in a session belong to the same series)
             Long seriesId = processedFiles.getFirst().getSeriesId();
 
@@ -390,16 +399,13 @@ public class SeriesController {
 
             log.info("Found {} query images for session {}", images.size(), sessionId);
 
-            processedFiles.forEach(file -> {
-                file.setProcessingStatus(ProcessedFile.ProcessingStatus.REPLAY);
-            });
+            processedFiles.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.REPLAY));
             
             weirdService.saveProcessedFiles(processedFiles);
-            //processedFileRepository.deleteAll(processedFiles);
 
             sessionId = UUID.randomUUID().toString();
 
-            progressService.initializeSession(sessionId, series, StartedBy.AUTOMATIC);
+            progressDataService.initializeSession(sessionId, series, StartedBy.AUTOMATIC);
 
             // Start async processing with the query images
             recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
@@ -419,8 +425,6 @@ public class SeriesController {
                     .body("Error replaying session: " + e.getMessage());
         }
     }
-
-    //recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
 
     @PutMapping("/{id}")
     public ResponseEntity<Series> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesUpdateRequestDto request) {

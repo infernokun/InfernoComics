@@ -97,7 +97,7 @@ public class ProgressData {
         return Duration.between(start, end);
     }
 
-    // Get duration in human readable format
+    // Get duration in human-readable format
     public String getFormattedDuration() {
         Duration duration = getDuration();
         long seconds = duration.getSeconds();
@@ -126,6 +126,7 @@ public class ProgressData {
     public enum State {
         PROCESSING("Processing"),
         COMPLETE("Completed"),
+        REPLAYED("Replayed"),
         QUEUE("Queue"),
         ERROR("Error");
 

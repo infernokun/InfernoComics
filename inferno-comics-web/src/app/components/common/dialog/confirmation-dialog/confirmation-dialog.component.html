@@ -5,7 +5,11 @@
   </div>
 
   <mat-dialog-content class="dialog-content">
-    <p class="dialog-message">{{ data.message }}</p>
+    @if (data.innerHTML) {
+      <p class="dialog-message" [innerHTML]="data.message"></p>
+    } @else {
+      <p class="dialog-message">{{ data.message }}</p>
+    }
 
     <!-- Add support for details list -->
     @if (data.details && data.details.length > 0) {

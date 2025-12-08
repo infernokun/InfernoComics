@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { SeriesFormComponent } from './series-form.component';
+import { RouterModule } from '@angular/router';
 
 describe('SeriesFormComponent', () => {
   let component: SeriesFormComponent;
@@ -8,7 +9,7 @@ describe('SeriesFormComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [SeriesFormComponent]
+      imports: [SeriesFormComponent, RouterModule.forRoot([])]
     })
     .compileComponents();
 

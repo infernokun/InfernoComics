@@ -5,3 +5,10 @@ export function dev_log(env: EnvironmentService, ...message: any[]) {
     console.log(...message);
   }
 }
+
+export function upperLower(enumValue: string): string {
+  if (!enumValue) {
+    return enumValue;
+  }
+  return enumValue.charAt(0).toUpperCase() + enumValue.slice(1);
+}

@@ -19,7 +19,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
@@ -40,7 +39,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-public class ProgressService {
+public class ProgressDataService {
     private final WeirdService weirdService;
     private final InfernoComicsSocketHandler websocket;
     private final ProgressDataRepository progressDataRepository;
@@ -55,7 +54,7 @@ public class ProgressService {
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
 
-    public ProgressService(WeirdService weirdService, InfernoComicsSocketHandler websocket, ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig, RedisTemplate<String, Object> redisTemplate) {
+    public ProgressDataService(WeirdService weirdService, InfernoComicsSocketHandler websocket, ProgressDataRepository progressDataRepository, InfernoComicsConfig infernoComicsConfig, RedisTemplate<String, Object> redisTemplate) {
         this.weirdService = weirdService;
         this.websocket = websocket;
         this.progressDataRepository = progressDataRepository;

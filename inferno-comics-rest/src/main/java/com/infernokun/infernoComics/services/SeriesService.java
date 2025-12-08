@@ -43,7 +43,7 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Transactional
 public class SeriesService {
     private final WeirdService weirdService;
-    private final ProgressService progressService;
+    private final ProgressDataService progressDataService;
     private final ComicVineService comicVineService;
     private final GCDatabaseService gcDatabaseService;
     private final DescriptionGeneratorService descriptionGeneratorService;
@@ -57,7 +57,7 @@ public class SeriesService {
     private final CacheManager cacheManager;
 
     public SeriesService(WeirdService weirdService,
-                         ProgressService progressService,
+                         ProgressDataService progressDataService,
                          ComicVineService comicVineService,
                          GCDatabaseService gcDatabaseService,
                          DescriptionGeneratorService descriptionGeneratorService,
@@ -68,7 +68,7 @@ public class SeriesService {
                          CacheManager cacheManager,
                          InfernoComicsConfig infernoComicsConfig) {
         this.weirdService = weirdService;
-        this.progressService = progressService;
+        this.progressDataService = progressDataService;
         this.comicVineService = comicVineService;
         this.gcDatabaseService = gcDatabaseService;
         this.descriptionGeneratorService = descriptionGeneratorService;
@@ -729,7 +729,7 @@ public class SeriesService {
             int waited = 0;
 
             if (startedBy == StartedBy.MANUAL) {
-                while (!progressService.emitterIsPresent(sessionId)) {
+                while (!progressDataService.emitterIsPresent(sessionId)) {
                     if (waited >= timeoutSeconds * 1000) {
                         throw new RuntimeException("Timeout: Emitter for sessionId " + sessionId + " not found after " + timeoutSeconds + " seconds.");
                     }
@@ -739,13 +739,13 @@ public class SeriesService {
             }
 
             // Stage 1: Series validation
-            progressService.updateProgress(new ProgressUpdateRequest(
+            progressDataService.updateProgress(new ProgressUpdateRequest(
                     sessionId, "preparing", 2,
                     String.format("Validating series and %d images...", imageDataList.size())));
 
             Series seriesEntity = getSeriesById(seriesId);
             if (seriesEntity == null) {
-                progressService.sendError(sessionId, "Series not found with id: " + seriesId);
+                progressDataService.sendError(sessionId, "Series not found with id: " + seriesId);
                 return CompletableFuture.completedFuture(null);
             }
 
@@ -753,17 +753,17 @@ public class SeriesService {
 
             if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty() && seriesEntity.getLastCachedCovers() != null) {
                 log.info("Using cached covers for session: {}", sessionId);
-                progressService.updateProgress(new ProgressUpdateRequest(
+                progressDataService.updateProgress(new ProgressUpdateRequest(
                         sessionId, "preparing", 8, "Using cached cover data..."));
                 candidateCovers = seriesEntity.getCachedCoverUrls();
             } else {
                 // Stage 2: ComicVine search
-                progressService.updateProgress(new ProgressUpdateRequest(
+                progressDataService.updateProgress(new ProgressUpdateRequest(
                         sessionId, "preparing", 5, "Searching ComicVine database..."));
 
                 List<ComicVineService.ComicVineIssueDto> results = searchComicVineIssues(seriesId);
 
-                progressService.updateProgress(new ProgressUpdateRequest(
+                progressDataService.updateProgress(new ProgressUpdateRequest(
                         sessionId, "preparing", 8,
                         String.format("Found %d ComicVine issues for %d input images",
                                 results.size(), imageDataList.size())));
@@ -820,7 +820,7 @@ public class SeriesService {
                 log.info("Generated {} candidate covers for session: {}", candidateCovers.size(), sessionId);
 
                 if (candidateCovers.isEmpty()) {
-                    progressService.sendError(sessionId, "No valid candidate cover urls found!");
+                    progressDataService.sendError(sessionId, "No valid candidate cover urls found!");
                 }
 
                 // Cache the covers and update cache
@@ -830,7 +830,7 @@ public class SeriesService {
             }
 
             // Stage 3: Hand off to Python for processing
-            progressService.updateProgress(new ProgressUpdateRequest(
+            progressDataService.updateProgress(new ProgressUpdateRequest(
                     sessionId, "preparing", 10,
                     String.format("Sending %d images with %d candidates to image matcher...",
                             imageDataList.size(), candidateCovers.size())));
@@ -915,8 +915,7 @@ public class SeriesService {
         } catch (Exception e) {
             log.error("Error in image processing for session {}: {}", sessionId, e.getMessage());
             filesToRecord.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED));
-            weirdService.saveProcessedFiles(filesToRecord);
-            progressService.sendError(sessionId, "Error processing images: " + e.getMessage());
+            progressDataService.sendError(sessionId, "Error processing images: " + e.getMessage());
         }
 
         return CompletableFuture.completedFuture(null);

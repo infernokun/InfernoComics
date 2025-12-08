@@ -13,7 +13,6 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatRadioChange } from '@angular/material/radio';
 import { MatFormField } from '@angular/material/select';
 import { QuestionBase } from '../../../../models/simple-form-data.model';
-import { REQUIRED } from '../../../../utils/amaterasu.const';
 
 @Component({
     selector: 'amaterasu-dialog-question',
@@ -58,10 +57,6 @@ export class DialogQuestionComponent implements OnInit {
       for (const ent of this.question.dependentQuestions.entries()) {
         ent[1].cb = this.question.cb;
       }
-    }
-
-    if (REQUIRED.includes(this.question.key)) {
-      this.formControl.setValidators([Validators.required]);
     }
 
     if (this.question.value) {

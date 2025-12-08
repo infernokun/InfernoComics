@@ -6,7 +6,7 @@ import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
-import com.infernokun.infernoComics.services.ProgressService;
+import com.infernokun.infernoComics.services.ProgressDataService;
 import com.infernokun.infernoComics.services.RecognitionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.Data;
@@ -24,8 +24,8 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/progress")
-public class ProgressController {
-    private final ProgressService progressService;
+public class ProgressDataController {
+    private final ProgressDataService progressDataService;
     private final RecognitionService recognitionService;
     private final InfernoComicsConfig infernoComicsConfig;
     private final ProcessedFileRepository processedFileRepository;
@@ -46,7 +46,7 @@ public class ProgressController {
         try {
             log.debug("📊 Status requested for session: {}", sessionId);
 
-            Map<String, Object> status = progressService.getSessionStatus(sessionId);
+            Map<String, Object> status = progressDataService.getSessionStatus(sessionId);
             return ResponseEntity.ok(status);
 
         } catch (Exception e) {
@@ -57,7 +57,7 @@ public class ProgressController {
 
     @GetMapping("/data/{seriesId}")
     public ResponseEntity<List<ProgressData>> getSessionsBySeriesId(@PathVariable Long seriesId) {
-        return ResponseEntity.ok(progressService.getSessionsBySeriesId(seriesId));
+        return ResponseEntity.ok(progressDataService.getSessionsBySeriesId(seriesId));
     }
 
     @GetMapping("/evaluation/{sessionId}")
@@ -72,7 +72,7 @@ public class ProgressController {
 
     @GetMapping("/data/rel")
     public ResponseEntity<List<ProgressData>> getSessionsByRelevance() {
-        return ResponseEntity.ok(progressService.getSessionsByRelevance());
+        return ResponseEntity.ok(progressDataService.getSessionsByRelevance());
     }
 
     // receive progress updates from Python
@@ -82,7 +82,7 @@ public class ProgressController {
             log.debug("📊 Received progress update from Python: session={}, stage={}, progress={}%, message='{}'",
                     request.getSessionId(), request.getStage(), request.getProgress(), request.getMessage());
 
-            progressService.updateProgress(request);
+            progressDataService.updateProgress(request);
 
             return ResponseEntity.ok(Map.of("status", "success"));
 
@@ -99,7 +99,7 @@ public class ProgressController {
             log.info("Received completion from Python for session: {}", request.getSessionId());
 
             CompletableFuture.runAsync(() ->
-                    progressService.sendComplete(request.getSessionId(),
+                    progressDataService.sendComplete(request.getSessionId(),
                             request.getResult()));
 
             return ResponseEntity.ok().build();
@@ -173,7 +173,7 @@ public class ProgressController {
         try {
             log.error("Received error from Python for session {}: {}", request.getSessionId(), request.getError());
 
-            progressService.sendError(request.getSessionId(), request.getError());
+            progressDataService.sendError(request.getSessionId(), request.getError());
 
             return ResponseEntity.ok(Map.of("status", "error_sent"));
 
@@ -185,18 +185,18 @@ public class ProgressController {
 
     @PostMapping("/data/dismiss/{id}")
     public ResponseEntity<List<ProgressData>> dismissProgressData(@PathVariable Long id) {
-        return ResponseEntity.ok((progressService.dismissProgressData(id)));
+        return ResponseEntity.ok((progressDataService.dismissProgressData(id)));
     }
 
     @DeleteMapping("/{sessionId}")
     public ResponseEntity<?> deleteProgressData(@PathVariable String sessionId) {
         try {
-            Optional<ProgressData> progressDataOpt = progressService.getProgressDataBySessionId(sessionId);
+            Optional<ProgressData> progressDataOpt = progressDataService.getProgressDataBySessionId(sessionId);
             if (progressDataOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body("Session id: " + sessionId + " not found!");
             }
 
-            progressService.deleteProgressDataBySessionId(sessionId);
+            progressDataService.deleteProgressDataBySessionId(sessionId);
             processedFileRepository.deleteAll(processedFileRepository.findBySessionId(sessionId));
             recognitionService.cleanSession(sessionId);
             

@@ -6,11 +6,10 @@ import com.infernokun.infernoComics.models.StartedBy;
 import com.infernokun.infernoComics.models.sync.*;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.repositories.sync.SeriesSyncStatusRepository;
-import com.infernokun.infernoComics.services.ProgressService;
+import com.infernokun.infernoComics.services.ProgressDataService;
 import com.infernokun.infernoComics.services.SeriesService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -31,19 +30,19 @@ public class NextcloudSyncService {
     private final NextcloudService nextcloudService;
     private final SeriesSyncStatusRepository syncStatusRepository;
     private final ProcessedFileRepository processedFileRepository;
-    private final ProgressService progressService;
+    private final ProgressDataService progressDataService;
     private final WeirdService weirdService;
 
     public NextcloudSyncService(SeriesService seriesService,
                                 NextcloudService nextcloudService,
                                 SeriesSyncStatusRepository syncStatusRepository,
                                 ProcessedFileRepository processedFileRepository,
-                                ProgressService progressService, WeirdService weirdService) {
+                                ProgressDataService progressDataService, WeirdService weirdService) {
         this.seriesService = seriesService;
         this.nextcloudService = nextcloudService;
         this.syncStatusRepository = syncStatusRepository;
         this.processedFileRepository = processedFileRepository;
-        this.progressService = progressService;
+        this.progressDataService = progressDataService;
         this.weirdService = weirdService;
     }
 
@@ -230,7 +229,7 @@ public class NextcloudSyncService {
         // Process images if any were successfully downloaded
         if (!imageDataList.isEmpty()) {
             try {
-                progressService.initializeSession(sessionId, seriesService.getSeriesById(seriesId), StartedBy.AUTOMATIC);
+                progressDataService.initializeSession(sessionId, seriesService.getSeriesById(seriesId), StartedBy.AUTOMATIC);
 
                 seriesService.startMultipleImagesProcessingWithProgress(
                         sessionId, seriesId, imageDataList, StartedBy.AUTOMATIC, null, 0);

@@ -15,6 +15,7 @@ export interface ConfirmationDialogData {
   details?: string[];
   showThirdOption?: boolean;
   thirdOptionText?: string;
+  innerHTML?: boolean;
 }
 
 @Component({

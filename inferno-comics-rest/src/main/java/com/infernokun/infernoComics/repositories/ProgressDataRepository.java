@@ -13,7 +13,8 @@ import java.util.Optional;
 
 @Repository
 public interface ProgressDataRepository extends JpaRepository<ProgressData, Long> {
-    Optional<ProgressData> findBySessionId(String sessionId);
+    @Query("SELECT p FROM ProgressData p WHERE p.sessionId = :sessionId")
+    Optional<ProgressData> findBySessionId(@Param("sessionId") String sessionId);
 
     List<ProgressData> findBySeriesId(Long seriesId);
 

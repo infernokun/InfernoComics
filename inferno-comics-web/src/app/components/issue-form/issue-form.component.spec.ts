@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-
 import { IssueFormComponent } from './issue-form.component';
+import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 
 describe('IssueFormComponent', () => {
   let component: IssueFormComponent;
@@ -8,9 +8,14 @@ describe('IssueFormComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [IssueFormComponent]
-    })
-    .compileComponents();
+      imports: [
+        IssueFormComponent,
+        MatDialogModule
+      ],
+      providers: [
+        { provide: MatDialogRef, useValue: {} }
+      ]
+    }).compileComponents();
 
     fixture = TestBed.createComponent(IssueFormComponent);
     component = fixture.componentInstance;

@@ -1,8 +1,8 @@
 export class DateUtils {
-  static formatDateTime(date: Date | null | undefined): string {
+  static formatDateTime(date: Date | null | undefined, seconds: boolean = false): string {
     if (!date) return '';
 
-    const options: Intl.DateTimeFormatOptions = {
+    let options: Intl.DateTimeFormatOptions = {
       weekday: 'short',
       month: 'short',
       day: 'numeric',
@@ -12,6 +12,8 @@ export class DateUtils {
       hour12: true,
       timeZoneName: 'short'
     };
+
+    if (seconds) options.second = '2-digit'
 
     return date.toLocaleString('en-US', options);
   }

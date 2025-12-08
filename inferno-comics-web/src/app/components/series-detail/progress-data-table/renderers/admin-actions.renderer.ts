@@ -5,16 +5,17 @@ import {
 } from '@angular/core';
 import { ICellRendererParams } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
-import { MaterialModule } from '../../material.module';
+import { MaterialModule } from '../../../../material.module';
+import { ProgressData } from '../../../../models/progress-data.model';
 
 
 export interface AdminActionRendererParams extends ICellRendererParams {
-  viewClick: (data: any) => void;
-  editClick: (data: any) => void;
-  deleteClick: (data: any) => void;
-  playClick: (data: any) => void;
-  addClick: (data: any) => void;
-  showPlay: boolean;
+  viewClick: (data: ProgressData) => void;
+  editClick: (data: ProgressData) => void;
+  deleteClick: (data: ProgressData) => void;
+  replayClick: (data: ProgressData) => void;
+  addClick: (data: ProgressData) => void;
+  showReplay: boolean;
   showAdd: boolean;
 }
 
@@ -26,10 +27,10 @@ export interface AdminActionRendererParams extends ICellRendererParams {
         <mat-icon class="sm-icon">more_vert</mat-icon>
       </button>
       <mat-menu #menu="matMenu">
-        @if (params?.showPlay) {
-          <button mat-menu-item (click)="play()">
+        @if (params?.showReplay) {
+          <button mat-menu-item (click)="replay()">
             <mat-icon>play_arrow</mat-icon>
-            <span>Play</span>
+            <span>Replay</span>
           </button>
         }
         @if (params?.showAdd) {
@@ -119,8 +120,8 @@ export class AdminActionsComponent implements ICellRendererAngularComp {
     this.params?.deleteClick(this.params?.data);
   }
 
-  play() {
-    this.params?.playClick(this.params?.data);
+  replay() {
+    this.params?.replayClick(this.params?.data);
   }
 
   add() {
