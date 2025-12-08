@@ -3,11 +3,13 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { ActivatedRoute, Router } from '@angular/router';
 import { SeriesService } from '../../services/series/series.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ComicVineSeries } from '../../models/comic-vine.model';
+import { ComicVineSeries, ComicVineSeriesDto } from '../../models/comic-vine.model';
 import { Series } from '../../models/series.model';
 import { ComicVineService } from '../../services/comic-vine/comic-vine.service';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
+import { ApiResponse } from '../../models/api-response.model';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-series-form',
@@ -101,12 +103,12 @@ export class SeriesFormComponent implements OnInit {
     if (this.seriesId) {
       this.loading = true;
       this.seriesService.getSeriesById(this.seriesId).subscribe({
-        next: (series) => {
-          this.seriesForm.patchValue(series);
-          this.customSearchTerm = series.name || '';
+        next: (res: ApiResponse<Series>) => {
+          this.seriesForm.patchValue(res.data);
+          this.customSearchTerm = res.data.name || '';
           
           if (this.isComicVineManagementMode || this.isEditMode) {
-            this.loadExistingComicVineData(series.comicVineIds || []);
+            this.loadExistingComicVineData(res.data.comicVineIds || []);
           }
           
           this.loading = false;
@@ -135,8 +137,11 @@ export class SeriesFormComponent implements OnInit {
     Promise.allSettled(loadPromises).then(results => {
       this.existingComicVineData = results
         .filter(result => result.status === 'fulfilled')
-        .map(result => (result as PromiseFulfilledResult<ComicVineSeries>).value)
-        .filter(data => data !== null);
+        .map(result => (result as PromiseFulfilledResult<ApiResponse<ComicVineSeriesDto>>).value)
+        .filter(data => data !== null)
+        .map(apiResponse => {
+          return apiResponse.data;
+        });
       
       this.updateFormFromCurrentData();
       this.loading = false;
@@ -198,15 +203,15 @@ export class SeriesFormComponent implements OnInit {
     // Search by ID if checkbox is checked
     if (this.searchByComicVineId) {
       this.comicVineService.getSeriesById(searchTerm).subscribe({
-        next: (result) => {
-          if (result) {
+        next: (res: ApiResponse<ComicVineSeriesDto>) => {
+          if (res.data) {
             // Filter out if already associated
             const currentIds = this.existingComicVineData.map(s => s.id);
-            if (currentIds.includes(result.id)) {
+            if (currentIds.includes(res.data.id)) {
               this.comicVineResults = [];
               this.snackBar.open('This series is already associated', 'Close', { duration: 3000 });
             } else {
-              this.comicVineResults = [result];
+              this.comicVineResults = [res.data];
             }
           } else {
             this.comicVineResults = [];
@@ -224,8 +229,8 @@ export class SeriesFormComponent implements OnInit {
     } else {
       // Original text search logic
       this.seriesService.searchComicVineSeries(searchTerm).subscribe({
-        next: (results) => {
-          results = results.sort((a, b) => {
+        next: (res: ApiResponse<ComicVineSeriesDto[]>) => {
+          res.data = res.data.sort((a, b) => {
             if (a.startYear && b.startYear) {
               return b.startYear - a.startYear;
             } else if (a.startYear) {
@@ -237,9 +242,9 @@ export class SeriesFormComponent implements OnInit {
           });
 
           const currentIds = this.existingComicVineData.map(s => s.id);
-          results = results.filter(r => !currentIds.includes(r.id));
+          res.data = res.data.filter(r => !currentIds.includes(r.id));
 
-          this.comicVineResults = results;
+          this.comicVineResults = res.data;
           this.searchingComicVine = false;
         },
         error: (error) => {
@@ -552,15 +557,15 @@ export class SeriesFormComponent implements OnInit {
       seriesData .id = this.seriesId;
     }
 
-    const operation = this.isEditMode && this.seriesId
+    const operation: Observable<ApiResponse<Series>>  = this.isEditMode && this.seriesId
       ? this.seriesService.updateSeries(this.seriesId, seriesData)
       : this.seriesService.createSeries(seriesData);
 
     operation.subscribe({
-      next: (result) => {
+      next: (res: ApiResponse<Series>) => {
         const message = this.isEditMode ? 'Series updated successfully' : 'Series created successfully';
         this.snackBar.open(message, 'Close', { duration: 3000 });
-        this.router.navigate(['/series', result.id]);
+        this.router.navigate(['/series', res.data.id]);
       },
       error: (error) => {
         console.error('Error saving series:', error);

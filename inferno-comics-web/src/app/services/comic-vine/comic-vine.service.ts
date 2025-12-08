@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { ComicVineSeriesDto } from '../../models/comic-vine.model';
 import { Issue } from '../../models/issue.model';
 import { EnvironmentService } from '../environment/environment.service';
+import { ApiResponse } from '../../models/api-response.model';
 
 @Injectable({
   providedIn: 'root',
@@ -15,16 +16,16 @@ export class ComicVineService {
     this.apiUrl = this.environmentService.settings?.restUrl!;
   }
 
-  searchSeries(query: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/series/search-comic-vine?query=${encodeURIComponent(query)}`);
+  searchSeries(query: string): Observable<ApiResponse<ComicVineSeriesDto[]>> {
+    return this.http.get<ApiResponse<ComicVineSeriesDto[]>>(`${this.apiUrl}/series/search-comic-vine?query=${encodeURIComponent(query)}`);
   }
 
-  searchIssues(seriesId: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/series/${seriesId}/search-comic-vine`);
+  searchIssues(seriesId: string): Observable<ApiResponse<ComicVineSeriesDto[]>> {
+    return this.http.get<ApiResponse<ComicVineSeriesDto[]>>(`${this.apiUrl}/series/${seriesId}/search-comic-vine`);
   }
 
-  getSeriesById(seriesId: string): Observable<ComicVineSeriesDto> {
-    return this.http.get<ComicVineSeriesDto>(`${this.apiUrl}/series/get-comic-vine/${seriesId}`);
+  getSeriesById(seriesId: string): Observable<ApiResponse<ComicVineSeriesDto>> {
+    return this.http.get<ApiResponse<ComicVineSeriesDto>>(`${this.apiUrl}/series/get-comic-vine/${seriesId}`);
   }
 
   getIssueById(issueId: string): Observable<Issue> {

@@ -10,6 +10,7 @@ import { EnvironmentService } from '../../services/environment/environment.servi
 import { SeriesWithIssues } from '../../models/series.model';
 import { RecognitionService } from '../../services/recognition/recognition.service';
 import { SeriesService } from '../../services/series/series.service';
+import { ApiResponse } from '../../models/api-response.model';
 
 interface SeriesDisplayState {
   seriesId: number;
@@ -67,9 +68,9 @@ export class IssuesListComponent implements OnInit, OnDestroy {
         finalize(() => this.loading = false)
       )
       .subscribe({
-        next: (data: SeriesWithIssues[]) => {
-          this.seriesWithIssues = data;
-          this.showSuccessMessage(`Loaded ${this.getTotalIssuesCount()} issues from ${data.length} series`);
+        next: (res: ApiResponse<SeriesWithIssues[]>) => {
+          this.seriesWithIssues = res.data;
+          this.showSuccessMessage(`Loaded ${this.getTotalIssuesCount()} issues from ${res.data.length} series`);
         },
         error: (err) => {
           console.error('Error loading series with issues:', err);

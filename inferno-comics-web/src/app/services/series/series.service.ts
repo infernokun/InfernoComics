@@ -2,9 +2,11 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { ImageMatcherResponse } from '../../components/series-detail/comic-match-selection/comic-match-selection.component';
-import { ProgressData } from '../../models/progress-data.model';
 import { Series, SeriesWithIssues } from '../../models/series.model';
 import { EnvironmentService } from '../environment/environment.service';
+import { ApiResponse } from '../../models/api-response.model';
+import { ProcessingResult } from '../../models/processing-result.model';
+import { ComicVineSeriesDto } from '../../models/comic-vine.model';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -22,75 +24,77 @@ export interface SSEProgressData {
 })
 export class SeriesService {
   private apiUrl: string = '';
-  private progressUrl: string = '';
 
   constructor(private http: HttpClient, private environmentService: EnvironmentService) {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/series`;
-    this.progressUrl = `${this.environmentService.settings?.restUrl}/progress`;
   }
 
-  getAllSeries(): Observable<Series[]> {
-    return this.http.get<Series[]>(this.apiUrl);
+  getAllSeries(): Observable<ApiResponse<Series[]>> {
+    return this.http.get<ApiResponse<Series[]>>(this.apiUrl);
   }
 
-  getSeriesById(id: number): Observable<Series> {
-    return this.http.get<Series>(`${this.apiUrl}/${id}`);
+  getSeriesById(id: number): Observable<ApiResponse<Series>> {
+    return this.http.get<ApiResponse<Series>>(`${this.apiUrl}/${id}`);
   }
 
-  getSeriesByIdWithIssues(id: number): Observable<SeriesWithIssues> {
-    return this.http.get<SeriesWithIssues>(`${this.apiUrl}/with-issues/${id}`);
+  getSeriesByIdWithIssues(id: number): Observable<ApiResponse<SeriesWithIssues>> {
+    return this.http.get<ApiResponse<SeriesWithIssues>>(`${this.apiUrl}/with-issues/${id}`);
   }
 
-  getSeriesWithIssues(): Observable<SeriesWithIssues[]> {
-    return this.http.get<SeriesWithIssues[]>(`${this.apiUrl}/with-issues`);
+  getSeriesWithIssues(): Observable<ApiResponse<SeriesWithIssues[]>> {
+    return this.http.get<ApiResponse<SeriesWithIssues[]>>(`${this.apiUrl}/with-issues`);
   }
 
-  getSeriesFolderStructure(): Observable<any[]> {
-    return this.http.get<any>(`${this.apiUrl}/folder`);
+  getSeriesFolderStructure(): Observable<ApiResponse<{id: number, name: string}[]>> {
+    return this.http.get<ApiResponse<{id: number, name: string}[]>>(`${this.apiUrl}/folder`);
   }
 
-  syncSeries(id: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/startSync/${id}`, {});
+  syncAllSeries(): Observable<ApiResponse<ProcessingResult[]>> {
+    return this.http.post<ApiResponse<ProcessingResult[]>>(`${this.apiUrl}/startSync`, {});
   }
 
-  syncAllSeries(): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/startSync`, {});
+  syncSeries(id: number): Observable<ApiResponse<ProcessingResult>> {
+    return this.http.post<ApiResponse<ProcessingResult>>(`${this.apiUrl}/startSync/${id}`, {});
   }
 
-  createSeries(series: Series): Observable<Series> {
-    return this.http.post<Series>(this.apiUrl, series);
+  createSeries(series: Series): Observable<ApiResponse<Series>> {
+    return this.http.post<ApiResponse<Series>>(this.apiUrl, series);
   }
 
-  updateSeries(id: number, series: any): Observable<Series> {
-    return this.http.put<Series>(`${this.apiUrl}/${id}`, series);
+  updateSeries(id: number, series: any): Observable<ApiResponse<Series>> {
+    return this.http.put<ApiResponse<Series>>(`${this.apiUrl}/${id}`, series);
   }
 
-  deleteSeries(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  deleteSeries(id: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
 
-  searchSeries(query: string): Observable<any[]> {
-    return this.http.get<any[]>(
+  searchSeries(query: string): Observable<ApiResponse<Series[]>> {
+    return this.http.get<ApiResponse<Series[]>>(
       `${this.apiUrl}/search?query=${encodeURIComponent(query)}`
     );
   }
 
-  searchComicVineSeries(query: string): Observable<any[]> {
-    return this.http.get<any[]>(
+  searchComicVineSeries(query: string): Observable<ApiResponse<ComicVineSeriesDto[]>> {
+    return this.http.get<ApiResponse<ComicVineSeriesDto[]>>(
       `${this.apiUrl}/search-comic-vine?query=${encodeURIComponent(query)}`
     );
   }
 
-  getSeriesStats(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/stats`);
+  getSeriesStats(): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/stats`);
   }
 
-  getRecentSeries(limit: number = 10): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/recent?limit=${limit}`);
+  getRecentSeries(limit: number = 10): Observable<ApiResponse<Series[]>> {
+    return this.http.get<ApiResponse<Series[]>>(`${this.apiUrl}/recent?limit=${limit}`);
   }
 
-  replaySession(sessionId: string) {
-    return this.http.post<any>(`${this.apiUrl}/replay/${sessionId}`, {});
+  reverifySeries(seriesId: number): Observable<ApiResponse<Series>> {
+    return this.http.post<ApiResponse<Series>>(`${this.apiUrl}/reverify-metadata/${seriesId}`, {});
+  }
+
+  replaySession(sessionId: string): Observable<ApiResponse<ProcessingResult>> {
+    return this.http.post<ApiResponse<ProcessingResult>>(`${this.apiUrl}/replay/${sessionId}`, {});
   }
 
   addComicsByImagesWithSSE(seriesId: number, imageFiles: File[]): Observable<SSEProgressData> {
@@ -228,27 +232,5 @@ export class SeriesService {
 
   isSSESupported(): boolean {
     return typeof EventSource !== 'undefined';
-  }
-
-  getProgressData(seriesId: number) {
-    return this.http.get<any[]>(
-      `${this.progressUrl}/data/${seriesId}`
-    );
-  }
-
-  getRelProgressData(): Observable<ProgressData[]> {
-    return this.http.get<ProgressData[]>(`${this.progressUrl}/data/rel`);
-  }
-
-  dismissProgressData(itemId: number): Observable<ProgressData[]> {
-    return this.http.post<ProgressData[]>(`${this.progressUrl}/data/dismiss/${itemId}`, {});
-  }
-
-  reverifySeries(seriesId: number): Observable<Series> {
-    return this.http.post<Series>(`${this.apiUrl}/reverify-metadata/${seriesId}`, {});
-  }
-
-  deleteProgressData(sessionId: string): Observable<any> {
-    return this.http.delete<any>(`${this.progressUrl}/${sessionId}`);
   }
 }

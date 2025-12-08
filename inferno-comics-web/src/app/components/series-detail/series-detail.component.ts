@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { IssueFormComponent } from '../issue-form/issue-form.component';
 import { Series } from '../../models/series.model';
-import { ComicVineIssue } from '../../models/comic-vine.model';
+import { ComicVineIssue, ComicVineSeriesDto } from '../../models/comic-vine.model';
 import { RangeSelectionDialog } from './range-selection-dialog/range-selection-dialog';
 import { IssueViewDialog } from './issue-view-dialog/issue-view-dialog.component';
 import { CommonModule } from '@angular/common';
@@ -24,6 +24,8 @@ import { ComicVineService } from '../../services/comic-vine/comic-vine.service';
 import { IssueService } from '../../services/issue/issue.service';
 import { SeriesService, SSEProgressData } from '../../services/series/series.service';
 import { DateUtils } from '../../utils/date-utils';
+import { ApiResponse } from '../../models/api-response.model';
+import { ProcessingResult } from '../../models/processing-result.model';
 
 @Component({
   selector: 'app-series-detail',
@@ -70,11 +72,11 @@ export class SeriesDetailComponent implements OnInit {
   loadSeries(id: number): void {
     this.loading = true;
     this.seriesService.getSeriesById(id).subscribe({
-      next: (series) => {
-        this.series = new Series(series);
+      next: (res: ApiResponse<Series>) => {
+        this.series = new Series(res.data);
         this.loading = false;
         // Auto-load Comic Vine issues if we have a Comic Vine ID
-        if (series.comicVineId) {
+        if (this.series.comicVineId) {
           this.loadComicVineIssues();
         }
       },
@@ -104,8 +106,8 @@ export class SeriesDetailComponent implements OnInit {
 
     this.loadingComicVine = true;
     this.comicVineService.searchIssues(this.series.id.toString()).subscribe({
-      next: (issues) => {
-        this.comicVineIssues = issues;
+      next: (res: ApiResponse<ComicVineSeriesDto[]>) => {
+        this.comicVineIssues = res.data;
         // Filter out issues that are already in the collection
         this.filterComicVineIssues();
         this.loadingComicVine = false;
@@ -1252,7 +1254,7 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   syncSeries(id: number) {
-    this.seriesService.syncSeries(id).subscribe((data: any) => {
+    this.seriesService.syncSeries(id).subscribe((data: ApiResponse<ProcessingResult>) => {
       console.log('sync', data);
     })
   }

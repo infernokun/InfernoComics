@@ -31,7 +31,9 @@ export interface ComicVineSeriesDto {
   issueCount: number;
   publisher: string;
   startYear: number;
+  endYear: number;
   imageUrl: string;
+  generatedDescription: boolean;
 }
 
 export interface ComicVineIssueDto {

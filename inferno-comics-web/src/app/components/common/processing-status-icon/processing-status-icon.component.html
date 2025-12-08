@@ -6,9 +6,9 @@
     (click)="toggleOverlay($event)">
     <mat-icon [class]="getIconClass()">{{ getIconName() }}</mat-icon>
 
-    @if (currentStatus.totalActive > 0) {
+    @if (processingStatus().totalActive > 0) {
       <span class="item-count-badge">
-        {{ currentStatus.totalActive }}
+        {{ processingStatus().totalActive }}
       </span>
     }
   </button>
@@ -23,17 +23,17 @@
           <span>Processing Status</span>
         </div>
         <div class="header-summary">
-          @if (currentStatus.totalProcessing > 0) {
+          @if (processingStatus().totalProcessing > 0) {
             <span class="processing-count">
-              {{ currentStatus.totalProcessing }} Processing
+              {{ processingStatus().totalProcessing }} Processing
             </span>
           }
-          @if (currentStatus.totalQueued > 0) {
+          @if (processingStatus().totalQueued > 0) {
             <span class="queued-count">
-              {{ currentStatus.totalQueued }} Queued
+              {{ processingStatus().totalQueued }} Queued
             </span>
           }
-          @if (currentStatus.totalActive === 0) {
+          @if (processingStatus().totalActive === 0) {
             <span class="idle-text">
               No active tasks
             </span>
@@ -67,7 +67,7 @@
         }
         @if (!isLoading) {
           <div>
-            @if (currentStatus.items.length === 0) {
+            @if (processingStatus().items.length === 0) {
               <div class="no-activity">
                 <mat-icon class="no-activity-icon">hourglass_empty</mat-icon>
                 <div class="no-activity-text">No recent processing activity</div>
@@ -143,10 +143,10 @@
                 }
               </div>
             }
-            @if (currentStatus.items.length > maxDisplayItems) {
+            @if (processingStatus().items.length > maxDisplayItems) {
               <div class="show-more">
                 <button mat-button class="show-more-btn">
-                  View all {{ currentStatus.items.length }} items
+                  View all {{ processingStatus().items.length }} items
                 </button>
               </div>
             }

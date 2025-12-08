@@ -11,6 +11,8 @@ import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { SlicePipe } from '@angular/common';
 import { CARD_ANIMATION, FADE_IN_UP, SLIDE_IN_UP } from '../../utils/animations';
 import { SeriesService } from '../../services/series/series.service';
+import { ApiResponse } from '../../models/api-response.model';
+import { ProcessingResult } from '../../models/processing-result.model';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';
@@ -86,8 +88,8 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     this.seriesService.getAllSeries()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (data) => {
-          this.series = data;
+        next: (res: ApiResponse<Series[]>) => {
+          this.series = res.data;
           this.extractPublishers();
           this.updatePage();
           this.applyFiltersAndSorting();
@@ -354,8 +356,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   }
 
   getFolderStructure() {
-    this.seriesService.getSeriesFolderStructure().subscribe((info: any) => {
-      console.log(info);
+    this.seriesService.getSeriesFolderStructure().subscribe((info: ApiResponse<{id: number, name: string}[]>) => {
       this.openJsonDialog(info);
     });
   }
@@ -375,7 +376,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   }
 
     syncAllSeries() {
-    this.seriesService.syncAllSeries().subscribe((data: any) => {
+    this.seriesService.syncAllSeries().subscribe((data: ApiResponse<ProcessingResult[]>) => {
       console.log('sync', data);
     })
   }

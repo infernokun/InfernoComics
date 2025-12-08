@@ -10,6 +10,7 @@ import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
 import { IssueService } from '../../services/issue/issue.service';
 import { SeriesService } from '../../services/series/series.service';
+import { ApiResponse } from '../../models/api-response.model';
 
 interface PublisherStat {
   name: string;
@@ -90,13 +91,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.seriesService.getAllSeries()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (series) => {
-          this.totalSeries = series.length;
+        next: (res: ApiResponse<Series[]>) => {
+          this.totalSeries = res.data.length;
 
-          this.allSeries = series.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          this.allSeries = res.data.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
-          this.calculatePublisherStats(series);
-          this.calculateCompletionStats(series);
+          this.calculatePublisherStats(res.data);
+          this.calculateCompletionStats(res.data);
         },
         error: (error) => console.error('Error loading series:', error)
       });

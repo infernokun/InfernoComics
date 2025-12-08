@@ -9,6 +9,7 @@ import { SeriesService } from '../../services/series/series.service';
 import { DateUtils } from '../../utils/date-utils';
 import { Issue } from '../../models/issue.model';
 import { RecognitionService } from '../../services/recognition/recognition.service';
+import { ApiResponse } from '../../models/api-response.model';
 
 
 @Component({
@@ -54,9 +55,9 @@ export class SeriesAdminComponent implements OnInit {
     this.error = null;
 
     this.seriesService.getSeriesByIdWithIssues(this.seriesId).subscribe({
-      next: (data: SeriesWithIssues) => {
-        this.series = new Series(data.series);
-        this.series.issues = data.issues;
+      next: (res: ApiResponse<SeriesWithIssues>) => {
+        this.series = new Series(res.data.series);
+        this.series.issues = res.data.issues;
         this.loading = false;
       },
       error: (err) => {
@@ -69,8 +70,8 @@ export class SeriesAdminComponent implements OnInit {
 
   reverifyMetadata(): void {
     this.seriesService.reverifySeries(this.seriesId).subscribe({
-      next: (data) => {
-        this.series = data;
+      next: (res: ApiResponse<Series>) => {
+        this.series = res.data;
         this.snackBar.open('Metadata reverified successfully', 'Close', {
           duration: 3000,
         });

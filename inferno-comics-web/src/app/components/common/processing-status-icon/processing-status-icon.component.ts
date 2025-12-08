@@ -1,10 +1,12 @@
-import { Component, OnInit, OnDestroy, HostListener, ElementRef } from '@angular/core';
-import { BehaviorSubject, finalize, interval, Subscription } from 'rxjs';
+import { Component, OnInit, OnDestroy, HostListener, ElementRef, signal, WritableSignal } from '@angular/core';
+import { finalize, interval, Subscription } from 'rxjs';
 import { ProgressData, ProgressState } from '../../../models/progress-data.model';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { WebSocketResponseList, WebsocketService } from '../../../services/websocket/websocket.service';
 import { SeriesService } from '../../../services/series/series.service';
+import { ProgressDataService } from '../../../services/progress-data/progress-data.service';
+import { ApiResponse } from '../../../models/api-response.model';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -40,7 +42,8 @@ export interface ProcessingStatus {
 export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   private pollingSubscription?: Subscription;
   private wsSub!: Subscription;
-  private statusSubject = new BehaviorSubject<ProcessingStatus>({
+
+  processingStatus: WritableSignal<ProcessingStatus> = signal({
     items: [],
     totalActive: 0,
     totalProcessing: 0,
@@ -51,33 +54,44 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   maxDisplayItems = 5;
   showOverlay = false;
   progressState = ProgressState;
-  currentStatus: ProcessingStatus;
   pendingDismissIds = new Set<number>();
 
-  public status$ = this.statusSubject.asObservable();
-
   constructor(
+    private snackBar: MatSnackBar,
+    private elementRef: ElementRef,
     private websocket: WebsocketService,
     private seriesService: SeriesService,
-    private elementRef: ElementRef,
-    private snackBar: MatSnackBar
+    private progressDataService: ProgressDataService
   ) {
-    this.currentStatus = this.statusSubject.value;
   }
 
   ngOnInit() {
-    this.status$.subscribe(status => this.currentStatus = status);
-    //this.startPolling();
     this.fetchStatus();
 
     this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
-      this.isLoading = true;
       const response: WebSocketResponseList = msg as WebSocketResponseList;
       if (response.name == 'ProgressDataListRelevance') {
         const processed: ProgressData[] = response.payload.map((item) => new ProgressData(item));
-        const status: ProcessingStatus = this.convertToProcessingStatus(processed);
-        this.statusSubject.next(status);
-        this.isLoading = false;
+        this.processingStatus.set(this.convertToProcessingStatus(processed));
+      }
+
+      if (response.name == 'ProgressDataListTable') {
+        let currentProgressData: ProgressData[] = this.processingStatus().items;
+        let newProgressData: ProgressData[] = response.payload.map((item => new ProgressData(item)));
+        
+        // create a map of new items by session ID
+        const newItemsMap = new Map<string, ProgressData>();
+        newProgressData.forEach(item => {
+          newItemsMap.set(item.sessionId!, item);
+        });
+        
+        // replace items with matching session IDs, keep others in original order
+        const updatedProgressData = currentProgressData.map(currentItem => {
+          const newItem = newItemsMap.get(currentItem.sessionId!);
+          return newItem ? newItem : currentItem;
+        });
+        
+        this.processingStatus.set(this.convertToProcessingStatus(updatedProgressData));
       }
     });
   }
@@ -110,11 +124,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   private fetchStatus() {
     this.isLoading = true;
-    this.seriesService.getRelProgressData().subscribe({
-      next: (data: ProgressData[]) => {
-        const processedData = data.map(item => new ProgressData(item));
-        const status = this.convertToProcessingStatus(processedData);
-        this.statusSubject.next(status);
+    this.progressDataService.getRelProgressData().subscribe({
+      next: (res: ApiResponse<ProgressData[]>) => {
+        const processedData: ProgressData[] = res.data.map(item => new ProgressData(item));
+        const status: ProcessingStatus = this.convertToProcessingStatus(processedData);
+        this.processingStatus.set(status);
         this.isLoading = false;
       },
       error: (error) => {
@@ -125,11 +139,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   }
 
   private fetchStatusSilently() {
-    this.seriesService.getRelProgressData().subscribe({
-      next: (data: ProgressData[]) => {
-        const processedData = data.map(item => new ProgressData(item));
+    this.progressDataService.getRelProgressData().subscribe({
+      next: (res: ApiResponse<ProgressData[]>) => {
+        const processedData = res.data.map(item => new ProgressData(item));
         const status = this.convertToProcessingStatus(processedData);
-        this.statusSubject.next(status);
+        this.processingStatus.set(status);
       },
       error: (error) => {
         console.error('Error fetching processing status:', error);
@@ -152,18 +166,18 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   // UI Helper Methods
   getButtonClass(): string {
-    return this.currentStatus.totalActive > 0 ? 'processing-active' : 'processing-idle';
+    return this.processingStatus().totalActive > 0 ? 'processing-active' : 'processing-idle';
   }
 
   getIconClass(): string {
-    return this.currentStatus.totalProcessing > 0 ? 'icon-spinning' : '';
+    return this.processingStatus().totalProcessing > 0 ? 'icon-spinning' : '';
   }
 
   getIconName(): string {
-    if (this.currentStatus.totalActive === 0) {
+    if (this.processingStatus().totalActive === 0) {
       return 'hourglass_empty';
     }
-    if (this.currentStatus.totalProcessing > 0) {
+    if (this.processingStatus().totalProcessing > 0) {
       return 'autorenew';
     }
     return 'schedule';
@@ -173,7 +187,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     const toDate = (value: any): Date | undefined =>
       value instanceof Date ? value : value ? new Date(value) : undefined;
   
-    return [...this.currentStatus.items]
+    return [...this.processingStatus().items]
       .sort((a, b) => {
         // 1️⃣  Processing items first
         if (a.state === ProgressState.PROCESSING && b.state !== ProgressState.PROCESSING) {
@@ -231,6 +245,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
         return 'autorenew';
       case ProgressState.COMPLETE:
         return 'check_circle';
+      case ProgressState.REPLAYED:
+        return 'refresh';
       case ProgressState.ERROR:
         return 'error';
       default:
@@ -244,6 +260,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
         return 'processing';
       case ProgressState.COMPLETE:
         return 'completed';
+      case ProgressState.REPLAYED:
+        return 'replayed';
       case ProgressState.ERROR:
         return 'error';
       default:
@@ -257,6 +275,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
         return 'Processing';
       case ProgressState.COMPLETE:
         return 'Completed';
+      case ProgressState.REPLAYED:
+        return 'Replayed';
       case ProgressState.ERROR:
         return 'Failed';
       default:
@@ -352,12 +372,12 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
     this.pendingDismissIds.add(itemId);
 
-    this.seriesService.dismissProgressData(itemId).pipe(
+    this.progressDataService.dismissProgressData(itemId).pipe(
       finalize(() => this.pendingDismissIds.delete(itemId))
     ).subscribe({
-      next: (data: ProgressData[]) => {
+      next: (res: ApiResponse<ProgressData[]>) => {
         // 4️⃣  Push the new status
-        this.statusSubject.next(this.convertToProcessingStatus(data.map(item => new ProgressData(item))));
+        this.processingStatus.set(this.convertToProcessingStatus(res.data.map(item => new ProgressData(item))));
 
         // 5️⃣  Show a success snackbar
         this.snackBar.open(

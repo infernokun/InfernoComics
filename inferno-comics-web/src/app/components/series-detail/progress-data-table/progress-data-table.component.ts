@@ -32,6 +32,8 @@ import { EvaluationLinkCellRenderer } from './renderers/evaluation-link-cell.ren
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../common/dialog/confirmation-dialog/confirmation-dialog.component';
 import { DateUtils } from '../../../utils/date-utils';
+import { ProgressDataService } from '../../../services/progress-data/progress-data.service';
+import { ApiResponse } from '../../../models/api-response.model';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -218,6 +220,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
     private seriesService: SeriesService,
     private recognitionService: RecognitionService,
     private environmentService: EnvironmentService,
+    private progressDataService: ProgressDataService,
   ) {
     this.gridOptions = {
       animateRows: false,
@@ -266,9 +269,9 @@ export class ProgressDataTable implements OnInit, OnDestroy {
   }
 
   private loadProgressData(): void {
-    this.seriesService.getProgressData(this.id).subscribe({
-      next: (res: ProgressData[]) => {
-        this.progressData.set(res.map(data => new ProgressData(data)));
+    this.progressDataService.getProgressData(this.id).subscribe({
+      next: (res: ApiResponse<ProgressData[]>) => {
+        this.progressData.set(res.data.map(data => new ProgressData(data)));
         if (this.gridApi) {
           console.log('Updating grid with progress data:', this.progressData());
           this.gridApi.setGridOption('rowData', this.progressData());
@@ -424,7 +427,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
   }
 
   deleteProgressData(sessionId: string): void {
-    this.seriesService.deleteProgressData(sessionId).subscribe({
+    this.progressDataService.deleteProgressData(sessionId).subscribe({
       next: () => {
         this.snackBar.open('Progress deleted', 'Close', { duration: 3000 });
   
