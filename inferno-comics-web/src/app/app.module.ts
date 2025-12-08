@@ -50,6 +50,7 @@ export function init_app(environmentService: EnvironmentService) {
     MaterialModule,
     CommonModule,
     AgGridAngular,
+    VersionInfoComponent
   ],
   providers: [
     EnvironmentService,
