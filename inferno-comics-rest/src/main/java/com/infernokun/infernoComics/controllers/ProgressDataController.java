@@ -196,25 +196,18 @@ public class ProgressDataController {
 
     @DeleteMapping("/{sessionId}")
     public ResponseEntity<ApiResponse<Void>> deleteProgressData(@PathVariable String sessionId) {
-        try {
-            Optional<ProgressData> progressDataOpt = progressDataService.getProgressDataBySessionId(sessionId);
-            if (progressDataOpt.isEmpty()) {
-                return ResponseEntity.ok(ApiResponse.<Void>builder().data(null).code(HttpStatus.BAD_REQUEST.value()).message(
-                        "Session id: " + sessionId + " not found!"
-                ).build());
-            }
-
-            progressDataService.deleteProgressDataBySessionId(sessionId);
-            processedFileRepository.deleteAll(processedFileRepository.findBySessionId(sessionId));
-            recognitionService.cleanSession(sessionId);
-            
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("Error deleting progress data for session {}: {}", sessionId, e.getMessage(), e);
-            return ResponseEntity.ok(ApiResponse.<Void>builder().data(null).code(HttpStatus.INTERNAL_SERVER_ERROR.value()).message(
-                    "Error deleting progress data: " + e.getMessage()
+        Optional<ProgressData> progressDataOpt = progressDataService.getProgressDataBySessionId(sessionId);
+        if (progressDataOpt.isEmpty()) {
+            return ResponseEntity.ok(ApiResponse.<Void>builder().data(null).code(HttpStatus.BAD_REQUEST.value()).message(
+                    "Session id: " + sessionId + " not found!"
             ).build());
         }
+
+        progressDataService.deleteProgressDataBySessionId(sessionId);
+        processedFileRepository.deleteAll(processedFileRepository.findBySessionId(sessionId));
+        recognitionService.cleanSession(sessionId);
+
+        return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
     }
 
     @Data

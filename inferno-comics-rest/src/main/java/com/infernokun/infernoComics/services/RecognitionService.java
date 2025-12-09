@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.RecognitionConfig;
-import com.infernokun.infernoComics.models.StartedBy;
+import com.infernokun.infernoComics.models.enums.StartedBy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;

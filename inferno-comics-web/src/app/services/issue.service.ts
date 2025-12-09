@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { EnvironmentService } from '../environment/environment.service';
-import { IssueRequest } from '../../models/issue.model';
+import { Issue, IssueRequest } from '../models/issue.model';
+import { EnvironmentService } from './environment.service';
 
 @Injectable({
   providedIn: 'root',
@@ -14,8 +14,8 @@ export class IssueService {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/issues`;
   }
 
-  getAllIssues(): Observable<any[]> {
-    return this.http.get<any[]>(this.apiUrl);
+  getAllIssues(): Observable<Issue[]> {
+    return this.http.get<Issue[]>(this.apiUrl);
   }
 
   getIssueById(id: number): Observable<any> {

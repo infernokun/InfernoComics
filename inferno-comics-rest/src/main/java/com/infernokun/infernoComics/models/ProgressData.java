@@ -1,6 +1,5 @@
 package com.infernokun.infernoComics.models;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
@@ -8,6 +7,8 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.datatype.jsr310.deser.LocalDateTimeDeserializer;
 import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer;
+import com.infernokun.infernoComics.models.enums.StartedBy;
+import com.infernokun.infernoComics.models.enums.State;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -119,17 +120,5 @@ public class ProgressData {
             return false;
         }
         return Duration.between(lastUpdated, LocalDateTime.now()).toMinutes() > 5;
-    }
-
-    @Getter
-    @AllArgsConstructor
-    public enum State {
-        PROCESSING("Processing"),
-        COMPLETE("Completed"),
-        REPLAYED("Replayed"),
-        QUEUE("Queue"),
-        ERROR("Error");
-
-        private final String displayName;
     }
 }

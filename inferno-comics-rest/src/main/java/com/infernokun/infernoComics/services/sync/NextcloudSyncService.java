@@ -2,7 +2,7 @@ package com.infernokun.infernoComics.services.sync;
 
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.Series;
-import com.infernokun.infernoComics.models.StartedBy;
+import com.infernokun.infernoComics.models.enums.StartedBy;
 import com.infernokun.infernoComics.models.sync.*;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.repositories.sync.SeriesSyncStatusRepository;

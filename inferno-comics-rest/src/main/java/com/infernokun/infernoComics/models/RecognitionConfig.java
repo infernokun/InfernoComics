@@ -19,34 +19,35 @@ public class RecognitionConfig {
 
     @JsonProperty("similarity_threshold")
     private String similarityThreshold;
+
+    @Data
+    static class RecognitionPreset {
+
+        private Map<String, Integer> detectors = new HashMap<>();
+
+        @JsonProperty("feature_weights")
+        private Map<String, Double> featureWeights = new HashMap<>();
+
+        @JsonProperty("image_size")
+        private int imageSize;
+
+        @JsonProperty("max_workers")
+        private int maxWorkers;
+
+        private Options options = new Options();
+    }
+
+    @Data
+    static class Options {
+
+        @JsonProperty("use_advanced_matching")
+        private boolean useAdvancedMatching;
+
+        @JsonProperty("use_comic_detection")
+        private boolean useComicDetection;
+
+        @JsonProperty("cache_only")
+        private Boolean cacheOnly = Boolean.FALSE;
+    }
 }
 
-@Data
-class RecognitionPreset {
-
-    private Map<String, Integer> detectors = new HashMap<>();
-
-    @JsonProperty("feature_weights")
-    private Map<String, Double> featureWeights = new HashMap<>();
-
-    @JsonProperty("image_size")
-    private int imageSize;
-
-    @JsonProperty("max_workers")
-    private int maxWorkers;
-
-    private Options options = new Options();
-}
-
-@Data
-class Options {
-
-    @JsonProperty("use_advanced_matching")
-    private boolean useAdvancedMatching;
-
-    @JsonProperty("use_comic_detection")
-    private boolean useComicDetection;
-
-    @JsonProperty("cache_only")
-    private Boolean cacheOnly = Boolean.FALSE;
-}

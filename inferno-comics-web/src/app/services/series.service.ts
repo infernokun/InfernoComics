@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
-import { ImageMatcherResponse } from '../../components/series-detail/comic-match-selection/comic-match-selection.component';
-import { Series, SeriesWithIssues } from '../../models/series.model';
-import { EnvironmentService } from '../environment/environment.service';
-import { ApiResponse } from '../../models/api-response.model';
-import { ProcessingResult } from '../../models/processing-result.model';
-import { ComicVineSeriesDto } from '../../models/comic-vine.model';
+import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
+import { ApiResponse } from '../models/api-response.model';
+import { ComicVineSeriesDto } from '../models/comic-vine.model';
+import { ProcessingResult } from '../models/processing-result.model';
+import { Series, SeriesWithIssues } from '../models/series.model';
+import { EnvironmentService } from './environment.service';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -106,6 +106,14 @@ export class SeriesService {
       formData.append('images', file);
     });
 
+    return this.startComicAdd(seriesId, formData, progressSubject);
+  }
+
+  isSSESupported(): boolean {
+    return typeof EventSource !== 'undefined';
+  }
+
+  private startComicAdd(seriesId: number, formData: FormData, progressSubject: Subject<SSEProgressData>): Observable<SSEProgressData> {
     this.http
       .post<{ sessionId: string }>(
         `${this.apiUrl}/${seriesId}/add-comics-by-images/start`,
@@ -228,9 +236,5 @@ export class SeriesService {
     eventSource.addEventListener('open', () => {
       clearTimeout(connectionTimeout);
     });
-  }
-
-  isSSESupported(): boolean {
-    return typeof EventSource !== 'undefined';
   }
 }

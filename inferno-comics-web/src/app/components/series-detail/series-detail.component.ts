@@ -20,12 +20,13 @@ import {
 import { AgGridModule } from 'ag-grid-angular';
 import { ProgressDataTable } from './progress-data-table/progress-data-table.component';
 import { ComicMatch } from '../../models/comic-match.model';
-import { ComicVineService } from '../../services/comic-vine/comic-vine.service';
-import { IssueService } from '../../services/issue/issue.service';
-import { SeriesService, SSEProgressData } from '../../services/series/series.service';
 import { DateUtils } from '../../utils/date-utils';
 import { ApiResponse } from '../../models/api-response.model';
 import { ProcessingResult } from '../../models/processing-result.model';
+import { ComicVineService } from '../../services/comic-vine.service';
+import { IssueService } from '../../services/issue.service';
+import { SSEProgressData } from '../../services/progress-data.service';
+import { SeriesService } from '../../services/series.service';
 
 @Component({
   selector: 'app-series-detail',
@@ -661,7 +662,7 @@ export class SeriesDetailComponent implements OnInit {
         
         try {
           // Fetch Comic Vine details for the match
-          const issue = await this.comicVineService
+          const res: ApiResponse<Issue> | undefined = await this.comicVineService
             .getIssueById(
               match.parent_comic_vine_id
                 ? match.parent_comic_vine_id.toString()
@@ -669,7 +670,9 @@ export class SeriesDetailComponent implements OnInit {
             )
             .toPromise();
 
-          if (issue) {
+          if (res?.data) {
+            const issue: Issue = new Issue(res.data);
+
             // Prepare issue data
             if (match.parent_comic_vine_id) {
               issue.imageUrl = match.url;
@@ -877,8 +880,10 @@ export class SeriesDetailComponent implements OnInit {
           : match.comic_vine_id!.toString()
       )
       .subscribe({
-        next: (issue: Issue) => {
+        next: (res: ApiResponse<Issue>) => {
           this.snackBar.dismiss();
+
+          const issue: Issue = new (Issue);
 
           if (match.parent_comic_vine_id) {
             issue.imageUrl = match.url;

@@ -1,9 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { ThemeService } from './services/theme/theme.service';
 import { Observable, Subscription } from 'rxjs';
-
 import { APP_VERSION } from '../app/version';
-import { WebsocketService } from './services/websocket/websocket.service';
+import { ThemeService } from './services/theme.service';
+import { WebsocketService } from './services/websocket.service';
 
 @Component({
   selector: 'app-root',

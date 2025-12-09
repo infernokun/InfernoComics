@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.*;
+import com.infernokun.infernoComics.models.dto.SeriesRequest;
+import com.infernokun.infernoComics.models.enums.StartedBy;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
@@ -212,7 +214,7 @@ public class SeriesService {
     }
 
     @Transactional
-    public Series createSeries(SeriesController.SeriesCreateRequestDto request) {
+    public Series createSeries(SeriesRequest request) {
         Series series = this.modelMapper.map(request, Series.class);
 
         // Generate description if not provided
@@ -268,7 +270,7 @@ public class SeriesService {
 
     @CacheEvict(value = "series", key = "#id")
     @Transactional
-    public Series updateSeries(Long id, SeriesUpdateRequest request) {
+    public Series updateSeries(Long id, SeriesRequest request) {
         try {
             Series existingSeries = seriesRepository.findById(id)
                     .orElseThrow(() -> new IllegalArgumentException("Series with ID " + id + " not found"));
@@ -283,16 +285,13 @@ public class SeriesService {
             existingSeries.setEndYear(request.getEndYear());
             existingSeries.setImageUrl(request.getImageUrl());
 
-            if (request instanceof SeriesController.SeriesUpdateRequestDto dto) {
+            List<String> requestComicVineIds = request.getComicVineIds() != null ?
+                    new ArrayList<>(request.getComicVineIds()) : new ArrayList<>();
 
-                List<String> requestComicVineIds = dto.getComicVineIds() != null ?
-                        new ArrayList<>(dto.getComicVineIds()) : new ArrayList<>();
+            existingSeries.setComicVineIds(new ArrayList<>(requestComicVineIds));
 
-                existingSeries.setComicVineIds(new ArrayList<>(requestComicVineIds));
-
-                if (dto.getComicVineId() != null) {
-                    existingSeries.setComicVineId(dto.getComicVineId());
-                }
+            if (request.getComicVineId() != null) {
+                existingSeries.setComicVineId(request.getComicVineId());
             }
 
             List<String> newComicVineIds = existingSeries.getComicVineIds() != null ?
@@ -892,19 +891,5 @@ public class SeriesService {
         }
 
         return CompletableFuture.completedFuture(null);
-    }
-
-    // Base request interface
-    public interface SeriesRequest {
-        String getName();
-        String getDescription();
-        String getPublisher();
-        Integer getStartYear();
-        Integer getEndYear();
-        String getImageUrl();
-        String getComicVineId();
-    }
-
-    public interface SeriesUpdateRequest extends SeriesRequest {
     }
 }

@@ -3,10 +3,9 @@ import { finalize, interval, Subscription } from 'rxjs';
 import { ProgressData, ProgressState } from '../../../models/progress-data.model';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { WebSocketResponseList, WebsocketService } from '../../../services/websocket/websocket.service';
-import { SeriesService } from '../../../services/series/series.service';
-import { ProgressDataService } from '../../../services/progress-data/progress-data.service';
 import { ApiResponse } from '../../../models/api-response.model';
+import { ProgressDataService } from '../../../services/progress-data.service';
+import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -60,7 +59,6 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private elementRef: ElementRef,
     private websocket: WebsocketService,
-    private seriesService: SeriesService,
     private progressDataService: ProgressDataService
   ) {
   }

@@ -19,21 +19,21 @@ import { AdminActionRendererParams, AdminActionsComponent } from './renderers/ad
 import { AgGridModule } from 'ag-grid-angular';
 import { MaterialModule } from '../../../material.module';
 import { ComicMatch } from '../../../models/comic-match.model';
-import { EnvironmentService } from '../../../services/environment/environment.service';
-import { Subscription, interval } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { WebSocketResponseList, WebsocketService } from '../../../services/websocket/websocket.service';
-import { ProgressData, ProgressState } from '../../../models/progress-data.model';
-import { RecognitionService } from '../../../services/recognition/recognition.service';
-import { SeriesService } from '../../../services/series/series.service';
-import { CombinedStatusCellRenderer } from './renderers/combined-status-cell.renderer';
-import { TimeInfoCellRenderer } from './renderers/time-info-cell.renderer';
-import { EvaluationLinkCellRenderer } from './renderers/evaluation-link-cell.renderer';
-import { MatDialog } from '@angular/material/dialog';
-import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../common/dialog/confirmation-dialog/confirmation-dialog.component';
-import { DateUtils } from '../../../utils/date-utils';
-import { ProgressDataService } from '../../../services/progress-data/progress-data.service';
 import { ApiResponse } from '../../../models/api-response.model';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subscription, interval } from 'rxjs';
+import { ProgressData, ProgressState } from '../../../models/progress-data.model';
+import { EnvironmentService } from '../../../services/environment.service';
+import { ProgressDataService } from '../../../services/progress-data.service';
+import { RecognitionService } from '../../../services/recognition.service';
+import { SeriesService } from '../../../services/series.service';
+import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
+import { DateUtils } from '../../../utils/date-utils';
+import { ConfirmationDialogData, ConfirmationDialogComponent } from '../../common/dialog/confirmation-dialog/confirmation-dialog.component';
+import { CombinedStatusCellRenderer } from './renderers/combined-status-cell.renderer';
+import { EvaluationLinkCellRenderer } from './renderers/evaluation-link-cell.renderer';
+import { TimeInfoCellRenderer } from './renderers/time-info-cell.renderer';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -415,8 +415,8 @@ export class ProgressDataTable implements OnInit, OnDestroy {
 
   getSessionJSON(sessionId: string) {
     this.recognitionService.getSessionJSON(sessionId).subscribe({
-      next: (res) => {
-        const transformedData = this.transformSessionDataToMatches(res);
+      next: (res: ApiResponse<any>) => {
+        const transformedData = this.transformSessionDataToMatches(res.data);
         console.log('Transformed session data:', transformedData);
         this.resultEmitter.emit(transformedData);
       },

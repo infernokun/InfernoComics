@@ -5,7 +5,8 @@ import { MaterialModule } from '../../material.module';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subscription } from 'rxjs';
-import { RecognitionConfig, RecognitionService } from '../../services/recognition/recognition.service';
+import { ApiResponse } from '../../models/api-response.model';
+import { RecognitionConfig, RecognitionService } from '../../services/recognition.service';
 
 interface PerformanceLevel {
   value: string;
@@ -75,9 +76,9 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
     const load$ = this.recognitionService
       .getRecognitionConfig()
       .subscribe({
-        next: (cfg) => {
-          this.config = cfg;
-          this.buildForm(cfg);
+        next: (res: ApiResponse<RecognitionConfig>) => {
+          this.config = res.data;
+          this.buildForm(this.config);
           this.originalFormValue = JSON.parse(JSON.stringify(this.configForm.value));
           this.trackFormChanges();
         },
@@ -147,7 +148,7 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
     const save$ = this.recognitionService
       .saveRecognitionConfig(updated)
       .subscribe({
-        next: () => {
+        next: (res: ApiResponse<boolean>) => {
           this.snackBar.open('✓ Configuration saved successfully', 'Close', {
             duration: 2500,
           });

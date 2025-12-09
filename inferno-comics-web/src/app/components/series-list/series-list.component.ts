@@ -10,9 +10,9 @@ import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dial
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { SlicePipe } from '@angular/common';
 import { CARD_ANIMATION, FADE_IN_UP, SLIDE_IN_UP } from '../../utils/animations';
-import { SeriesService } from '../../services/series/series.service';
 import { ApiResponse } from '../../models/api-response.model';
 import { ProcessingResult } from '../../models/processing-result.model';
+import { SeriesService } from '../../services/series.service';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';

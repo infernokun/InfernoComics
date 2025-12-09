@@ -2,7 +2,6 @@ package com.infernokun.infernoComics.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.utils.GCDCoverListConverter;
 import com.infernokun.infernoComics.utils.InfernoComicsUtils;
@@ -120,6 +119,18 @@ public class Series {
         public FolderMapping(long id, String name) {
             this.id = id;
             this.name = name;
+        }
+    }
+
+    @Setter
+    @Getter
+    public static class SeriesWithIssues {
+        private Series series;
+        private List<Issue> issues;
+
+        public SeriesWithIssues(Series series) {
+            this.series = series;
+            this.issues = new ArrayList<>();
         }
     }
 }

@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { EnvironmentService } from '../environment/environment.service';
+import { EnvironmentService } from './environment.service';
+import { ApiResponse } from '../models/api-response.model';
 
 export interface RecognitionConfig {
   performance_level: string;
@@ -34,16 +35,16 @@ export class RecognitionService {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/recog`;
   }
 
-  getRecognitionConfig(): Observable<RecognitionConfig> {
-    return this.http.get<RecognitionConfig>(`${this.apiUrl}/config`);
+  getRecognitionConfig(): Observable<ApiResponse<RecognitionConfig>> {
+    return this.http.get<ApiResponse<RecognitionConfig>>(`${this.apiUrl}/config`);
   }
 
-  saveRecognitionConfig(cfg: RecognitionConfig): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/config`, cfg);
+  saveRecognitionConfig(cfg: RecognitionConfig): Observable<ApiResponse<boolean>> {
+    return this.http.post<ApiResponse<boolean>>(`${this.apiUrl}/config`, cfg);
   }
 
-  getSessionJSON(sessionId: string) {
-    return this.http.get<any[]>(
+  getSessionJSON(sessionId: string): Observable<ApiResponse<any>> {
+    return this.http.get<ApiResponse<any>>(
       `${this.apiUrl}/json/${sessionId}`
     );
   }

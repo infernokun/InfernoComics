@@ -6,14 +6,14 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MaterialModule } from './material.module';
-import { EnvironmentService } from './services/environment/environment.service';
 import { CommonModule } from '@angular/common';
 import { AgGridAngular } from 'ag-grid-angular';
-import { ThemeService } from './services/theme/theme.service';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import { VersionInfoComponent } from './components/common/version-info/version-info.component';
 import { ProcessingStatusIconComponent } from './components/common/processing-status-icon/processing-status-icon.component';
 import { dev_log } from './utils/utils';
+import { EnvironmentService } from './services/environment.service';
+import { ThemeService } from './services/theme.service';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 

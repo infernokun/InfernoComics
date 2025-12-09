@@ -2,7 +2,7 @@ import { Injectable, TemplateRef } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarConfig, MatSnackBarRef, SimpleSnackBar } from '@angular/material/snack-bar';
 import { Observable } from 'rxjs';
-import { CommonDialogComponent } from '../../components/common/dialog/common-dialog/common-dialog.component';
+import { CommonDialogComponent } from '../components/common/dialog/common-dialog/common-dialog.component';
 
 @Injectable({
   providedIn: 'root',

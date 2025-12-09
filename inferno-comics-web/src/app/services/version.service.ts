@@ -1,10 +1,10 @@
 import { HttpClient } from '@angular/common/http';
-import { EnvironmentService } from '../environment/environment.service';
-import { APP_VERSION } from '../../version';
-import { forkJoin, map, Observable, of } from 'rxjs';
 import { Injectable } from '@angular/core';
-import { ApiResponse } from '../../models/api-response.model';
-import { BaseService } from '../base/base.service';
+import { Observable, map, forkJoin, of } from 'rxjs';
+import { ApiResponse } from '../models/api-response.model';
+import { APP_VERSION } from '../version';
+import { BaseService } from './base.service';
+import { EnvironmentService } from './environment.service';
 
 export interface AppVersion {
   name: string;

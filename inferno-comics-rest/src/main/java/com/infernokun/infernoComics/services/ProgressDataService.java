@@ -8,7 +8,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
 import com.infernokun.infernoComics.models.Series;
-import com.infernokun.infernoComics.models.StartedBy;
+import com.infernokun.infernoComics.models.enums.StartedBy;
+import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
 import com.infernokun.infernoComics.clients.InfernoComicsSocketClient;
@@ -135,7 +136,7 @@ public class ProgressDataService {
         log.info("Session {} initialized and stored in sessionStatus", sessionId);
 
         ProgressData progressData = new ProgressData();
-        progressData.setState(ProgressData.State.PROCESSING);
+        progressData.setState(State.PROCESSING);
         progressData.setSessionId(sessionId);
         progressData.setTimeStarted(LocalDateTime.now());
         progressData.setSeries(series);
@@ -218,7 +219,7 @@ public class ProgressDataService {
             if (progressDataOptional.isPresent()) {
                 ProgressData progressData = progressDataOptional.get();
                 progressData.setTimeFinished(LocalDateTime.now());
-                progressData.setState(ProgressData.State.COMPLETE);
+                progressData.setState(State.COMPLETE);
 
                 // Extract and save the enhanced fields from the result
                 if (result != null) {
@@ -284,7 +285,7 @@ public class ProgressDataService {
             Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
             if (progressDataOptional.isPresent()) {
                 ProgressData progressData = progressDataOptional.get();
-                progressData.setState(ProgressData.State.ERROR);
+                progressData.setState(State.ERROR);
                 progressData.setErrorMessage(errorMessage);
                 progressData.setTimeFinished(LocalDateTime.now());
 
@@ -581,7 +582,7 @@ public class ProgressDataService {
 
     public void getLatestDataFromRedis(List<ProgressData> sessions) {
         sessions.forEach(progressData -> {
-            if (progressData.getState() == ProgressData.State.PROCESSING) {
+            if (progressData.getState() == State.PROCESSING) {
                 try {
                     // Check if session has recent progress data in Redis
                     SSEProgressData latestProgress = getLatestProgressFromRedis(progressData.getSessionId());

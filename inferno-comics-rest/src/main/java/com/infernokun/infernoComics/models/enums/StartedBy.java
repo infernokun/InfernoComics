@@ -1,4 +1,4 @@
-package com.infernokun.infernoComics.models;
+package com.infernokun.infernoComics.models.enums;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.AllArgsConstructor;

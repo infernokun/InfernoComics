@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
-import com.infernokun.infernoComics.controllers.IssueController;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.dto.IssueRequest;
 import com.infernokun.infernoComics.models.gcd.GCDIssue;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
@@ -29,7 +29,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -181,7 +180,7 @@ public class IssueService {
     }
 
     @Transactional
-    public Issue createIssue(IssueCreateRequest request) {
+    public Issue createIssue(IssueRequest request) {
         log.info("Creating issue: {} #{}", request.getSeriesId(), request.getIssueNumber());
 
         Optional<Series> series = seriesRepository.findById(request.getSeriesId());
@@ -199,13 +198,13 @@ public class IssueService {
     }
 
     @Transactional
-    public List<Issue> createIssuesBulk(List<IssueController.IssueCreateRequestDto> requests) {
+    public List<Issue> createIssuesBulk(List<IssueRequest> requests) {
         if (requests.isEmpty()) {
             return new ArrayList<>();
         }
 
         long distinctCount = requests.stream()
-                .map(IssueController.IssueCreateRequestDto::getSeriesId)
+                .map(IssueRequest::getSeriesId)
                 .distinct()
                 .count();
 
@@ -234,7 +233,7 @@ public class IssueService {
         List<Issue> createdIssues = new ArrayList<>();
 
         // Create all issues without updating count each time
-        for (IssueCreateRequest request : requests) {
+        for (IssueRequest request : requests) {
             try {
                 Issue issue = createIssueWithoutCountUpdate(request, series.get());
                 createdIssues.add(issue);
@@ -256,7 +255,7 @@ public class IssueService {
 
     @CachePut(value = "issue", key = "#id", condition = "#result != null")
     @Transactional
-    public Issue updateIssue(Long id, IssueUpdateRequest request) {
+    public Issue updateIssue(Long id, IssueRequest request) {
         log.info("Updating issue with ID: {}", id);
 
         Issue existingIssue = issueRepository.findById(id)
@@ -448,7 +447,7 @@ public class IssueService {
         });
     }
 
-    private Issue createIssueWithoutCountUpdate(IssueCreateRequest request, Series series) {
+    private Issue createIssueWithoutCountUpdate(IssueRequest request, Series series) {
         Issue issue = new Issue();
         mapRequestToIssue(request, issue);
         issue.setSeries(series);
@@ -504,7 +503,7 @@ public class IssueService {
         return issueRepository.save(issue);
     }
 
-    private List<String> processComicVineGcdMapping(IssueCreateRequest request, Issue issue, Series series) {
+    private List<String> processComicVineGcdMapping(IssueRequest request, Issue issue, Series series) {
         List<String> gcdIds = new ArrayList<>();
 
         if (request.getComicVineId() == null || request.getComicVineId().trim().isEmpty()) {
@@ -645,11 +644,8 @@ public class IssueService {
         }
 
         // Handle variant covers if present in request
-        if (request instanceof IssueRequestWithVariants) {
-            IssueRequestWithVariants variantRequest = (IssueRequestWithVariants) request;
-            if (variantRequest.getVariantCovers() != null && !variantRequest.getVariantCovers().isEmpty()) {
-                issue.setVariantCovers(new ArrayList<>(variantRequest.getVariantCovers()));
-            }
+        if (request.getVariantCovers() != null && !request.getVariantCovers().isEmpty()) {
+            issue.setVariantCovers(new ArrayList<>(request.getVariantCovers()));
         }
     }
 
@@ -727,17 +723,17 @@ public class IssueService {
     }
 
     @Transactional
-    public BulkDeleteResult deleteIssuesBulk(List<Long> issueIds) {
+    public Issue.BulkDeleteResult deleteIssuesBulk(List<Long> issueIds) {
         log.info("Bulk deleting {} issues", issueIds.size());
 
         if (issueIds.isEmpty()) {
-            return new BulkDeleteResult(0, 0);
+            return new Issue.BulkDeleteResult(0, 0);
         }
 
         // Get series ID from first issue to update count later
         Optional<Issue> firstIssue = issueRepository.findById(issueIds.get(0));
         if (firstIssue.isEmpty()) {
-            return new BulkDeleteResult(0, issueIds.size());
+            return new Issue.BulkDeleteResult(0, issueIds.size());
         }
 
         Long seriesId = firstIssue.get().getSeries().getId();
@@ -765,42 +761,6 @@ public class IssueService {
         int failed = issueIds.size() - successful;
         log.info("Bulk delete completed: {} successful, {} failed", successful, failed);
 
-        return new BulkDeleteResult(successful, failed);
-    }
-
-    public interface IssueRequest {
-        String getIssueNumber();
-        String getTitle();
-        String getDescription();
-        LocalDate getCoverDate();
-        String getImageUrl();
-        Issue.Condition getCondition();
-        BigDecimal getPurchasePrice();
-        BigDecimal getCurrentValue();
-        LocalDate getPurchaseDate();
-        String getNotes();
-        String getComicVineId();
-        Boolean getIsKeyIssue();
-        String getUploadedImageUrl();
-    }
-
-    public interface IssueRequestWithVariants extends IssueRequest {
-        List<Issue.VariantCover> getVariantCovers();
-    }
-
-    public interface IssueCreateRequest extends IssueRequest {
-        Long getSeriesId();
-    }
-
-    public interface IssueUpdateRequest extends IssueRequest {
-    }
-
-    public interface IssueCreateRequestWithVariants extends IssueCreateRequest, IssueRequestWithVariants {
-    }
-
-    public interface IssueUpdateRequestWithVariants extends IssueUpdateRequest, IssueRequestWithVariants {
-    }
-
-    public record BulkDeleteResult(int successful, int failed) {
+        return new Issue.BulkDeleteResult(successful, failed);
     }
 }

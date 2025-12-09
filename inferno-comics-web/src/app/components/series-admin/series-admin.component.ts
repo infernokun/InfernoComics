@@ -5,11 +5,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { Series, SeriesWithIssues } from '../../models/series.model';
 
 import { MaterialModule } from '../../material.module';
-import { SeriesService } from '../../services/series/series.service';
 import { DateUtils } from '../../utils/date-utils';
 import { Issue } from '../../models/issue.model';
-import { RecognitionService } from '../../services/recognition/recognition.service';
 import { ApiResponse } from '../../models/api-response.model';
+import { RecognitionService } from '../../services/recognition.service';
+import { SeriesService } from '../../services/series.service';
 
 
 @Component({

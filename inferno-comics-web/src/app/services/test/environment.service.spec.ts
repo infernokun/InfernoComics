@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { EnvironmentService } from './environment.service';
+import { EnvironmentService } from '../environment.service';
 
 describe('EnvironmentService', () => {
   let service: EnvironmentService;

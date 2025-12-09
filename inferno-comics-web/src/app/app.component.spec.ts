@@ -1,12 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RouterModule } from '@angular/router';
 import { AppComponent } from './app.component';
-import { ThemeService } from './services/theme/theme.service';
-import { WebsocketService } from './services/websocket/websocket.service';
 import { of, BehaviorSubject } from 'rxjs';
 import { MaterialModule } from './material.module';
 import { VersionInfoComponent } from './components/common/version-info/version-info.component';
 import { ProcessingStatusIconComponent } from './components/common/processing-status-icon/processing-status-icon.component';
+import { ThemeService } from './services/theme.service';
+import { WebsocketService } from './services/websocket.service';
 
 describe('AppComponent', () => {
   let component: AppComponent;

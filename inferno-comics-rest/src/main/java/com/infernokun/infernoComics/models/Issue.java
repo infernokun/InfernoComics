@@ -1,6 +1,7 @@
 package com.infernokun.infernoComics.models;
 
 import com.infernokun.infernoComics.utils.VariantCoverListConverter;
+import com.infernokun.infernoComics.models.enums.Condition;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -98,10 +99,6 @@ public class Issue {
 
     private String uploadedImageUrl;
 
-    public enum Condition {
-        MINT, NEAR_MINT, VERY_FINE, FINE, VERY_GOOD, GOOD, FAIR, POOR
-    }
-
     public Issue(String issueNumber, String title, Series series) {
         this.issueNumber = issueNumber;
         this.title = title;
@@ -128,4 +125,6 @@ public class Issue {
         private String caption;
         private String imageTags;
     }
+
+    public record BulkDeleteResult(int successful, int failed) { }
 }

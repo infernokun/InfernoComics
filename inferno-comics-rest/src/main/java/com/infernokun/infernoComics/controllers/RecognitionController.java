@@ -1,6 +1,7 @@
 package com.infernokun.infernoComics.controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.infernokun.infernoComics.models.ApiResponse;
 import com.infernokun.infernoComics.models.RecognitionConfig;
 import com.infernokun.infernoComics.services.RecognitionService;
 import lombok.RequiredArgsConstructor;
@@ -20,18 +21,20 @@ public class RecognitionController {
     private final RecognitionService recognitionService;
 
     @GetMapping("/config")
-    public ResponseEntity<RecognitionConfig> getRecognitionConfig() {
-        return ResponseEntity.ok(recognitionService.getRecognitionConfig());
+    public ResponseEntity<ApiResponse<RecognitionConfig>> getRecognitionConfig() {
+        return ResponseEntity.ok(ApiResponse.<RecognitionConfig>builder().data(recognitionService.getRecognitionConfig()
+                ).build());
     }
 
     @PostMapping("/config")
-    public ResponseEntity<Boolean> saveRecognitionConfig(@RequestBody RecognitionConfig config) {
-        return ResponseEntity.ok(recognitionService.saveRecognitionConfig(config));
+    public ResponseEntity<ApiResponse<Boolean>> saveRecognitionConfig(@RequestBody RecognitionConfig config) {
+        return ResponseEntity.ok(ApiResponse.<Boolean>builder().data(recognitionService.saveRecognitionConfig(config)
+        ).build());
     }
 
     @GetMapping("/json/{sessionId}")
-    public ResponseEntity<JsonNode> getSessionJSON(@PathVariable String sessionId) {
-        return ResponseEntity.ok(recognitionService.getSessionJSON(sessionId));
+    public ResponseEntity<ApiResponse<JsonNode>> getSessionJSON(@PathVariable String sessionId) {
+        return ResponseEntity.ok(ApiResponse.<JsonNode>builder().data(recognitionService.getSessionJSON(sessionId)).build());
     }
 
     @GetMapping("/image/{sessionId}/{filename}")

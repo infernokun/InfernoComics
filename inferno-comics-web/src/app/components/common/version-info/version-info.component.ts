@@ -1,8 +1,8 @@
-import { Component, Input, OnInit } from '@angular/core';
-import { VersionService } from '../../../services/version/version.service';
 import { CommonModule } from '@angular/common';
+import { Component, Input, OnInit } from '@angular/core';
 import { MaterialModule } from '../../../material.module';
-import { WebsocketService } from '../../../services/websocket/websocket.service';
+import { VersionService } from '../../../services/version.service';
+import { WebsocketService } from '../../../services/websocket.service';
 
 @Component({
   selector: 'app-version-info',

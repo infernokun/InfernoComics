@@ -1,10 +1,12 @@
 package com.infernokun.infernoComics.services;
 
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
-import com.infernokun.infernoComics.controllers.IssueController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.dto.IssueRequest;
+import com.infernokun.infernoComics.models.enums.Condition;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
@@ -27,8 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
-import com.infernokun.infernoComics.controllers.IssueController.IssueCreateRequestDto;
-
 @ExtendWith(MockitoExtension.class)
 public class IssueServiceTest {
 
@@ -45,6 +45,9 @@ public class IssueServiceTest {
     private InfernoComicsConfig infernoComicsConfig;
 
     @Mock
+    private InfernoComicsWebClient webClient;
+
+    @Mock
     private DescriptionGeneratorService descriptionGeneratorService;
 
     @Mock
@@ -59,13 +62,11 @@ public class IssueServiceTest {
     @Mock
     private Cache cache;
 
+    @Mock
     private IssueService issueService;
 
     @BeforeEach
     void setUp() {
-        when(infernoComicsConfig.getRecognitionServerHost()).thenReturn("localhost");
-        when(infernoComicsConfig.getRecognitionServerPort()).thenReturn(8080);
-
         issueService = new IssueService(
                 issueRepository,
                 seriesRepository,
@@ -75,17 +76,22 @@ public class IssueServiceTest {
                 gcDatabaseService,
                 cacheManager,
                 recognitionService,
-                infernoComicsConfig
+                webClient
         );
     }
 
     // Helper methods for creating test data
-    private Series createTestSeries(Long id, String name) {
+    private Series createTestSeries() {
         Series series = new Series();
-        series.setId(id);
-        series.setName(name);
+        series.setId(1L);
+        series.setName("Spider-Man");
         series.setComicVineId("12345");
         series.setGcdIds(List.of("100", "101"));
+        series.setDescription("Spider-Man Book!!!");
+        series.setCreatedAt(LocalDateTime.now());
+        series.setUpdatedAt(LocalDateTime.now());
+        series.setStartYear(2012);
+        series.setEndYear(2016);
         return series;
     }
 
@@ -98,7 +104,7 @@ public class IssueServiceTest {
         issue.setCreatedAt(LocalDateTime.now());
         issue.setIsKeyIssue(false);
         issue.setIsVariant(false);
-        issue.setCondition(Issue.Condition.FAIR);
+        issue.setCondition(Condition.FAIR);
         issue.setCurrentValue(BigDecimal.valueOf(10.00));
         issue.setVariantCovers(new ArrayList<>());
         return issue;
@@ -111,7 +117,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should return cached issues when available")
         void shouldReturnCachedIssues() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             List<Issue> cachedIssues = List.of(
                     createTestIssue(1L, "1", series),
                     createTestIssue(2L, "2", series)
@@ -131,7 +137,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should fetch from repository when cache is empty")
         void shouldFetchFromRepositoryWhenCacheEmpty() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             List<Issue> issues = List.of(
                     createTestIssue(1L, "1", series),
                     createTestIssue(2L, "2", series)
@@ -156,7 +162,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should return issue when found")
         void shouldReturnIssueWhenFound() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue = createTestIssue(1L, "1", series);
 
             when(issueRepository.findById(1L)).thenReturn(Optional.of(issue));
@@ -186,7 +192,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should return sorted issues for series")
         void shouldReturnSortedIssues() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             List<Issue> issues = new ArrayList<>(List.of(
                     createTestIssue(3L, "10", series),
                     createTestIssue(1L, "1", series),
@@ -206,7 +212,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should handle decimal issue numbers")
         void shouldHandleDecimalIssueNumbers() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             List<Issue> issues = new ArrayList<>(List.of(
                     createTestIssue(1L, "1", series),
                     createTestIssue(2L, "1.5", series),
@@ -225,7 +231,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should handle variant suffixes in issue numbers")
         void shouldHandleVariantSuffixes() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             List<Issue> issues = new ArrayList<>(List.of(
                     createTestIssue(1L, "1", series),
                     createTestIssue(2L, "1A", series),
@@ -262,7 +268,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should return only key issues")
         void shouldReturnKeyIssues() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue keyIssue = createTestIssue(1L, "1", series);
             keyIssue.setIsKeyIssue(true);
 
@@ -282,7 +288,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should return only variant issues")
         void shouldReturnVariantIssues() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue regularIssue = createTestIssue(1L, "1", series);
             Issue variantIssue = createTestIssue(2L, "1", series);
             variantIssue.setIsVariant(true);
@@ -303,7 +309,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should return limited recent issues sorted by creation date")
         void shouldReturnLimitedRecentIssues() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue older = createTestIssue(1L, "1", series);
             older.setCreatedAt(LocalDateTime.now().minusDays(2));
 
@@ -330,7 +336,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should search by title")
         void shouldSearchByTitle() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue = createTestIssue(1L, "1", series);
             issue.setTitle("Amazing Fantasy");
 
@@ -344,7 +350,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should search by series name")
         void shouldSearchBySeriesName() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue = createTestIssue(1L, "1", series);
 
             when(issueRepository.findAll()).thenReturn(List.of(issue));
@@ -357,7 +363,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should search by issue number")
         void shouldSearchByIssueNumber() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue = createTestIssue(1L, "129", series);
 
             when(issueRepository.findAll()).thenReturn(List.of(issue));
@@ -370,7 +376,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should respect limit parameter")
         void shouldRespectLimit() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             List<Issue> issues = new ArrayList<>();
             for (int i = 1; i <= 10; i++) {
                 issues.add(createTestIssue((long) i, String.valueOf(i), series));
@@ -391,7 +397,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should calculate correct statistics")
         void shouldCalculateCorrectStats() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
 
             Issue keyIssue = createTestIssue(1L, "1", series);
             keyIssue.setIsKeyIssue(true);
@@ -417,13 +423,13 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should handle condition breakdown")
         void shouldHandleConditionBreakdown() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
 
             Issue nmIssue = createTestIssue(1L, "1", series);
-            nmIssue.setCondition(Issue.Condition.NEAR_MINT);
+            nmIssue.setCondition(Condition.NEAR_MINT);
 
             Issue vfIssue = createTestIssue(2L, "2", series);
-            vfIssue.setCondition(Issue.Condition.VERY_FINE);
+            vfIssue.setCondition(Condition.VERY_FINE);
 
             when(issueRepository.findAll()).thenReturn(List.of(nmIssue, vfIssue));
 
@@ -444,8 +450,8 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should create issue successfully")
         void shouldCreateIssue() {
-            Series series = createTestSeries(1L, "Spider-Man");
-            IssueCreateRequestDto request = mock(IssueCreateRequestDto.class);
+            Series series = createTestSeries();
+            IssueRequest request = mock(IssueRequest.class);
             when(request.getSeriesId()).thenReturn(series.getId());
             when(request.getIssueNumber()).thenReturn("1");
             when(request.getTitle()).thenReturn("Spider-Man");
@@ -471,7 +477,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should throw exception when series not found")
         void shouldThrowExceptionWhenSeriesNotFound() {
-            IssueCreateRequestDto request = IssueCreateRequestDto.builder()
+            IssueRequest request = IssueRequest.builder()
                     .seriesId(999L)
                     .issueNumber("1")
                     .title("Spider-Man")
@@ -487,8 +493,8 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should generate description when enabled and not provided")
         void shouldGenerateDescription() {
-            Series series = createTestSeries(1L, "Spider-Man");
-            IssueCreateRequestDto request = mock(IssueCreateRequestDto.class);
+            Series series = createTestSeries();
+            IssueRequest request = mock(IssueRequest.class);
             when(request.getSeriesId()).thenReturn(series.getId());
             when(request.getIssueNumber()).thenReturn("1");
             when(request.getTitle()).thenReturn("Spider-Man");
@@ -525,19 +531,19 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should create multiple issues in bulk")
         void shouldCreateMultipleIssues() {
-            Series series = createTestSeries(1L, "Spider-Man");
-            List<IssueController.IssueCreateRequestDto> requests = List.of(
-                    IssueController.IssueCreateRequestDto.builder()
+            Series series = createTestSeries();
+            List<IssueRequest> requests = List.of(
+                    IssueRequest.builder()
                             .seriesId(1L)
                             .title("Spider-Man")
                             .issueNumber("1")
                             .build(),
-                    IssueController.IssueCreateRequestDto.builder()
+                    IssueRequest.builder()
                             .seriesId(1L)
                             .title("Spider-Man")
                             .issueNumber("2")
                             .build(),
-                    IssueController.IssueCreateRequestDto.builder()
+                    IssueRequest.builder()
                             .seriesId(1L)
                             .title("Spider-Man")
                             .issueNumber("3")
@@ -554,11 +560,7 @@ public class IssueServiceTest {
             when(issueRepository.countBySeriesId(1L)).thenReturn(3);
             setupCacheMocks();
 
-            List<Issue> result = issueService.createIssuesBulk(
-                    requests.stream()
-                            .map(r -> (com.infernokun.infernoComics.controllers.IssueController.IssueCreateRequestDto) r)
-                            .toList()
-            );
+            List<Issue> result = issueService.createIssuesBulk(requests.stream().toList());
 
             assertThat(result).hasSize(3);
             verify(issueRepository, times(3)).save(any(Issue.class));
@@ -568,18 +570,18 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should throw exception when issues have different series IDs")
         void shouldThrowExceptionForDifferentSeriesIds() {
-            List<IssueController.IssueCreateRequestDto> requests = List.of(
-                    IssueController.IssueCreateRequestDto.builder()
+            List<IssueRequest> requests = List.of(
+                    IssueRequest.builder()
                             .seriesId(1L)
                             .title("Spider-Man")
                             .issueNumber("1")
                             .build(),
-                    IssueController.IssueCreateRequestDto.builder()
+                    IssueRequest.builder()
                             .seriesId(2L)
                             .title("Spider-Man")
                             .issueNumber("2")
                             .build(),
-                    IssueController.IssueCreateRequestDto.builder()
+                    IssueRequest.builder()
                             .seriesId(1L)
                             .title("Spider-Man")
                             .issueNumber("3")
@@ -608,10 +610,10 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should update issue successfully")
         void shouldUpdateIssue() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue existingIssue = createTestIssue(1L, "1", series);
 
-            IssueController.IssueUpdateRequestDto request = new IssueController.IssueUpdateRequestDto();
+            IssueRequest request = new IssueRequest();
             request.setIssueNumber("1");
             request.setTitle("Updated Title");
             request.setDescription("Updated description");
@@ -630,7 +632,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should throw exception when issue not found")
         void shouldThrowExceptionWhenIssueNotFound() {
-            IssueController.IssueUpdateRequestDto request = new IssueController.IssueUpdateRequestDto();
+            IssueRequest request = new IssueRequest();
 
             when(issueRepository.findById(999L)).thenReturn(Optional.empty());
 
@@ -647,7 +649,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should delete issue and update series count")
         void shouldDeleteIssue() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue = createTestIssue(1L, "1", series);
 
             when(issueRepository.findById(1L)).thenReturn(Optional.of(issue));
@@ -679,7 +681,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should delete multiple issues in bulk")
         void shouldDeleteMultipleIssues() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue1 = createTestIssue(1L, "1", series);
             Issue issue2 = createTestIssue(2L, "2", series);
 
@@ -689,7 +691,7 @@ public class IssueServiceTest {
             when(issueRepository.countBySeriesId(1L)).thenReturn(0);
             setupCacheMocks();
 
-            IssueService.BulkDeleteResult result = issueService.deleteIssuesBulk(List.of(1L, 2L));
+            Issue.BulkDeleteResult result = issueService.deleteIssuesBulk(List.of(1L, 2L));
 
             assertThat(result.successful()).isEqualTo(2);
             assertThat(result.failed()).isEqualTo(0);
@@ -699,7 +701,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should handle partial failures")
         void shouldHandlePartialFailures() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue1 = createTestIssue(1L, "1", series);
 
             when(issueRepository.findById(1L)).thenReturn(Optional.of(issue1));
@@ -708,7 +710,7 @@ public class IssueServiceTest {
             when(issueRepository.countBySeriesId(1L)).thenReturn(0);
             setupCacheMocks();
 
-            IssueService.BulkDeleteResult result = issueService.deleteIssuesBulk(List.of(1L, 2L));
+            Issue.BulkDeleteResult result = issueService.deleteIssuesBulk(List.of(1L, 2L));
 
             assertThat(result.successful()).isEqualTo(1);
             assertThat(result.failed()).isEqualTo(1);
@@ -722,7 +724,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should add variant cover to issue")
         void shouldAddVariantCover() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue = createTestIssue(1L, "1", series);
 
             Issue.VariantCover variantCover = new Issue.VariantCover(
@@ -745,7 +747,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should remove variant cover from issue")
         void shouldRemoveVariantCover() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             Issue issue = createTestIssue(1L, "1", series);
             issue.setVariantCovers(new ArrayList<>(List.of(
                     new Issue.VariantCover("variant-1", "url1", "caption1", List.of().toString()),
@@ -775,7 +777,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should create issues from Comic Vine data")
         void shouldCreateIssuesFromComicVine() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
 
             ComicVineService.ComicVineIssueDto cvIssue = new ComicVineService.ComicVineIssueDto();
             cvIssue.setId("cv-123");
@@ -803,7 +805,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should throw exception when series has no Comic Vine ID")
         void shouldThrowExceptionWhenNoComicVineId() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
             series.setComicVineId(null);
 
             when(seriesRepository.findById(1L)).thenReturn(Optional.of(series));
@@ -821,7 +823,7 @@ public class IssueServiceTest {
         @Test
         @DisplayName("Should search Comic Vine when series has Comic Vine ID")
         void shouldSearchComicVine() {
-            Series series = createTestSeries(1L, "Spider-Man");
+            Series series = createTestSeries();
 
             ComicVineService.ComicVineIssueDto cvIssue = new ComicVineService.ComicVineIssueDto();
             cvIssue.setId("cv-123");

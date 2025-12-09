@@ -1,23 +1,19 @@
 package com.infernokun.infernoComics.controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.infernokun.infernoComics.models.ApiResponse;
 import com.infernokun.infernoComics.models.Issue;
+import com.infernokun.infernoComics.models.dto.IssueRequest;
 import com.infernokun.infernoComics.services.IssueService;
-import com.infernokun.infernoComics.services.ComicVineService;
+import com.infernokun.infernoComics.services.ComicVineService.ComicVineIssueDto;
+
 import jakarta.validation.Valid;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -64,9 +60,9 @@ public class IssueController {
     }
 
     @GetMapping("/{seriesId}/search-comic-vine")
-    public ResponseEntity<List<ComicVineService.ComicVineIssueDto>> searchComicVineIssues(@PathVariable Long seriesId) {
+    public ResponseEntity<List<ComicVineIssueDto>> searchComicVineIssues(@PathVariable Long seriesId) {
         try {
-            List<ComicVineService.ComicVineIssueDto> issues = issueService.searchComicVineIssues(seriesId);
+            List<ComicVineIssueDto> issues = issueService.searchComicVineIssues(seriesId);
             return ResponseEntity.ok(issues);
         } catch (Exception e) {
             log.error("Error searching Comic Vine issues for series {}: {}", seriesId, e.getMessage());
@@ -119,12 +115,12 @@ public class IssueController {
     }
 
     @GetMapping("/get-comic-vine/{comicVineId}")
-    public ResponseEntity<ComicVineService.ComicVineIssueDto> getComicVineIssueById(@PathVariable Long comicVineId) {
-        return ResponseEntity.ok(issueService.getComicVineIssueById(comicVineId));
+    public ResponseEntity<ApiResponse<ComicVineIssueDto>> getComicVineIssueById(@PathVariable Long comicVineId) {
+        return ResponseEntity.ok(ApiResponse.<ComicVineIssueDto>builder().data(issueService.getComicVineIssueById(comicVineId)).build());
     }
 
     @PostMapping
-    public ResponseEntity<Issue> createIssue(@RequestPart("issue") IssueCreateRequestDto request,
+    public ResponseEntity<Issue> createIssue(@RequestPart("issue") IssueRequest request,
                                              @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
         try {
             JsonNode node;
@@ -147,7 +143,7 @@ public class IssueController {
 
     @PostMapping("/bulk")
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<List<Issue>> createIssuesBulk(@RequestBody @Valid List<IssueCreateRequestDto> requests) {
+    public ResponseEntity<List<Issue>> createIssuesBulk(@RequestBody @Valid List<IssueRequest> requests) {
         try {
             List<Issue> createdIssues = issueService.createIssuesBulk(requests);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdIssues);
@@ -158,9 +154,9 @@ public class IssueController {
     }
 
     @PostMapping("/bulk-delete")
-    public ResponseEntity<IssueService.BulkDeleteResult> deleteIssuesBulk(@RequestBody List<Long> issueIds) {
+    public ResponseEntity<Issue.BulkDeleteResult> deleteIssuesBulk(@RequestBody List<Long> issueIds) {
         try {
-            IssueService.BulkDeleteResult result = issueService.deleteIssuesBulk(issueIds);
+            Issue.BulkDeleteResult result = issueService.deleteIssuesBulk(issueIds);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Error in bulk delete: {}", e.getMessage());
@@ -184,7 +180,7 @@ public class IssueController {
     }
 
     @PutMapping(value = "/{id}")
-    public ResponseEntity<Issue> updateIssue(@PathVariable Long id, @RequestPart("issue") IssueUpdateRequestDto request,
+    public ResponseEntity<Issue> updateIssue(@PathVariable Long id, @RequestPart("issue") IssueRequest request,
             @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
 
         try {
@@ -231,47 +227,5 @@ public class IssueController {
             log.error("Error clearing issue caches: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
-    }
-
-    @Setter
-    @Getter
-    @Builder
-    public static class IssueCreateRequestDto implements IssueService.IssueCreateRequest {
-        private Long seriesId;
-        private String issueNumber;
-        private String title;
-        private String description;
-        private LocalDate coverDate;
-        private String imageUrl;
-        private Issue.Condition condition;
-        private BigDecimal purchasePrice;
-        private BigDecimal currentValue;
-        private LocalDate purchaseDate;
-        private String notes;
-        private String comicVineId;
-        private Boolean isKeyIssue;
-        private List<Issue.VariantCover> variantCovers;
-        private Boolean hasVariants;
-        private String uploadedImageUrl;
-    }
-
-    @Setter
-    @Getter
-    public static class IssueUpdateRequestDto implements IssueService.IssueUpdateRequest {
-        private String issueNumber;
-        private String title;
-        private String description;
-        private LocalDate coverDate;
-        private String imageUrl;
-        private Issue.Condition condition;
-        private BigDecimal purchasePrice;
-        private BigDecimal currentValue;
-        private LocalDate purchaseDate;
-        private String notes;
-        private String comicVineId;
-        private Boolean isKeyIssue;
-        private List<Issue.VariantCover> variantCovers = new ArrayList<>();
-        private Boolean hasVariants;
-        private String uploadedImageUrl;
     }
 }

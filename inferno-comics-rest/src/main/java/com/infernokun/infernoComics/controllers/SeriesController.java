@@ -1,6 +1,9 @@
 package com.infernokun.infernoComics.controllers;
 
 import com.infernokun.infernoComics.models.*;
+import com.infernokun.infernoComics.models.dto.SeriesRequest;
+import com.infernokun.infernoComics.models.enums.StartedBy;
+import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.models.sync.ProcessingResult;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
@@ -8,9 +11,7 @@ import com.infernokun.infernoComics.services.*;
 import com.infernokun.infernoComics.services.sync.NextcloudSyncService;
 import com.infernokun.infernoComics.services.sync.WeirdService;
 import jakarta.validation.Valid;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -48,13 +49,13 @@ public class SeriesController {
     }
 
     @GetMapping("/with-issues")
-    public ResponseEntity<ApiResponse<List<SeriesWithIssues>>> getSeriesWithIssues() {
+    public ResponseEntity<ApiResponse<List<Series.SeriesWithIssues>>> getSeriesWithIssues() {
         List<Series> series = seriesService.getAllSeries();
 
-        List<SeriesWithIssues> seriesWithIssuesList = new ArrayList<>();
+        List<Series.SeriesWithIssues> seriesWithIssuesList = new ArrayList<>();
 
         series.forEach(s -> {
-            SeriesWithIssues seriesWithIssues = new SeriesWithIssues(s);
+            Series.SeriesWithIssues seriesWithIssues = new Series.SeriesWithIssues(s);
 
             List<Issue> issues = issueService.getIssuesBySeriesId(s.getId());
             seriesWithIssues.setIssues(issues);
@@ -62,7 +63,7 @@ public class SeriesController {
             seriesWithIssuesList.add(seriesWithIssues);
         });
 
-        return ResponseEntity.ok(ApiResponse.<List<SeriesWithIssues>>builder().data(seriesWithIssuesList).build());
+        return ResponseEntity.ok(ApiResponse.<List<Series.SeriesWithIssues>>builder().data(seriesWithIssuesList).build());
     }
 
     @GetMapping("/{id}")
@@ -71,15 +72,15 @@ public class SeriesController {
     }
 
     @GetMapping("/with-issues/{id}")
-    public ResponseEntity<ApiResponse<SeriesWithIssues>> getSeriesByIdWithIssues(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Series.SeriesWithIssues>> getSeriesByIdWithIssues(@PathVariable Long id) {
        Series series = seriesService.getSeriesById(id);
 
-       SeriesWithIssues seriesWithIssues = new SeriesWithIssues(series);
+        Series.SeriesWithIssues seriesWithIssues = new Series.SeriesWithIssues(series);
        List<Issue> issues = issueService.getIssuesBySeriesId(series.getId());
 
        seriesWithIssues.setIssues(issues);
 
-       return ResponseEntity.ok(ApiResponse.<SeriesWithIssues>builder().data(seriesWithIssues).build());
+       return ResponseEntity.ok(ApiResponse.<Series.SeriesWithIssues>builder().data(seriesWithIssues).build());
     }
 
     @GetMapping("/folder")
@@ -178,7 +179,7 @@ public class SeriesController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<Series>> createSeries(@Valid @RequestBody SeriesCreateRequestDto request) {
+    public ResponseEntity<ApiResponse<Series>> createSeries(@Valid @RequestBody SeriesRequest request) {
         Series series = seriesService.createSeries(request);
         return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
     }
@@ -296,7 +297,7 @@ public class SeriesController {
 
         if (progressDataOptional.isPresent()) {
             ProgressData progressData = progressDataOptional.get();
-            progressData.setState(ProgressData.State.REPLAYED);
+            progressData.setState(State.REPLAYED);
             weirdService.saveProgressData(progressData);
         }
 
@@ -347,7 +348,7 @@ public class SeriesController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Series>> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesUpdateRequestDto request) {
+    public ResponseEntity<ApiResponse<Series>> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesRequest request) {
         Series series = seriesService.updateSeries(id, request);
         return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
     }
@@ -378,47 +379,6 @@ public class SeriesController {
         seriesService.refreshComicVineCache();
         log.info("Successfully refreshed Comic Vine cache");
         return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
-    }
-
-    @Setter
-    @Getter
-    public static class SeriesCreateRequestDto {
-        private String name;
-        private String description;
-        private String publisher;
-        private Integer startYear;
-        private Integer endYear;
-        private String imageUrl;
-        private List<String> comicVineIds;
-        private int issuesAvailableCount;
-        private boolean generatedDescription;
-        private String comicVineId;
-    }
-
-    @Setter
-    @Getter
-    public static class SeriesUpdateRequestDto implements SeriesService.SeriesUpdateRequest {
-        private String name;
-        private String description;
-        private String publisher;
-        private Integer startYear;
-        private Integer endYear;
-        private String imageUrl;
-        private List<String> comicVineIds;
-        private int issueCount;
-        private String comicVineId;
-    }
-
-    @Setter
-    @Getter
-    public static class SeriesWithIssues {
-        private Series series;
-        private List<Issue> issues;
-
-        public SeriesWithIssues(Series series) {
-            this.series = series;
-            this.issues = new ArrayList<>();
-        }
     }
 
     public record ImageData(byte[] bytes, String originalFilename, String contentType, long fileSize,
