@@ -34,13 +34,13 @@ public class ComicVineService {
     private static final String ISSUES_CACHE_PREFIX = "comic_vine_issues:";
     private static final long CACHE_TTL_HOURS = 24; // Cache Comic Vine data for 24 hours
 
-    private boolean validateApiKey() {
+    private boolean apiKeyNotValid() {
         String apiKey = infernoComicsConfig.getComicVineAPIKey();
         if (apiKey == null || apiKey.isEmpty()) {
             log.error("Comic Vine API key not configured. Please set COMIC_VINE_API_KEY environment variable.");
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     // Cache series search results with annotation-based caching
@@ -129,7 +129,7 @@ public class ComicVineService {
 
     @Cacheable(value = "comic_vine_issues", key = "#comicVineId", unless = "#result == null")
     public ComicVineIssueDto getComicVineIssueById(Long comicVineId) {
-        if (!validateApiKey()) return null;
+        if (apiKeyNotValid()) return null;
 
         try {
             String response = webClient.comicVineClient().get()
@@ -158,7 +158,7 @@ public class ComicVineService {
 
     @Cacheable(value = "comic_vine_series", key = "#comicVineId", unless = "#result == null")
     public ComicVineSeriesDto getComicVineSeriesById(Long comicVineId) {
-        if (!validateApiKey()) return null;
+        if (apiKeyNotValid()) return null;
 
         try {
             String response = webClient.comicVineClient().get()
@@ -187,7 +187,7 @@ public class ComicVineService {
 
     // Internal method that does the actual API call
     private List<ComicVineSeriesDto> searchSeriesFromAPI(String query) {
-        if (!validateApiKey()) return new ArrayList<>();
+        if (apiKeyNotValid()) return new ArrayList<>();
 
         try {
             String response = webClient.comicVineClient().get()
@@ -217,7 +217,7 @@ public class ComicVineService {
 
     // Internal method for issues API call
     private List<ComicVineIssueDto> searchIssuesFromAPI(String seriesId) {
-        if (!validateApiKey()) return new ArrayList<>();
+        if (apiKeyNotValid()) return new ArrayList<>();
 
         List<ComicVineIssueDto> allIssues = new ArrayList<>();
         int offset = 0;

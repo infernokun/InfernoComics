@@ -7,41 +7,10 @@ from functools import lru_cache
 from contextlib import contextmanager
 from typing import Optional, Dict, Any, Union
 
-
 from loguru import logger as _loguru_logger
 
 # Type alias for clarity
 LogLevel = Union[str, int]
-
-class LogConfig:
-    DEFAULT_FORMAT = (
-        "<green>{time:HH:mm:ss.SSS}</green> | "
-        "<level>{level: <8}</level> | "
-        "<cyan>{extra[file_link]: <35}</cyan> | "
-        "<level>{message}</level>"
-    )
-    
-    FILE_FORMAT = (
-        "{time:YYYY-MM-DD HH:mm:ss.SSS} | "
-        "{level: <8} | "
-        "{extra[file_link]: <35} | "
-        "{message}"
-    )
-    
-    CUSTOM_LEVELS = {
-        "SUCCESS": {"no": 25, "color": "<green><bold>", "icon": "✅"},
-        "TRACE": {"no": 5, "color": "<dim>", "icon": "🔍"},
-    }
-
-    LEVEL_COLORS = {
-        "TRACE": "<dim>",
-        "DEBUG": "<blue>",
-        "INFO": "<white>",
-        "SUCCESS": "<green><bold>",
-        "WARNING": "<yellow><bold>",
-        "ERROR": "<red><bold>",
-        "CRITICAL": "<red><bold><blink>",
-    }
 
 class _LoggerState:
     _instance: Optional["_LoggerState"] = None
@@ -63,21 +32,7 @@ class _LoggerState:
         self.loggers: Dict[str, Any] = {}
         self.project_root: Optional[Path] = None
         self._initialized = True
-        
-        # Initialize custom levels
-        self._setup_custom_levels()
-    
-    def _setup_custom_levels(self) -> None:
-        for name, config in LogConfig.CUSTOM_LEVELS.items():
-            try:
-                _loguru_logger.level(name)
-            except ValueError:
-                _loguru_logger.level(
-                    name,
-                    no=config["no"],
-                    color=config["color"],
-                    icon=config["icon"]
-                )
+
 _state = _LoggerState()
 
 @lru_cache(maxsize=256)
@@ -108,15 +63,6 @@ def _get_relative_path(file_path: str) -> str:
     # Fall back to just the filename
     return path.name
 
-
-def _shorten_name(name: str) -> str:
-    if name == "__main__":
-        return name
-    if "." in name:
-        return name.split(".")[-1]
-    return name
-
-
 def _detect_color_support() -> bool:
     # Check environment overrides
     force_color = os.getenv("FORCE_COLOR", os.getenv("FORCE_LOG_COLORS", ""))
@@ -141,7 +87,6 @@ def _detect_color_support() -> bool:
     
     return True
 
-
 def _patcher(record: Dict[str, Any]) -> None:
     # Get the caller's frame (skip loguru internals)
     frame = None
@@ -165,19 +110,13 @@ def _patcher(record: Dict[str, Any]) -> None:
         line_no = frame.lineno
         
         name = record.get("name", "__main__")
-        short_name = _shorten_name(name)
-        
-        record["extra"]["clickable_name"] = f"{short_name: <20} | {file_name}:{line_no}"
         
         record["extra"]["file_link"] = f"{file_name}:{line_no}"
-        record["extra"]["short_name"] = short_name
         record["extra"]["caller_file"] = frame.filename
         record["extra"]["caller_line"] = line_no
         record["extra"]["caller_func"] = frame.function
     else:
-        record["extra"]["clickable_name"] = f"{'unknown': <20} | unknown:0"
         record["extra"]["file_link"] = "unknown:0"
-        record["extra"]["short_name"] = "unknown"
         record["extra"]["caller_file"] = "unknown"
         record["extra"]["caller_line"] = 0
         record["extra"]["caller_func"] = "unknown"
@@ -220,7 +159,12 @@ def initialize_logger(
     resolved_level = level or _state.log_level
     resolved_log_file = log_file or _state.log_file
     resolved_colors = use_colors if use_colors is not None else _state.use_colors
-    resolved_format = format_string or _state.format_string or LogConfig.DEFAULT_FORMAT
+    resolved_format = format_string or _state.format_string or (
+        "<green>{time:HH:mm:ss.SSS}</green> | "
+        "<level>{level: <8}</level> | "
+        "<cyan>{extra[file_link]: <35}</cyan> | "
+        "<level>{message}</level>"
+    )
     
     # Create bound logger with name
     logger = _loguru_logger.bind(name=name)
@@ -250,7 +194,7 @@ def initialize_logger(
         
         logger.add(
             resolved_log_file,
-            format=LogConfig.FILE_FORMAT,
+            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {extra[file_link]: <35} | {message}",
             level=resolved_level,
             rotation="10 MB",
             retention="7 days",
@@ -265,7 +209,6 @@ def initialize_logger(
     _state.loggers[name] = logger
     return logger
 
-
 def get_logger(name: Optional[str] = None) -> Any:
     if name is None:
         frame = inspect.currentframe()
@@ -278,84 +221,3 @@ def get_logger(name: Optional[str] = None) -> Any:
         return _state.loggers[name]
     
     return initialize_logger(name=name)
-
-
-@contextmanager
-def log_level(level: str):
-    old_level = _state.log_level
-    _state.log_level = level.upper()
-    try:
-        yield
-    finally:
-        _state.log_level = old_level
-
-
-@contextmanager
-def log_context(**kwargs):
-    for logger in _state.loggers.values():
-        bound_logger = logger.bind(**kwargs)
-        yield bound_logger
-        return
-    
-    # No loggers exist yet, create one
-    logger = get_logger()
-    bound_logger = logger.bind(**kwargs)
-    yield bound_logger
-
-
-def add_file_handler(
-    log_file: str,
-    level: str = "DEBUG",
-    rotation: str = "10 MB",
-    retention: str = "7 days",
-) -> None:
-    log_dir = os.path.dirname(log_file)
-    if log_dir:
-        os.makedirs(log_dir, exist_ok=True)
-    
-    for logger in _state.loggers.values():
-        logger.add(
-            log_file,
-            format=LogConfig.FILE_FORMAT,
-            level=level,
-            rotation=rotation,
-            retention=retention,
-            compression="gz",
-            encoding="utf-8",
-            enqueue=True,
-        )
-
-
-def log_exception(logger_instance: Any = None, message: str = "An exception occurred"):
-    if logger_instance is None:
-        logger_instance = get_logger()
-    
-    logger_instance.opt(exception=True).error(message)
-
-
-def log_performance(func):
-    import time
-    from functools import wraps
-    
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        logger = get_logger(func.__module__)
-        start = time.perf_counter()
-        try:
-            result = func(*args, **kwargs)
-            elapsed = time.perf_counter() - start
-            logger.debug(f"{func.__name__} completed in {elapsed:.4f}s")
-            return result
-        except Exception as e:
-            elapsed = time.perf_counter() - start
-            logger.error(f"{func.__name__} failed after {elapsed:.4f}s: {e}")
-            raise
-    
-    return wrapper
-
-def debug(msg: str, *args, **kwargs): get_logger().debug(msg, *args, **kwargs)
-def info(msg: str, *args, **kwargs): get_logger().info(msg, *args, **kwargs)
-def success(msg: str, *args, **kwargs): get_logger().success(msg, *args, **kwargs)
-def warning(msg: str, *args, **kwargs): get_logger().warning(msg, *args, **kwargs)
-def error(msg: str, *args, **kwargs): get_logger().error(msg, *args, **kwargs)
-def critical(msg: str, *args, **kwargs): get_logger().critical(msg, *args, **kwargs)

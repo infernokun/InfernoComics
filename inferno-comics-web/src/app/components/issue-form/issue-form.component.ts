@@ -7,6 +7,7 @@ import { MaterialModule } from '../../material.module';
 import { ComicVineIssue } from '../../models/comic-vine.model';
 import { IssueService } from '../../services/issue.service';
 import { RecognitionService } from '../../services/recognition.service';
+import { ApiResponse } from '../../models/api-response.model';
 
 export interface IssueFormData {
   seriesId: number;
@@ -162,7 +163,7 @@ export class IssueFormComponent implements OnInit {
         : this.issueService.createIssue(issueRequest, formData.imageData);
 
       operation.subscribe({
-        next: (result) => {
+        next: (result: ApiResponse<Issue>) => {
           const message = this.isEditMode ? 'Comic book updated successfully' : 'Comic book added successfully';
           this.snackBar.open(message, 'Close', { duration: 3000 });
           this.dialogRef.close(result);

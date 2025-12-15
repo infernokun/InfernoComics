@@ -11,6 +11,25 @@ import org.springframework.web.bind.annotation.RestController;
 public abstract class BaseController {
     protected final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
+    protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse() {
+        return ResponseEntity.ok(ApiResponse.<T>builder()
+                .code(HttpStatus.OK.value())
+                .build());
+    }
+
+    protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse(T data) {
+        return ResponseEntity.ok(ApiResponse.<T>builder()
+                .code(HttpStatus.OK.value())
+                .data(data)
+                .build());
+    }
+    protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse(String message) {
+        return ResponseEntity.ok(ApiResponse.<T>builder()
+                .code(HttpStatus.OK.value())
+                .message(message)
+                .build());
+    }
+
     protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse(T data, String message) {
         return ResponseEntity.ok(ApiResponse.<T>builder()
                 .code(HttpStatus.OK.value())

@@ -149,7 +149,7 @@ public class SeriesService {
     }
 
     public List<Series> getAllSeries() {
-        List<Series> cachedSeries = getCachedValue(CacheConstants.CacheKeys.ALL_SERIES_LIST);
+        List<Series> cachedSeries = getCachedValue();
 
         if (cachedSeries != null) {
             log.debug("Returning cached series list with {} items", cachedSeries.size());
@@ -162,7 +162,7 @@ public class SeriesService {
             series.setIssuesOwnedCount(issues.size());
         });
 
-        putCacheValue(CacheConstants.CacheKeys.ALL_SERIES_LIST, seriesList);
+        putCacheValue(seriesList);
         return seriesList;
     }
 
@@ -647,30 +647,30 @@ public class SeriesService {
 
     // Helper method to get cached values
     @SuppressWarnings("unchecked")
-    private <T> T getCachedValue(String key) {
+    private <T> T getCachedValue() {
         try {
             var cache = cacheManager.getCache("series-list");
             if (cache != null) {
-                var wrapper = cache.get(key);
+                var wrapper = cache.get(CacheConstants.CacheKeys.ALL_SERIES_LIST);
                 if (wrapper != null) {
                     return (T) wrapper.get();
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to get cached value from {} with key {}: {}", "series-list", key, e.getMessage());
+            log.warn("Failed to get cached value from {} with key {}: {}", "series-list", CacheConstants.CacheKeys.ALL_SERIES_LIST, e.getMessage());
         }
         return null;
     }
 
     // Helper method to put cached values
-    private void putCacheValue(String key, Object value) {
+    private void putCacheValue(Object value) {
         try {
             var cache = cacheManager.getCache("series-list");
             if (cache != null) {
-                cache.put(key, value);
+                cache.put(CacheConstants.CacheKeys.ALL_SERIES_LIST, value);
             }
         } catch (Exception e) {
-            log.warn("Failed to cache value in {} with key {}: {}", "series-list", key, e.getMessage());
+            log.warn("Failed to cache value in {} with key {}: {}", "series-list", CacheConstants.CacheKeys.ALL_SERIES_LIST, e.getMessage());
         }
     }
 
@@ -687,7 +687,12 @@ public class SeriesService {
     }
 
     @Async("imageProcessingExecutor")
-    public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId, Long seriesId, List<SeriesController.ImageData> imageDataList, StartedBy startedBy, String name, int year) {
+    public CompletableFuture<Void> startMultipleImagesProcessingWithProgress(String sessionId,
+                                                                             Long seriesId,
+                                                                             List<SeriesController.ImageData> imageDataList,
+                                                                             StartedBy startedBy,
+                                                                             String name)
+    {
         log.info("Starting image processing session: {} for series '{}' with {} images", sessionId, name, imageDataList.size());
         List<ProcessedFile> filesToRecord = new ArrayList<>();
         JsonNode root;

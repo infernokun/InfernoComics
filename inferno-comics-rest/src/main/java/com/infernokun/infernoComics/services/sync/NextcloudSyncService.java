@@ -220,7 +220,7 @@ public class NextcloudSyncService {
                 progressDataService.initializeSession(sessionId, seriesService.getSeriesById(seriesId), StartedBy.AUTOMATIC);
 
                 seriesService.startMultipleImagesProcessingWithProgress(
-                        sessionId, seriesId, imageDataList, StartedBy.AUTOMATIC, null, 0);
+                        sessionId, seriesId, imageDataList, StartedBy.AUTOMATIC, null);
 
                 log.info("Started processing {} images for series {} with session {}",
                         imageDataList.size(), seriesId, sessionId);

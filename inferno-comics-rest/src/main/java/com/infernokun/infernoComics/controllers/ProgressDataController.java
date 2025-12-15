@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/progress")
-public class ProgressDataController {
+public class ProgressDataController extends BaseController {
     private final ProgressDataService progressDataService;
     private final RecognitionService recognitionService;
     private final InfernoComicsConfig infernoComicsConfig;
@@ -58,8 +58,7 @@ public class ProgressDataController {
 
     @GetMapping("/data/{seriesId}")
     public ResponseEntity<ApiResponse<List<ProgressData>>> getSessionsBySeriesId(@PathVariable Long seriesId) {
-        return ResponseEntity.ok(ApiResponse.<List<ProgressData>>builder()
-                .data(progressDataService.getSessionsBySeriesId(seriesId)).build());
+        return createSuccessResponse(progressDataService.getSessionsBySeriesId(seriesId));
     }
 
     @GetMapping("/evaluation/{sessionId}")
@@ -74,8 +73,7 @@ public class ProgressDataController {
 
     @GetMapping("/data/rel")
     public ResponseEntity<ApiResponse<List<ProgressData>>> getSessionsByRelevance() {
-        return ResponseEntity.ok(ApiResponse.<List<ProgressData>>builder()
-                .data(progressDataService.getSessionsByRelevance()).build());
+        return createSuccessResponse(progressDataService.getSessionsByRelevance());
     }
 
     // receive progress updates from Python
@@ -121,7 +119,7 @@ public class ProgressDataController {
         String processedFileHash = processedFile.get("file_hash");
         String storedFileName   = processedFile.get("stored_file_name");
 
-        // 1️⃣ Validate mandatory fields
+        // 1️ Validate mandatory fields
         if (sessionId == null || originalFileName == null) {
             log.warn("Missing mandatory fields: sessionId={}, originalFileName={}",
                     sessionId, originalFileName);
@@ -132,7 +130,7 @@ public class ProgressDataController {
                     ));
         }
 
-        // 2️⃣ Try‑catch to surface any unexpected runtime exception
+        // 2️ Try‑catch to surface any unexpected runtime exception
         try {
             Optional<ProcessedFile> processedFileOptional =
                     processedFileRepository.findBySessionIdAndFileName(sessionId, originalFileName);
@@ -141,7 +139,7 @@ public class ProgressDataController {
             if (processedFileOptional.isPresent()) {
                 ProcessedFile processedFileEntity = processedFileOptional.get();
 
-                // 3️⃣ Update with the processed file information
+                // 3️ Update with the processed file information
                 processedFileEntity.setFileEtag(processedFileHash);
                 processedFileEntity.setFileName(storedFileName);
                 processedFileEntity.setProcessingStatus(ProcessedFile.ProcessingStatus.COMPLETE);
@@ -160,7 +158,7 @@ public class ProgressDataController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
             }
         } catch (Exception e) {
-            // 3️⃣ Log the exception and return 500 with a friendly message
+            // 3️ Log the exception and return 500 with a friendly message
             log.error("Unexpected error while processing file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
@@ -188,10 +186,7 @@ public class ProgressDataController {
 
     @PostMapping("/data/dismiss/{id}")
     public ResponseEntity<ApiResponse<List<ProgressData>>> dismissProgressData(@PathVariable Long id) {
-        return ResponseEntity.ok(
-                ApiResponse.<List<ProgressData>>builder()
-                        .data(progressDataService.dismissProgressData(id))
-                        .build());
+        return createSuccessResponse(progressDataService.dismissProgressData(id));
     }
 
     @DeleteMapping("/{sessionId}")
@@ -207,7 +202,7 @@ public class ProgressDataController {
         processedFileRepository.deleteAll(processedFileRepository.findBySessionId(sessionId));
         recognitionService.cleanSession(sessionId);
 
-        return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
+        return createSuccessResponse();
     }
 
     @Data

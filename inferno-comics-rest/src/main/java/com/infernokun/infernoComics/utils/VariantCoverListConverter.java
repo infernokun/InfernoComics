@@ -2,7 +2,6 @@ package com.infernokun.infernoComics.utils;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.infernokun.infernoComics.models.Issue;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;

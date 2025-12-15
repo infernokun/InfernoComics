@@ -20,7 +20,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/issues")
-public class IssueController {
+public class IssueController extends BaseController {
     private final IssueService issueService;
 
     public IssueController(IssueService issueService) {
@@ -28,35 +28,18 @@ public class IssueController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Issue>> getAllIssues() {
-        try {
-            List<Issue> comicBooks = issueService.getAllIssues();
-            return ResponseEntity.ok(comicBooks);
-        } catch (Exception e) {
-            log.error("Error fetching all issues: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Issue>>> getAllIssues() {
+        return createSuccessResponse(issueService.getAllIssues());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Issue> getIssueById(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(issueService.getIssueById(id));
-        } catch (Exception e) {
-            log.error("Error fetching issue {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Issue>> getIssueById(@PathVariable Long id) {
+        return createSuccessResponse(issueService.getIssueById(id));
     }
 
     @GetMapping("/series/{seriesId}")
-    public ResponseEntity<List<Issue>> getIssuesBySeriesId(@PathVariable Long seriesId) {
-        try {
-            List<Issue> comicBooks = issueService.getIssuesBySeriesId(seriesId);
-            return ResponseEntity.ok(comicBooks);
-        } catch (Exception e) {
-            log.error("Error fetching issues for series {}: {}", seriesId, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Issue>>> getIssuesBySeriesId(@PathVariable Long seriesId) {
+            return createSuccessResponse(issueService.getIssuesBySeriesId(seriesId));
     }
 
     @GetMapping("/{seriesId}/search-comic-vine")
@@ -120,8 +103,8 @@ public class IssueController {
     }
 
     @PostMapping
-    public ResponseEntity<Issue> createIssue(@RequestPart("issue") IssueRequest request,
-                                             @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
+    public ResponseEntity<ApiResponse<Issue>> createIssue(@RequestPart("issue") IssueRequest request,
+                                                          @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
         try {
             JsonNode node;
             if (imageData != null && !imageData.isEmpty()) {
@@ -130,8 +113,7 @@ public class IssueController {
                 log.error(request.getUploadedImageUrl());
             }
 
-            Issue issue = issueService.createIssue(request);
-            return ResponseEntity.ok(issue);
+            return createSuccessResponse(issueService.createIssue(request));
         } catch (IllegalArgumentException e) {
             log.warn("Invalid request for creating issue: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
@@ -180,8 +162,8 @@ public class IssueController {
     }
 
     @PutMapping(value = "/{id}")
-    public ResponseEntity<Issue> updateIssue(@PathVariable Long id, @RequestPart("issue") IssueRequest request,
-            @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
+    public ResponseEntity<ApiResponse<Issue>> updateIssue(@PathVariable Long id, @RequestPart("issue") IssueRequest request,
+                                                          @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
 
         try {
             JsonNode node;
@@ -192,9 +174,7 @@ public class IssueController {
                 log.info("No image supplied for issue {}", id);
             }
 
-            Issue comicBook = issueService.updateIssue(id, request);
-
-            return ResponseEntity.ok(comicBook);
+            return createSuccessResponse(issueService.updateIssue(id, request));
         } catch (IllegalArgumentException e) {
             log.warn("Invalid request for updating issue {}: {}", id, e.getMessage());
             return ResponseEntity.notFound().build();

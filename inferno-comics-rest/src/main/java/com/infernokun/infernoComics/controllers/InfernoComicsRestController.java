@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.controllers;
 
+import com.infernokun.infernoComics.models.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.PostConstruct;
 import org.springframework.http.HttpStatus;
@@ -38,7 +39,7 @@ public class InfernoComicsRestController extends BaseController {
             description = "Returns the current health status of the service, including uptime and status code."
     )
     @GetMapping("/api/health")
-    public ResponseEntity<Map<String, Object>> health() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> health() {
         Duration uptime = Duration.between(startTime, Instant.now());
 
         String formattedUptime = String.format("%dd %dh %dm %ds",
@@ -50,12 +51,11 @@ public class InfernoComicsRestController extends BaseController {
 
         Map<String, Object> response = Map.of(
                 "success", Map.of(
-                        "status_code", HttpStatus.OK,
-                        "status", HttpStatus.OK.value(),
                         "uptime_format", formattedUptime,
                         "uptime", uptime
                 )
         );
-        return ResponseEntity.ok(response);
+
+        return createSuccessResponse(response, "Pretty nice stuff ain't it?");
     }
 }

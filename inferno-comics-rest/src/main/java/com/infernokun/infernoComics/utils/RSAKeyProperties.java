@@ -183,9 +183,6 @@ public class RSAKeyProperties {
                 ". Last error: " + lastException.getMessage());
     }
 
-
-    // Load content from classpath resource
-
     private String loadFromClasspath(String resourcePath) throws IOException {
         String path = resourcePath.startsWith("classpath:") ?
                 resourcePath.substring("classpath:".length()) : resourcePath;
@@ -232,8 +229,8 @@ public class RSAKeyProperties {
     // Validate that keys can be loaded successfully
     public void validateKeys() {
         try {
-            getPrivateKey();
-            getPublicKey();
+            RSAPrivateKey privateKey = getPrivateKey();
+            RSAPublicKey publicKey = getPublicKey();
             log.info("RSA key validation successful");
         } catch (Exception e) {
             log.error("RSA key validation failed", e);

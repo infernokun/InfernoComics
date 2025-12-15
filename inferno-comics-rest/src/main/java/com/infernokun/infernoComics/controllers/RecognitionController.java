@@ -17,24 +17,22 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/recog")
-public class RecognitionController {
+public class RecognitionController extends BaseController {
     private final RecognitionService recognitionService;
 
     @GetMapping("/config")
     public ResponseEntity<ApiResponse<RecognitionConfig>> getRecognitionConfig() {
-        return ResponseEntity.ok(ApiResponse.<RecognitionConfig>builder().data(recognitionService.getRecognitionConfig()
-                ).build());
+        return createSuccessResponse(recognitionService.getRecognitionConfig());
     }
 
     @PostMapping("/config")
     public ResponseEntity<ApiResponse<Boolean>> saveRecognitionConfig(@RequestBody RecognitionConfig config) {
-        return ResponseEntity.ok(ApiResponse.<Boolean>builder().data(recognitionService.saveRecognitionConfig(config)
-        ).build());
+        return createSuccessResponse(recognitionService.saveRecognitionConfig(config));
     }
 
     @GetMapping("/json/{sessionId}")
     public ResponseEntity<ApiResponse<JsonNode>> getSessionJSON(@PathVariable String sessionId) {
-        return ResponseEntity.ok(ApiResponse.<JsonNode>builder().data(recognitionService.getSessionJSON(sessionId)).build());
+        return createSuccessResponse(recognitionService.getSessionJSON(sessionId));
     }
 
     @GetMapping("/image/{sessionId}/{filename}")

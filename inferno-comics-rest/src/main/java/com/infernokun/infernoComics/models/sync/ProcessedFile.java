@@ -1,6 +1,5 @@
 package com.infernokun.infernoComics.models.sync;
 
-import io.micrometer.common.lang.Nullable;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +8,6 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 @Entity
 @Table(name = "processed_files")

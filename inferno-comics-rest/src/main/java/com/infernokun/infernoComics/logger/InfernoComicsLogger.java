@@ -39,7 +39,7 @@ public class InfernoComicsLogger implements Filter {
         httpRequest.setAttribute(START_TIME_ATTRIBUTE, startTime);
 
         // Log incoming request
-        if (!isExcludedUrl(requestUri)) {
+        if (isIncludedUrl(requestUri)) {
             logIncomingRequest(httpRequest, requestId);
         }
 
@@ -47,21 +47,21 @@ public class InfernoComicsLogger implements Filter {
             filterChain.doFilter(servletRequest, servletResponse);
 
             // Log successful response
-            if (!isExcludedUrl(requestUri)) {
+            if (isIncludedUrl(requestUri)) {
                 logResponse(httpRequest, httpResponse, requestId, startTime, null);
             }
 
         } catch (IOException | ServletException ex) {
             // Log error response
-            if (!isExcludedUrl(requestUri)) {
+            if (isIncludedUrl(requestUri)) {
                 logResponse(httpRequest, httpResponse, requestId, startTime, ex);
             }
             throw ex;
         }
     }
 
-    private boolean isExcludedUrl(String requestUri) {
-        return excludedUrls.stream().anyMatch(requestUri::startsWith);
+    private boolean isIncludedUrl(String requestUri) {
+        return excludedUrls.stream().noneMatch(requestUri::startsWith);
     }
 
     private void logIncomingRequest(HttpServletRequest request, String requestId) {
@@ -223,7 +223,7 @@ public class InfernoComicsLogger implements Filter {
     }
 
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
+    public void init(FilterConfig filterConfig) {
         log.info("🚀 InfernoComics initialized | Excluded URLs: {}", excludedUrls);
     }
 

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Issue, IssueRequest } from '../models/issue.model';
 import { EnvironmentService } from './environment.service';
+import { ApiResponse } from '../models/api-response.model';
 
 @Injectable({
   providedIn: 'root',
@@ -14,19 +15,19 @@ export class IssueService {
     this.apiUrl = `${this.environmentService.settings?.restUrl}/issues`;
   }
 
-  getAllIssues(): Observable<Issue[]> {
-    return this.http.get<Issue[]>(this.apiUrl);
+  getAllIssues(): Observable<ApiResponse<Issue[]>> {
+    return this.http.get<ApiResponse<Issue[]>>(this.apiUrl);
   }
 
-  getIssueById(id: number): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/${id}`);
+  getIssueById(id: number): Observable<ApiResponse<Issue>> {
+    return this.http.get<ApiResponse<Issue>>(`${this.apiUrl}/${id}`);
   }
 
-  getIssuesBySeries(seriesId: number): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/series/${seriesId}`);
+  getIssuesBySeries(seriesId: number): Observable<ApiResponse<Issue[]>> {
+    return this.http.get<ApiResponse<Issue[]>>(`${this.apiUrl}/series/${seriesId}`);
   }
 
-  createIssue(issue: any, imageData?: File): Observable<any> {
+  createIssue(issue: any, imageData?: File): Observable<ApiResponse<Issue>> {
     const formData = new FormData();
     
     // Create a Blob with application/json content type
@@ -43,7 +44,7 @@ export class IssueService {
     return this.http.post<any[]>(`${this.apiUrl}/bulk`, issues);
   }
 
-  updateIssue(id: number, issue: IssueRequest, imageData?: File): Observable<any> {
+  updateIssue(id: number, issue: IssueRequest, imageData?: File): Observable<ApiResponse<Issue>> {
     const formData = new FormData();
     
     // Create a Blob with application/json content type
@@ -54,7 +55,7 @@ export class IssueService {
       formData.append('imageData', imageData, imageData.name);
     }
     
-    return this.http.put<any>(`${this.apiUrl}/${id}`, formData);
+    return this.http.put<ApiResponse<Issue>>(`${this.apiUrl}/${id}`, formData);
   }
 
   deleteIssue(id: number): Observable<any> {

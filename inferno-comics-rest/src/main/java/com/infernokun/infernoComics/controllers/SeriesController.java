@@ -23,6 +23,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
@@ -34,7 +35,7 @@ import com.infernokun.infernoComics.services.ComicVineService.ComicVineSeriesDto
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/series")
-public class SeriesController {
+public class SeriesController extends BaseController {
     private final WeirdService weirdService;
     private final SeriesService seriesService;
     private final IssueService issueService;
@@ -63,24 +64,24 @@ public class SeriesController {
             seriesWithIssuesList.add(seriesWithIssues);
         });
 
-        return ResponseEntity.ok(ApiResponse.<List<Series.SeriesWithIssues>>builder().data(seriesWithIssuesList).build());
+        return createSuccessResponse(seriesWithIssuesList);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<Series>> getSeriesById(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.<Series>builder().data(seriesService.getSeriesById(id)).build());
+        return createSuccessResponse(seriesService.getSeriesById(id));
     }
 
     @GetMapping("/with-issues/{id}")
     public ResponseEntity<ApiResponse<Series.SeriesWithIssues>> getSeriesByIdWithIssues(@PathVariable Long id) {
        Series series = seriesService.getSeriesById(id);
 
-        Series.SeriesWithIssues seriesWithIssues = new Series.SeriesWithIssues(series);
+       Series.SeriesWithIssues seriesWithIssues = new Series.SeriesWithIssues(series);
        List<Issue> issues = issueService.getIssuesBySeriesId(series.getId());
 
        seriesWithIssues.setIssues(issues);
 
-       return ResponseEntity.ok(ApiResponse.<Series.SeriesWithIssues>builder().data(seriesWithIssues).build());
+       return createSuccessResponse(seriesWithIssues);
     }
 
     @GetMapping("/folder")
@@ -89,7 +90,7 @@ public class SeriesController {
         List<Series.FolderMapping> folderMappings = series.stream()
                 .map(Series::getFolderMapping)
                 .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.<List<Series.FolderMapping>>builder().data(folderMappings).build());
+        return createSuccessResponse(folderMappings);
     }
 
     @GetMapping("/search/advanced")
@@ -97,15 +98,14 @@ public class SeriesController {
             @RequestParam(required = false) String publisher,
             @RequestParam(required = false) Integer startYear,
             @RequestParam(required = false) Integer endYear) {
-            List<Series> results = seriesService.searchSeriesByPublisherAndYear(publisher, startYear, endYear);
-            return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(results).build());
+
+            return createSuccessResponse(seriesService.searchSeriesByPublisherAndYear(publisher, startYear, endYear));
     }
 
     @GetMapping("/recent")
-    public ResponseEntity<List<Series>> getRecentSeries(@RequestParam(defaultValue = "10") int limit) {
+    public ResponseEntity<ApiResponse<List<Series>>> getRecentSeries(@RequestParam(defaultValue = "10") int limit) {
         try {
-            List<Series> recentSeries = seriesService.getRecentSeries(limit);
-            return ResponseEntity.ok(recentSeries);
+            return createSuccessResponse(seriesService.getRecentSeries(limit));
         } catch (Exception e) {
             log.error("Error fetching recent series: {}", e.getMessage());
             return ResponseEntity.internalServerError().build();
@@ -114,40 +114,34 @@ public class SeriesController {
 
     @GetMapping("/popular")
     public ResponseEntity<ApiResponse<List<Series>>> getPopularSeries(@RequestParam(defaultValue = "10") int limit) {
-        List<Series> popularSeries = seriesService.getPopularSeries(limit);
-        return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(popularSeries).build());
+        return createSuccessResponse(seriesService.getPopularSeries(limit));
     }
 
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getSeriesStats() {
-        Map<String, Object> stats = seriesService.getSeriesStats();
-        return ResponseEntity.ok(ApiResponse.<Map<String, Object>>builder().data(stats).build());
+        return createSuccessResponse(seriesService.getSeriesStats());
     }
 
     // Comic Vine integration endpoints
     @GetMapping("/search-comic-vine")
     public ResponseEntity<ApiResponse<List<ComicVineSeriesDto>>> searchComicVineSeries(@RequestParam String query) {
-        List<ComicVineSeriesDto> results = seriesService.searchComicVineSeries(query);
-        return ResponseEntity.ok(ApiResponse.<List<ComicVineSeriesDto>>builder().data(results).build());
+        return createSuccessResponse(seriesService.searchComicVineSeries(query));
+
     }
 
     @GetMapping("/{seriesId}/search-comic-vine")
     public ResponseEntity<ApiResponse<List<ComicVineIssueDto>>> searchComicVineIssues(@PathVariable Long seriesId) {
-        List<ComicVineIssueDto> results = seriesService.searchComicVineIssues(seriesId);
-        return ResponseEntity.ok(ApiResponse.<List<ComicVineIssueDto>>builder().data(results).build());
+        return createSuccessResponse(seriesService.searchComicVineIssues(seriesId));
     }
 
     @GetMapping("/get-comic-vine/{comicVineId}")
     public ResponseEntity<ApiResponse<ComicVineSeriesDto>> getComicVineSeriesById(@PathVariable Long comicVineId) {
-        return ResponseEntity.ok(ApiResponse.<ComicVineSeriesDto>builder()
-                .data(seriesService.getComicVineSeriesById(comicVineId))
-                .build());
+        return createSuccessResponse(seriesService.getComicVineSeriesById(comicVineId));
     }
 
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<Series>>> searchSeries(@RequestParam String query) {
-        List<Series> results = seriesService.searchSeries(query);
-        return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(results).build());
+        return createSuccessResponse(seriesService.searchSeries(query));
     }
 
     @CrossOrigin(origins = "*", allowCredentials = "false")
@@ -159,8 +153,7 @@ public class SeriesController {
         log.debug("SSE connection requested for multiple images session: {} (series: {})", sessionId, seriesId);
 
         try {
-            SseEmitter emitter = progressDataService.createProgressEmitter(sessionId);
-            return emitter;
+            return progressDataService.createProgressEmitter(sessionId);
         } catch (Exception e) {
             log.error("Failed to create SSE emitter for multiple images session {}: {}", sessionId, e.getMessage());
 
@@ -180,8 +173,7 @@ public class SeriesController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<Series>> createSeries(@Valid @RequestBody SeriesRequest request) {
-        Series series = seriesService.createSeries(request);
-        return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
+        return createSuccessResponse(seriesService.createSeries(request));
     }
 
     @PostMapping("/startSync")
@@ -189,34 +181,30 @@ public class SeriesController {
         List<ProcessingResult> results = new ArrayList<>();
         seriesService.getAllSeries().forEach(series -> results.add(syncService.manualSync(series.getId())));
 
-        return ResponseEntity.ok(ApiResponse.<List<ProcessingResult>>builder().data(results).build());
+        return createSuccessResponse(results);
     }
 
     @PostMapping("/startSync/{id}")
     public ResponseEntity<ApiResponse<ProcessingResult>> startSeriesSync(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.<ProcessingResult>builder().data(syncService.manualSync(id)).build());
+        return createSuccessResponse(syncService.manualSync(id));
     }
 
     @PostMapping("/from-comic-vine")
     public ResponseEntity<ApiResponse<Series>> createSeriesFromComicVine(
             @RequestParam String comicVineId,
             @RequestBody ComicVineService.ComicVineSeriesDto comicVineData) {
-        Series series = seriesService.createSeriesFromComicVine(comicVineId, comicVineData);
-        return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
+        return createSuccessResponse(seriesService.createSeriesFromComicVine(comicVineId, comicVineData));
     }
 
     @PostMapping("/batch/from-comic-vine")
     public ResponseEntity<ApiResponse<List<Series>>> createMultipleSeriesFromComicVine(
             @RequestBody List<ComicVineService.ComicVineSeriesDto> comicVineSeriesList) {
-        List<Series> series = seriesService.createMultipleSeriesFromComicVine(comicVineSeriesList);
-        log.info("Successfully batch created {} series from Comic Vine", series.size());
-        return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(series).build());
+        return createSuccessResponse(seriesService.createMultipleSeriesFromComicVine(comicVineSeriesList));
     }
 
     @PostMapping("/reverify-metadata/{seriesId}")
     public ResponseEntity<ApiResponse<Series>> reverifyMetadata(@PathVariable Long seriesId) {
-        Series series = seriesService.reverifyMetadata(seriesId);
-        return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
+        return createSuccessResponse(seriesService.reverifyMetadata(seriesId));
     }
 
     @PostMapping("{seriesId}/add-comics-by-images/start")
@@ -270,7 +258,7 @@ public class SeriesController {
             progressDataService.initializeSession(sessionId, seriesService.getSeriesById(seriesId), StartedBy.MANUAL);
 
             // Start async processing with image data list
-            seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, StartedBy.MANUAL, name, year);
+            CompletableFuture<Void> start = seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, StartedBy.MANUAL, name);
 
             return ResponseEntity.ok(Map.of("sessionId", sessionId));
 
@@ -340,24 +328,19 @@ public class SeriesController {
         // Start async processing with the query images
         recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
 
-        log.info("Successfully initiated replay for session: {}", sessionId);
-
-        return ResponseEntity.ok(ApiResponse.<ProcessingResult>builder()
-                .data(ProcessingResult.builder().sessionId(sessionId).build())
-                .build());
+        return createSuccessResponse(ProcessingResult.builder().sessionId(sessionId).build(), "Successfully initiated replay for session: " + sessionId);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Series>> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesRequest request) {
-        Series series = seriesService.updateSeries(id, request);
-        return ResponseEntity.ok(ApiResponse.<Series>builder().data(series).build());
+        return createSuccessResponse(seriesService.updateSeries(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteSeries(@PathVariable Long id) {
         try {
             seriesService.deleteSeries(id);
-            return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
+            return createSuccessResponse();
         } catch (IllegalArgumentException e) {
             log.warn("Series {} not found for deletion", id);
             return ResponseEntity.notFound().build();
@@ -370,15 +353,13 @@ public class SeriesController {
     @DeleteMapping("/cache")
     public ResponseEntity<ApiResponse<Void>> clearSeriesCaches() {
         seriesService.clearAllSeriesCaches();
-        log.info("Successfully cleared all series caches");
-        return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
+        return createSuccessResponse("Successfully cleared all series caches");
     }
 
     @DeleteMapping("/cache/comic-vine")
     public ResponseEntity<ApiResponse<Void>> refreshComicVineCache() {
         seriesService.refreshComicVineCache();
-        log.info("Successfully refreshed Comic Vine cache");
-        return ResponseEntity.ok().body(ApiResponse.<Void>builder().build());
+        return createSuccessResponse("Successfully refreshed Comic Vine cache");
     }
 
     public record ImageData(byte[] bytes, String originalFilename, String contentType, long fileSize,

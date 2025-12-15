@@ -257,7 +257,7 @@ public class NextcloudService {
 
                 // Check if this path segment already exists
                 if (!folderExists(fullPath)) {
-                    log.info("Creating folder segment: {}", currentPath.toString());
+                    log.info("Creating folder segment: {}", currentPath);
                     createSingleFolder(fullPath);
                 }
             }

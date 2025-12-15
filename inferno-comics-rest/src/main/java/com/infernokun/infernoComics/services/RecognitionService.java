@@ -70,7 +70,7 @@ public class RecognitionService {
     public void startReplay(String sessionId, Long seriesId, StartedBy startedBy, List<SeriesController.ImageData> imageDataList) {
         log.info("Replay image processing session: {}", sessionId);
 
-        seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, startedBy, null, 0);
+        seriesService.startMultipleImagesProcessingWithProgress(sessionId, seriesId, imageDataList, startedBy, null);
     }
 
     public void cleanSession(String sessionId) {
@@ -116,9 +116,9 @@ public class RecognitionService {
         return webClient.recognitionClient().get()
                 .uri("/stored_images/" + sessionId + "/" + fileName)
                 .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                .onStatus(HttpStatusCode::is4xxClientError, _ ->
                         Mono.error(new RuntimeException("Image not found: " + fileName)))
-                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                .onStatus(HttpStatusCode::is5xxServerError, _ ->
                         Mono.error(new RuntimeException("Server error fetching image: " + fileName)))
                 .bodyToMono(Resource.class)
                 .timeout(Duration.ofSeconds(30))
@@ -129,9 +129,9 @@ public class RecognitionService {
         return webClient.recognitionClient().get()
                 .uri("/stored_images/" + sessionId + "/query")
                 .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse ->
+                .onStatus(HttpStatusCode::is4xxClientError, _ ->
                         Mono.error(new RuntimeException("Query images not found for session: " + sessionId)))
-                .onStatus(HttpStatusCode::is5xxServerError, serverResponse ->
+                .onStatus(HttpStatusCode::is5xxServerError, _ ->
                         Mono.error(new RuntimeException("Server error fetching query images for session: " + sessionId)))
                 .bodyToMono(new ParameterizedTypeReference<List<SeriesController.ImageData>>() {})
                 .timeout(Duration.ofSeconds(30))

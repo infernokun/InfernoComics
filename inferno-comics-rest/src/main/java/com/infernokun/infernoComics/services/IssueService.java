@@ -53,7 +53,7 @@ public class IssueService {
     private final InfernoComicsWebClient webClient;
 
     public List<Issue> getAllIssues() {
-        List<Issue> cachedIssues = getCachedValue(CacheConstants.CacheNames.ISSUE_LIST, CacheConstants.CacheKeys.ALL_ISSUES_LIST);
+        List<Issue> cachedIssues = getCachedValue();
 
         if (cachedIssues != null) {
             log.info("Returning cached issues list with {} items", cachedIssues.size());
@@ -61,7 +61,7 @@ public class IssueService {
         }
 
         List<Issue> issues = issueRepository.findAll();
-        putCacheValue(CacheConstants.CacheNames.ISSUE_LIST, CacheConstants.CacheKeys.ALL_ISSUES_LIST, issues);
+        putCacheValue(issues);
         return issues;
     }
 
@@ -684,29 +684,29 @@ public class IssueService {
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T getCachedValue(String cacheName, String key) {
+    private <T> T getCachedValue() {
         try {
-            var cache = cacheManager.getCache(cacheName);
+            var cache = cacheManager.getCache(CacheConstants.CacheNames.ISSUE_LIST);
             if (cache != null) {
-                var wrapper = cache.get(key);
+                var wrapper = cache.get(CacheConstants.CacheKeys.ALL_ISSUES_LIST);
                 if (wrapper != null) {
                     return (T) wrapper.get();
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to get cached value from {} with key {}: {}", cacheName, key, e.getMessage());
+            log.warn("Failed to get cached value from {} with key {}: {}", CacheConstants.CacheNames.ISSUE_LIST, CacheConstants.CacheKeys.ALL_ISSUES_LIST, e.getMessage());
         }
         return null;
     }
 
-    private void putCacheValue(String cacheName, String key, Object value) {
+    private void putCacheValue(Object value) {
         try {
-            var cache = cacheManager.getCache(cacheName);
+            var cache = cacheManager.getCache(CacheConstants.CacheNames.ISSUE_LIST);
             if (cache != null) {
-                cache.put(key, value);
+                cache.put(CacheConstants.CacheKeys.ALL_ISSUES_LIST, value);
             }
         } catch (Exception e) {
-            log.warn("Failed to cache value in {} with key {}: {}", cacheName, key, e.getMessage());
+            log.warn("Failed to cache value in {} with key {}: {}", CacheConstants.CacheNames.ISSUE_LIST, CacheConstants.CacheKeys.ALL_ISSUES_LIST, e.getMessage());
         }
     }
 
@@ -731,7 +731,7 @@ public class IssueService {
         }
 
         // Get series ID from first issue to update count later
-        Optional<Issue> firstIssue = issueRepository.findById(issueIds.get(0));
+        Optional<Issue> firstIssue = issueRepository.findById(issueIds.getFirst());
         if (firstIssue.isEmpty()) {
             return new Issue.BulkDeleteResult(0, issueIds.size());
         }

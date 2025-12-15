@@ -84,7 +84,7 @@ public class AESUtil {
 
             return Base64.getEncoder().encodeToString(combined);
         } catch (Exception e) {
-            log.error("Encryption failed: " + e.getMessage(), e);
+            log.error("Encryption failed: {}", e.getMessage(), e);
             throw new CryptoException("Encryption failed: " + e.getMessage(), e);
         }
     }

@@ -160,7 +160,7 @@ public class DescriptionController {
                     Thread.sleep(2000);
 
                 } catch (Exception e) {
-                    log.error("Error processing issue {}: {}", issue.getId(), e.getMessage());
+                    log.error("Error generating all missing descriptions for {}: {}", issue.getId(), e.getMessage());
                 }
             }
 

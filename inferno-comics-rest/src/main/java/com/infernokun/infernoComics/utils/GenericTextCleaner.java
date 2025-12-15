@@ -66,23 +66,12 @@ public class GenericTextCleaner {
         if (rawText == null) return "";
 
         return rawText
-                .replaceAll("<[^>]*>", "")           // Remove HTML tags
-                .replace("&amp;", "&")              // Common entities
+                .replaceAll("<[^>]*>", "")
+                .replace("&amp;", "&")
                 .replace("&quot;", "\"")
                 .replace("&#39;", "'")
                 .replace("&nbsp;", " ")
-                .replaceAll("\\s+", " ")            // Normalize spaces
+                .replaceAll("\\s+", " ")
                 .trim();
-    }
-
-    // Usage example
-    public static void main(String[] args) {
-        String rawText = "<p><em>Some text</em></p><p>More text without breaks.Another sentence.Final thought.</p>";
-
-        System.out.println("CLEAN ONLY:");
-        System.out.println(cleanOnly(rawText));
-
-        System.out.println("\n\nWITH PARAGRAPHS:");
-        System.out.println(makeReadable(rawText));
     }
 }

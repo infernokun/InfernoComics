@@ -91,8 +91,8 @@ export class SeriesDetailComponent implements OnInit {
 
   loadIssues(seriesId: number): void {
     this.issueService.getIssuesBySeries(seriesId).subscribe({
-      next: (books: Issue[]) => {
-        this.issues = books.map((issue) => new Issue(issue));
+      next: (res: ApiResponse<Issue[]>) => {
+        this.issues = res.data.map((issue) => new Issue(issue));
         // Re-filter Comic Vine issues after loading collection issues
         this.filterComicVineIssues();
       },

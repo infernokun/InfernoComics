@@ -22,7 +22,7 @@ import java.util.Optional;
 @Slf4j
 @RestController
 @RequestMapping("/api/version")
-public class VersionController {
+public class VersionController extends BaseController {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
@@ -49,12 +49,7 @@ public class VersionController {
 
         Map<String, String> recogVersion = getRecognitionVersion();
 
-        return ResponseEntity.ok(
-                ApiResponse.<List<Map<String, String>>>builder()
-                        .message("Version Success")
-                        .data(List.of(restVersion, recogVersion))
-                        .build()
-        );
+        return createSuccessResponse(List.of(restVersion, recogVersion), "Version Success");
     }
 
     private Map<String, String> readPackageJson() {
