@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit } from '@angular/core';
 import { MaterialModule } from '../../../material.module';
-import { VersionService } from '../../../services/version.service';
+import { FullVersions, VersionService } from '../../../services/version.service';
 import { WebsocketService } from '../../../services/websocket.service';
+import { ApiResponse } from '../../../models/api-response.model';
 
 @Component({
   selector: 'app-version-info',
@@ -152,8 +153,8 @@ export class VersionInfoComponent implements OnInit {
   constructor(private vs: VersionService, private websocket: WebsocketService) {}
   
   ngOnInit() {
-    this.vs.getAllVersions().subscribe(data => {
-      this.versions = data;
+    this.vs.getAllVersions().subscribe((res: ApiResponse<FullVersions>) => {
+      this.versions = res.data;
     });
   }
 }
