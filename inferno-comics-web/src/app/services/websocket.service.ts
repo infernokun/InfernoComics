@@ -9,18 +9,20 @@ import { dev_log } from '../utils/utils';
 import { EnvironmentService } from './environment.service';
 
 export interface WebSocketResponse {
-  name: string,
-  payload: any
+  name: string;
+  payload: any;
 }
 
 export interface WebSocketResponseList {
-  name: string,
+  name: string;
   seriesId?: number;
-  payload: any[]
+  payload: any[];
 }
 
 @Injectable({ providedIn: 'root' })
-export class WebsocketService<TIncoming = unknown, TOutgoing = unknown> implements OnDestroy {
+export class WebsocketService<TIncoming = unknown, TOutgoing = unknown>
+  implements OnDestroy
+{
   private readonly inbound$ = new Subject<TIncoming>();
   private readonly socket$: WebSocketSubject<TIncoming | TOutgoing>;
 
@@ -38,7 +40,9 @@ export class WebsocketService<TIncoming = unknown, TOutgoing = unknown> implemen
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = this.env.settings.production ? `${protocol}//${host}/ws/socket-handler/update` : `${base}/socket-handler/update`;
+    const wsUrl = this.env.settings.production
+      ? `${protocol}//${host}/ws/socket-handler/update`
+      : `${base}/socket-handler/update`;
 
     const cfg: WebSocketSubjectConfig<TIncoming | TOutgoing> = {
       url: wsUrl,
@@ -73,7 +77,7 @@ export class WebsocketService<TIncoming = unknown, TOutgoing = unknown> implemen
   }
 
   private handleMessage(message: TIncoming): void {
-    dev_log(this.env, "WebSocket ← ", message);
+    dev_log(this.env, 'WebSocket ← ', message);
 
     const isHeartbeat =
       typeof message === 'object' &&

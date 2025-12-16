@@ -89,6 +89,8 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res: ApiResponse<Series[]>) => {
+          if (!res.data) throw new Error('No data received from series service');
+
           this.series = res.data;
           this.extractPublishers();
           this.updatePage();

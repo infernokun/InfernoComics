@@ -56,6 +56,8 @@ export class SeriesAdminComponent implements OnInit {
 
     this.seriesService.getSeriesByIdWithIssues(this.seriesId).subscribe({
       next: (res: ApiResponse<SeriesWithIssues>) => {
+        if (!res.data) throw new Error('issue getSeriesByIdWithIssues');
+
         this.series = new Series(res.data.series);
         this.series.issues = res.data.issues;
         this.loading = false;
@@ -71,6 +73,8 @@ export class SeriesAdminComponent implements OnInit {
   reverifyMetadata(): void {
     this.seriesService.reverifySeries(this.seriesId).subscribe({
       next: (res: ApiResponse<Series>) => {
+        if (!res.data) throw new Error('issue reverifySeries');
+
         this.series = res.data;
         this.snackBar.open('Metadata reverified successfully', 'Close', {
           duration: 3000,

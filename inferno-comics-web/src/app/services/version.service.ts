@@ -39,11 +39,17 @@ export class VersionService extends BaseService {
     return this.get<ApiResponse<AppVersion[]>>(this.apiUrl);
   }
 
-  getRestAndRecog(): Observable<{ rest: AppVersion; recog: AppVersion }> {
+  getRestAndRecog(): Observable<{ rest: AppVersion | undefined; recog: AppVersion | undefined }> {
     return this.getBackendAppVersions().pipe(
       map((arr: ApiResponse<AppVersion[]>) => {
-        const rest: AppVersion = arr.data.find((v) => v.name.includes(AppName.REST))!;
-        const recog: AppVersion = arr.data.find((v) => v.name.includes(AppName.RECOG))!;
+        if (!arr.data) return {rest: {name: AppName.REST, version: "N/A"}, recog: {name: AppName.RECOG, version: "N/A"}};
+
+        const rest: AppVersion | undefined = arr.data.find((v) =>
+          v.name.includes(AppName.REST)
+        );
+        const recog: AppVersion | undefined = arr.data.find((v) =>
+          v.name.includes(AppName.RECOG)
+        );
         return { rest, recog };
       })
     );

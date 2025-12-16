@@ -5,6 +5,7 @@ import { ImageMatcherResponse } from '../components/series-detail/comic-match-se
 import { ApiResponse } from '../models/api-response.model';
 import { ProgressData } from '../models/progress-data.model';
 import { EnvironmentService } from './environment.service';
+import { BaseService } from './base.service';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -20,28 +21,35 @@ export interface SSEProgressData {
 @Injectable({
   providedIn: 'root',
 })
-export class ProgressDataService {
+export class ProgressDataService extends BaseService {
   private apiUrl: string = '';
 
-  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
+  constructor(
+    protected override http: HttpClient,
+    private environmentService: EnvironmentService
+  ) {
+    super(http);
     this.apiUrl = `${this.environmentService.settings?.restUrl}/progress`;
   }
 
   getProgressData(seriesId: number): Observable<ApiResponse<ProgressData[]>> {
-    return this.http.get<ApiResponse<ProgressData[]>>(
+    return this.get<ApiResponse<ProgressData[]>>(
       `${this.apiUrl}/data/${seriesId}`
     );
   }
 
   getRelProgressData(): Observable<ApiResponse<ProgressData[]>> {
-    return this.http.get<ApiResponse<ProgressData[]>>(`${this.apiUrl}/data/rel`);
+    return this.get<ApiResponse<ProgressData[]>>(`${this.apiUrl}/data/rel`);
   }
 
   dismissProgressData(itemId: number): Observable<ApiResponse<ProgressData[]>> {
-    return this.http.post<ApiResponse<ProgressData[]>>(`${this.apiUrl}/data/dismiss/${itemId}`, {});
+    return this.post<ApiResponse<ProgressData[]>>(
+      `${this.apiUrl}/data/dismiss/${itemId}`,
+      {}
+    );
   }
 
   deleteProgressData(sessionId: string): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${sessionId}`);
+    return this.delete<ApiResponse<void>>(`${this.apiUrl}/${sessionId}`);
   }
 }

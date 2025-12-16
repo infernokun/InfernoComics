@@ -12,37 +12,26 @@ public abstract class BaseController {
     protected final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
 
     protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse() {
-        return ResponseEntity.ok(ApiResponse.<T>builder()
-                .code(HttpStatus.OK.value())
-                .build());
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse(T data) {
-        return ResponseEntity.ok(ApiResponse.<T>builder()
-                .code(HttpStatus.OK.value())
-                .data(data)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(data));
     }
-    protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse(String message) {
-        return ResponseEntity.ok(ApiResponse.<T>builder()
-                .code(HttpStatus.OK.value())
-                .message(message)
-                .build());
-    }
-
+    
     protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse(T data, String message) {
-        return ResponseEntity.ok(ApiResponse.<T>builder()
-                .code(HttpStatus.OK.value())
-                .message(message)
-                .data(data)
-                .build());
+        return ResponseEntity.ok(ApiResponse.success(data, message));
     }
 
-    protected <T> ResponseEntity<ApiResponse<T>> createNotFoundResponse(Class<T> classType, String id) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.<T>builder()
-                        .code(HttpStatus.NOT_FOUND.value())
-                        .message(classType.getName() + " not found")
-                        .build());
+    protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse(String message) {
+        return ResponseEntity.ok(ApiResponse.success(message));
+    }
+
+    protected <T> ResponseEntity<ApiResponse<T>> createErrorResponse(String message) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(message));
+    }
+
+    protected <T> ResponseEntity<ApiResponse<T>> createNotFoundResponse(Class<T> classType) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.notFound(classType.getName() + " not found"));
     }
 }

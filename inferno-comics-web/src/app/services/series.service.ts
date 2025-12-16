@@ -7,6 +7,7 @@ import { ComicVineSeriesDto } from '../models/comic-vine.model';
 import { ProcessingResult } from '../models/processing-result.model';
 import { Series, SeriesWithIssues } from '../models/series.model';
 import { EnvironmentService } from './environment.service';
+import { BaseService } from './base.service';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -22,82 +23,115 @@ export interface SSEProgressData {
 @Injectable({
   providedIn: 'root',
 })
-export class SeriesService {
+export class SeriesService extends BaseService {
   private apiUrl: string = '';
 
-  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
+  constructor(
+    protected override http: HttpClient,
+    private environmentService: EnvironmentService
+  ) {
+    super(http);
     this.apiUrl = `${this.environmentService.settings?.restUrl}/series`;
   }
 
   getAllSeries(): Observable<ApiResponse<Series[]>> {
-    return this.http.get<ApiResponse<Series[]>>(this.apiUrl);
+    return this.get<ApiResponse<Series[]>>(this.apiUrl);
   }
 
   getSeriesById(id: number): Observable<ApiResponse<Series>> {
-    return this.http.get<ApiResponse<Series>>(`${this.apiUrl}/${id}`);
+    return this.get<ApiResponse<Series>>(`${this.apiUrl}/${id}`);
   }
 
-  getSeriesByIdWithIssues(id: number): Observable<ApiResponse<SeriesWithIssues>> {
-    return this.http.get<ApiResponse<SeriesWithIssues>>(`${this.apiUrl}/with-issues/${id}`);
+  getSeriesByIdWithIssues(
+    id: number
+  ): Observable<ApiResponse<SeriesWithIssues>> {
+    return this.get<ApiResponse<SeriesWithIssues>>(
+      `${this.apiUrl}/with-issues/${id}`
+    );
   }
 
   getSeriesWithIssues(): Observable<ApiResponse<SeriesWithIssues[]>> {
-    return this.http.get<ApiResponse<SeriesWithIssues[]>>(`${this.apiUrl}/with-issues`);
+    return this.get<ApiResponse<SeriesWithIssues[]>>(
+      `${this.apiUrl}/with-issues`
+    );
   }
 
-  getSeriesFolderStructure(): Observable<ApiResponse<{id: number, name: string}[]>> {
-    return this.http.get<ApiResponse<{id: number, name: string}[]>>(`${this.apiUrl}/folder`);
+  getSeriesFolderStructure(): Observable<
+    ApiResponse<{ id: number; name: string }[]>
+  > {
+    return this.get<ApiResponse<{ id: number; name: string }[]>>(
+      `${this.apiUrl}/folder`
+    );
   }
 
   syncAllSeries(): Observable<ApiResponse<ProcessingResult[]>> {
-    return this.http.post<ApiResponse<ProcessingResult[]>>(`${this.apiUrl}/startSync`, {});
+    return this.post<ApiResponse<ProcessingResult[]>>(
+      `${this.apiUrl}/startSync`,
+      {}
+    );
   }
 
   syncSeries(id: number): Observable<ApiResponse<ProcessingResult>> {
-    return this.http.post<ApiResponse<ProcessingResult>>(`${this.apiUrl}/startSync/${id}`, {});
+    return this.post<ApiResponse<ProcessingResult>>(
+      `${this.apiUrl}/startSync/${id}`,
+      {}
+    );
   }
 
   createSeries(series: Series): Observable<ApiResponse<Series>> {
-    return this.http.post<ApiResponse<Series>>(this.apiUrl, series);
+    return this.post<ApiResponse<Series>>(this.apiUrl, series);
   }
 
   updateSeries(id: number, series: any): Observable<ApiResponse<Series>> {
-    return this.http.put<ApiResponse<Series>>(`${this.apiUrl}/${id}`, series);
+    return this.put<ApiResponse<Series>>(`${this.apiUrl}/${id}`, series);
   }
 
   deleteSeries(id: number): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`);
+    return this.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`);
   }
 
   searchSeries(query: string): Observable<ApiResponse<Series[]>> {
-    return this.http.get<ApiResponse<Series[]>>(
+    return this.get<ApiResponse<Series[]>>(
       `${this.apiUrl}/search?query=${encodeURIComponent(query)}`
     );
   }
 
-  searchComicVineSeries(query: string): Observable<ApiResponse<ComicVineSeriesDto[]>> {
-    return this.http.get<ApiResponse<ComicVineSeriesDto[]>>(
+  searchComicVineSeries(
+    query: string
+  ): Observable<ApiResponse<ComicVineSeriesDto[]>> {
+    return this.get<ApiResponse<ComicVineSeriesDto[]>>(
       `${this.apiUrl}/search-comic-vine?query=${encodeURIComponent(query)}`
     );
   }
 
   getSeriesStats(): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(`${this.apiUrl}/stats`);
+    return this.get<ApiResponse<any>>(`${this.apiUrl}/stats`);
   }
 
   getRecentSeries(limit: number = 10): Observable<ApiResponse<Series[]>> {
-    return this.http.get<ApiResponse<Series[]>>(`${this.apiUrl}/recent?limit=${limit}`);
+    return this.get<ApiResponse<Series[]>>(
+      `${this.apiUrl}/recent?limit=${limit}`
+    );
   }
 
   reverifySeries(seriesId: number): Observable<ApiResponse<Series>> {
-    return this.http.post<ApiResponse<Series>>(`${this.apiUrl}/reverify-metadata/${seriesId}`, {});
+    return this.post<ApiResponse<Series>>(
+      `${this.apiUrl}/reverify-metadata/${seriesId}`,
+      {}
+    );
   }
 
   replaySession(sessionId: string): Observable<ApiResponse<ProcessingResult>> {
-    return this.http.post<ApiResponse<ProcessingResult>>(`${this.apiUrl}/replay/${sessionId}`, {});
+    return this.post<ApiResponse<ProcessingResult>>(
+      `${this.apiUrl}/replay/${sessionId}`,
+      {}
+    );
   }
 
-  addComicsByImagesWithSSE(seriesId: number, imageFiles: File[]): Observable<SSEProgressData> {
+  addComicsByImagesWithSSE(
+    seriesId: number,
+    imageFiles: File[]
+  ): Observable<SSEProgressData> {
     const progressSubject = new Subject<SSEProgressData>();
 
     const formData = new FormData();
@@ -106,40 +140,39 @@ export class SeriesService {
       formData.append('images', file);
     });
 
-    return this.startComicAdd(seriesId, formData, progressSubject);
+    this.post<{ sessionId: string }>(
+      `${this.apiUrl}/${seriesId}/add-comics-by-images/start`,
+      formData
+    ).subscribe({
+      next: (response) => {
+        setTimeout(() => {
+          this.connectToSSEProgress(
+            seriesId,
+            response.sessionId,
+            progressSubject,
+            'add-comics-by-images'
+          );
+        }, 500);
+      },
+      error: (error) => {
+        console.error('Error starting multiple images analysis:', error);
+        progressSubject.error(error);
+      },
+    });
+
+    return progressSubject.asObservable();
   }
 
   isSSESupported(): boolean {
     return typeof EventSource !== 'undefined';
   }
 
-  private startComicAdd(seriesId: number, formData: FormData, progressSubject: Subject<SSEProgressData>): Observable<SSEProgressData> {
-    this.http
-      .post<{ sessionId: string }>(
-        `${this.apiUrl}/${seriesId}/add-comics-by-images/start`,
-        formData
-      )
-      .subscribe({
-        next: (response) => {
-          setTimeout(() => {
-            this.connectToSSEProgress(
-              seriesId,
-              response.sessionId,
-              progressSubject,
-              'add-comics-by-images'
-            );
-          }, 500);
-        },
-        error: (error) => {
-          console.error('Error starting multiple images analysis:', error);
-          progressSubject.error(error);
-        },
-      });
-
-    return progressSubject.asObservable();
-  }
-
-  private connectToSSEProgress(seriesId: number, sessionId: string, progressSubject: Subject<SSEProgressData>, endpoint: string = 'add-comic-by-image'): void {
+  private connectToSSEProgress(
+    seriesId: number,
+    sessionId: string,
+    progressSubject: Subject<SSEProgressData>,
+    endpoint: string = 'add-comic-by-image'
+  ): void {
     const sseUrl = `${this.apiUrl}/${seriesId}/${endpoint}/progress?sessionId=${sessionId}`;
     console.log('Connecting to SSE URL:', sseUrl);
 
@@ -165,16 +198,30 @@ export class SeriesService {
 
         // Close connection when complete or error
         if (data.type === 'complete' || data.type === 'error') {
-          console.log('SSE stream ending for session:', sessionId, 'type:', data.type);
+          console.log(
+            'SSE stream ending for session:',
+            sessionId,
+            'type:',
+            data.type
+          );
           eventSource.close();
           progressSubject.complete();
         }
       } catch (error) {
-        console.error('Error parsing SSE progress data:', error, 'Raw data:', event.data);
+        console.error(
+          'Error parsing SSE progress data:',
+          error,
+          'Raw data:',
+          event.data
+        );
 
         // Check if it's a large JSON that might be truncated
         if (typeof event.data === 'string' && event.data.length > 10000) {
-          console.warn('Very large SSE message received (', event.data.length, 'chars), might be truncated');
+          console.warn(
+            'Very large SSE message received (',
+            event.data.length,
+            'chars), might be truncated'
+          );
         }
 
         eventSource.close();

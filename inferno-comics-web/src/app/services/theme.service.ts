@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class ThemeService {
   private darkModeSubject = new BehaviorSubject<boolean>(true); // Default to dark mode
@@ -16,7 +16,7 @@ export class ThemeService {
     // Check if user has a saved preference, otherwise default to dark mode
     const savedTheme = localStorage.getItem('comic-app-theme');
     const isDark = savedTheme ? savedTheme === 'dark' : true; // Default to dark
-    
+
     // Set the initial theme
     this.darkModeSubject.next(isDark);
     this.applyTheme(isDark);
@@ -35,7 +35,7 @@ export class ThemeService {
 
   private applyTheme(isDark: boolean): void {
     const root = document.documentElement;
-    
+
     if (isDark) {
       root.classList.add('dark-theme');
       root.classList.remove('light-theme');
@@ -43,7 +43,7 @@ export class ThemeService {
       root.classList.add('light-theme');
       root.classList.remove('dark-theme');
     }
-    
+
     // Force a repaint
     root.style.display = 'none';
     root.offsetHeight;

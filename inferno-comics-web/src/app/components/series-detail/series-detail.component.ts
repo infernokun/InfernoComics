@@ -81,8 +81,8 @@ export class SeriesDetailComponent implements OnInit {
           this.loadComicVineIssues();
         }
       },
-      error: (error) => {
-        console.error('Error loading series:', error);
+      error: (err: Error) => {
+        console.error('Error loading series:', err);
         this.loading = false;
         this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
       },
@@ -92,12 +92,14 @@ export class SeriesDetailComponent implements OnInit {
   loadIssues(seriesId: number): void {
     this.issueService.getIssuesBySeries(seriesId).subscribe({
       next: (res: ApiResponse<Issue[]>) => {
+        if (!res.data) throw new Error('issue getting issues by series id');
+
         this.issues = res.data.map((issue) => new Issue(issue));
         // Re-filter Comic Vine issues after loading collection issues
         this.filterComicVineIssues();
       },
-      error: (error) => {
-        console.error('Error loading comic books:', error);
+      error: (err: Error) => {
+        console.error('Error loading comic books:', err);
       },
     });
   }
@@ -108,13 +110,15 @@ export class SeriesDetailComponent implements OnInit {
     this.loadingComicVine = true;
     this.comicVineService.searchIssues(this.series.id.toString()).subscribe({
       next: (res: ApiResponse<ComicVineSeriesDto[]>) => {
+        if (!res.data) throw new Error('comic vine series issue getting issues by id');
+
         this.comicVineIssues = res.data;
         // Filter out issues that are already in the collection
         this.filterComicVineIssues();
         this.loadingComicVine = false;
       },
-      error: (error) => {
-        console.error('Error loading Comic Vine issues:', error);
+      error: (err: Error) => {
+        console.error('Error loading Comic Vine issues:', err);
         this.loadingComicVine = false;
         this.snackBar.open('Error loading Comic Vine issues', 'Close', {
           duration: 3000,
@@ -267,8 +271,8 @@ export class SeriesDetailComponent implements OnInit {
         this.loadIssues(this.series?.id!);
         this.clearSelection();
       })
-      .catch((error) => {
-        console.error('Error adding issues:', error);
+      .catch((err: Error) => {
+        console.error('Error adding issues:', err);
         this.snackBar.open('Error adding some issues', 'Close', {
           duration: 3000,
         });
@@ -341,8 +345,8 @@ export class SeriesDetailComponent implements OnInit {
           this.snackBar.open('Comic book deleted', 'Close', { duration: 3000 });
           this.loadIssues(this.series?.id!);
         },
-        error: (error) => {
-          console.error('Error deleting comic book:', error);
+        error: (err: Error) => {
+          console.error('Error deleting comic book:', err);
           this.snackBar.open('Error deleting comic book', 'Close', {
             duration: 3000,
           });
@@ -383,8 +387,8 @@ export class SeriesDetailComponent implements OnInit {
           this.snackBar.open('Series deleted', 'Close', { duration: 3000 });
           this.router.navigate(['/series']);
         },
-        error: (error) => {
-          console.error('Error deleting series:', error);
+        error: (err: Error) => {
+          console.error('Error deleting series:', err);
           this.snackBar.open('Error deleting series', 'Close', {
             duration: 3000,
           });
@@ -399,8 +403,8 @@ export class SeriesDetailComponent implements OnInit {
         this.series = updatedSeries;
         this.snackBar.open('New description generated', 'Close', { duration: 3000 });
       },
-      error: (error) => {
-        console.error('Error generating description:', error);
+      error: (err: Error) => {
+        console.error('Error generating description:', err);
         this.snackBar.open('Error generating new description', 'Close', { duration: 3000 });
       }
     });*/
@@ -532,9 +536,9 @@ export class SeriesDetailComponent implements OnInit {
           files
         );
       },
-      error: (error) => {
-        console.error('SSE Error:', error);
-        const errorMessage = this.getErrorMessage(error);
+      error: (err: Error) => {
+        console.error('SSE Error:', err);
+        const errorMessage = this.getErrorMessage(err);
         dialogComponent.setError(errorMessage);
       },
       complete: () => {
@@ -762,10 +766,9 @@ export class SeriesDetailComponent implements OnInit {
           duration: 3000,
         });
       }
-
-    } catch (error) {
+    } catch (err: unknown) {
       this.snackBar.dismiss();
-      console.error('Error in bulk add:', error);
+      console.error('Error in bulk add:', err);
       this.snackBar.open('Error adding comics to collection', 'Close', {
         duration: 3000,
       });
@@ -914,11 +917,11 @@ export class SeriesDetailComponent implements OnInit {
             this.handleSelectedMatchFallback(match, seriesId);
           }
         },
-        error: (error) => {
+        error: (err: Error) => {
           // Dismiss loading indicator
           this.snackBar.dismiss();
 
-          console.error('Error fetching issue details:', error);
+          console.error('Error fetching issue details:', err);
 
           // Show user-friendly error and offer fallback
           this.snackBar.open(
@@ -1213,9 +1216,9 @@ export class SeriesDetailComponent implements OnInit {
           console.error(`${failed} issue deletions failed`);
         }
       },
-      error: (error) => {
+      error: (err: Error) => {
         this.snackBar.dismiss();
-        console.error('Error during bulk delete:', error);
+        console.error('Error during bulk delete:', err);
         this.snackBar.open(
           'Unexpected error during deletion. Please try again.',
           'Close',
@@ -1249,8 +1252,8 @@ export class SeriesDetailComponent implements OnInit {
           duration: 3000,
         });
       },
-      error: (error) => {
-        console.error('Error re-verifying series:', error);
+      error: (err: Error) => {
+        console.error('Error re-verifying series:', err);
         this.snackBar.open('Error re-verifying series', 'Close', {
           duration: 3000,
         });

@@ -68,10 +68,12 @@ export class IssuesListComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (res: ApiResponse<SeriesWithIssues[]>) => {
+          if (!res.data) throw new Error('issue getSeriesWithIssues');
+
           this.seriesWithIssues = res.data;
           this.showSuccessMessage(`Loaded ${this.getTotalIssuesCount()} issues from ${res.data.length} series`);
         },
-        error: (err) => {
+        error: (err: Error) => {
           console.error('Error loading series with issues:', err);
           this.showError('Failed to load series. Please try again.');
         }

@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.exceptions;
 
+import com.infernokun.infernoComics.controllers.BaseController;
 import com.infernokun.infernoComics.models.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -12,47 +13,40 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 @Slf4j
 @ControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends BaseController {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<String>> handleResourceNotFoundException(
             ResourceNotFoundException ex) {
-        ApiResponse<String> response = ApiResponse.<String>builder()
-                .code(HttpStatus.NOT_FOUND.value())
-                .message("ResourceNotFoundException: " + ex.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
     }
 
     @ExceptionHandler(CryptoException.class)
-    public ResponseEntity<ApiResponse<Boolean>> handleTokenException(CryptoException ex) {
-        ApiResponse<Boolean> response = ApiResponse.<Boolean>builder()
-                .code(HttpStatus.BAD_REQUEST.value())
-                .message("CryptoException: " + ex.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ApiResponse<String>> handleTokenException(CryptoException ex) {
+        return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
     }
 
     @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ApiResponse<?>> handleNoHandlerFoundException(NoHandlerFoundException ex) {
-        ApiResponse<?> response = ApiResponse.<String>builder()
-                .code(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .message("NoHandlerFoundException: " + ex.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ApiResponse<String>> handleNoHandlerFoundException(NoHandlerFoundException ex) {
+        return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
+        log.warn("Illegal argument in request to {}: {}", request.getRequestURI(), ex.getMessage());
+
+        if (isSSERequest(request.getHeader("Accept"), request.getContentType(), request.getRequestURI())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body("data: {\"type\":\"error\",\"error\":\"" + escapeJson(ex.getMessage()) + "\"}\n\n");
+        }
+
+        return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse<?>> handleRuntimeException(RuntimeException ex) {
-        ApiResponse<?> response = ApiResponse.<String>builder()
-                .code(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .message("RuntimeException: " + ex.getMessage())
-                .data(null)
-                .build();
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
+        return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
@@ -70,14 +64,7 @@ public class GlobalExceptionHandler {
                     .body("data: {\"type\":\"error\",\"error\":\"" + escapeJson(ex.getMessage()) + "\"}\n\n");
         }
 
-        // For regular API requests, return JSON ApiResponse
-        ApiResponse<?> response = ApiResponse.<String>builder()
-                .code(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .message("Exception: " + ex.getMessage())
-                .data(null)
-                .build();
-
-        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
     }
 
     private boolean isSSERequest(String accept, String contentType, String requestURI) {
@@ -94,25 +81,5 @@ public class GlobalExceptionHandler {
                 .replace("\n", "\\n")
                 .replace("\r", "\\r")
                 .replace("\t", "\\t");
-    }
-
-    // You can also add specific handlers for common exceptions
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException ex, HttpServletRequest request) {
-        log.warn("Illegal argument in request to {}: {}", request.getRequestURI(), ex.getMessage());
-
-        if (isSSERequest(request.getHeader("Accept"), request.getContentType(), request.getRequestURI())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .body("data: {\"type\":\"error\",\"error\":\"" + escapeJson(ex.getMessage()) + "\"}\n\n");
-        }
-
-        ApiResponse<?> response = ApiResponse.<String>builder()
-                .code(HttpStatus.BAD_REQUEST.value())
-                .message("Invalid argument: " + ex.getMessage())
-                .data(null)
-                .build();
-
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
 }

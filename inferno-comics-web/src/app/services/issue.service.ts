@@ -4,87 +4,115 @@ import { Observable } from 'rxjs';
 import { Issue, IssueRequest } from '../models/issue.model';
 import { EnvironmentService } from './environment.service';
 import { ApiResponse } from '../models/api-response.model';
+import { BaseService } from './base.service';
 
 @Injectable({
   providedIn: 'root',
 })
-export class IssueService {
+export class IssueService extends BaseService {
   private apiUrl: string = '';
 
-  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
+  constructor(
+    protected override http: HttpClient,
+    private environmentService: EnvironmentService
+  ) {
+    super(http);
     this.apiUrl = `${this.environmentService.settings?.restUrl}/issues`;
   }
 
   getAllIssues(): Observable<ApiResponse<Issue[]>> {
-    return this.http.get<ApiResponse<Issue[]>>(this.apiUrl);
+    return this.get<ApiResponse<Issue[]>>(this.apiUrl);
   }
 
   getIssueById(id: number): Observable<ApiResponse<Issue>> {
-    return this.http.get<ApiResponse<Issue>>(`${this.apiUrl}/${id}`);
+    return this.get<ApiResponse<Issue>>(`${this.apiUrl}/${id}`);
   }
 
   getIssuesBySeries(seriesId: number): Observable<ApiResponse<Issue[]>> {
-    return this.http.get<ApiResponse<Issue[]>>(`${this.apiUrl}/series/${seriesId}`);
+    return this.get<ApiResponse<Issue[]>>(`${this.apiUrl}/series/${seriesId}`);
   }
 
   createIssue(issue: any, imageData?: File): Observable<ApiResponse<Issue>> {
     const formData = new FormData();
-    
+
     // Create a Blob with application/json content type
-    const issueBlob = new Blob([JSON.stringify(issue)], { type: 'application/json' });
+    const issueBlob = new Blob([JSON.stringify(issue)], {
+      type: 'application/json',
+    });
     formData.append('issue', issueBlob);
-    
+
     if (imageData) {
       formData.append('imageData', imageData, imageData.name);
     }
-    return this.http.post<any>(this.apiUrl, formData);
+    return this.post<any>(this.apiUrl, formData);
   }
 
   createIssuesBulk(issues: any[]): Observable<any[]> {
-    return this.http.post<any[]>(`${this.apiUrl}/bulk`, issues);
+    return this.post<any[]>(`${this.apiUrl}/bulk`, issues);
   }
 
-  updateIssue(id: number, issue: IssueRequest, imageData?: File): Observable<ApiResponse<Issue>> {
+  updateIssue(
+    id: number,
+    issue: IssueRequest,
+    imageData?: File
+  ): Observable<ApiResponse<Issue>> {
     const formData = new FormData();
-    
+
     // Create a Blob with application/json content type
-    const issueBlob = new Blob([JSON.stringify(issue)], { type: 'application/json' });
+    const issueBlob = new Blob([JSON.stringify(issue)], {
+      type: 'application/json',
+    });
     formData.append('issue', issueBlob);
-    
+
     if (imageData) {
       formData.append('imageData', imageData, imageData.name);
     }
-    
-    return this.http.put<ApiResponse<Issue>>(`${this.apiUrl}/${id}`, formData);
+
+    return this.put<ApiResponse<Issue>>(`${this.apiUrl}/${id}`, formData);
   }
 
   deleteIssue(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+    return this.delete<any>(`${this.apiUrl}/${id}`);
   }
 
-  deleteIssuesBulk(issueIds: number[]): Observable<{successful: number, failed: number}> {
-    return this.http.post<{successful: number, failed: number}>(`${this.apiUrl}/bulk-delete`, issueIds);
+  deleteIssuesBulk(
+    issueIds: number[]
+  ): Observable<{ successful: number; failed: number }> {
+    return this.post<{ successful: number; failed: number }>(
+      `${this.apiUrl}/bulk-delete`,
+      issueIds
+    );
   }
 
-  searchIssues(query: string): Observable<any[]> {
-    return this.http.get<any[]>(
+  searchIssues(query: string): Observable<ApiResponse<Issue[]>> {
+    return this.get<ApiResponse<Issue[]>>(
       `${this.apiUrl}/search?query=${encodeURIComponent(query)}`
     );
   }
 
-  getIssueStats(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/stats`);
+  getIssueStats(): Observable<ApiResponse<any>> {
+    return this.get<ApiResponse<any>>(`${this.apiUrl}/stats`);
   }
 
-  getRecentIssues(limit: number = 10): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/recent?limit=${limit}`);
+  getRecentIssues(limit: number = 10): Observable<ApiResponse<Issue[]>> {
+    return this.get<ApiResponse<Issue[]>>(
+      `${this.apiUrl}/recent?limit=${limit}`
+    );
   }
 
-  getKeyIssues(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/key-issues`);
+  getKeyIssues(): Observable<ApiResponse<Issue[]>> {
+    return this.get<ApiResponse<Issue[]>>(`${this.apiUrl}/key-issues`);
   }
 
-  getTotalValue(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/total-value`);
+  getTotalValueCurrent(): Observable<ApiResponse<number>> {
+    return this.get<ApiResponse<number>>(
+      `${this.apiUrl}/total-value?type=current`
+    );
+  }
+
+  getTotalValuePurchase(): Observable<ApiResponse<number>> {
+    return this.get<ApiResponse<number>>(
+      `${this.apiUrl}/total-value?type=purchase`
+    );
   }
 }

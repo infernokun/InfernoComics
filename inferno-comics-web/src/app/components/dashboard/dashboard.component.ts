@@ -108,6 +108,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res: ApiResponse<SeriesWithIssues[]>) => {
+          if (!res.data) throw new Error('issue getting series with issues');
+
           this.totalSeries = res.data.length;
 
           this.allSeries = res.data
@@ -122,7 +124,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
           this.loading = false;
         },
-        error: (error) => {
+        error: (error: Error) => {
           console.error('Error loading series:', error);
           this.loading = false;
         },

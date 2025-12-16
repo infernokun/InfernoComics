@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -39,173 +40,113 @@ public class IssueController extends BaseController {
 
     @GetMapping("/series/{seriesId}")
     public ResponseEntity<ApiResponse<List<Issue>>> getIssuesBySeriesId(@PathVariable Long seriesId) {
-            return createSuccessResponse(issueService.getIssuesBySeriesId(seriesId));
+        return createSuccessResponse(issueService.getIssuesBySeriesId(seriesId));
     }
 
     @GetMapping("/{seriesId}/search-comic-vine")
-    public ResponseEntity<List<ComicVineIssueDto>> searchComicVineIssues(@PathVariable Long seriesId) {
-        try {
-            List<ComicVineIssueDto> issues = issueService.searchComicVineIssues(seriesId);
-            return ResponseEntity.ok(issues);
-        } catch (Exception e) {
-            log.error("Error searching Comic Vine issues for series {}: {}", seriesId, e.getMessage());
-            return ResponseEntity.ok(List.of());
-        }
+    public ResponseEntity<ApiResponse<List<ComicVineIssueDto>>> searchComicVineIssues(@PathVariable Long seriesId) {
+        return createSuccessResponse(issueService.searchComicVineIssues(seriesId));
     }
 
     @GetMapping("/key-issues")
-    public ResponseEntity<List<Issue>> getKeyIssues() {
-        try {
-            List<Issue> keyIssues = issueService.getKeyIssues();
-            return ResponseEntity.ok(keyIssues);
-        } catch (Exception e) {
-            log.error("Error fetching key issues: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Issue>>> getKeyIssues() {
+        return createSuccessResponse(issueService.getKeyIssues());
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Issue>> searchIssues(@RequestParam String query, @RequestParam(defaultValue = "20") int limit) {
-        try {
-            List<Issue> results = issueService.searchIssues(query, limit);
-            return ResponseEntity.ok(results);
-        } catch (Exception e) {
-            log.error("Error searching issues: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Issue>>> searchIssues(@RequestParam String query, @RequestParam(defaultValue = "20") int limit) {
+        return createSuccessResponse(issueService.searchIssues(query, limit));
     }
 
     @GetMapping("/recent")
-    public ResponseEntity<List<Issue>> getRecentIssues(@RequestParam(defaultValue = "10") int limit) {
-        try {
-            List<Issue> recentComics = issueService.getRecentIssues(limit);
-            return ResponseEntity.ok(recentComics);
-        } catch (Exception e) {
-            log.error("Error fetching recent issues: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Issue>>> getRecentIssues(@RequestParam(defaultValue = "10") int limit) {
+        return createSuccessResponse(issueService.getRecentIssues(limit));
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getIssueStats() {
-        try {
-            Map<String, Object> stats = issueService.getIssueStats();
-            return ResponseEntity.ok(stats);
-        } catch (Exception e) {
-            log.error("Error fetching issue statistics: {}", e.getMessage());
-            return ResponseEntity.ok(Map.of("error", "Unable to fetch statistics"));
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getIssueStats() {
+        return createSuccessResponse(issueService.getIssueStats());
+    }
+
+    @GetMapping("/total-value")
+    public ResponseEntity<ApiResponse<BigDecimal>> getIssueTotalValue(@RequestParam String type) {
+        if ("current".equals(type)) {
+            BigDecimal total = issueService.getAllIssues().stream()
+                .map(Issue::getCurrentValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            return createSuccessResponse(total);
+        } else if ("purchase".equals(type)) {
+            BigDecimal total = issueService.getAllIssues().stream()
+                .map(Issue::getPurchasePrice)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            return createSuccessResponse(total);
+        } else {
+            return createErrorResponse("What?");
         }
     }
 
     @GetMapping("/get-comic-vine/{comicVineId}")
     public ResponseEntity<ApiResponse<ComicVineIssueDto>> getComicVineIssueById(@PathVariable Long comicVineId) {
-        return ResponseEntity.ok(ApiResponse.<ComicVineIssueDto>builder().data(issueService.getComicVineIssueById(comicVineId)).build());
+        return createSuccessResponse(issueService.getComicVineIssueById(comicVineId));
     }
 
     @PostMapping
     public ResponseEntity<ApiResponse<Issue>> createIssue(@RequestPart("issue") IssueRequest request,
-                                                          @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
-        try {
-            JsonNode node;
-            if (imageData != null && !imageData.isEmpty()) {
-                node = issueService.placeImageUpload(imageData);
-                request.setUploadedImageUrl(node.get("link").asText());
-                log.error(request.getUploadedImageUrl());
-            }
-
-            return createSuccessResponse(issueService.createIssue(request));
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request for creating issue: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        } catch (Exception e) {
-            log.error("Error creating issue: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
+                                                          @RequestPart(
+                                                                  value = "imageData", required = false
+                                                          )
+                                                          MultipartFile imageData) {
+        JsonNode node;
+        if (imageData != null && !imageData.isEmpty()) {
+            node = issueService.placeImageUpload(imageData);
+            request.setUploadedImageUrl(node.get("link").asText());
         }
+
+        return createSuccessResponse(issueService.createIssue(request));
     }
 
     @PostMapping("/bulk")
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<List<Issue>> createIssuesBulk(@RequestBody @Valid List<IssueRequest> requests) {
-        try {
-            List<Issue> createdIssues = issueService.createIssuesBulk(requests);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdIssues);
-        } catch (Exception e) {
-            log.error("Error creating issues in bulk: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+    public ResponseEntity<ApiResponse<List<Issue>>> createIssuesBulk(@RequestBody @Valid List<IssueRequest> requests) {
+        return createSuccessResponse(issueService.createIssuesBulk(requests));
     }
 
     @PostMapping("/bulk-delete")
-    public ResponseEntity<Issue.BulkDeleteResult> deleteIssuesBulk(@RequestBody List<Long> issueIds) {
-        try {
-            Issue.BulkDeleteResult result = issueService.deleteIssuesBulk(issueIds);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            log.error("Error in bulk delete: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Issue.BulkDeleteResult>> deleteIssuesBulk(@RequestBody List<Long> issueIds) {
+        return createSuccessResponse(issueService.deleteIssuesBulk(issueIds));
     }
 
     @PostMapping("/batch/from-comic-vine")
-    public ResponseEntity<List<Issue>> createIssuesFromComicVine(@RequestParam Long seriesId,
-                                                                 @RequestBody List<String> comicVineIssueIds) {
-        try {
-            List<Issue> comicBooks = issueService.createIssuesFromComicVine(seriesId, comicVineIssueIds);
-            return ResponseEntity.ok(comicBooks);
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request for batch creating issues: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        } catch (Exception e) {
-            log.error("Error batch creating issues from Comic Vine: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<List<Issue>>> createIssuesFromComicVine(@RequestParam Long seriesId,
+                                                                              @RequestBody List<String> comicVineIssueIds) {
+        return createSuccessResponse(issueService.createIssuesFromComicVine(seriesId, comicVineIssueIds));
     }
 
     @PutMapping(value = "/{id}")
     public ResponseEntity<ApiResponse<Issue>> updateIssue(@PathVariable Long id, @RequestPart("issue") IssueRequest request,
-                                                          @RequestPart(value = "imageData", required = false) MultipartFile imageData) {
-
-        try {
-            JsonNode node;
-            if (imageData != null && !imageData.isEmpty()) {
-                node = issueService.placeImageUpload(imageData);
-                request.setUploadedImageUrl(node.get("link").asText());
-            } else {
-                log.info("No image supplied for issue {}", id);
-            }
-
-            return createSuccessResponse(issueService.updateIssue(id, request));
-        } catch (IllegalArgumentException e) {
-            log.warn("Invalid request for updating issue {}: {}", id, e.getMessage());
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error("Error updating issue {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
+                                                          @RequestPart(
+                                                                  value = "imageData", required = false
+                                                          )
+                                                          MultipartFile imageData) {
+        if (imageData != null && !imageData.isEmpty()) {
+            JsonNode node = issueService.placeImageUpload(imageData);
+            request.setUploadedImageUrl(node.get("link").asText());
+        } else {
+            log.info("No image supplied for issue {}", id);
         }
+
+        return createSuccessResponse(issueService.updateIssue(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteIssue(@PathVariable Long id) {
-        try {
-            issueService.deleteIssue(id);
-            return ResponseEntity.noContent().build();
-        } catch (IllegalArgumentException e) {
-            log.warn("Issue {} not found for deletion", id);
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error("Error deleting issue {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Void>> deleteIssue(@PathVariable Long id) {
+        issueService.deleteIssue(id);
+        return createSuccessResponse();
     }
 
     @DeleteMapping("/cache")
-    public ResponseEntity<Void> clearIssueCaches() {
-        try {
-            issueService.clearAllIssueCaches();
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.error("Error clearing issue caches: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+    public ResponseEntity<ApiResponse<Object>> clearIssueCaches() {
+        issueService.clearAllIssueCaches();
+        return createSuccessResponse();
     }
 }

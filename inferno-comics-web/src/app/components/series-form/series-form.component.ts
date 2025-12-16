@@ -104,6 +104,8 @@ export class SeriesFormComponent implements OnInit {
       this.loading = true;
       this.seriesService.getSeriesById(this.seriesId).subscribe({
         next: (res: ApiResponse<Series>) => {
+          if (!res.data) throw new Error('issue getting series by id');
+
           this.seriesForm.patchValue(res.data);
           this.customSearchTerm = res.data.name || '';
           
@@ -113,8 +115,8 @@ export class SeriesFormComponent implements OnInit {
           
           this.loading = false;
         },
-        error: (error) => {
-          console.error('Error loading series:', error);
+        error: (err: Error) => {
+          console.error('Error loading series:', err);
           this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
           this.loading = false;
         }
@@ -140,13 +142,15 @@ export class SeriesFormComponent implements OnInit {
         .map(result => (result as PromiseFulfilledResult<ApiResponse<ComicVineSeriesDto>>).value)
         .filter(data => data !== null)
         .map(apiResponse => {
+          if (!apiResponse.data) throw new Error('issue getting comic vine series by id');
+
           return apiResponse.data;
         });
       
       this.updateFormFromCurrentData();
       this.loading = false;
-    }).catch(error => {
-      console.error('Error loading existing Comic Vine data:', error);
+    }).catch((err: Error) => {
+      console.error('Error loading existing Comic Vine data:', err);
       this.loading = false;
     });
   }
@@ -219,8 +223,8 @@ export class SeriesFormComponent implements OnInit {
           }
           this.searchingComicVine = false;
         },
-        error: (error) => {
-          console.error('Error fetching Comic Vine series by ID:', error);
+        error: (err: Error) => {
+          console.error('Error fetching Comic Vine series by ID:', err);
           this.snackBar.open('Error fetching series by ID', 'Close', { duration: 3000 });
           this.comicVineResults = [];
           this.searchingComicVine = false;
@@ -230,6 +234,8 @@ export class SeriesFormComponent implements OnInit {
       // Original text search logic
       this.seriesService.searchComicVineSeries(searchTerm).subscribe({
         next: (res: ApiResponse<ComicVineSeriesDto[]>) => {
+          if (!res.data) throw new Error('no data from series comic vine search');
+
           res.data = res.data.sort((a, b) => {
             if (a.startYear && b.startYear) {
               return b.startYear - a.startYear;
@@ -247,8 +253,8 @@ export class SeriesFormComponent implements OnInit {
           this.comicVineResults = res.data;
           this.searchingComicVine = false;
         },
-        error: (error) => {
-          console.error('Error searching Comic Vine:', error);
+        error: (err: Error) => {
+          console.error('Error searching Comic Vine:', err);
           this.searchingComicVine = false;
         }
       });
@@ -563,12 +569,14 @@ export class SeriesFormComponent implements OnInit {
 
     operation.subscribe({
       next: (res: ApiResponse<Series>) => {
+        if (!res.data) throw new Error('Create/update operation provided no data');
+
         const message = this.isEditMode ? 'Series updated successfully' : 'Series created successfully';
         this.snackBar.open(message, 'Close', { duration: 3000 });
         this.router.navigate(['/series', res.data.id]);
       },
-      error: (error) => {
-        console.error('Error saving series:', error);
+      error: (err: Error) => {
+        console.error('Error saving series:', err);
         this.snackBar.open('Error saving series', 'Close', { duration: 3000 });
         this.loading = false;
       }

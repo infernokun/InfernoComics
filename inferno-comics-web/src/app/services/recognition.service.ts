@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { EnvironmentService } from './environment.service';
 import { ApiResponse } from '../models/api-response.model';
+import { BaseService } from './base.service';
 
 export interface RecognitionConfig {
   performance_level: string;
@@ -28,25 +29,29 @@ export interface Options {
 @Injectable({
   providedIn: 'root',
 })
-export class RecognitionService {
+export class RecognitionService extends BaseService {
   private apiUrl: string = '';
 
-  constructor(private http: HttpClient, private environmentService: EnvironmentService) {
+  constructor(
+    protected override http: HttpClient,
+    private environmentService: EnvironmentService
+  ) {
+    super(http);
     this.apiUrl = `${this.environmentService.settings?.restUrl}/recog`;
   }
 
   getRecognitionConfig(): Observable<ApiResponse<RecognitionConfig>> {
-    return this.http.get<ApiResponse<RecognitionConfig>>(`${this.apiUrl}/config`);
+    return this.get<ApiResponse<RecognitionConfig>>(`${this.apiUrl}/config`);
   }
 
-  saveRecognitionConfig(cfg: RecognitionConfig): Observable<ApiResponse<boolean>> {
-    return this.http.post<ApiResponse<boolean>>(`${this.apiUrl}/config`, cfg);
+  saveRecognitionConfig(
+    cfg: RecognitionConfig
+  ): Observable<ApiResponse<boolean>> {
+    return this.post<ApiResponse<boolean>>(`${this.apiUrl}/config`, cfg);
   }
 
   getSessionJSON(sessionId: string): Observable<ApiResponse<any>> {
-    return this.http.get<ApiResponse<any>>(
-      `${this.apiUrl}/json/${sessionId}`
-    );
+    return this.get<ApiResponse<any>>(`${this.apiUrl}/json/${sessionId}`);
   }
 
   getCurrentImageUrl(data: any): string {

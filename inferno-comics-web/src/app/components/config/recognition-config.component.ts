@@ -77,12 +77,14 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
       .getRecognitionConfig()
       .subscribe({
         next: (res: ApiResponse<RecognitionConfig>) => {
+          if (!res.data) throw new Error('issue getRecognitionConfig');
+
           this.config = res.data;
           this.buildForm(this.config);
           this.originalFormValue = JSON.parse(JSON.stringify(this.configForm.value));
           this.trackFormChanges();
         },
-        error: (err) => {
+        error: (err: Error) => {
           console.error('Failed to load configuration:', err);
           this.snackBar.open('Failed to load configuration.', 'Close', {
             duration: 3000,
@@ -156,7 +158,7 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
           this.originalFormValue = JSON.parse(JSON.stringify(this.configForm.value));
           this.hasUnsavedChanges = false;
         },
-        error: (err) => {
+        error: (err: Error) => {
           console.error('Save error:', err);
           this.snackBar.open('✗ Failed to save configuration', 'Close', {
             duration: 3000,

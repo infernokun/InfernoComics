@@ -124,6 +124,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     this.isLoading = true;
     this.progressDataService.getRelProgressData().subscribe({
       next: (res: ApiResponse<ProgressData[]>) => {
+        if (!res.data) throw new Error('issue getting relevant progress data');
+
         const processedData: ProgressData[] = res.data.map(item => new ProgressData(item));
         const status: ProcessingStatus = this.convertToProcessingStatus(processedData);
         this.processingStatus.set(status);
@@ -139,6 +141,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   private fetchStatusSilently() {
     this.progressDataService.getRelProgressData().subscribe({
       next: (res: ApiResponse<ProgressData[]>) => {
+        if (!res.data) throw new Error('issue getting relevant progress data');
+
         const processedData = res.data.map(item => new ProgressData(item));
         const status = this.convertToProcessingStatus(processedData);
         this.processingStatus.set(status);
@@ -374,6 +378,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
       finalize(() => this.pendingDismissIds.delete(itemId))
     ).subscribe({
       next: (res: ApiResponse<ProgressData[]>) => {
+        if (!res.data) throw new Error('issue dismissProgressData');
+
         // 4️⃣  Push the new status
         this.processingStatus.set(this.convertToProcessingStatus(res.data.map(item => new ProgressData(item))));
 
@@ -384,7 +390,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
           { duration: 3000, panelClass: ['snackbar-success'] }
         );
       },
-      error: err => {
+      error: (err: Error) => {
         console.error('Error dismissing progress:', err);
         this.snackBar.open(
           'Failed to dismiss progress',

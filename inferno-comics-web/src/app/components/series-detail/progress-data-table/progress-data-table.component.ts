@@ -271,6 +271,8 @@ export class ProgressDataTable implements OnInit, OnDestroy {
   private loadProgressData(): void {
     this.progressDataService.getProgressData(this.id).subscribe({
       next: (res: ApiResponse<ProgressData[]>) => {
+        if (!res.data) throw new Error('issue getting progress data by id');
+
         this.progressData.set(res.data.map(data => new ProgressData(data)));
         if (this.gridApi) {
           console.log('Updating grid with progress data:', this.progressData());
@@ -282,8 +284,8 @@ export class ProgressDataTable implements OnInit, OnDestroy {
           }, 100);
         }
       },
-      error: (error) => {
-        console.error('Failed to load progress data:', error);
+      error: (err: Error) => {
+        console.error('Failed to load progress data:', err);
       },
     });
   }
@@ -420,8 +422,8 @@ export class ProgressDataTable implements OnInit, OnDestroy {
         console.log('Transformed session data:', transformedData);
         this.resultEmitter.emit(transformedData);
       },
-      error: (error) => {
-        console.error('Failed to get session JSON:', error);
+      error: (err: Error) => {
+        console.error('Failed to get session JSON:', err);
       },
     });
   }
