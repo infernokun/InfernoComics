@@ -156,7 +156,6 @@
       mat-panel-title {
         font-size: 25px;
         color: var(--text-primary);
-        height: 2rem;
       }
 
       mat-panel-description {
@@ -164,15 +163,11 @@
         color: var(--text-secondary);
         display: flex;
         align-items: center;
-        height: 2rem;
+        height: 3rem;
 
         .publisher {
           margin-left: 6px;
           font-size: 25px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          flex-shrink: 0; // Prevents the publisher text from shrinking
         }
       }
     }
