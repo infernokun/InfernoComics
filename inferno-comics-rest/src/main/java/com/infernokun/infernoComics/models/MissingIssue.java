@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -35,7 +37,7 @@ public class MissingIssue {
     private String expectedIssueName;
 
     @Column(name = "expected_cover_date")
-    private String expectedCoverDate;
+    private LocalDate expectedCoverDate;
 
     @Column(name = "is_resolved")
     private boolean resolved = false;

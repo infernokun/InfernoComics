@@ -19,7 +19,7 @@ export class MissingIssue {
             this.issueNumber = data.issueNumber;
             this.imageUrl = data.imageUrl;
             this.expectedIssueName = data.expectedIssueName;
-            this.expectedCoverDate = data.expectedCoverDate;
+            this.expectedCoverDate = data.expectedCoverDate ? DateUtils.parseDateArray(data.expectedCoverDate) : undefined;
             this.createdAt = data.createdAt ? DateUtils.parseDateTimeArray(data.createdAt) : undefined;
             this.lastChecked = data.lastChecked ? DateUtils.parseDateTimeArray(data.lastChecked) : undefined;
         }

@@ -7,10 +7,12 @@ import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Issue;
+import com.infernokun.infernoComics.models.MissingIssue;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.dto.IssueRequest;
 import com.infernokun.infernoComics.models.gcd.GCDIssue;
 import com.infernokun.infernoComics.repositories.IssueRepository;
+import com.infernokun.infernoComics.repositories.MissingIssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
@@ -42,14 +44,18 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Transactional
 @RequiredArgsConstructor
 public class IssueService {
+    private final InfernoComicsConfig infernoComicsConfig;
+
     private final IssueRepository issueRepository;
     private final SeriesRepository seriesRepository;
+    private final MissingIssueRepository missingIssueRepository;
+
     private final ComicVineService comicVineService;
-    private final InfernoComicsConfig infernoComicsConfig;
-    private final DescriptionGeneratorService descriptionGeneratorService;
     private final GCDatabaseService gcDatabaseService;
-    private final CacheManager cacheManager;
     private final RecognitionService recognitionService;
+    private final DescriptionGeneratorService descriptionGeneratorService;
+
+    private final CacheManager cacheManager;
     private final InfernoComicsWebClient webClient;
 
     public List<Issue> getAllIssues() {
@@ -452,6 +458,10 @@ public class IssueService {
         mapRequestToIssue(request, issue);
         issue.setSeries(series);
 
+        if (Objects.equals(issue.getTitle(), "")) {
+            issue.setTitle(series.getName() + " #" + issue.getIssueNumber());
+        }
+
         Optional<Issue> existingIssueOpt = issueRepository.findByUploadedImageUrl(issue.getUploadedImageUrl());
 
         if (existingIssueOpt.isPresent()) {
@@ -499,6 +509,15 @@ public class IssueService {
         // Process Comic Vine ID to find GCD mapping
         List<String> gcdIds = processComicVineGcdMapping(request, issue, series);
         issue.setGcdIds(gcdIds);
+
+        Optional<MissingIssue> missingIssueOptional = missingIssueRepository.
+                findMissingIssueBySeriesIdAndComicVineId(series.getId(), issue.getComicVineId());
+
+        if (missingIssueOptional.isPresent()) {
+            MissingIssue missingIssue = missingIssueOptional.get();
+            missingIssue.setResolved(true);
+            missingIssueRepository.save(missingIssue);
+        }
 
         return issueRepository.save(issue);
     }

@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.BodyInserters;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -945,8 +946,10 @@ public class SeriesService {
             } else {
                 // 4b. create a new object
                 missingIssue = new MissingIssue(series, missingComicVineIssueDto.getIssueNumber());
-                missingIssue.setExpectedIssueName(missingComicVineIssueDto.getName());
-                missingIssue.setExpectedCoverDate(missingComicVineIssueDto.getCoverDate());
+                missingIssue.setExpectedIssueName(
+                        !Objects.equals(missingComicVineIssueDto.getName(), "") ? missingComicVineIssueDto.getName()
+                                : series.getName() + " #" + missingComicVineIssueDto.getIssueNumber());
+                missingIssue.setExpectedCoverDate(LocalDate.parse(missingComicVineIssueDto.getCoverDate()));
                 missingIssue.setLastChecked(LocalDateTime.now());
                 missingIssue.setComicVineId(missingComicVineIssueDto.getId());
                 missingIssue.setImageUrl(missingComicVineIssueDto.getImageUrl());

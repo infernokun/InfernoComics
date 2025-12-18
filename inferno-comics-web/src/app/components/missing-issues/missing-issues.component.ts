@@ -7,6 +7,7 @@ import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
 import { Series } from '../../models/series.model';
 import { MissingIssue } from '../../models/missing-issue.model';
+import { DateUtils } from '../../utils/date-utils';
 
 @Component({
   selector: 'app-missing-issues',
@@ -16,6 +17,8 @@ import { MissingIssue } from '../../models/missing-issue.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MissingIssuesComponent implements OnInit {
+  DateUtils = DateUtils;
+
   // Signals
   readonly series = signal<Series[]>([]);
   readonly issues = signal<MissingIssue[]>([]);
@@ -81,7 +84,7 @@ export class MissingIssuesComponent implements OnInit {
             if (issue.seriesId && this.series().length > 0) {
               issueCopy.series = this.series().find(s => s.id === issue.seriesId) || undefined;
             }
-            return issueCopy;
+            return new MissingIssue(issueCopy);
           });
           
           this.issues.set(issues);

@@ -3,6 +3,7 @@ package com.infernokun.infernoComics.services;
 import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.repositories.IssueRepository;
+import com.infernokun.infernoComics.repositories.MissingIssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
@@ -61,6 +62,9 @@ class SeriesServiceTest {
     private ProcessedFileRepository processedFileRepository;
 
     @Mock
+    private MissingIssueRepository missingIssueRepository;
+
+    @Mock
     private ModelMapper modelMapper;
 
     @BeforeEach
@@ -74,6 +78,7 @@ class SeriesServiceTest {
                 descriptionGeneratorService,
                 issueRepository,
                 seriesRepository,
+                missingIssueRepository,
                 processedFileRepository,
                 modelMapper,
                 cacheManager
