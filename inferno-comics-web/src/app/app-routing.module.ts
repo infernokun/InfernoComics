@@ -7,12 +7,14 @@ import { SeriesFormComponent } from './components/series-form/series-form.compon
 import { SeriesAdminComponent } from './components/series-admin/series-admin.component';
 import { IssuesListComponent } from './components/issues-list/issues-list.component';
 import { RecognitionConfigComponent } from './components/config/recognition-config.component';
+import { MissingIssuesComponent } from './components/missing-issues/missing-issues.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent },
   { path: 'config', component: RecognitionConfigComponent },
   { path: 'series', component: SeriesListComponent },
+  { path: 'missing', component: MissingIssuesComponent },
   { path: 'issues', component: IssuesListComponent },
   { path: 'series/new', component: SeriesFormComponent },
   { path: 'series/:id', component: SeriesDetailComponent },

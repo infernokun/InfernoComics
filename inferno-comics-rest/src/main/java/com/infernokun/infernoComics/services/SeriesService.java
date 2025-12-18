@@ -12,6 +12,7 @@ import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.repositories.IssueRepository;
+import com.infernokun.infernoComics.repositories.MissingIssueRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
@@ -54,6 +55,7 @@ public class SeriesService {
 
     private final IssueRepository issueRepository;
     private final SeriesRepository seriesRepository;
+    private final MissingIssueRepository missingIssueRepository;
     private final ProcessedFileRepository processedFileRepository;
 
     private final ModelMapper modelMapper;
@@ -896,5 +898,67 @@ public class SeriesService {
         }
 
         return CompletableFuture.completedFuture(null);
+    }
+
+    public List<MissingIssue> getMissingIssues() {
+        List<MissingIssue> missingIssues = new ArrayList<>();
+
+        getAllSeries().forEach(series -> {
+            // Get all issues owned for this series
+            List<Issue> ownedIssues = issueRepository.findBySeriesId(series.getId());
+            Set<String> ownedComicVineIds = ownedIssues.stream()
+                    .map(Issue::getComicVineId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            // Get all issues that should exist for this series from ComicVine
+            List<ComicVineService.ComicVineIssueDto> allComicVineIssues = searchComicVineIssues(series.getId());
+
+            // Find missing issues
+            allComicVineIssues.forEach(comicVineIssue -> {
+                if (!ownedComicVineIds.contains(comicVineIssue.getId())) {
+                    // Check if this missing issue already exists in the database
+                    MissingIssue existingMissing = missingIssueRepository
+                            .findBySeriesIdAndIssueNumber(series.getId(), comicVineIssue.getIssueNumber())
+                            .orElse(null);
+
+                    if (existingMissing == null) {
+                        // Create new missing issue record
+                        MissingIssue missingIssue = new MissingIssue(series, comicVineIssue.getIssueNumber());
+                        missingIssue.setExpectedIssueName(comicVineIssue.getName());
+                        missingIssue.setExpectedCoverDate(comicVineIssue.getCoverDate());
+                        missingIssue.setLastChecked(LocalDateTime.now());
+                        missingIssue.setComicVineId(comicVineIssue.getId());
+                        missingIssues.add(missingIssue);
+                    } else if (!existingMissing.isResolved()) {
+                        // Update existing unresolved missing issue
+                        existingMissing.setLastChecked(LocalDateTime.now());
+                        missingIssues.add(existingMissing);
+                    }
+                }
+            });
+
+            // Check existing missing issues to see if they've been resolved
+            List<MissingIssue> existingMissingForSeries = missingIssueRepository
+                    .findBySeriesIdAndIsResolvedFalse(series.getId());
+
+            existingMissingForSeries.forEach(missing -> {
+                // Check if this issue was added
+                ownedIssues.stream()
+                        .filter(issue -> issue.getIssueNumber().equals(missing.getIssueNumber()))
+                        .findFirst()
+                        .ifPresent(foundIssue -> {
+                            missing.markAsResolved(foundIssue);
+                            missingIssueRepository.save(missing);
+                        });
+            });
+        });
+
+        // Save all new/updated missing issues
+        if (!missingIssues.isEmpty()) {
+            missingIssueRepository.saveAll(missingIssues);
+        }
+
+        return missingIssueRepository.findByIsResolvedFalse();
     }
 }

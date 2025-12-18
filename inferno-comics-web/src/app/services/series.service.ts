@@ -8,6 +8,7 @@ import { ProcessingResult } from '../models/processing-result.model';
 import { Series, SeriesWithIssues } from '../models/series.model';
 import { EnvironmentService } from './environment.service';
 import { BaseService } from './base.service';
+import { MissingIssue } from '../components/missing-issues/missing-issues.component';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';
@@ -126,6 +127,18 @@ export class SeriesService extends BaseService {
       `${this.apiUrl}/replay/${sessionId}`,
       {}
     );
+  }
+
+  getMissingIssues(): Observable<ApiResponse<MissingIssue[]>> {
+    return this.get<ApiResponse<MissingIssue[]>>(`${this.apiUrl}/missing-issues`);
+  }
+
+  removeMissingIssue(issueId: number): Observable<ApiResponse<void>> {
+    return this.delete<ApiResponse<void>>(`${this.apiUrl}/missing-issues/${issueId}`);
+  }
+
+  refreshMissingIssues(): Observable<ApiResponse<MissingIssue[]>> {
+    return this.post<ApiResponse<MissingIssue[]>>(`${this.apiUrl}/missing-issues/refresh`, {});
   }
 
   addComicsByImagesWithSSE(
