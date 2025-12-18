@@ -57,6 +57,9 @@ public class MissingIssue {
     @Column(name = "last_checked")
     private LocalDateTime lastChecked;
 
+    @Column(name = "dismissed")
+    private boolean dismissed = false;
+
     public MissingIssue(Series series, String issueNumber) {
         this.series = series;
         this.issueNumber = issueNumber;

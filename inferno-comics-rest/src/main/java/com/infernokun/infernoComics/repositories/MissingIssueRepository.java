@@ -10,7 +10,10 @@ import java.util.Optional;
 
 @Repository
 public interface MissingIssueRepository extends JpaRepository<MissingIssue, Long> {
-    
+
+    @Query("SELECT m FROM MissingIssue m WHERE m.dismissed = false")
+    List<MissingIssue> findAllNotDismissed();
+
     @Query("SELECT m FROM MissingIssue m WHERE m.resolved = false")
     List<MissingIssue> findUnresolvedMissingIssues();
 
