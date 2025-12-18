@@ -3,7 +3,7 @@
     <mat-icon>checklist</mat-icon>
     <span>Missing Issues</span>
     <span class="spacer"></span>
-    <button mat-icon-button (click)="onReload()" [disabled]="loading">
+    <button mat-icon-button (click)="onReload()" [disabled]="loading()">
       <mat-icon>refresh</mat-icon>
     </button>
   </mat-toolbar>
@@ -11,87 +11,79 @@
   <div class="controls-bar">
     <mat-form-field appearance="outline" class="search-field">
       <mat-label>Search</mat-label>
-      <input
-        matInput
-        [(ngModel)]="filter"
-        (ngModelChange)="onFilterChange()"
-        placeholder="Search by series, issue, or notes..."
-      />
+      <input matInput [(ngModel)]="filter" placeholder="Search by series, issue, or notes..." />
       <mat-icon matPrefix>search</mat-icon>
-      <button
-        mat-icon-button
-        matSuffix
-        *ngIf="filter"
-        (click)="filter = ''; onFilterChange()"
-      >
+      @if (filter()) {
+      <button mat-icon-button matSuffix (click)="clearFilter()">
         <mat-icon>clear</mat-icon>
       </button>
+      }
     </mat-form-field>
 
-    <mat-slide-toggle [(ngModel)]="groupBySeries" color="primary">
-      Group by Series
-    </mat-slide-toggle>
-
     <div class="issue-count">
-      <mat-chip>{{ filteredIssues.length }} Missing</mat-chip>
+      <mat-chip>{{ filteredIssues().length }} Missing</mat-chip>
     </div>
   </div>
 
-  <div class="content" *ngIf="!loading">
+  @if (!loading()) {
+  <div class="content">
     <!-- Empty State -->
-    <div class="empty-state" *ngIf="filteredIssues.length === 0">
+    @if (filteredIssues().length === 0) {
+    <div class="empty-state">
       <mat-icon>check_circle</mat-icon>
       <h2>No Missing Issues</h2>
-      <p *ngIf="filter">Try adjusting your search filter</p>
-      <p *ngIf="!filter && issues.length === 0">
-        All your series are complete!
-      </p>
+      @if (filter()) { 
+        <p class="empty-state-text">Try adjusting your search filter</p> 
+      }
+      @if (!filter()) { 
+        <p class="empty-state-text">All your series are complete!</p> 
+      }
     </div>
+    }
 
     <!-- Grouped View -->
-    <div class="grouped-view" *ngIf="groupBySeries && filteredIssues.length > 0">
+    @if (filteredIssues().length > 0) {
+    <div class="grouped-view">
       <mat-accordion multi>
-        <mat-expansion-panel *ngFor="let group of getGroupedIssues() | keyvalue; trackBy: trackBySeriesName">
+        <mat-expansion-panel *ngFor="let group of getGroupedIssues() | keyvalue; trackBy: trackBySeriesName"
+          [expanded]="true">
           <mat-expansion-panel-header>
             <mat-panel-title>
               <strong>{{ group.key }}</strong>
             </mat-panel-title>
             <mat-panel-description>
               {{ group.value.length }} missing issue{{ group.value.length !== 1 ? 's' : '' }}
-              <span class="publisher" *ngIf="group.value[0].series.publisher">
-                • {{ group.value[0].series.publisher }}
+              @if (group.value[0].series?.publisher) {
+              <span class="publisher">
+                • {{ group.value[0].series?.publisher }}
               </span>
+              }
             </mat-panel-description>
           </mat-expansion-panel-header>
 
-          <div class="issues-list">
-            <mat-card *ngFor="let issue of group.value; trackBy: trackById" class="issue-card">
+          <div class="issues-grid">
+            <mat-card *ngFor="let issue of group.value; trackBy: trackById" class="issue-card compact">
               <mat-card-content>
-                <div class="issue-header">
+                <div class="issue-header compact">
                   <div class="issue-info">
                     <h3>Issue #{{ issue.issueNumber }}</h3>
-                    <p class="issue-name" *ngIf="issue.expectedIssueName">
+                    <p class="issue-name">
                       {{ issue.expectedIssueName }}
                     </p>
-                    <p class="cover-date" *ngIf="issue.expectedCoverDate">
+                    <p class="cover-date">
                       <mat-icon inline>calendar_today</mat-icon>
                       {{ issue.expectedCoverDate }}
                     </p>
                   </div>
+                  <div class="image-container">
+                    <img src="{{issue.imageUrl}}" alt="">
+                  </div>
                   <div class="actions">
-                    <button
-                      mat-icon-button
-                      color="warn"
-                      (click)="removeMissingIssue(issue.id)"
-                      matTooltip="Remove from tracking"
-                    >
+                    <button mat-icon-button color="warn" (click)="removeMissingIssue(issue.id!)"
+                      matTooltip="Remove from tracking">
                       <mat-icon>delete</mat-icon>
                     </button>
                   </div>
-                </div>
-                <div class="notes" *ngIf="issue.notes">
-                  <mat-icon inline>note</mat-icon>
-                  {{ issue.notes }}
                 </div>
               </mat-card-content>
             </mat-card>
@@ -99,50 +91,15 @@
         </mat-expansion-panel>
       </mat-accordion>
     </div>
-
-    <!-- List View -->
-    <div class="list-view" *ngIf="!groupBySeries && filteredIssues.length > 0">
-      <mat-card *ngFor="let issue of filteredIssues; trackBy: trackById" class="issue-card">
-        <mat-card-content>
-          <div class="issue-header">
-            <div class="issue-info">
-              <h3>
-                {{ issue.series.name }} ({{ issue.series.startYear }}) #{{ issue.issueNumber }}
-              </h3>
-              <p class="publisher" *ngIf="issue.series.publisher">
-                {{ issue.series.publisher }}
-              </p>
-              <p class="issue-name" *ngIf="issue.expectedIssueName">
-                {{ issue.expectedIssueName }}
-              </p>
-              <p class="cover-date" *ngIf="issue.expectedCoverDate">
-                <mat-icon inline>calendar_today</mat-icon>
-                {{ issue.expectedCoverDate }}
-              </p>
-            </div>
-            <div class="actions">
-              <button
-                mat-icon-button
-                color="warn"
-                (click)="removeMissingIssue(issue.id)"
-                matTooltip="Remove from tracking"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-          </div>
-          <div class="notes" *ngIf="issue.notes">
-            <mat-icon inline>note</mat-icon>
-            {{ issue.notes }}
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
+    }
   </div>
+  }
 
   <!-- Loading State -->
-  <div class="loading-state" *ngIf="loading">
-    <mat-spinner diameter="50"></mat-spinner>
+  @if (loading()) {
+  <div class="loading-state">
+    <mat-spinner diameter="40"></mat-spinner>
     <p>Loading missing issues...</p>
   </div>
+  }
 </div>

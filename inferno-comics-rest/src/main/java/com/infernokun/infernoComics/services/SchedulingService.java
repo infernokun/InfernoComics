@@ -16,15 +16,33 @@ public class SchedulingService {
     private final SeriesService seriesService;
     private final NextcloudSyncService nextcloudSyncService;
 
+    /**
+     * Runs daily at 2:00 AM (0 0 2 * * *)
+     * Processes all series for synchronization with Nextcloud
+     */
     @Scheduled(cron = "0 0 2 * * *")
     private void runSeriesProcessingScheduler() {
         List<Series> allSeries = seriesService.getAllSeries();
         allSeries.forEach(nextcloudSyncService::processSeries);
     }
 
+    /**
+     * Runs every Wednesday at 12:00 PM (0 0 12 ? * WED)
+     * Re-verifies metadata for all series
+     */
     @Scheduled(cron = "0 0 12 ? * WED")
     private void runReverificationScheduler() {
         List<Series> allSeries = seriesService.getAllSeries();
         allSeries.forEach(s -> seriesService.reverifyMetadata(s.getId()));
+    }
+
+    /**
+     * Runs daily at 6:00 AM (0 0 6 * * *)
+     * Automates which issues are missing
+     */
+    @Scheduled(cron = "0 0 6 * * *")
+    public void runMissingIssueScheduler() {
+        List<Series> allSeries = seriesService.getAllSeries();
+        allSeries.forEach(seriesService::calculateMissingIssues);
     }
 }

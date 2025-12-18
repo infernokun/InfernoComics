@@ -43,6 +43,7 @@ public class SeriesController extends BaseController {
     private final NextcloudSyncService syncService;
     private final RecognitionService recognitionService;
     private final ProcessedFileRepository processedFileRepository;
+    private final SchedulingService schedulingService;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Series>>> getAllSeries() {
@@ -334,6 +335,12 @@ public class SeriesController extends BaseController {
         recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
 
         return createSuccessResponse(ProcessingResult.builder().sessionId(sessionId).build(), "Successfully initiated replay for session: " + sessionId);
+    }
+
+    @PostMapping("/missing-issues/check")
+    public ResponseEntity<ApiResponse<Void>> checkMissingIssues() {
+        schedulingService.runMissingIssueScheduler();
+        return createSuccessResponse();
     }
 
     @PutMapping("/{id}")

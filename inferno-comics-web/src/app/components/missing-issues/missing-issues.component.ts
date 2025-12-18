@@ -1,119 +1,133 @@
-import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
 import { SeriesService } from '../../services/series.service';
 import { finalize } from 'rxjs/operators';
 import { ApiResponse } from '../../models/api-response.model';
 import { CommonModule, KeyValue } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
-
-export interface MissingIssue {
-  id: number;
-  series: {
-    id: number;
-    name: string;
-    publisher: string;
-    startYear: number;
-  };
-  issueNumber: string;
-  expectedIssueName?: string;
-  expectedCoverDate?: string;
-  priority: number;
-  notes?: string;
-  createdAt: string;
-  lastChecked: string;
-}
+import { Series } from '../../models/series.model';
+import { MissingIssue } from '../../models/missing-issue.model';
 
 @Component({
   selector: 'app-missing-issues',
   templateUrl: './missing-issues.component.html',
   styleUrls: ['./missing-issues.component.scss'],
-  imports: [CommonModule, MaterialModule, FormsModule]
+  imports: [CommonModule, MaterialModule, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MissingIssuesComponent implements OnInit {
-  issues: MissingIssue[] = [];
-  filteredIssues: MissingIssue[] = [];
-  loading = false;
-  filter = '';
-  groupBySeries = true;
+  // Signals
+  readonly series = signal<Series[]>([]);
+  readonly issues = signal<MissingIssue[]>([]);
+  readonly loading = signal(true);
+  readonly filter = signal('');
   
-  displayedColumns: string[] = ['series', 'issueNumber', 'expectedName', 'coverDate', 'actions'];
-
-  constructor(
-    private seriesService: SeriesService,
-    private cdr: ChangeDetectorRef
-  ) {}
-
-  ngOnInit(): void {
-    this.loadMissingIssues();
+  // Computed signals
+  readonly filteredIssues = computed(() => {
+    const term = this.filter()?.trim().toLowerCase();
+    const allIssues = this.issues();
+    
+    if (!term) {
+      return [...allIssues];
+    }
+    
+    return allIssues.filter(issue => {
+      const series = issue.series;
+      return (
+        (series?.name?.toLowerCase().includes(term) || false) ||
+        (issue.issueNumber?.toLowerCase().includes(term) || false) ||
+        (issue.expectedIssueName?.toLowerCase().includes(term) || false) ||
+        (series?.publisher?.toLowerCase().includes(term) || false)
+      );
+    });
+  });
+  
+  readonly displayedColumns: string[] = ['series', 'issueNumber', 'expectedName', 'coverDate', 'actions'];
+  
+  constructor(private seriesService: SeriesService) {
+    effect(() => {
+      this.filteredIssues();
+    });
   }
-
+  
+  ngOnInit(): void {
+    this.loadSeries();
+  }
+  
+  loadSeries(): void {
+    this.seriesService.getAllSeries().subscribe({
+      next: (res: ApiResponse<Series[]>) => {
+        if (!res.data) throw Error("error loading series");
+        this.series.set(res.data);
+        this.loadMissingIssues();
+      },
+      error: (err: Error) => {
+        console.error('Error loading series:', err);
+      }
+    });
+  }
+  
   loadMissingIssues(): void {
-    this.loading = true;
     this.seriesService.getMissingIssues()
       .pipe(finalize(() => {
-        this.loading = false;
-        this.cdr.markForCheck();
+        this.loading.set(false);
       }))
       .subscribe({
-        next: (response: ApiResponse<MissingIssue[]>) => {
-          this.issues = response.data || [];
-          this.applyFilter();
+        next: (res: ApiResponse<MissingIssue[]>) => {
+          let issues = res.data || [];
+          
+          issues = issues.map(issue => {
+            const issueCopy = { ...issue };
+            if (issue.seriesId && this.series().length > 0) {
+              issueCopy.series = this.series().find(s => s.id === issue.seriesId) || undefined;
+            }
+            return issueCopy;
+          });
+          
+          this.issues.set(issues);
         },
         error: (error: Error) => {
           console.error('Error loading missing issues:', error);
-          this.issues = [];
-          this.applyFilter();
+          this.issues.set([]);
         }
       });
   }
 
-  applyFilter(): void {
-    const term = this.filter?.trim().toLowerCase();
-    if (!term) {
-      this.filteredIssues = [...this.issues];
-    } else {
-      this.filteredIssues = this.issues.filter(issue =>
-        issue.series.name.toLowerCase().includes(term) ||
-        issue.issueNumber.toLowerCase().includes(term) ||
-        (issue.expectedIssueName || '').toLowerCase().includes(term) ||
-        (issue.notes || '').toLowerCase().includes(term) ||
-        (issue.series.publisher || '').toLowerCase().includes(term)
-      );
-    }
-    this.cdr.markForCheck();
+  clearFilter(): void {
+    this.filter.set('');
   }
-
-  onFilterChange(): void {
-    this.applyFilter();
-  }
-
+  
   getGroupedIssues(): Map<string, MissingIssue[]> {
     const grouped = new Map<string, MissingIssue[]>();
+    const filtered = this.filteredIssues();
     
-    this.filteredIssues.forEach(issue => {
-      const key = `${issue.series.name} (${issue.series.startYear})`;
-      if (!grouped.has(key)) {
-        grouped.set(key, []);
+    filtered.forEach(issue => {
+      const series = issue.series;
+      if (series) {
+        const key = `${series.name} (${series.startYear})`;
+        if (!grouped.has(key)) {
+          grouped.set(key, []);
+        }
+        grouped.get(key)!.push(issue);
       }
-      grouped.get(key)!.push(issue);
     });
-
+    
     // Sort issues within each group by issue number
     grouped.forEach(issues => {
       issues.sort((a, b) => {
-        const numA = parseFloat(a.issueNumber) || 0;
-        const numB = parseFloat(b.issueNumber) || 0;
+        const numA = parseFloat(a.issueNumber || '0') || 0;
+        const numB = parseFloat(b.issueNumber || '0') || 0;
         return numA - numB;
       });
     });
-
+    
     return grouped;
   }
-
+  
   onReload(): void {
     this.loadMissingIssues();
   }
-
+  
   removeMissingIssue(issueId: number): void {
     if (confirm('Remove this missing issue from tracking?')) {
       this.seriesService.removeMissingIssue(issueId).subscribe({
@@ -126,12 +140,12 @@ export class MissingIssuesComponent implements OnInit {
       });
     }
   }
-
+  
   trackById(_index: number, item: MissingIssue): number {
-    return item.id;
+    return item.id!;
   }
-
-    trackBySeriesName(_index: number, item: KeyValue<string, MissingIssue[]>): string {
+  
+  trackBySeriesName(_index: number, item: KeyValue<string, MissingIssue[]>): string {
     return item.key;
-    }
+  }
 }

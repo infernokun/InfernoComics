@@ -1,5 +1,8 @@
 package com.infernokun.infernoComics.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -20,6 +23,7 @@ public class MissingIssue {
     @Column(name = "comic_vine_id")
     private String comicVineId;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id", nullable = false)
     private Series series;
@@ -34,14 +38,13 @@ public class MissingIssue {
     private String expectedCoverDate;
 
     @Column(name = "is_resolved")
-    private boolean isResolved = false;
+    private boolean resolved = false;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "resolved_issue_id")
-    private Issue resolvedIssue;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -57,6 +60,11 @@ public class MissingIssue {
         this.issueNumber = issueNumber;
     }
 
+    @JsonProperty("seriesId")
+    public Long getSeriesId() {
+        return series != null ? series.getId() : null;
+    }
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -70,8 +78,9 @@ public class MissingIssue {
     }
 
     public void markAsResolved(Issue issue) {
-        this.isResolved = true;
+        this.resolved = true;
         this.resolvedAt = LocalDateTime.now();
-        this.resolvedIssue = issue;
     }
+
+
 }

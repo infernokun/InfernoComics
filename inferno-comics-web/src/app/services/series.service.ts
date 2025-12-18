@@ -8,7 +8,7 @@ import { ProcessingResult } from '../models/processing-result.model';
 import { Series, SeriesWithIssues } from '../models/series.model';
 import { EnvironmentService } from './environment.service';
 import { BaseService } from './base.service';
-import { MissingIssue } from '../components/missing-issues/missing-issues.component';
+import { MissingIssue } from '../models/missing-issue.model';
 
 export interface SSEProgressData {
   type: 'progress' | 'complete' | 'error' | 'heartbeat';

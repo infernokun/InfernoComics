@@ -900,65 +900,82 @@ public class SeriesService {
         return CompletableFuture.completedFuture(null);
     }
 
-    public List<MissingIssue> getMissingIssues() {
+    public void calculateMissingIssues(Series series) {
         List<MissingIssue> missingIssues = new ArrayList<>();
+        // 1. Get all the current issues for the series object
+        List<Issue> issues = issueRepository.findBySeriesId(series.getId());
 
-        getAllSeries().forEach(series -> {
-            // Get all issues owned for this series
-            List<Issue> ownedIssues = issueRepository.findBySeriesId(series.getId());
-            Set<String> ownedComicVineIds = ownedIssues.stream()
-                    .map(Issue::getComicVineId)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toSet());
+        // 2. Get all the comic vine issues (do a search)
+        List<ComicVineService.ComicVineIssueDto> comicVineIssues = searchComicVineIssues(series.getId());
 
-            // Get all issues that should exist for this series from ComicVine
-            List<ComicVineService.ComicVineIssueDto> allComicVineIssues = searchComicVineIssues(series.getId());
+        // 3. Find missing issues using streams
+        Set<String> comicVineIds = issues.stream()
+                .map(Issue::getComicVineId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-            // Find missing issues
-            allComicVineIssues.forEach(comicVineIssue -> {
-                if (!ownedComicVineIds.contains(comicVineIssue.getId())) {
-                    // Check if this missing issue already exists in the database
-                    MissingIssue existingMissing = missingIssueRepository
-                            .findBySeriesIdAndIssueNumber(series.getId(), comicVineIssue.getIssueNumber())
-                            .orElse(null);
+        List<ComicVineService.ComicVineIssueDto> missingComicVineIssues = comicVineIssues.stream()
+                .filter(comicVineIssue -> {
+                    String issueComicVineId = comicVineIssue.getId();
+                    return !comicVineIds.contains(issueComicVineId);
+                }).toList();
 
-                    if (existingMissing == null) {
-                        // Create new missing issue record
-                        MissingIssue missingIssue = new MissingIssue(series, comicVineIssue.getIssueNumber());
-                        missingIssue.setExpectedIssueName(comicVineIssue.getName());
-                        missingIssue.setExpectedCoverDate(comicVineIssue.getCoverDate());
-                        missingIssue.setLastChecked(LocalDateTime.now());
-                        missingIssue.setComicVineId(comicVineIssue.getId());
-                        missingIssues.add(missingIssue);
-                    } else if (!existingMissing.isResolved()) {
-                        // Update existing unresolved missing issue
-                        existingMissing.setLastChecked(LocalDateTime.now());
-                        missingIssues.add(existingMissing);
-                    }
+        List<ComicVineService.ComicVineIssueDto> addedComicVineIssues = comicVineIssues.stream()
+                .filter(comicVineIssue -> {
+                    String issueComicVineId = comicVineIssue.getId();
+                    return comicVineIds.contains(issueComicVineId);
+                }).toList();
+
+        // 4. These are still missing
+        missingComicVineIssues.forEach(missingComicVineIssueDto -> {
+            Optional<MissingIssue> missingIssueOptional = missingIssueRepository.
+                    findMissingIssueBySeriesIdAndComicVineId(series.getId(), missingComicVineIssueDto.getId());
+
+            MissingIssue missingIssue;
+
+            // 4a. update the date time stuff
+            if (missingIssueOptional.isPresent()) {
+                missingIssue = missingIssueOptional.get();
+                // Update last checked timestamp
+                missingIssue.setLastChecked(LocalDateTime.now());
+                // Mark as unresolved if previously resolved
+                if (missingIssue.isResolved()) {
+                    missingIssue.setResolved(false);
                 }
-            });
-
-            // Check existing missing issues to see if they've been resolved
-            List<MissingIssue> existingMissingForSeries = missingIssueRepository
-                    .findBySeriesIdAndIsResolvedFalse(series.getId());
-
-            existingMissingForSeries.forEach(missing -> {
-                // Check if this issue was added
-                ownedIssues.stream()
-                        .filter(issue -> issue.getIssueNumber().equals(missing.getIssueNumber()))
-                        .findFirst()
-                        .ifPresent(foundIssue -> {
-                            missing.markAsResolved(foundIssue);
-                            missingIssueRepository.save(missing);
-                        });
-            });
+            } else {
+                // 4b. create a new object
+                missingIssue = new MissingIssue(series, missingComicVineIssueDto.getIssueNumber());
+                missingIssue.setExpectedIssueName(missingComicVineIssueDto.getName());
+                missingIssue.setExpectedCoverDate(missingComicVineIssueDto.getCoverDate());
+                missingIssue.setLastChecked(LocalDateTime.now());
+                missingIssue.setComicVineId(missingComicVineIssueDto.getId());
+                missingIssue.setImageUrl(missingComicVineIssueDto.getImageUrl());
+            }
+            missingIssues.add(missingIssue);
         });
 
-        // Save all new/updated missing issues
+        // 5. These have been added - check if previously missing issues are now resolved
+        addedComicVineIssues.forEach(addedComicVineIssueDto -> {
+            Optional<MissingIssue> missingIssueOptional = missingIssueRepository.
+                    findMissingIssueBySeriesIdAndComicVineId(series.getId(), addedComicVineIssueDto.getId());
+
+            // If there was a missing issue record for this ComicVine ID, mark it as resolved
+            if (missingIssueOptional.isPresent()) {
+                MissingIssue missingIssue = missingIssueOptional.get();
+                if (!missingIssue.isResolved()) {
+                    missingIssue.setResolved(true);
+                    missingIssues.add(missingIssue);
+                }
+            }
+        });
+
+        // Save all updates
         if (!missingIssues.isEmpty()) {
             missingIssueRepository.saveAll(missingIssues);
         }
+    }
 
-        return missingIssueRepository.findByIsResolvedFalse();
+    public List<MissingIssue> getMissingIssues() {
+        return missingIssueRepository.findUnresolvedMissingIssues();
     }
 }
