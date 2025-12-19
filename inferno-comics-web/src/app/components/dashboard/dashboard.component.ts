@@ -130,11 +130,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         },
       });
   }
-
-  refreshData(): void {
-    this.loadDashboardData();
-  }
-
   private calculatePublisherStats(series: Series[]): void {
     const publisherCount = new Map<string, number>();
 

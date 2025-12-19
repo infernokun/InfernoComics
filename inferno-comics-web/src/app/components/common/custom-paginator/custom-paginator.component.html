@@ -1,0 +1,69 @@
+<div class="paginator-container">
+  <div class="paginator-info">
+    <span class="items-count">{{ getItemsCount() }}</span>
+  </div>
+
+  <div class="paginator-controls">
+    <button 
+      mat-icon-button 
+      class="nav-button" 
+      (click)="firstPage()" 
+      [disabled]="currentPage === 1"
+      title="First Page">
+      <mat-icon>first_page</mat-icon>
+    </button>
+    
+    <button 
+      mat-icon-button 
+      class="nav-button" 
+      (click)="prevPage()" 
+      [disabled]="currentPage === 1"
+      title="Previous Page">
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    
+    <div class="pages-container">
+      <button 
+        *ngFor="let page of displayedPages; let i = index" 
+        mat-button 
+        class="page-button"
+        [class.active]="page === currentPage"
+        [disabled]="page === -1"
+        (click)="goToPage(page)"
+        [title]="page === -1 ? '' : 'Page ' + page">
+        {{ page === -1 ? '...' : page }}
+      </button>
+    </div>
+    
+    <button 
+      mat-icon-button 
+      class="nav-button" 
+      (click)="nextPage()" 
+      [disabled]="currentPage === totalPages"
+      title="Next Page">
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+    
+    <button 
+      mat-icon-button 
+      class="nav-button" 
+      (click)="lastPage()" 
+      [disabled]="currentPage === totalPages"
+      title="Last Page">
+      <mat-icon>last_page</mat-icon>
+    </button>
+  </div>
+
+  <div class="paginator-select">
+    <span>Show</span>
+    <mat-select 
+      [(value)]="pageSize" 
+      (selectionChange)="changePageSize($event.value)"
+      class="page-size-select">
+      <mat-option *ngFor="let size of pageSizeOptions" [value]="size">
+        {{ size }}
+      </mat-option>
+    </mat-select>
+    <span>entries</span>
+  </div>
+</div>

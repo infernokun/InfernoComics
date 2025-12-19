@@ -155,10 +155,11 @@
     </div>
   </div>
 
+
   <!-- Series Display -->
-  <mat-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions"
-    (page)="onPageChange($event)" showFirstLastButtons>
-  </mat-paginator>
+  <app-custom-paginator [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]" 
+    (page)="onPageChange($event)">
+  </app-custom-paginator>
   @if (!loading) {
     <div class="series-container" [class.grid]="viewMode === 'grid'" [class.list]="viewMode === 'list'" [@fadeInUp]>
       @for (series of displaySeries; track trackBySeries($index, series)) {
@@ -257,9 +258,9 @@
       }
     </div>
   }
-  <mat-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="pageSizeOptions"
-    (page)="onPageChange($event)" showFirstLastButtons>
-  </mat-paginator>
+  <app-custom-paginator [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]" 
+    (page)="onPageChange($event)">
+  </app-custom-paginator>
 
   <!-- No Results State -->
   @if (!loading && filteredSeries.length === 0 && (searchTerm || selectedPublisher || showCompletedOnly)) {

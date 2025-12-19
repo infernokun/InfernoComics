@@ -13,6 +13,7 @@ import { CARD_ANIMATION, FADE_IN_UP, SLIDE_IN_UP } from '../../utils/animations'
 import { ApiResponse } from '../../models/api-response.model';
 import { ProcessingResult } from '../../models/processing-result.model';
 import { SeriesService } from '../../services/series.service';
+import { CustomPaginatorComponent } from '../common/custom-paginator/custom-paginator.component';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';
@@ -22,7 +23,7 @@ type ViewMode = 'grid' | 'list';
   selector: 'app-series-list',
   templateUrl: './series-list.component.html',
   styleUrls: ['./series-list.component.scss'],
-  imports: [MaterialModule, FormsModule, RouterModule, SlicePipe],
+  imports: [MaterialModule, FormsModule, RouterModule, SlicePipe, CustomPaginatorComponent],
   animations: [
     FADE_IN_UP,
     SLIDE_IN_UP,
