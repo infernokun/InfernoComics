@@ -35,7 +35,7 @@ public class Issue {
     @Column(name = "title")
     private String title;
 
-    @Column(name = "description", length = 10000)
+    @Column(name = "description", length = 50000)
     private String description;
 
     @Column(name = "cover_date")
