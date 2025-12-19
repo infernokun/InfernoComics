@@ -16,14 +16,14 @@ import java.util.Set;
 @Repository
 public interface ProcessedFileRepository extends JpaRepository<ProcessedFile, Long> {
 
-    @Query("SELECT pf.filePath FROM ProcessedFile pf WHERE pf.seriesId = :seriesId AND pf.processingStatus = 'PROCESSED'")
+    @Query("SELECT pf.filePath FROM ProcessedFile pf WHERE pf.seriesId = :seriesId AND pf.state = 'COMPLETED'")
     Set<String> findProcessedFilePathsBySeriesId(@Param("seriesId") Long seriesId);
 
     Optional<ProcessedFile> findBySeriesIdAndFilePath(Long seriesId, String filePath);
 
     List<ProcessedFile> findBySeriesIdAndState(Long seriesId, State state);
 
-    @Query("SELECT COUNT(pf) FROM ProcessedFile pf WHERE pf.seriesId = :seriesId AND pf.processingStatus = 'PROCESSED'")
+    @Query("SELECT COUNT(pf) FROM ProcessedFile pf WHERE pf.seriesId = :seriesId AND pf.state = 'COMPLETED'")
     Long countProcessedFilesBySeriesId(@Param("seriesId") Long seriesId);
 
     void deleteBySeriesId(Long seriesId);
