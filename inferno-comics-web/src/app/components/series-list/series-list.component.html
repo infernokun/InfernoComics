@@ -157,10 +157,10 @@
 
 
   <!-- Series Display -->
-  <app-custom-paginator [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]" 
-    (page)="onPageChange($event)">
-  </app-custom-paginator>
   @if (!loading) {
+    <app-custom-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]" 
+      (page)="onPageChange($event)">
+    </app-custom-paginator>
     <div class="series-container" [class.grid]="viewMode === 'grid'" [class.list]="viewMode === 'list'" [@fadeInUp]>
       @for (series of displaySeries; track trackBySeries($index, series)) {
         <div class="series-card" [@cardAnimation]>
@@ -257,10 +257,10 @@
         </div>
       }
     </div>
+    <app-custom-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]" 
+      (page)="onPageChange($event)">
+    </app-custom-paginator>
   }
-  <app-custom-paginator [length]="totalSeries" [pageSize]="pageSize" [pageSizeOptions]="[5, 10, 25, 100]" 
-    (page)="onPageChange($event)">
-  </app-custom-paginator>
 
   <!-- No Results State -->
   @if (!loading && filteredSeries.length === 0 && (searchTerm || selectedPublisher || showCompletedOnly)) {
