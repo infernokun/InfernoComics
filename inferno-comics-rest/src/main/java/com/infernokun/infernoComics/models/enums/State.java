@@ -8,11 +8,11 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 public enum State {
-    PROCESSING("Processing"),
-    COMPLETE("Completed"),
-    REPLAYED("Replayed"),
-    QUEUE("Queue"),
-    ERROR("Error");
+    PROCESSING("PROCESSING"),
+    COMPLETE("COMPLETED"),
+    REPLAYED("REPLAYED"),
+    QUEUE("QUEUE"),
+    ERROR("ERROR");
 
     private final String displayName;
 }
