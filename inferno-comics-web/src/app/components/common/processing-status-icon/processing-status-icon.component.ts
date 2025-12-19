@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, HostListener, ElementRef, signal, WritableSignal } from '@angular/core';
 import { finalize, interval, Subscription } from 'rxjs';
-import { ProgressData, ProgressState } from '../../../models/progress-data.model';
+import { ProgressData, State } from '../../../models/progress-data.model';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiResponse } from '../../../models/api-response.model';
@@ -52,7 +52,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   isLoading = true;
   maxDisplayItems = 5;
   showOverlay = false;
-  progressState = ProgressState;
+  state = State;
   pendingDismissIds = new Set<number>();
 
   constructor(
@@ -154,7 +154,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   }
 
   private convertToProcessingStatus(progressDataArray: ProgressData[]): ProcessingStatus {
-    const totalProcessing = progressDataArray.filter(item => item.state === ProgressState.PROCESSING).length;
+    const totalProcessing = progressDataArray.filter(item => item.state === State.PROCESSING).length;
     const totalQueued = 0; // Add queued logic when available
     const totalActive = totalProcessing + totalQueued;
 
@@ -192,20 +192,20 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     return [...this.processingStatus().items]
       .sort((a, b) => {
         // 1️⃣  Processing items first
-        if (a.state === ProgressState.PROCESSING && b.state !== ProgressState.PROCESSING) {
+        if (a.state === State.PROCESSING && b.state !== State.PROCESSING) {
           return -1;
         }
-        if (b.state === ProgressState.PROCESSING && a.state !== ProgressState.PROCESSING) {
+        if (b.state === State.PROCESSING && a.state !== State.PROCESSING) {
           return 1;
         }
   
         // 2️⃣  Get the most recent timestamp for each item
         const getRelevantTime = (item: ProgressData): Date | undefined => {
-          if (item.state === ProgressState.PROCESSING && item.lastUpdated) {
+          if (item.state === State.PROCESSING && item.lastUpdated) {
             return toDate(item.lastUpdated);
           }
           if (
-            (item.state === ProgressState.COMPLETE || item.state === ProgressState.ERROR) &&
+            (item.state === State.COMPLETED || item.state === State.ERROR) &&
             item.timeFinished
           ) {
             return toDate(item.timeFinished);
@@ -230,11 +230,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   getItemClass(item: ProgressData): string {
     const classes = [];
     
-    if (item.state === ProgressState.PROCESSING) {
+    if (item.state === State.PROCESSING) {
       classes.push('priority-processing');
-    } else if (item.state === ProgressState.COMPLETE) {
+    } else if (item.state === State.COMPLETED) {
       classes.push('completed');
-    } else if (item.state === ProgressState.ERROR) {
+    } else if (item.state === State.ERROR) {
       classes.push('error');
     }
     
@@ -243,13 +243,13 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   getStatusIcon(item: ProgressData): string {
     switch (item.state) {
-      case ProgressState.PROCESSING:
+      case State.PROCESSING:
         return 'autorenew';
-      case ProgressState.COMPLETE:
+      case State.COMPLETED:
         return 'check_circle';
-      case ProgressState.REPLAYED:
+      case State.REPLAYED:
         return 'refresh';
-      case ProgressState.ERROR:
+      case State.ERROR:
         return 'error';
       default:
         return 'schedule';
@@ -258,13 +258,13 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   getStatusIconClass(item: ProgressData): string {
     switch (item.state) {
-      case ProgressState.PROCESSING:
+      case State.PROCESSING:
         return 'processing';
-      case ProgressState.COMPLETE:
+      case State.COMPLETED:
         return 'completed';
-      case ProgressState.REPLAYED:
+      case State.REPLAYED:
         return 'replayed';
-      case ProgressState.ERROR:
+      case State.ERROR:
         return 'error';
       default:
         return 'queued';
@@ -273,13 +273,13 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   getStatusText(item: ProgressData): string {
     switch (item.state) {
-      case ProgressState.PROCESSING:
+      case State.PROCESSING:
         return 'Processing';
-      case ProgressState.COMPLETE:
+      case State.COMPLETED:
         return 'Completed';
-      case ProgressState.REPLAYED:
+      case State.REPLAYED:
         return 'Replayed';
-      case ProgressState.ERROR:
+      case State.ERROR:
         return 'Failed';
       default:
         return 'Queued';
@@ -289,11 +289,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   getItemTimeInfo(item: ProgressData): string {
     const duration = item.getFormattedDuration();
     
-    if (item.state === ProgressState.PROCESSING) {
+    if (item.state === State.PROCESSING) {
       return `Running: ${duration}`;
-    } else if (item.state === ProgressState.COMPLETE) {
+    } else if (item.state === State.COMPLETED) {
       return `Completed in ${duration}`;
-    } else if (item.state === ProgressState.ERROR) {
+    } else if (item.state === State.ERROR) {
       return `Failed after ${duration}`;
     }
     

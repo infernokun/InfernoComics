@@ -1,8 +1,8 @@
 import { Series } from "./series.model";
 
-export enum ProgressState {
+export enum State {
   PROCESSING = 'PROCESSING',
-  COMPLETE = 'COMPLETE',
+  COMPLETED = 'COMPLETED',
   ERROR = 'ERROR',
   QUEUED = 'QUEUED',
   REPLAYED = 'REPLAYED'
@@ -15,7 +15,7 @@ export enum StartedBy {
 
 export class ProgressData {
   id?: number;
-  state?: ProgressState;
+  state?: State;
   sessionId?: string;
   timeStarted?: Date;
   timeFinished?: Date;
@@ -34,7 +34,7 @@ export class ProgressData {
   constructor(data?: any) {
     if (data) {
       this.id = data.id;
-      this.state = data.state as ProgressState;
+      this.state = data.state as State;
       this.sessionId = data.sessionId;
       this.timeStarted = data.timeStarted ? this.parseDateTime(data.timeStarted) : undefined;
       this.timeFinished = data.timeFinished ? this.parseDateTime(data.timeFinished) : undefined;
@@ -136,7 +136,7 @@ export class ProgressData {
   }
 
   isStale(): boolean {
-    if (this.state !== ProgressState.PROCESSING || !this.lastUpdated) {
+    if (this.state !== State.PROCESSING || !this.lastUpdated) {
       return false;
     }
 
@@ -146,11 +146,11 @@ export class ProgressData {
 
   getStateDisplayName(): string {
     switch (this.state) {
-      case ProgressState.PROCESSING:
+      case State.PROCESSING:
         return 'Processing';
-      case ProgressState.COMPLETE:
+      case State.COMPLETED:
         return 'Completed';
-      case ProgressState.ERROR:
+      case State.ERROR:
         return 'Error';
       default:
         return 'Unknown';
@@ -162,15 +162,15 @@ export class ProgressData {
   }
 
   isActive(): boolean {
-    return this.state === ProgressState.PROCESSING;
+    return this.state === State.PROCESSING;
   }
 
   isCompleted(): boolean {
-    return this.state === ProgressState.COMPLETE;
+    return this.state === State.COMPLETED;
   }
 
   isFailed(): boolean {
-    return this.state === ProgressState.ERROR;
+    return this.state === State.ERROR;
   }
 
   getEstimatedCompletion(): Date | undefined {
@@ -212,11 +212,11 @@ export class ProgressData {
 
   private mapToProcessingStatus(): string {
     switch (this.state) {
-      case ProgressState.PROCESSING:
+      case State.PROCESSING:
         return 'PROCESSING';
-      case ProgressState.COMPLETE:
+      case State.COMPLETED:
         return 'COMPLETED';
-      case ProgressState.ERROR:
+      case State.ERROR:
         return 'FAILED';
       default:
         return 'QUEUED';

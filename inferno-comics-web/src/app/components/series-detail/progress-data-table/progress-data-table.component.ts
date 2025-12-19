@@ -23,7 +23,7 @@ import { ApiResponse } from '../../../models/api-response.model';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subscription, interval } from 'rxjs';
-import { ProgressData, ProgressState } from '../../../models/progress-data.model';
+import { ProgressData, State } from '../../../models/progress-data.model';
 import { EnvironmentService } from '../../../services/environment.service';
 import { ProgressDataService } from '../../../services/progress-data.service';
 import { RecognitionService } from '../../../services/recognition.service';
@@ -295,7 +295,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
       () => {
         // Only refresh if there are processing sessions
         const hasProcessingSessions = this.progressData().some(
-          (item) => item.state === ProgressState.PROCESSING
+          (item) => item.state === State.PROCESSING
         );
         if (hasProcessingSessions) {
           console.log('Auto-refreshing progress data...');
@@ -354,8 +354,8 @@ export class ProgressDataTable implements OnInit, OnDestroy {
           }
 
           return {
-            showReplay: progressData.state === ProgressState.COMPLETE,
-            showAdd: progressData.state === ProgressState.COMPLETE,
+            showReplay: progressData.state === State.COMPLETED,
+            showAdd: progressData.state === State.COMPLETED,
             replayClick: (data: any) => this.replaySession(data),
             addClick: (data: any) => this.getSessionJSON(data.sessionId),
             deleteClick: (data: any) => this.deleteProgressData(data.sessionId),

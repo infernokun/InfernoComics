@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { ICellRendererAngularComp } from "ag-grid-angular";
-import { ProgressState } from "../../../../models/progress-data.model";
+import { State } from "../../../../models/progress-data.model";
 import { upperLower } from "../../../../utils/utils";
 
 @Component({
@@ -140,9 +140,9 @@ export class CombinedStatusCellRenderer implements ICellRendererAngularComp {
   }
 
   getStatusIcon(): string {
-    const state: ProgressState = this.params?.data?.state;
-    const icons: Record<ProgressState, string> = {
-      COMPLETE: '✅',
+    const state: State = this.params?.data?.state;
+    const icons: Record<State, string> = {
+      COMPLETED: '✅',
       PROCESSING: '⏳',
       ERROR: '❌',
       REPLAYED: '🔁',
@@ -152,9 +152,9 @@ export class CombinedStatusCellRenderer implements ICellRendererAngularComp {
   }
 
   getStatusColor(): string {
-    const state: ProgressState = this.params?.data?.state;
-    const colors: Record<ProgressState, string> = {
-      COMPLETE: '#28a745',
+    const state: State = this.params?.data?.state;
+    const colors: Record<State, string> = {
+      COMPLETED: '#28a745',
       PROCESSING: '#ffc107',
       ERROR: '#dc3545',
       REPLAYED: '#6c757d',
@@ -164,21 +164,21 @@ export class CombinedStatusCellRenderer implements ICellRendererAngularComp {
   }
 
   getMainStatusText(): string {
-    const state: ProgressState = this.params?.data?.state;
+    const state: State = this.params?.data?.state;
 
     switch (state) {
-      case ProgressState.COMPLETE:
-        return upperLower(ProgressState.COMPLETE);
-      case ProgressState.PROCESSING:
-        return upperLower(ProgressState.PROCESSING);;
-      case ProgressState.ERROR:
-        return upperLower(ProgressState.ERROR);;
-      case ProgressState.QUEUED:
-        return upperLower(ProgressState.QUEUED);;
-    case ProgressState.REPLAYED:
-        return upperLower(ProgressState.REPLAYED);;
+      case State.COMPLETED:
+        return upperLower(State.COMPLETED);
+      case State.PROCESSING:
+        return upperLower(State.PROCESSING);;
+      case State.ERROR:
+        return upperLower(State.ERROR);;
+      case State.QUEUED:
+        return upperLower(State.QUEUED);;
+    case State.REPLAYED:
+        return upperLower(State.REPLAYED);;
       default:
-        return state || ProgressState.ERROR;
+        return state || State.ERROR;
     }
   }
 
@@ -188,13 +188,13 @@ export class CombinedStatusCellRenderer implements ICellRendererAngularComp {
 
     // Show progress bar if processing or if we have meaningful progress data (but not complete)
     return (
-      state === ProgressState.PROCESSING ||
-      (percentage > 0 && percentage < 100 && state !== ProgressState.COMPLETE)
+      state === State.PROCESSING ||
+      (percentage > 0 && percentage < 100 && state !== State.COMPLETED)
     );
   }
 
   isProcessing(): boolean {
-    return this.params?.data?.state === ProgressState.PROCESSING;
+    return this.params?.data?.state === State.PROCESSING;
   }
 
   getPercentage(): number {

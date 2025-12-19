@@ -110,7 +110,7 @@
                         }
                       </div>
                     </div>
-                    @if (item.state === progressState.PROCESSING && item.percentageComplete !== undefined) {
+                    @if (item.state === state.PROCESSING && item.percentageComplete !== undefined) {
                       <div
                         class="progress-container">
                         <mat-progress-bar mode="determinate"
@@ -121,7 +121,7 @@
                     }
                     <div class="item-details">
                       <span class="duration">{{ getItemTimeInfo(item) }}</span>
-                      @if (item.state === progressState.PROCESSING && getEstimatedTime(item)) {
+                      @if (item.state === state.PROCESSING && getEstimatedTime(item)) {
                         <span
                           class="estimated-time">
                           • ETA: {{ getEstimatedTime(item) }}
@@ -132,7 +132,7 @@
                           • {{ getItemAdditionalInfo(item) }}
                         </span>
                       }
-                      @if (item.errorMessage && item.state === progressState.ERROR) {
+                      @if (item.errorMessage && item.state === state.ERROR) {
                         <div
                           class="error-message">
                           {{ item.errorMessage }}
