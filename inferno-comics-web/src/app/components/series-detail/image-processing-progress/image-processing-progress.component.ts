@@ -2,15 +2,28 @@ import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../../material.module';
+import { Subscription } from 'rxjs';
+import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
+import { ProgressData, State } from '../../../models/progress-data.model';
 
 export interface ImageProcessingData {
   file?: File;
   files?: File[];
   seriesId: number;
+  sessionId?: string;
   isMultiple?: boolean;
   onProgress?: (stage: string, progress: number) => void;
   onComplete?: (result: any) => void;
   onError?: (error: any) => void;
+}
+
+type ThumbnailState = 'pending' | 'processing' | 'completed' | 'failed';
+type MessageType = 'info' | 'success' | 'warning' | 'error';
+
+interface StatusMessage {
+  text: string;
+  type: MessageType;
+  timestamp: Date;
 }
 
 @Component({
@@ -37,31 +50,39 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   successfulImages = 0;
   failedImages = 0;
 
-  thumbnailStates: Array<'pending' | 'processing' | 'completed' | 'failed'> = [];
+  thumbnailStates: ThumbnailState[] = [];
   
   private hasUnreadMessages = false;
   private messagesContainer: HTMLElement | null = null;
   
   processingResult: any = null;
 
+  private wsSub?: Subscription;
   private lastUpdateTime = 0;
   private lastProgressValue = 0;
   private lastStage = '';
   private readonly UPDATE_DEBOUNCE_MS = 100;
-  private hasReceivedRealProgress = false;
+  private readonly MAX_STATUS_MESSAGES = 15;
 
-  private stageMapping: { [key: string]: number } = {
-    processing_data: 0,
-    preparing: 0,
-    initializing_matcher: 1,
-    extracting_features: 1,
-    comparing_images: 2,
-    processing_results: 3,
-    finalizing: 4,
-    complete: 4,
+  private readonly stageMapping: Record<string, number> = {
+    'processing_data': 0,
+    'Processing Data': 0,
+    'preparing': 0,
+    'initializing_matcher': 1,
+    'Initializing Matcher': 1,
+    'extracting_features': 1,
+    'Extracting Features': 1,
+    'comparing_images': 2,
+    'Comparing Images': 2,
+    'processing_results': 3,
+    'Processing Results': 3,
+    'finalizing': 4,
+    'Finalizing Results': 4,
+    'complete': 4,
+    'COMPLETED': 4,
   };
 
-  processingStages = [
+  readonly processingStages = [
     { name: 'Processing data', key: 'processing_data' },
     { name: 'Extracting features', key: 'extracting_features' },
     { name: 'Comparing images', key: 'comparing_images' },
@@ -69,75 +90,322 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     { name: 'Finalizing', key: 'finalizing' },
   ];
 
-  statusMessages: Array<{
-    text: string;
-    type: 'info' | 'success' | 'warning' | 'error';
-    timestamp: Date;
-  }> = [];
+  statusMessages: StatusMessage[] = [];
 
-  Math = Math;
+  readonly Math = Math;
 
   constructor(
     public dialogRef: MatDialogRef<ImageProcessingDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: ImageProcessingData
+    @Inject(MAT_DIALOG_DATA) public data: ImageProcessingData,
+    private websocket: WebsocketService
   ) {}
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.setupImageProcessing();
     this.createImagePreviews();
     this.initializeThumbnailStates();
     this.addInitialStatusMessage();
+    this.setupWebSocketSubscription();
 
-    console.log('ImageProcessingDialog initialized - waiting for real progress updates');
+    console.log('ImageProcessingDialog initialized - listening for WebSocket updates');
     setTimeout(() => this.scrollToTop(), 0);
   }
 
-  ngOnDestroy() {
-    this.imagePreviews.forEach((preview) => {
+  ngOnDestroy(): void {
+    this.imagePreviews.forEach(preview => {
       if (preview) {
         URL.revokeObjectURL(preview);
       }
     });
+    
+    this.wsSub?.unsubscribe();
   }
 
-  private setupImageProcessing() {
-    if (this.data.files) {
+  private setupWebSocketSubscription(): void {
+    this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
+      const response = msg as WebSocketResponseList;
+      
+      // Listen for progress updates for this series
+      if (response.seriesId === this.data.seriesId) {
+        this.handleWebSocketMessage(response);
+      }
+    });
+  }
+
+  private handleWebSocketMessage(response: WebSocketResponseList): void {
+    console.log('Received WebSocket message:', response.name, response);
+
+    // Handle different message types
+    switch (response.name) {
+      case 'ProgressDataListTable':
+      case 'ProgressDataListRelevance':
+        this.handleProgressDataUpdate(response.payload);
+        break;
+      default:
+        console.log('Unhandled WebSocket message type:', response.name);
+    }
+  }
+
+  private handleProgressDataUpdate(payload: any[]): void {
+    if (!payload?.length) return;
+
+    // Find the progress data for our session (if we have a sessionId)
+    // Or find the most recent PROCESSING session for this series
+    let relevantProgress: ProgressData | null = null;
+
+    if (this.data.sessionId) {
+      const found = payload.find(p => p.sessionId === this.data.sessionId);
+      if (found) {
+        relevantProgress = new ProgressData(found);
+      }
+    } else {
+      // Find the most recent processing or just-completed session
+      const sorted = payload
+        .map(p => new ProgressData(p))
+        .sort((a, b) => {
+          const dateA = a.timeStarted ? new Date(a.timeStarted).getTime() : 0;
+          const dateB = b.timeStarted ? new Date(b.timeStarted).getTime() : 0;
+          return dateB - dateA;
+        });
+      
+      relevantProgress = sorted.find(p => p.state === State.PROCESSING) ?? sorted[0];
+    }
+
+    if (!relevantProgress) return;
+
+    // Store sessionId for future reference
+    if (!this.data.sessionId && relevantProgress.sessionId) {
+      this.data.sessionId = relevantProgress.sessionId;
+    }
+
+    console.log('Processing WebSocket update:', {
+      state: relevantProgress.state,
+      percentageComplete: relevantProgress.percentageComplete,
+      currentStage: relevantProgress.currentStage,
+      statusMessage: relevantProgress.statusMessage,
+      processedItems: relevantProgress.processedItems,
+      totalItems: relevantProgress.totalItems,
+    });
+
+    // Update component state based on progress data
+    this.updateFromProgressData(relevantProgress);
+  }
+
+  private updateFromProgressData(progressData: ProgressData): void {
+    const state = progressData.state;
+    const percentage = progressData.percentageComplete ?? 0;
+    const stage = progressData.currentStage ?? 'Processing';
+    const message = progressData.statusMessage ?? '';
+
+    // Update progress
+    if (percentage >= this.progress) {
+      this.progress = percentage;
+    }
+
+    // Update stage
+    if (stage && stage !== this.currentStage) {
+      this.currentStage = stage;
+      const mappedIndex = this.stageMapping[stage];
+      if (mappedIndex !== undefined) {
+        this.currentStageIndex = Math.max(this.currentStageIndex, mappedIndex);
+      }
+      this.addStatusMessage(`Stage: ${stage}`, 'info');
+    }
+
+    // Update item counts
+    if (progressData.totalItems && progressData.totalItems !== this.totalImages) {
+      this.totalImages = progressData.totalItems;
+      this.initializeThumbnailStates();
+    }
+
+    if (progressData.processedItems !== undefined) {
+      const prevProcessed = this.processedImages;
+      this.processedImages = progressData.processedItems;
+      
+      // Update thumbnail states based on processed count
+      this.updateThumbnailStatesFromCount(prevProcessed, this.processedImages);
+    }
+
+    if (progressData.successfulItems !== undefined) {
+      this.successfulImages = progressData.successfulItems;
+    }
+
+    if (progressData.failedItems !== undefined) {
+      this.failedImages = progressData.failedItems;
+    }
+
+    // Parse additional info from status message
+    if (message) {
+      this.parseStatusMessage(message);
+    }
+
+    // Handle state transitions
+    switch (state) {
+      case State.COMPLETED:
+        this.handleCompletion(progressData);
+        break;
+      case State.ERROR:
+        this.handleError(progressData.errorMessage ?? 'Processing failed');
+        break;
+      case State.PROCESSING:
+        this.isProcessing = true;
+        break;
+    }
+  }
+
+  private updateThumbnailStatesFromCount(prevCount: number, newCount: number): void {
+    // Mark newly processed images as completed
+    for (let i = prevCount; i < newCount && i < this.thumbnailStates.length; i++) {
+      if (this.thumbnailStates[i] === 'processing' || this.thumbnailStates[i] === 'pending') {
+        this.thumbnailStates[i] = 'completed';
+      }
+    }
+
+    // Mark current image as processing
+    if (newCount < this.totalImages && newCount < this.thumbnailStates.length) {
+      this.currentImageIndex = newCount;
+      if (this.thumbnailStates[newCount] === 'pending') {
+        this.thumbnailStates[newCount] = 'processing';
+      }
+    }
+  }
+
+  private parseStatusMessage(message: string): void {
+    // Extract image name if present
+    const imageMatch = message.match(/(?:Image|image)\s+(\d+)(?:\/(\d+))?/i);
+    if (imageMatch) {
+      const currentImageNum = parseInt(imageMatch[1], 10);
+      const newIndex = Math.max(0, Math.min(currentImageNum - 1, this.totalImages - 1));
+      
+      if (newIndex !== this.currentImageIndex) {
+        this.markThumbnailState(this.currentImageIndex, 'completed');
+        this.currentImageIndex = newIndex;
+        this.markThumbnailState(newIndex, 'processing');
+      }
+    }
+
+    // Extract filename if present
+    const filenameMatch = message.match(/:\s*([^:]+\.(jpg|jpeg|png|gif|bmp|webp))/i) ||
+                          message.match(/\(([^)]+\.(jpg|jpeg|png|gif|bmp|webp))\)/i);
+    if (filenameMatch) {
+      this.currentImageName = filenameMatch[1].trim();
+    }
+
+    // Check for completion/failure indicators
+    if (message.toLowerCase().includes('completed') || message.toLowerCase().includes('matches found')) {
+      this.markThumbnailState(this.currentImageIndex, 'completed');
+    } else if (message.toLowerCase().includes('failed') || message.toLowerCase().includes('error')) {
+      this.markThumbnailState(this.currentImageIndex, 'failed');
+      this.failedImages++;
+    }
+
+    // Add to status messages (avoid duplicates)
+    const lastMessage = this.statusMessages[this.statusMessages.length - 1];
+    if (!lastMessage || lastMessage.text !== message) {
+      this.addStatusMessage(message, this.getMessageTypeFromContent(message));
+    }
+  }
+
+  private getMessageTypeFromContent(message: string): MessageType {
+    const lowerMessage = message.toLowerCase();
+    if (lowerMessage.includes('error') || lowerMessage.includes('failed')) {
+      return 'error';
+    }
+    if (lowerMessage.includes('completed') || lowerMessage.includes('success')) {
+      return 'success';
+    }
+    if (lowerMessage.includes('warning')) {
+      return 'warning';
+    }
+    return 'info';
+  }
+
+  private handleCompletion(progressData: ProgressData): void {
+    this.isProcessing = false;
+    this.progress = 100;
+    this.currentStageIndex = this.processingStages.length;
+    this.currentStage = 'Complete!';
+
+    // Mark all remaining images as completed
+    this.thumbnailStates = this.thumbnailStates.map(state =>
+      state === 'processing' || state === 'pending' ? 'completed' : state
+    );
+
+    this.processedImages = this.totalImages;
+    this.successfulImages = this.thumbnailStates.filter(s => s === 'completed').length;
+    this.failedImages = this.thumbnailStates.filter(s => s === 'failed').length;
+
+    this.addStatusMessage(
+      `Successfully analyzed ${this.successfulImages} image${this.successfulImages !== 1 ? 's' : ''} in ${this.getElapsedTime()}!`,
+      'success'
+    );
+
+    // Store result for the Next button
+    this.processingResult = {
+      sessionId: progressData.sessionId,
+      seriesId: this.data.seriesId,
+      totalImages: this.totalImages,
+      successfulImages: this.successfulImages,
+      failedImages: this.failedImages,
+    };
+
+    this.data.onComplete?.(this.processingResult);
+    console.log('Processing completed successfully via WebSocket');
+  }
+
+  private handleError(errorMessage: string): void {
+    this.hasError = true;
+    this.errorMessage = errorMessage;
+    this.isProcessing = false;
+    this.canRetry = true;
+
+    this.markThumbnailState(this.currentImageIndex, 'failed');
+    this.addStatusMessage(`Error: ${errorMessage}`, 'error');
+
+    this.data.onError?.(errorMessage);
+    console.error('Processing error via WebSocket:', errorMessage);
+  }
+
+  private setupImageProcessing(): void {
+    if (this.data.files?.length) {
       this.totalImages = this.data.files.length;
       this.currentImageIndex = 0;
-      this.currentImageName = this.data.files[0]?.name || '';
+      this.currentImageName = this.data.files[0]?.name ?? '';
     } else {
       this.totalImages = 1;
-      this.currentImageName = this.data.file?.name || '';
+      this.currentImageName = this.data.file?.name ?? '';
     }
     this.processedImages = 0;
   }
 
-  private createImagePreviews() {
-    if (this.data.files) {
-      this.imagePreviews = this.data.files.map((file) => URL.createObjectURL(file));
+  private createImagePreviews(): void {
+    if (this.data.files?.length) {
+      this.imagePreviews = this.data.files.map(file => URL.createObjectURL(file));
     } else if (this.data.file) {
       this.imagePreviews = [URL.createObjectURL(this.data.file)];
     }
   }
 
-  private initializeThumbnailStates() {
-    // Initialize all thumbnails as pending except the first one
-    this.thumbnailStates = Array(this.totalImages).fill('pending');
+  private initializeThumbnailStates(): void {
+    this.thumbnailStates = Array<ThumbnailState>(this.totalImages).fill('pending');
     if (this.totalImages > 0) {
-      this.thumbnailStates[0] = 'processing'; 
+      this.thumbnailStates[0] = 'processing';
     }
   }
 
-  private addInitialStatusMessage() {
-    this.addStatusMessage(`Starting analysis of ${this.totalImages} images...`, 'info');
+  private addInitialStatusMessage(): void {
+    this.addStatusMessage(
+      `Starting analysis of ${this.totalImages} image${this.totalImages !== 1 ? 's' : ''}...`,
+      'info'
+    );
   }
 
-  updateProgress(stage: string, progressPercent: number, message?: string) {
-    this.hasReceivedRealProgress = true;
+  // Public method for external progress updates (fallback if not using WebSocket)
+  updateProgress(stage: string, progressPercent: number, message?: string): void {
     const now = Date.now();
 
-    // Smart debouncing
-    const isImportantUpdate = stage !== this.lastStage ||
+    const isImportantUpdate =
+      stage !== this.lastStage ||
       progressPercent >= 100 ||
       stage === 'complete' ||
       Math.abs(progressPercent - this.lastProgressValue) >= 5 ||
@@ -147,7 +415,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Ensure progress only moves forward
     const newProgress = Math.min(100, Math.max(this.progress, progressPercent));
 
     if (newProgress >= this.progress || stage !== this.currentStage) {
@@ -157,87 +424,27 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
       this.progress = newProgress;
       this.currentStage = stage;
 
-      // Update stage index
       const mappedIndex = this.stageMapping[stage];
       if (mappedIndex !== undefined) {
         this.currentStageIndex = Math.max(this.currentStageIndex, mappedIndex);
       }
 
       if (message) {
-        this.parseImageProgressEnhanced(message);
+        this.parseStatusMessage(message);
       }
 
-      console.log(`Progress update: ${stage} ${newProgress}% - ${message || ''}`);
+      console.log(`Progress update: ${stage} ${newProgress}% - ${message ?? ''}`);
     }
   }
 
-  private parseImageProgressEnhanced(message: string) {
-    console.log('Parsing multi-image progress:', message);
-
-    const imageMatch = message.match(/(?:image|Image)\s+(\d+)(?:\/(\d+))?/i);
-    if (imageMatch) {
-      const currentImageNum = parseInt(imageMatch[1]);
-      const newImageIndex = Math.max(0, Math.min(currentImageNum - 1, this.totalImages - 1));
-
-      // Check if we're moving to a new image
-      if (newImageIndex !== this.currentImageIndex) {
-        // Mark previous image as completed
-        if (this.currentImageIndex < this.thumbnailStates.length) {
-          this.thumbnailStates[this.currentImageIndex] = 'completed';
-        }
-        
-        // Update to new image
-        this.currentImageIndex = newImageIndex;
-        if (newImageIndex < this.thumbnailStates.length) {
-          this.thumbnailStates[newImageIndex] = 'processing';
-        }
-        
-        console.log(`✨ Moved to image ${currentImageNum}, marked previous as completed`);
-      }
-
-      // Handle completion messages
-      if (message.includes('Completed') || message.includes('matches found') || message.includes('Analysis complete')) {
-        this.processedImages = Math.max(this.processedImages, currentImageNum);
-        this.successfulImages = Math.max(this.successfulImages, currentImageNum);
-        
-        // Mark current image as completed
-        if (this.currentImageIndex < this.thumbnailStates.length) {
-          this.thumbnailStates[this.currentImageIndex] = 'completed';
-        }
-        
-        // Start processing next image if available
-        const nextIndex = this.currentImageIndex + 1;
-        if (nextIndex < this.totalImages && nextIndex < this.thumbnailStates.length) {
-          this.thumbnailStates[nextIndex] = 'processing';
-          this.currentImageIndex = nextIndex;
-        }
-        
-        console.log(`Image ${currentImageNum} completed. Moving to next...`);
-      } else if (message.includes('Failed') || message.includes('error')) {
-        this.failedImages++;
-        if (this.currentImageIndex < this.thumbnailStates.length) {
-          this.thumbnailStates[this.currentImageIndex] = 'failed';
-        }
-        console.log(`Image ${currentImageNum} failed`);
-      }
-    }
-
-    // Update filename
-    const parsedImageName = this.extractImageNameFromMessage(message);
-    if (parsedImageName && parsedImageName !== this.currentImageName) {
-      this.currentImageName = parsedImageName;
-      console.log('Updated current image name:', parsedImageName);
-    }
-
-    // Fallback to file list if no name found
-    if (!this.currentImageName && this.data.files && this.currentImageIndex < this.data.files.length) {
-      this.currentImageName = this.data.files[this.currentImageIndex].name;
+  private markThumbnailState(index: number, state: ThumbnailState): void {
+    if (index >= 0 && index < this.thumbnailStates.length) {
+      this.thumbnailStates[index] = state;
     }
   }
 
-  // Enhanced thumbnail status methods
-  getThumbnailStatus(index: number): 'completed' | 'processing' | 'pending' | 'failed' {
-    return this.thumbnailStates[index] || 'pending';
+  getThumbnailStatus(index: number): ThumbnailState {
+    return this.thumbnailStates[index] ?? 'pending';
   }
 
   isThumbnailCompleted(index: number): boolean {
@@ -256,102 +463,64 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     return this.thumbnailStates[index] === 'failed';
   }
 
-  private extractImageNameFromMessage(message: string): string | null {
-    const patterns = [
-      /:\s*([^:]+\.(jpg|jpeg|png|gif|bmp|webp))/i,
-      /processing\s+([^:\s]+\.(jpg|jpeg|png|gif|bmp|webp))/i,
-      /\(([^)]+\.(jpg|jpeg|png|gif|bmp|webp))\)/i,
-      /Image\s+\d+\/\d+\s*\(([^)]+)\)/i,
-    ];
-
-    for (const pattern of patterns) {
-      const match = message.match(pattern);
-      if (match) {
-        return match[1].trim();
-      }
-    }
-    return null;
+  setError(errorMessage: string): void {
+    this.handleError(errorMessage);
   }
 
-  setError(errorMessage: string) {
-    this.hasError = true;
-    this.errorMessage = errorMessage;
-    this.isProcessing = false;
-    this.canRetry = true;
-    
-    // Mark current processing image as failed
-    if (this.currentImageIndex < this.thumbnailStates.length) {
-      this.thumbnailStates[this.currentImageIndex] = 'failed';
-    }
-    
-    this.addStatusMessage(`Error: ${errorMessage}`, 'error');
-    console.error('Processing error:', errorMessage);
-  }
-
-  setComplete(result?: any) {
+  setComplete(result?: any): void {
     this.isProcessing = false;
     this.progress = 100;
-
-    this.currentStageIndex = this.processingStages.length; // This ensures all stages show as completed
+    this.currentStageIndex = this.processingStages.length;
     this.currentStage = 'Complete!';
-  
-    // Mark all remaining images as completed
-    for (let i = 0; i < this.thumbnailStates.length; i++) {
-      if (this.thumbnailStates[i] === 'processing' || this.thumbnailStates[i] === 'pending') {
-        this.thumbnailStates[i] = 'completed';
-      }
-    }
-  
+
+    this.thumbnailStates = this.thumbnailStates.map(state =>
+      state === 'processing' || state === 'pending' ? 'completed' : state
+    );
+
     this.processedImages = this.totalImages;
-    this.successfulImages = Math.max(this.successfulImages, this.totalImages);
-    this.currentStage = `Analysis Complete! Processed ${this.totalImages} images`;
+    this.successfulImages = this.thumbnailStates.filter(s => s === 'completed').length;
+    this.failedImages = this.thumbnailStates.filter(s => s === 'failed').length;
+
     this.addStatusMessage(
-      `Successfully analyzed ${this.totalImages} images in ${this.getElapsedTime()}!`,
+      `Successfully analyzed ${this.successfulImages} image${this.successfulImages !== 1 ? 's' : ''} in ${this.getElapsedTime()}!`,
       'success'
     );
-  
-    if (this.data.onComplete) {
-      this.data.onComplete(result);
-    }
-  
+
+    this.data.onComplete?.(result);
     console.log('Processing completed successfully');
-  
-    // Store the result for the Next button
     this.processingResult = result;
   }
 
-  addStatusMessage(text: string, type: 'info' | 'success' | 'warning' | 'error') {
+  addStatusMessage(text: string, type: MessageType): void {
     this.statusMessages.push({
       text,
       type,
       timestamp: new Date(),
     });
 
-    // Limit messages
-    if (this.statusMessages.length > 15) {
-      this.statusMessages = this.statusMessages.slice(-15);
+    if (this.statusMessages.length > this.MAX_STATUS_MESSAGES) {
+      this.statusMessages = this.statusMessages.slice(-this.MAX_STATUS_MESSAGES);
     }
 
-    // Check scroll position and handle auto-scroll intelligently
-    setTimeout(() => {
-      const messages = document.querySelector('.status-messages') as HTMLElement;
-      if (messages) {
-        this.messagesContainer = messages;
-        const isNearBottom = messages.scrollTop >= messages.scrollHeight - messages.clientHeight - 50;
-        
-        if (isNearBottom) {
-          // User is at bottom, auto-scroll to new message
-          messages.scrollTop = messages.scrollHeight;
-          this.hasUnreadMessages = false;
-        } else {
-          // User has scrolled up, don't interrupt them but mark as having unread messages
-          this.hasUnreadMessages = true;
-        }
-      }
-    }, 50);
+    setTimeout(() => this.handleAutoScroll(), 50);
   }
 
-  scrollToLatestMessage() {
+  private handleAutoScroll(): void {
+    const messages = document.querySelector('.status-messages') as HTMLElement;
+    if (!messages) return;
+
+    this.messagesContainer = messages;
+    const isNearBottom = messages.scrollTop >= messages.scrollHeight - messages.clientHeight - 50;
+
+    if (isNearBottom) {
+      messages.scrollTop = messages.scrollHeight;
+      this.hasUnreadMessages = false;
+    } else {
+      this.hasUnreadMessages = true;
+    }
+  }
+
+  scrollToLatestMessage(): void {
     if (this.messagesContainer) {
       this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
       this.hasUnreadMessages = false;
@@ -362,11 +531,11 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     return this.hasUnreadMessages;
   }
 
-  proceedToMatcher() {
+  proceedToMatcher(): void {
     console.log('🎯 Proceeding to comic matcher with result:', this.processingResult);
-    this.dialogRef.close({ 
-      action: 'proceed_to_matcher', 
-      result: this.processingResult 
+    this.dialogRef.close({
+      action: 'proceed_to_matcher',
+      result: this.processingResult,
     });
   }
 
@@ -374,7 +543,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     return !this.isProcessing && !this.hasError && this.processingResult != null;
   }
 
-  retryProcessing() {
+  retryProcessing(): void {
     this.hasError = false;
     this.errorMessage = '';
     this.isProcessing = true;
@@ -383,9 +552,8 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     this.canRetry = false;
     this.statusMessages = [];
     this.startTime = new Date();
-    this.hasReceivedRealProgress = false;
+    this.processingResult = null;
 
-    // Reset counters and states
     this.currentImageIndex = 0;
     this.processedImages = 0;
     this.successfulImages = 0;
@@ -394,12 +562,14 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     this.lastProgressValue = 0;
     this.lastStage = '';
 
-    // Reset thumbnail states
     this.initializeThumbnailStates();
 
-    if (this.data.files) {
-      this.currentImageName = this.data.files[0]?.name || '';
-      this.addStatusMessage(`Retrying analysis of ${this.totalImages} images...`, 'info');
+    if (this.data.files?.length) {
+      this.currentImageName = this.data.files[0]?.name ?? '';
+      this.addStatusMessage(
+        `Retrying analysis of ${this.totalImages} image${this.totalImages !== 1 ? 's' : ''}...`,
+        'info'
+      );
     }
 
     console.log('🔄 Retrying processing...');
@@ -411,19 +581,26 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
 
   getElapsedTime(): string {
     const elapsed = Date.now() - this.startTime.getTime();
-    return `${Math.round(elapsed / 1000)}s`;
+    const seconds = Math.round(elapsed / 1000);
+
+    if (seconds < 60) {
+      return `${seconds}s`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
   }
 
   getMainImagePreview(): string | null {
-    return this.imagePreviews[this.currentImageIndex] || this.imagePreviews[0];
-
+    return this.imagePreviews[this.currentImageIndex] ?? this.imagePreviews[0] ?? null;
   }
 
   getTotalFileSize(): number {
-    if (this.data.files) {
+    if (this.data.files?.length) {
       return this.data.files.reduce((total, file) => total + file.size, 0);
     }
-    return this.data.file?.size || 0;
+    return this.data.file?.size ?? 0;
   }
 
   getDisplayFilename(): string {
@@ -433,7 +610,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     if (this.totalImages > 1) {
       return `${this.totalImages} images selected`;
     }
-    return this.data.file?.name || 'Unknown file';
+    return this.data.file?.name ?? 'Unknown file';
   }
 
   getCurrentImageProgress(): string {
@@ -442,38 +619,43 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
 
   getProgressSummary(): string {
     if (this.isProcessing) {
-      if (this.currentImageName) {
-        return `Processing ${this.currentImageName} (${Math.min(this.processedImages + 1, this.totalImages)}/${this.totalImages})`;
-      } else {
-        return `Processing image ${Math.min(this.processedImages + 1, this.totalImages)}/${this.totalImages}`;
-      }
-    } else if (this.hasError) {
-      return `Failed: ${this.failedImages} of ${this.totalImages}`;
-    } else {
-      return `Completed: ${this.successfulImages} of ${this.totalImages}`;
+      const imageNum = Math.min(this.processedImages + 1, this.totalImages);
+      return this.currentImageName
+        ? `Processing ${this.currentImageName} (${imageNum}/${this.totalImages})`
+        : `Processing image ${imageNum}/${this.totalImages}`;
     }
+
+    if (this.hasError) {
+      return `Failed: ${this.failedImages} of ${this.totalImages}`;
+    }
+
+    return `Completed: ${this.successfulImages} of ${this.totalImages}`;
   }
 
-  getMessageIcon(type: string): string {
-    switch (type) {
-      case 'success': return 'check_circle';
-      case 'warning': return 'warning';
-      case 'error': return 'error';
-      default: return 'info';
-    }
+  getMessageIcon(type: MessageType): string {
+    const icons: Record<MessageType, string> = {
+      success: 'check_circle',
+      warning: 'warning',
+      error: 'error',
+      info: 'info',
+    };
+    return icons[type];
   }
 
   formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
+
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
   }
 
   private scrollToTop(): void {
     const content = document.querySelector('.dialog-content');
-    if (content) content.scrollTop = 0;
+    if (content) {
+      content.scrollTop = 0;
+    }
   }
 
   isSmallScreen(): boolean {
@@ -481,15 +663,16 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   }
 
   getCompletedImagesCount(): number {
-    // Count only images that are fully completed (successful or failed)
-    return this.thumbnailStates.filter(state => 
-      state === 'completed' || state === 'failed'
-    ).length;
+    return this.thumbnailStates.filter(state => state === 'completed').length;
+  }
+
+  getFailedImagesCount(): number {
+    return this.thumbnailStates.filter(state => state === 'failed').length;
   }
 
   getRemainingImagesCount(): number {
-    // Count images that haven't been processed yet (pending) + currently processing
-    const completed = this.getCompletedImagesCount();
-    return this.totalImages - completed;
+    return this.thumbnailStates.filter(state =>
+      state === 'pending' || state === 'processing'
+    ).length;
   }
 }

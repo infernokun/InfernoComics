@@ -15,7 +15,7 @@ import { upperLower } from "../../../../utils/utils";
         <span class="status-text" [style.color]="getStatusColor()">{{
           getMainStatusText()
         }}</span>
-        <span>{{ params?.data?.startedBy }} @if (params.data.state == 'COMPLETE') {}</span>
+        <span>{{ params?.data?.startedBy }} @if (params.data.state === State.COMPLETED) {}</span>
       </div>
 
       <!-- Progress bar for processing items -->
@@ -128,6 +128,8 @@ import { upperLower } from "../../../../utils/utils";
 })
 export class CombinedStatusCellRenderer implements ICellRendererAngularComp {
   params: any;
+
+  State = State;
 
   constructor() {}
 

@@ -27,6 +27,7 @@ import { ComicVineService } from '../../services/comic-vine.service';
 import { IssueService } from '../../services/issue.service';
 import { SSEProgressData } from '../../services/progress-data.service';
 import { SeriesService } from '../../services/series.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-series-detail',
@@ -634,144 +635,121 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  private async handleBulkAddResults(
-    results: ProcessedImageResult[],
-    seriesId: number
-  ): Promise<void> {
-    console.log('Processing bulk add for', results.length, 'comics');
-    
+  private async handleBulkAddResults(results: ProcessedImageResult[], seriesId: number): Promise<void> {
+    // Filter accepted results upfront
+    const acceptedResults = results.filter(result => 
+      (result.status === 'auto_accepted' || result.status === 'manually_accepted') &&
+      result.selectedMatch
+    );
+
+    if (acceptedResults.length === 0) {
+      this.snackBar.open('No comics selected for addition', 'Close', { duration: 3000 });
+      return;
+    }
+
+    console.log(`Processing ${acceptedResults.length} accepted results out of ${results.length} total`);
+
     // Show loading indicator
-    this.snackBar.open(`Adding ${results.length} comics to collection...`, '', {
+    this.snackBar.open(`Adding ${acceptedResults.length} comics to collection...`, '', {
       duration: 0,
     });
 
     try {
-      // Filter and prepare accepted results
-      const acceptedResults = results.filter(result => 
-        (result.status === 'auto_accepted' || result.status === 'manually_accepted') &&
-        result.selectedMatch
+      // Fetch Comic Vine details for all accepted results in parallel
+      const issueDataResults = await Promise.all(
+        acceptedResults.map(result => this.fetchIssueData(result, seriesId))
       );
 
-      if (acceptedResults.length === 0) {
-        this.snackBar.dismiss();
-        this.snackBar.open('No comics selected for addition', 'Close', { duration: 3000 });
-        return;
-      }
-
-      console.log(`Processing ${acceptedResults.length} accepted results out of ${results.length} total`);
-
-      // Fetch Comic Vine details for all accepted results
-      const issueDataPromises = acceptedResults.map(async (result) => {
-        const match = result.selectedMatch!;
-        
-        try {
-          // Fetch Comic Vine details for the match
-          const res: ApiResponse<Issue> | undefined = await this.comicVineService
-            .getIssueById(
-              match.parent_comic_vine_id
-                ? match.parent_comic_vine_id.toString()
-                : match.comic_vine_id!.toString()
-            )
-            .toPromise();
-
-          if (res?.data) {
-            const issue: Issue = new Issue(res.data);
-
-            // Prepare issue data
-            if (match.parent_comic_vine_id) {
-              issue.imageUrl = match.url;
-              issue.variant = true;
-            }
-
-            const issueData = {
-              seriesId: seriesId,
-              issueNumber: issue.issueNumber,
-              title: issue.title,
-              description: issue.description,
-              coverDate: issue.coverDate,
-              imageUrl: issue.imageUrl,
-              comicVineId: issue.id,
-              condition: 'VERY_FINE',
-              purchasePrice: 0,
-              currentValue: 0,
-              keyIssue: false,
-              generatedDescription: issue.generatedDescription || false,
-              variant: issue.variant || false,
-              uploadedImageUrl: result.imagePreview.includes("blob") 
-                ? result.liveStoredImage 
-                : result.imagePreview,
-            };
-
-            console.log(
-              '✅ Prepared issue data for:',
-              result.imageName,
-              'with comic vine ID:',
-              issue.id
-            );
-
-            return issueData;
-          } else {
-            console.warn('No Comic Vine issue found for match:', match);
-            return null;
-          }
-        } catch (error) {
-          console.error(
-            'Error fetching Comic Vine details for',
-            result.imageName,
-            ':',
-            error
-          );
-          return null;
-        }
-      });
-
-      // Wait for all Comic Vine data to be fetched
-      const allIssueData = await Promise.all(issueDataPromises);
-      
       // Filter out null results
-      const validIssueData = allIssueData.filter(data => data !== null);
+      const validIssueData = issueDataResults.filter((data): data is NonNullable<typeof data> => data !== null);
 
       if (validIssueData.length === 0) {
         this.snackBar.dismiss();
-        this.snackBar.open('Failed to fetch comic details for any issues', 'Close', {
-          duration: 3000,
-        });
+        this.snackBar.open('Failed to fetch comic details for any issues', 'Close', { duration: 3000 });
         return;
       }
 
       console.log(`Creating ${validIssueData.length} issues via bulk endpoint`);
 
-      // Use the bulk creation endpoint
-      const createdIssues = await this.issueService.createIssuesBulk(validIssueData).toPromise();
+      // Single API call for bulk creation
+      const response: ApiResponse<Issue[]> = await firstValueFrom(this.issueService.createIssuesBulk(validIssueData));
 
       this.snackBar.dismiss();
 
-      const successful = createdIssues?.length || 0;
+      if (!response.data) {
+        throw new Error('No data returned from bulk creation');
+      }
+
+      const successful = response.data.length;
       const failed = acceptedResults.length - successful;
 
+      this.snackBar.open(
+        successful > 0
+          ? `Successfully added ${successful} comics to collection${failed > 0 ? ` (${failed} failed)` : ''}`
+          : 'Failed to add comics to collection',
+        'Close',
+        { duration: 5000 }
+      );
+
       if (successful > 0) {
-        this.snackBar.open(
-          `Successfully added ${successful} comics to collection${
-            failed > 0 ? ` (${failed} failed)` : ''
-          }`,
-          'Close',
-          { duration: 5000 }
-        );
-        
-        // Refresh both issues and series data
+        // Refresh data in parallel
         this.loadIssues(seriesId);
-        this.loadSeries(seriesId); // This will update the issuesOwnedCount
-      } else {
-        this.snackBar.open('Failed to add comics to collection', 'Close', {
-          duration: 3000,
-        });
+        this.loadSeries(seriesId);
       }
-    } catch (err: unknown) {
+
+    } catch (err) {
       this.snackBar.dismiss();
       console.error('Error in bulk add:', err);
-      this.snackBar.open('Error adding comics to collection', 'Close', {
-        duration: 3000,
-      });
+      this.snackBar.open('Error adding comics to collection', 'Close', { duration: 3000 });
+    }
+  }
+
+  private async fetchIssueData(
+    result: ProcessedImageResult,
+    seriesId: number
+  ): Promise<Record<string, unknown> | null> {
+    const match = result.selectedMatch!;
+
+    try {
+      const comicVineId = match.parent_comic_vine_id?.toString() ?? match.comic_vine_id!.toString();
+      const response = await firstValueFrom(this.comicVineService.getIssueById(comicVineId));
+
+      if (!response?.data) {
+        console.warn('No Comic Vine issue found for match:', match);
+        return null;
+      }
+
+      const issue = new Issue(response.data);
+
+      if (match.parent_comic_vine_id) {
+        issue.imageUrl = match.url;
+        issue.variant = true;
+      }
+
+      console.log('✅ Prepared issue data for:', result.imageName, 'with comic vine ID:', issue.id);
+
+      return {
+        seriesId,
+        issueNumber: issue.issueNumber,
+        title: issue.title,
+        description: issue.description,
+        coverDate: issue.coverDate,
+        imageUrl: issue.imageUrl,
+        comicVineId: issue.id,
+        condition: 'VERY_FINE',
+        purchasePrice: 0,
+        currentValue: 0,
+        keyIssue: false,
+        generatedDescription: issue.generatedDescription ?? false,
+        variant: issue.variant ?? false,
+        uploadedImageUrl: result.imagePreview.includes('blob')
+          ? result.liveStoredImage
+          : result.imagePreview,
+      };
+
+    } catch (error) {
+      console.error('Error fetching Comic Vine details for', result.imageName, ':', error);
+      return null;
     }
   }
 
@@ -1173,7 +1151,9 @@ export class SeriesDetailComponent implements OnInit {
 
     // Use bulk delete endpoint instead of individual calls
     this.issueService.deleteIssuesBulk(issueIds).subscribe({
-      next: (result) => {
+      next: (res: ApiResponse<{ successful: number; failed: number }>) => {
+        if (!res.data) throw new Error('No data returned from bulk delete');
+        const result = res.data;
         this.snackBar.dismiss();
         
         const successful = result.successful || 0;

@@ -47,8 +47,8 @@ export class IssueService extends BaseService {
     return this.post<any>(this.apiUrl, formData);
   }
 
-  createIssuesBulk(issues: any[]): Observable<any[]> {
-    return this.post<any[]>(`${this.apiUrl}/bulk`, issues);
+  createIssuesBulk(issues: any[]): Observable<ApiResponse<Issue[]>> {
+    return this.post<ApiResponse<Issue[]>>(`${this.apiUrl}/bulk`, issues);
   }
 
   updateIssue(
@@ -75,10 +75,8 @@ export class IssueService extends BaseService {
     return this.delete<any>(`${this.apiUrl}/${id}`);
   }
 
-  deleteIssuesBulk(
-    issueIds: number[]
-  ): Observable<{ successful: number; failed: number }> {
-    return this.post<{ successful: number; failed: number }>(
+  deleteIssuesBulk(issueIds: number[]): Observable<ApiResponse<{ successful: number; failed: number }>> {
+    return this.post<ApiResponse<{ successful: number; failed: number }>>(
       `${this.apiUrl}/bulk-delete`,
       issueIds
     );

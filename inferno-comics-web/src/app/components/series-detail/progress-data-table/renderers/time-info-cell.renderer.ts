@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { ICellRendererAngularComp } from "ag-grid-angular";
-import { ProgressData } from "../../../../models/progress-data.model";
+import { ProgressData, State } from "../../../../models/progress-data.model";
 
 @Component({
   selector: 'app-time-info-renderer',
@@ -119,10 +119,10 @@ export class TimeInfoCellRenderer implements ICellRendererAngularComp {
   }
 
   getProcessingStatus(): string {
-    const state = this.params?.data?.state;
-    if (state === 'PROCESSING') {
+    const state: State = this.params?.data?.state;
+    if (state === State.PROCESSING) {
       return 'Currently processing...';
-    } else if (state === 'ERROR') {
+    } else if (state === State.ERROR) {
       return 'Failed to complete';
     } else {
       return 'Not finished';

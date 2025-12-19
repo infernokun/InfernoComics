@@ -8,12 +8,8 @@
         }
       </div>
       <div class="header-text">
-        <h2 mat-dialog-title>
-          Analyzing Comic Images
-        </h2>
-        <p class="subtitle">
-          'Finding the best matches for your comics
-        </p>
+        <h2 mat-dialog-title>Analyzing Comic Images</h2>
+        <p class="subtitle">Finding the best matches for your comics</p>
       </div>
     </div>
     <button mat-icon-button mat-dialog-close class="close-button" [disabled]="isProcessing">
@@ -26,27 +22,27 @@
       <div class="card-header">
         <div class="upload-badge">
           <mat-icon>photo_library</mat-icon>
-          <span>Multiple Images</span>
+          <span>{{ totalImages > 1 ? 'Multiple Images' : 'Single Image' }}</span>
         </div>
         @if (isProcessing) {
           <div class="processing-status">
             <mat-spinner diameter="20"></mat-spinner>
-            <span>{{ getProgressSummary() || 'Processing...' }}</span>
+            <span>{{ getProgressSummary() }}</span>
           </div>
         }
       </div>
 
       <div class="image-showcase">
-        <!-- Multiple Images Grid View -->
         <div class="images-grid">
           <div class="grid-main-image">
             <div class="image-frame">
-              <img [src]="imagePreviews[currentImageIndex]" [alt]="'Current processing image: ' + currentImageName"
-                class="uploaded-image main-image">
+              <img 
+                [src]="imagePreviews[currentImageIndex]" 
+                [alt]="'Current processing image: ' + currentImageName"
+                class="uploaded-image main-image"
+              >
               @if (isProcessing) {
                 <div class="scanning-line"></div>
-              }
-              @if (isProcessing) {
                 <div class="image-overlay">
                   <div class="processing-indicator">
                     <mat-icon>play_circle</mat-icon>
@@ -62,44 +58,68 @@
           </div>
 
           <div class="grid-thumbnails">
-            @for (preview of imagePreviews; track preview; let i = $index) {
-              <div class="thumbnail-item"
-                [class.active]="i === currentImageIndex" [class.completed]="isThumbnailCompleted(i)"
-                [class.processing]="isThumbnailProcessing(i)" [class.pending]="isThumbnailPending(i)">
-                <img [src]="preview" [alt]="'Image ' + (i + 1)" class="thumbnail-image">
+            @for (preview of imagePreviews; track $index) {
+              <div 
+                class="thumbnail-item"
+                [class.active]="$index === currentImageIndex"
+                [class.completed]="isThumbnailCompleted($index)"
+                [class.processing]="isThumbnailProcessing($index)"
+                [class.pending]="isThumbnailPending($index)"
+                [class.failed]="isThumbnailFailed($index)"
+              >
+                <img [src]="preview" [alt]="'Image ' + ($index + 1)" class="thumbnail-image">
                 <div class="thumbnail-status">
-                  <!-- Completed State -->
-                  @if (isThumbnailCompleted(i)) {
-                    <div class="status-indicator completed">
-                      <mat-icon class="status-icon">check_circle</mat-icon>
-                    </div>
-                  }
-                  <!-- Currently Processing State -->
-                  @if (isThumbnailProcessing(i)) {
-                    <div class="status-indicator processing">
-                      <mat-icon class="status-icon spinning">sync</mat-icon>
-                    </div>
-                  }
-                  <!-- Pending/Waiting State -->
-                  @if (isThumbnailPending(i)) {
-                    <div class="status-indicator pending">
-                      <span class="pending-number">{{ i + 1 }}</span>
-                    </div>
+                  @switch (getThumbnailStatus($index)) {
+                    @case ('completed') {
+                      <div class="status-indicator completed">
+                        <mat-icon class="status-icon">check_circle</mat-icon>
+                      </div>
+                    }
+                    @case ('processing') {
+                      <div class="status-indicator processing">
+                        <mat-icon class="status-icon spinning">sync</mat-icon>
+                      </div>
+                    }
+                    @case ('failed') {
+                      <div class="status-indicator failed">
+                        <mat-icon class="status-icon">error</mat-icon>
+                      </div>
+                    }
+                    @case ('pending') {
+                      <div class="status-indicator pending">
+                        <span class="pending-number">{{ $index + 1 }}</span>
+                      </div>
+                    }
                   }
                 </div>
-                <!-- Progress Ring for Current Image -->
-                @if (isThumbnailProcessing(i)) {
+                @if (isThumbnailProcessing($index)) {
                   <div class="progress-ring">
-                    <svg class="progress-ring-svg" [attr.width]="isSmallScreen() ? 60 : 70"
-                      [attr.height]="isSmallScreen() ? 60 : 70">
-                      <circle class="progress-ring-circle-bg" [attr.cx]="isSmallScreen() ? 30 : 35"
-                        [attr.cy]="isSmallScreen() ? 30 : 35" [attr.r]="isSmallScreen() ? 26 : 30" fill="none"
-                        stroke="rgba(102, 126, 234, 0.2)" stroke-width="3" />
-                      <circle class="progress-ring-circle" [attr.cx]="isSmallScreen() ? 30 : 35"
-                        [attr.cy]="isSmallScreen() ? 30 : 35" [attr.r]="isSmallScreen() ? 26 : 30" fill="none"
-                        stroke="#667eea" stroke-width="3" stroke-linecap="round"
+                    <svg 
+                      class="progress-ring-svg" 
+                      [attr.width]="isSmallScreen() ? 60 : 70"
+                      [attr.height]="isSmallScreen() ? 60 : 70"
+                    >
+                      <circle 
+                        class="progress-ring-circle-bg" 
+                        [attr.cx]="isSmallScreen() ? 30 : 35"
+                        [attr.cy]="isSmallScreen() ? 30 : 35" 
+                        [attr.r]="isSmallScreen() ? 26 : 30" 
+                        fill="none"
+                        stroke="rgba(102, 126, 234, 0.2)" 
+                        stroke-width="3" 
+                      />
+                      <circle 
+                        class="progress-ring-circle" 
+                        [attr.cx]="isSmallScreen() ? 30 : 35"
+                        [attr.cy]="isSmallScreen() ? 30 : 35" 
+                        [attr.r]="isSmallScreen() ? 26 : 30" 
+                        fill="none"
+                        stroke="#667eea" 
+                        stroke-width="3" 
+                        stroke-linecap="round"
                         [style.stroke-dasharray]="isSmallScreen() ? 163.4 : 188.4"
-                        [style.stroke-dashoffset]="(isSmallScreen() ? 163.4 : 188.4) - (progress / 100) * (isSmallScreen() ? 163.4 : 188.4)" />
+                        [style.stroke-dashoffset]="(isSmallScreen() ? 163.4 : 188.4) - (progress / 100) * (isSmallScreen() ? 163.4 : 188.4)" 
+                      />
                     </svg>
                   </div>
                 }
@@ -117,38 +137,25 @@
         <div class="progress-info">
           <span class="progress-percentage">{{ Math.round(progress) }}%</span>
           <div class="completion-indicator" [class.completed]="progress === 100">
-            @if (progress === 100) {
-              <mat-icon>check_circle</mat-icon>
-            }
-            @if (progress < 100) {
-              <mat-icon>pending</mat-icon>
-            }
+            <mat-icon>{{ progress === 100 ? 'check_circle' : 'pending' }}</mat-icon>
           </div>
         </div>
       </div>
 
-      <!-- Enhanced Progress Bar -->
       <div class="progress-bar-container">
         <mat-progress-bar [value]="progress" mode="determinate" class="progress-bar"></mat-progress-bar>
         <div class="progress-glow" [style.width.%]="progress"></div>
       </div>
 
-      <!-- Multiple Images Progress Summary -->
       <div class="progress-summary">
         <div class="summary-stats">
           <div class="stat-item">
             <span class="stat-number">{{ getCompletedImagesCount() }}</span>
-            <span class="stat-label">Processed</span>
+            <span class="stat-label">Completed</span>
           </div>
-          @if (successfulImages > 0) {
+          @if (getFailedImagesCount() > 0) {
             <div class="stat-item">
-              <span class="stat-number success">{{ successfulImages }}</span>
-              <span class="stat-label">Successful</span>
-            </div>
-          }
-          @if (failedImages > 0) {
-            <div class="stat-item">
-              <span class="stat-number error">{{ failedImages }}</span>
+              <span class="stat-number error">{{ getFailedImagesCount() }}</span>
               <span class="stat-label">Failed</span>
             </div>
           }
@@ -161,36 +168,38 @@
 
       <!-- Stage Timeline -->
       <div class="stage-timeline">
-        @for (stage of processingStages; track stage; let i = $index) {
-          <div class="stage-step"
-            [class.completed]="i < currentStageIndex || (!isProcessing && progress >= 100)"
-            [class.active]="i === currentStageIndex && isProcessing"
-            [class.pending]="i > currentStageIndex && isProcessing">
+        @for (stage of processingStages; track stage.key; let i = $index) {
+          @let isCompleted = i < currentStageIndex || (!isProcessing && progress >= 100);
+          @let isActive = i === currentStageIndex && isProcessing;
+          @let isPending = i > currentStageIndex && isProcessing;
+          
+          <div 
+            class="stage-step"
+            [class.completed]="isCompleted"
+            [class.active]="isActive"
+            [class.pending]="isPending"
+          >
             @if (i < processingStages.length - 1) {
               <div class="step-connector"></div>
             }
             <div class="step-circle">
-              @if (i < currentStageIndex || (!isProcessing && progress >= 100)) {
+              @if (isCompleted) {
                 <mat-icon>check</mat-icon>
-              }
-              @if (i === currentStageIndex && isProcessing) {
-                <span class="step-number">{{ i + 1 }}</span>
-              }
-              @if (i > currentStageIndex && isProcessing) {
+              } @else {
                 <span class="step-number">{{ i + 1 }}</span>
               }
             </div>
             <div class="step-content">
               <span class="step-name">{{ stage.name }}</span>
-              @if (i === currentStageIndex && isProcessing) {
-                <span class="step-status">In Progress</span>
-              }
-              @if (i < currentStageIndex || (!isProcessing && progress >= 100)) {
-                <span class="step-status">Completed</span>
-              }
-              @if (i > currentStageIndex && isProcessing) {
-                <span class="step-status">Pending</span>
-              }
+              <span class="step-status">
+                @if (isActive) {
+                  In Progress
+                } @else if (isCompleted) {
+                  Completed
+                } @else {
+                  Pending
+                }
+              </span>
             </div>
           </div>
         }
@@ -204,13 +213,19 @@
           <mat-icon>feed</mat-icon>
           <h4>Processing Log</h4>
           <span class="message-count">{{ statusMessages.length }}</span>
+          @if (hasNewMessages()) {
+            <button mat-icon-button (click)="scrollToLatestMessage()" class="scroll-btn">
+              <mat-icon>arrow_downward</mat-icon>
+            </button>
+          }
         </div>
         <div class="status-messages">
-          @for (message of statusMessages; track message; let i = $index) {
-            <div class="status-message"
-              [class.success]="message.type === 'success'" [class.warning]="message.type === 'warning'"
-              [class.error]="message.type === 'error'" [class.info]="message.type === 'info'"
-              [style.animation-delay.ms]="i * 50">
+          @for (message of statusMessages; track $index) {
+            <div 
+              class="status-message"
+              [class]="message.type"
+              [style.animation-delay.ms]="$index * 50"
+            >
               <div class="message-indicator">
                 <mat-icon class="message-icon">{{ getMessageIcon(message.type) }}</mat-icon>
               </div>
@@ -224,7 +239,7 @@
       </div>
     }
 
-    <!-- Error Section (Enhanced) -->
+    <!-- Error Section -->
     @if (hasError) {
       <div class="error-section">
         <div class="error-icon-container">
@@ -244,7 +259,6 @@
     }
   </mat-dialog-content>
 
-  <!-- Enhanced Actions -->
   <mat-dialog-actions class="dialog-actions">
     <div class="actions-left">
       <button mat-button mat-dialog-close [disabled]="isProcessing" class="cancel-btn">
@@ -259,21 +273,13 @@
           <mat-spinner diameter="16"></mat-spinner>
           <span>Processing images...</span>
         </div>
-      }
-
-      <!-- Show Next button when processing is complete -->
-      @if (isCompleteWithResults()) {
-        <button mat-raised-button color="primary" (click)="proceedToMatcher()"
-          class="next-btn">
+      } @else if (isCompleteWithResults()) {
+        <button mat-raised-button color="primary" (click)="proceedToMatcher()" class="next-btn">
           <mat-icon>arrow_forward</mat-icon>
           View Matches
         </button>
-      }
-
-      @if (!isProcessing && !hasError && canRetry && !isCompleteWithResults()) {
-        <button mat-raised-button color="primary"
-          (click)="retryProcessing()"
-          class="retry-btn">
+      } @else if (!hasError && canRetry) {
+        <button mat-raised-button color="primary" (click)="retryProcessing()" class="retry-btn">
           <mat-icon>refresh</mat-icon>
           Retry
         </button>

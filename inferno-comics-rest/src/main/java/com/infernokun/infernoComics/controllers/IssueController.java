@@ -106,7 +106,6 @@ public class IssueController extends BaseController {
     }
 
     @PostMapping("/bulk")
-    @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<ApiResponse<List<Issue>>> createIssuesBulk(@RequestBody @Valid List<IssueRequest> requests) {
         return createSuccessResponse(issueService.createIssuesBulk(requests));
     }
