@@ -255,9 +255,9 @@ public class ProgressDataService {
         }
 
         SSEProgressData completeData = SSEProgressData.builder()
-                .type("complete")
+                .type("completed")
                 .sessionId(sessionId)
-                .stage("complete")
+                .stage("completed")
                 .progress(100)
                 .message("Image processing completed successfully")
                 .result(result)

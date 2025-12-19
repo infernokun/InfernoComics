@@ -105,7 +105,7 @@ class JavaProgressReporter:
             'comparing_images': 'Comparing Images',
             'processing_results': 'Processing Results',
             'finalizing': 'Finalizing Results',
-            'complete': 'Complete'
+            'completed': 'Completed'
         }
         
         if stage in stage_mapping:
@@ -135,8 +135,8 @@ class JavaProgressReporter:
         current_time = time()
         
         is_important_event = (
-            stage == 'complete' or 
-            'complete' in stage.lower() or 
+            stage == 'completed' or 
+            'completed' in stage.lower() or 
             stage == 'error' or
             progress >= 100
         )
@@ -333,7 +333,7 @@ class JavaProgressReporter:
         
         # Final completion data
         stats['percentageComplete'] = 100
-        stats['currentStage'] = 'Complete'
+        stats['currentStage'] = 'Completed'
         stats['statusMessage'] = 'Processing completed successfully'
         
         return stats
