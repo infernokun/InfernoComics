@@ -3,6 +3,7 @@ package com.infernokun.infernoComics.services.sync;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.enums.StartedBy;
+import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.models.sync.*;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.repositories.sync.SeriesSyncStatusRepository;
@@ -130,7 +131,7 @@ public class NextcloudSyncService {
         return processedFileRepository
                 .findBySeriesIdAndFilePath(seriesId, file.getPath())
                 .map(existingRecord -> {
-                    boolean shouldReprocess = existingRecord.getProcessingStatus() != ProcessedFile.ProcessingStatus.COMPLETE;
+                    boolean shouldReprocess = existingRecord.getState() != State.COMPLETED;
 
                     if (shouldReprocess) {
                         log.info("File {} will be reprocessed due to previous failure, deleting old record", file.getPath());
@@ -193,7 +194,7 @@ public class NextcloudSyncService {
                     processedFile.setFileEtag(file.getEtag());
                     processedFile.setFileSize(file.getSize());
                     processedFile.setFileLastModified(file.getLastModified());
-                    processedFile.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED);
+                    processedFile.setState(State.COMPLETED);
                     processedFile.setErrorMessage(e.getMessage());
 
                     synchronized (filesToRecord) {

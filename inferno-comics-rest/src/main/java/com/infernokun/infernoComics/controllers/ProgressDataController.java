@@ -5,6 +5,7 @@ import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.ApiResponse;
 import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.ProgressUpdateRequest;
+import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.ProgressDataService;
@@ -142,7 +143,7 @@ public class ProgressDataController extends BaseController {
                 // 3️ Update with the processed file information
                 processedFileEntity.setFileEtag(processedFileHash);
                 processedFileEntity.setFileName(storedFileName);
-                processedFileEntity.setProcessingStatus(ProcessedFile.ProcessingStatus.COMPLETE);
+                processedFileEntity.setState(State.COMPLETED);
                 processedFileEntity.setProcessedAt(LocalDateTime.now());
 
                 processedFileRepository.save(processedFileEntity);

@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.models.sync;
 
+import com.infernokun.infernoComics.models.enums.State;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -46,17 +47,13 @@ public class ProcessedFile {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "processing_status")
-    private ProcessingStatus processingStatus = ProcessingStatus.PROCESSING;
+    private State state = State.PROCESSING;
 
     @Column(name = "session_id")
     private String sessionId;
 
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
-
-    public enum ProcessingStatus {
-        COMPLETE, FAILED, SKIPPED, PROCESSING, REPLAY
-    }
 
     @Table(uniqueConstraints = {
             @UniqueConstraint(columnNames = {"series_id", "file_path"})

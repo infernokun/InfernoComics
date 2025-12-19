@@ -85,7 +85,7 @@ public class ProgressData {
         if (timeStarted == null && state == State.PROCESSING) {
             timeStarted = LocalDateTime.now();
         }
-        if (timeFinished == null && (state == State.COMPLETE || state == State.ERROR)) {
+        if (timeFinished == null && (state == State.COMPLETED || state == State.ERROR)) {
             timeFinished = LocalDateTime.now();
         }
     }

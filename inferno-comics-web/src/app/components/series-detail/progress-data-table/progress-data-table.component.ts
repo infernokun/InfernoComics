@@ -539,9 +539,10 @@ export class ProgressDataTable implements OnInit, OnDestroy {
         <p><strong>Successful Items:</strong> ${progressData.successfulItems || 0}</p>
         <p><strong>Failed Items:</strong> ${progressData.failedItems || 0}</p>
         <p><strong>Percentage Complete:</strong> ${progressData.percentageComplete || 0}%</p>
-        <p><strong>Status:</strong> ${progressData.statusMessage || progressData.state || 'Unknown'}</p>
+        <p><strong>Status Message:</strong> ${progressData.statusMessage || progressData.state || 'Unknown'}</p>
         <p><strong>Started:</strong> ${progressData.timeStarted ? DateUtils.formatDateTime(new Date(progressData.timeStarted), true): 'Unknown'}</p>
         <p><strong>Completed:</strong> ${progressData.timeFinished? DateUtils.formatDateTime(new Date(progressData.timeFinished), true) : 'Not finished'}</p>
+        <p><strong>Stage:</strong> ${ progressData.state || 'Unknown'}</p>
         <p><strong>Current Stage:</strong> ${progressData.currentStage || 'None'}</p>
         <p><strong>Duration:</strong> ${progressData.getDuration() || 'None'}</p>
         ${progressData.errorMessage ? `<p style="color: red;"><strong>Error:</strong> ${progressData.errorMessage}</p>` : '' }

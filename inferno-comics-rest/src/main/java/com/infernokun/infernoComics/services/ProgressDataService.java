@@ -219,7 +219,7 @@ public class ProgressDataService {
             if (progressDataOptional.isPresent()) {
                 ProgressData progressData = progressDataOptional.get();
                 progressData.setTimeFinished(LocalDateTime.now());
-                progressData.setState(State.COMPLETE);
+                progressData.setState(State.COMPLETED);
 
                 // Extract and save the enhanced fields from the result
                 if (result != null) {

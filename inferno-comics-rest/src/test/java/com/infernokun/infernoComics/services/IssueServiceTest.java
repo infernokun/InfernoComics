@@ -8,6 +8,7 @@ import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.dto.IssueRequest;
 import com.infernokun.infernoComics.models.enums.Condition;
 import com.infernokun.infernoComics.repositories.IssueRepository;
+import com.infernokun.infernoComics.repositories.MissingIssueRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,17 +66,21 @@ public class IssueServiceTest {
     @Mock
     private IssueService issueService;
 
+    @Mock
+    private MissingIssueRepository missingIssueRepository;
+
     @BeforeEach
     void setUp() {
         issueService = new IssueService(
+                infernoComicsConfig,
                 issueRepository,
                 seriesRepository,
+                missingIssueRepository,
                 comicVineService,
-                infernoComicsConfig,
-                descriptionGeneratorService,
                 gcDatabaseService,
-                cacheManager,
                 recognitionService,
+                descriptionGeneratorService,
+                cacheManager,
                 webClient
         );
     }

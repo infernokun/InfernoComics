@@ -323,7 +323,7 @@ public class SeriesController extends BaseController {
 
         log.info("Found {} query images for session {}", images.size(), sessionId);
 
-        processedFiles.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.REPLAY));
+        processedFiles.forEach(file -> file.setState(State.REPLAYED));
 
         weirdService.saveProcessedFiles(processedFiles);
 

@@ -8,6 +8,7 @@ import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.dto.SeriesRequest;
 import com.infernokun.infernoComics.models.enums.StartedBy;
+import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
@@ -840,7 +841,7 @@ public class SeriesService {
                         .fileSize(imageData.fileSize())
                         .fileEtag(fileEtag)
                         .sessionId(sessionId)
-                        .processingStatus(ProcessedFile.ProcessingStatus.PROCESSING)
+                        .state(State.PROCESSING)
                         .processedAt(LocalDateTime.now())
                         .build());
             }
@@ -894,7 +895,7 @@ public class SeriesService {
 
         } catch (Exception e) {
             log.error("Error in image processing for session {}: {}", sessionId, e.getMessage());
-            filesToRecord.forEach(file -> file.setProcessingStatus(ProcessedFile.ProcessingStatus.FAILED));
+            filesToRecord.forEach(file -> file.setState(State.ERROR));
             progressDataService.sendError(sessionId, "Error processing images: " + e.getMessage());
         }
 

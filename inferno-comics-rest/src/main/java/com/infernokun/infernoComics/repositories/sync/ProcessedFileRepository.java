@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.repositories.sync;
 
+import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,7 +21,7 @@ public interface ProcessedFileRepository extends JpaRepository<ProcessedFile, Lo
 
     Optional<ProcessedFile> findBySeriesIdAndFilePath(Long seriesId, String filePath);
 
-    List<ProcessedFile> findBySeriesIdAndProcessingStatus(Long seriesId, ProcessedFile.ProcessingStatus status);
+    List<ProcessedFile> findBySeriesIdAndState(Long seriesId, State state);
 
     @Query("SELECT COUNT(pf) FROM ProcessedFile pf WHERE pf.seriesId = :seriesId AND pf.processingStatus = 'PROCESSED'")
     Long countProcessedFilesBySeriesId(@Param("seriesId") Long seriesId);

@@ -9,7 +9,7 @@ import lombok.ToString;
 @AllArgsConstructor
 public enum State {
     PROCESSING("PROCESSING"),
-    COMPLETE("COMPLETED"),
+    COMPLETED("COMPLETED"),
     REPLAYED("REPLAYED"),
     QUEUE("QUEUE"),
     ERROR("ERROR");
