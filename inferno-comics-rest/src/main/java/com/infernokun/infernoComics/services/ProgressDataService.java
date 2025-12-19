@@ -124,7 +124,7 @@ public class ProgressDataService {
         log.info("Initializing processing session: {}", sessionId);
 
         SSEProgressData initialStatus = SSEProgressData.builder()
-                .type("progress")
+                .type(String.valueOf(State.PROCESSING))
                 .sessionId(sessionId)
                 .stage("preparing")
                 .progress(0)
@@ -153,7 +153,7 @@ public class ProgressDataService {
 
         // Create SSE progress data - FIXED: using request.getStage() instead of request.getSessionId()
         SSEProgressData progressData = SSEProgressData.builder()
-                .type("progress")
+                .type(String.valueOf(State.PROCESSING))
                 .sessionId(request.getSessionId())
                 .stage(request.getStage())
                 .progress(request.getProgress())
@@ -255,9 +255,9 @@ public class ProgressDataService {
         }
 
         SSEProgressData completeData = SSEProgressData.builder()
-                .type("completed")
+                .type(String.valueOf(State.COMPLETED))
                 .sessionId(sessionId)
-                .stage("completed")
+                .stage(String.valueOf(State.COMPLETED))
                 .progress(100)
                 .message("Image processing completed successfully")
                 .result(result)
@@ -298,7 +298,7 @@ public class ProgressDataService {
         }
 
         SSEProgressData errorData = SSEProgressData.builder()
-                .type("error")
+                .type(String.valueOf(State.ERROR))
                 .sessionId(sessionId)
                 .error(errorMessage)
                 .timestamp(Instant.now().toEpochMilli())
@@ -352,7 +352,7 @@ public class ProgressDataService {
                 log.debug("📊 Retrieved status from database for session: {}", sessionId);
                 return Map.of(
                         "sessionId", sessionId,
-                        "type", progressData.getState().toString().toLowerCase(),
+                        "type", progressData.getState().toString(),
                         "stage", progressData.getCurrentStage() != null ? progressData.getCurrentStage() : "",
                         "progress", progressData.getPercentageComplete() != null ? progressData.getPercentageComplete() : 0,
                         "message", progressData.getStatusMessage() != null ? progressData.getStatusMessage() : "",
@@ -722,20 +722,13 @@ public class ProgressDataService {
         });
     }
 
-
-    public static class SessionNotFoundException extends RuntimeException {
-        public SessionNotFoundException(String message) {
-            super(message);
-        }
-    }
-
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class SSEProgressData {
-        private String type; // "progress", "complete", "error"
+        private String type; // "PROCESSING", "COMPLETED", "ERROR"
         private String sessionId;
         private String stage;
         private Integer progress;

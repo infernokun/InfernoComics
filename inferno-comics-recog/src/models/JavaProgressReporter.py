@@ -3,6 +3,7 @@ import requests
 
 from time import time
 from flask import current_app
+from models.enums.State import State
 from util.Logger import get_logger
 from config.EnvironmentConfig import JAVA_REQUEST_TIMEOUT, JAVA_PROGRESS_TIMEOUT
 
@@ -77,7 +78,7 @@ class JavaProgressReporter:
                     extracted_info['processedItems'] = self.processed_items
         
         # Track successful/failed items from completion messages
-        if 'complete' in message.lower() or 'completed' in message.lower():
+        if State.COMPLETED.value.lower() in message.lower():
             if 'error' not in message.lower() and 'failed' not in message.lower():
                 # Successful completion
                 success_match = re.search(r'Successfully processed (\d+)/(\d+)', message)
@@ -105,7 +106,7 @@ class JavaProgressReporter:
             'comparing_images': 'Comparing Images',
             'processing_results': 'Processing Results',
             'finalizing': 'Finalizing Results',
-            'completed': 'Completed'
+            'completed': State.COMPLETED.value
         }
         
         if stage in stage_mapping:
@@ -135,8 +136,8 @@ class JavaProgressReporter:
         current_time = time()
         
         is_important_event = (
-            stage == 'completed' or 
-            'completed' in stage.lower() or 
+            stage == State.COMPLETED.value or 
+            State.COMPLETED.value.lower() in stage.lower() or 
             stage == 'error' or
             progress >= 100
         )
@@ -217,14 +218,14 @@ class JavaProgressReporter:
                 if is_important_event or is_image_processing_update:
                     logger.success(f"IMPORTANT progress sent to Java: {stage} {progress}% - {message[:100] if message else ''}")
                 else:
-                    logger.debug(f" Progress sent to Java: {stage} {progress}% - {message[:50] if message else ''}")
+                    logger.debug(f"Progress sent to Java: {stage} {progress}% - {message[:50] if message else ''}")
             else:
                 logger.warning(f"Java progress update failed: {response.status_code} - {response.text}")
                 
         except requests.exceptions.Timeout:
-            logger.warning(f"⏱️ Java progress update timed out for session {self.session_id}")
+            logger.warning(f"Java progress update timed out for session {self.session_id}")
         except requests.exceptions.ConnectionError:
-            logger.warning(f" Java progress service unavailable for session {self.session_id}")
+            logger.warning(f"Java progress service unavailable for session {self.session_id}")
         except Exception as e:
             logger.error(f"Error sending progress to Java for session {self.session_id}: {e}")
     
@@ -333,7 +334,7 @@ class JavaProgressReporter:
         
         # Final completion data
         stats['percentageComplete'] = 100
-        stats['currentStage'] = 'Completed'
+        stats['currentStage'] = State.COMPLETED.value
         stats['statusMessage'] = 'Processing completed successfully'
         
         return stats

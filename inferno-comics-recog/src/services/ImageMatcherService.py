@@ -5,6 +5,7 @@ import threading
 
 from datetime import datetime
 from util.Logger import get_logger
+from models.enums.State import State
 from models.JavaProgressReporter import JavaProgressReporter
 from util.Globals import get_global_matcher, get_global_matcher_config
 from util.FileOperations import sanitize_for_json, copy_external_image_to_storage, ensure_results_directory, save_image_to_storage
@@ -92,7 +93,7 @@ class ImageMatcherService:
             final_msg = f'Analysis complete! Successfully processed {successful_images}/{len(query_images_data)} images with {total_matches_all_images} total matches'
             
             # Send completion at 100% to Java
-            java_reporter.update_progress('complete', 100, final_msg)
+            java_reporter.update_progress(State.COMPLETED.value, 100, final_msg)
             
             # Update final_result with image URLs from sanitized_result
             if sanitized_result:
@@ -265,7 +266,7 @@ class ImageMatcherService:
                             
                         java_reporter.update_progress('comparing_images', int(actual_progress), progress_msg)
                 except Exception as e:
-                    logger.warning(f"⚠️ Progress callback error for image {img_num}: {e}")
+                    logger.warning(f"Progress callback error for image {img_num}: {e}")
             return image_progress_callback
         
         progress_callback = create_image_progress_callback(
@@ -374,7 +375,7 @@ class ImageMatcherService:
             },
             'session_id': session_id,
             'percentageComplete': 100,
-            'currentStage': 'complete',
+            'currentStage': State.COMPLETED.value,
             'statusMessage': f'Analysis complete! Successfully processed {successful_images}/{len(query_images_data)} images with {total_matches_all_images} total matches',
             'totalItems': len(query_images_data),
             'processedItems': len(query_images_data),
@@ -384,7 +385,7 @@ class ImageMatcherService:
         
         # Final completion message
         final_msg = f'Analysis complete! Successfully processed {successful_images}/{len(query_images_data)} images with {total_matches_all_images} total matches'
-        java_reporter.update_progress('complete', 100, final_msg)
+        java_reporter.update_progress(State.COMPLETED.value, 100, final_msg)
         
         return final_result
 
@@ -401,7 +402,7 @@ class ImageMatcherService:
             evaluation_result = {
                 'session_id': session_id,
                 'timestamp': datetime.now().isoformat(),
-                'status': 'completed',
+                'status': State.COMPLETED.value,
                 'series_name': 'Multiple Images Search',
                 'year': None,
                 'total_images': len(query_images_data),

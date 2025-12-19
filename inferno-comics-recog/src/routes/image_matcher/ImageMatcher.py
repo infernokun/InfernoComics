@@ -11,6 +11,7 @@ import threading
 import numpy as np
 
 from util.Logger import get_logger
+from models.enums.State import State
 from concurrent.futures import ThreadPoolExecutor
 from models.SSEProgressTracker import SSEProgressTracker
 from models.JavaProgressReporter import JavaProgressReporter
@@ -278,7 +279,7 @@ def get_image_processing_progress():
         logger.warning("Missing sessionId in progress request")
         return jsonify({'error': 'Missing sessionId parameter'}), 400
     
-    logger.info(f" Client connecting to SSE progress stream for session: {session_id}")
+    logger.info(f"Client connecting to SSE progress stream for session: {session_id}")
     
     def generate():
         # Check if session exists
@@ -287,7 +288,7 @@ def get_image_processing_progress():
         
         if not session_data:
             error_event = {
-                'type': 'error',
+                'type': State.ERROR.value,
                 'sessionId': session_id,
                 'error': 'Session not found',
                 'timestamp': int(time.time() * 1000)
@@ -300,14 +301,14 @@ def get_image_processing_progress():
         
         # Send initial connection event
         initial_event = {
-            'type': 'progress',
+            'type': State.PROCESSING.value,
             'sessionId': session_id,
             'stage': 'initializing',
             'progress': 0,
             'message': 'Connected to progress stream',
             'timestamp': int(time.time() * 1000)
         }
-        logger.debug(f" SSE stream initialized for session: {session_id}")
+        logger.debug(f"SSE stream initialized for session: {session_id}")
         yield f"data: {json.dumps(initial_event)}\n\n"
         
         # Stream progress events
@@ -318,8 +319,8 @@ def get_image_processing_progress():
                 yield f"data: {json.dumps(event)}\n\n"
                 
                 # Exit if complete or error
-                if event['type'] in ['complete', 'error']:
-                    logger.debug(f" SSE stream ending for session {session_id}: {event['type']}")
+                if event['type'] in [State.COMPLETED.value, State.ERROR.value]:
+                    logger.debug(f"SSE stream ending for session {session_id}: {event['type']}")
                     break
                     
             except queue.Empty:
@@ -335,7 +336,7 @@ def get_image_processing_progress():
                 logger.error(f"Error in SSE stream for session {session_id}: {e}")
                 break
         
-        logger.debug(f" SSE stream closed for session: {session_id}")
+        logger.debug(f"SSE stream closed for session: {session_id}")
     
     response = Response(generate(), mimetype='text/event-stream')
     response.headers['Cache-Control'] = 'no-cache'
