@@ -32,7 +32,7 @@ public class Series {
     @Column(nullable = false)
     private String name;
 
-    @Column(length = 10000)
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "publisher")
