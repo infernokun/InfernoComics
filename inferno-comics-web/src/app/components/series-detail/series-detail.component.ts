@@ -1239,15 +1239,16 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  reverifySeries() {
+  reverifySeries(): void {
     if (!this.series?.id) {
       this.snackBar.open('Series not found', 'Close', { duration: 3000 });
       return;
     }
 
     this.seriesService.reverifySeries(this.series.id).subscribe({
-      next: (updatedSeries) => {
-        this.series = new Series(updatedSeries);
+      next: (res: ApiResponse<Series>) => {
+        if (!res.data) throw new Error('No series data returned');
+        this.series = new Series(res.data);
         this.snackBar.open('Series reverified successfully', 'Close', {
           duration: 3000,
         });
@@ -1261,7 +1262,7 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  syncSeries(id: number) {
+  syncSeries(id: number): void {
     this.seriesService.syncSeries(id).subscribe((data: ApiResponse<ProcessingResult>) => {
       console.log('sync', data);
     })
