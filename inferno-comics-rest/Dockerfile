@@ -37,7 +37,7 @@ RUN set -eux; \
 
 ARG PROJECT
 ENV PROJECT=${PROJECT}
-ENV JAVA_TOOL_OPTIONS="-Dserver.servlet.contextPath=/${PROJECT} -XX:-TieredCompilation"
+ENV JAVA_TOOL_OPTIONS="-Dserver.servlet.contextPath=/${PROJECT} -XX:-TieredCompilation --enable-native-access=ALL-UNNAMED"
 
 # Copy entrypoint and JAR
 COPY --link --chown=java:java scripts/docker-entrypoint.sh /

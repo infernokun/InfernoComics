@@ -11,6 +11,7 @@ import com.infernokun.infernoComics.models.enums.StartedBy;
 import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.models.gcd.GCDCover;
 import com.infernokun.infernoComics.models.gcd.GCDSeries;
+import com.infernokun.infernoComics.models.mappers.SeriesMapper;
 import com.infernokun.infernoComics.models.sync.ProcessedFile;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.MissingIssueRepository;
@@ -21,7 +22,6 @@ import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.modelmapper.ModelMapper;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.CacheManager;
@@ -60,7 +60,6 @@ public class SeriesService {
     private final MissingIssueRepository missingIssueRepository;
     private final ProcessedFileRepository processedFileRepository;
 
-    private final ModelMapper modelMapper;
     private final CacheManager cacheManager;
 
     @CacheEvict(value = "series", key = "#seriesId")
@@ -219,7 +218,7 @@ public class SeriesService {
 
     @Transactional
     public Series createSeries(SeriesRequest request) {
-        Series series = this.modelMapper.map(request, Series.class);
+        Series series = SeriesMapper.INSTANCE.seriesRequestToSeries(request);
 
         // Generate description if not provided
         if (request.getDescription() == null || request.getDescription().trim().isEmpty()) {

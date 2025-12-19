@@ -19,6 +19,18 @@ A modern web application built with **Angular** to discover, track, and explore 
 - Responsive UI using Angular Material
 - Integrated with AG Grid for data tables
 - Docker-ready deployment
+- Real-time updates via WebSocket integration
+
+---
+
+## Architecture
+
+The application consists of:
+- **Frontend**: Angular 21 with TypeScript and SCSS
+- **UI Components**: Built with Angular Material
+- **Data Management**: Through REST API endpoints
+- **State Management**: Using RxJS Observables and services
+- **Deployment**: Containerized with Docker support
 
 ---
 
@@ -52,18 +64,37 @@ services:
     image: infernokun/inferno-comics-web:latest
     restart: always
     environment:
-      - BASE_URL=http://inferno-comics-web
-      - REST_URL=/api
+      - BASE_URL=http://localhost:4200
+      - API_URL=http://localhost:8080/inferno-comics-rest/api
     ports:
-      - "8784:80"
-    volumes:
-      - inferno-comics-web:/var/log/nginx
-    networks:
-      - inferno-comics-network
-
-volumes:
-  inferno-comics-web:
-
-networks:
-  inferno-comics-network:
+      - "4200:4200"
 ```
+
+## Project Structure
+
+- `src/app/components/` - Reusable UI components
+- `src/app/models/` - Data models and interfaces
+- `src/app/services/` - API service layer
+- `src/app/utils/` - Utility functions and animations
+- `src/assets/` - Static assets and configuration files
+- `src/styles/` - Global styles and themes
+
+---
+
+## Build Process
+
+The application uses Nx for build orchestration and supports:
+- Development builds
+- Production builds with optimization
+- Testing configurations
+- Continuous integration workflows
+
+---
+
+## Deployment
+
+The application is configured for Docker deployment with:
+- Multi-stage Docker builds
+- Environment-specific configurations
+- Nginx reverse proxy setup
+- CORS handling for API communication

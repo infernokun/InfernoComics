@@ -5,6 +5,7 @@ import com.infernokun.infernoComics.models.gcd.GCDIssue;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -31,6 +32,7 @@ public class GCDCoverPageScraper {
     private int currentDriverIndex = 0;
 
     //@PostConstruct
+    @Deprecated
     public void initializeDriverPool() {
         log.info("🚀 Initializing Selenium driver pool with {} drivers", DRIVER_POOL_SIZE);
 
@@ -99,16 +101,8 @@ public class GCDCoverPageScraper {
             options.addArguments("--disable-web-security");
 
             // Block unnecessary resources
-            /*Map<String, Object> prefs = new HashMap<>();
-            prefs.put("profile.managed_default_content_settings.images", 2); // Block images
-            prefs.put("profile.managed_default_content_settings.stylesheets", 2); // Block CSS
-            prefs.put("profile.managed_default_content_settings.cookies", 2); // Block cookies
-            prefs.put("profile.managed_default_content_settings.javascript", 2); // Block JS
-            prefs.put("profile.managed_default_content_settings.plugins", 2); // Block plugins
-            prefs.put("profile.managed_default_content_settings.popups", 2); // Block popups
-            prefs.put("profile.managed_default_content_settings.geolocation", 2); // Block location
-            prefs.put("profile.managed_default_content_settings.media_stream", 2); // Block media
-            options.setExperimentalOption("prefs", prefs);*/
+            Map<String, Object> prefs = getStringObjectMap();
+            options.setExperimentalOption("prefs", prefs);
 
             String[] userAgents = {
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -135,6 +129,19 @@ public class GCDCoverPageScraper {
         }
     }
 
+    private static @NonNull Map<String, Object> getStringObjectMap() {
+        Map<String, Object> prefs = new HashMap<>();
+        prefs.put("profile.managed_default_content_settings.images", 2); // Block images
+        prefs.put("profile.managed_default_content_settings.stylesheets", 2); // Block CSS
+        prefs.put("profile.managed_default_content_settings.cookies", 2); // Block cookies
+        prefs.put("profile.managed_default_content_settings.javascript", 2); // Block JS
+        prefs.put("profile.managed_default_content_settings.plugins", 2); // Block plugins
+        prefs.put("profile.managed_default_content_settings.popups", 2); // Block popups
+        prefs.put("profile.managed_default_content_settings.geolocation", 2); // Block location
+        prefs.put("profile.managed_default_content_settings.media_stream", 2); // Block media
+        return prefs;
+    }
+
     private synchronized WebDriver getNextDriver() {
         if (driverPool.isEmpty()) {
             throw new RuntimeException("No drivers available in pool");
@@ -145,6 +152,7 @@ public class GCDCoverPageScraper {
         return driver;
     }
 
+    @Deprecated
     public GCDCover scrapeCoverPage(GCDIssue issue) {
         GCDCover gcdCover = new GCDCover();
         WebDriver driver;
@@ -216,8 +224,7 @@ public class GCDCoverPageScraper {
         try {
             Pattern pattern = Pattern.compile(".*:: (.+)$");
             Matcher matcher = pattern.matcher(Objects.requireNonNull(driver.getTitle()));
-            //gcdCover.setIssueName(matcher.find() ? matcher.group(1) : driver.getTitle());
-            //log.info("⚡ Extracted comic name: {}", gcdCover.getIssueName());
+            gcdCover.setName(matcher.find() ? matcher.group(1) : driver.getTitle());
         } catch (Exception e) {
             log.warn("⚡ Failed to extract comic name: {}", e.getMessage());
             //gcdCover.setIssueName("Unknown");
@@ -232,7 +239,7 @@ public class GCDCoverPageScraper {
 
                 for (WebElement img : images) {
                     try {
-                        String src = img.getAttribute("src");
+                        String src = img.getDomAttribute("src");
                         if (src != null && !src.trim().isEmpty()) {
 
                         // More comprehensive URL validation
@@ -290,7 +297,7 @@ public class GCDCoverPageScraper {
             // Log first few image sources for debugging
             for (int i = 0; i < Math.min(5, allImages.size()); i++) {
                 try {
-                    String src = allImages.get(i).getAttribute("src");
+                    String src = allImages.get(i).getDomAttribute("src");
                     log.info("⚡ DEBUG: Image {}: {}", i + 1, src);
                 } catch (Exception e) {
                     log.debug("⚡ DEBUG: Error getting image src: {}", e.getMessage());
@@ -323,16 +330,11 @@ public class GCDCoverPageScraper {
             this.allCoverUrls = new ArrayList<>();
         }
 
-        /**
-         * Get total number of covers found
-         */
         public int getCoverCount() {
             return allCoverUrls.size();
         }
 
-        /**
-         * Check if multiple covers were found (variants)
-         */
+        @Deprecated
         public boolean hasVariants() {
             return allCoverUrls != null && allCoverUrls.size() > 1;
         }

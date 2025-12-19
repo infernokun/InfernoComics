@@ -16,8 +16,8 @@ public class OpenApiConfig {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Amaterasu REST API")
+                        .title("Inferno Comics REST API")
                         .version(version)
-                        .description("REST API documentation for Amaterasu project"));
+                        .description("REST API documentation for Inferno Comics project"));
     }
 }
