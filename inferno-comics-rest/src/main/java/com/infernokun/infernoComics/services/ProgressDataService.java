@@ -12,7 +12,7 @@ import com.infernokun.infernoComics.models.enums.StartedBy;
 import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
-import com.infernokun.infernoComics.clients.InfernoComicsSocketClient;
+import com.infernokun.infernoComics.clients.SocketClient;
 import jakarta.transaction.Transactional;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProgressDataService {
     private final WeirdService weirdService;
-    private final InfernoComicsSocketClient websocket;
+    private final SocketClient websocket;
     private final ProgressDataRepository progressDataRepository;
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();

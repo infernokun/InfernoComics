@@ -2,7 +2,7 @@ package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
+import com.infernokun.infernoComics.clients.WebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
@@ -56,7 +56,7 @@ public class IssueService {
     private final DescriptionGeneratorService descriptionGeneratorService;
 
     private final CacheManager cacheManager;
-    private final InfernoComicsWebClient webClient;
+    private final WebClient webClient;
 
     public List<Issue> getAllIssues() {
         List<Issue> cachedIssues = getCachedValue();

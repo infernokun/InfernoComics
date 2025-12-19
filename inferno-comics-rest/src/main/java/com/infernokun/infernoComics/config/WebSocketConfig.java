@@ -1,6 +1,6 @@
-package com.infernokun.infernoComics.config.web;
+package com.infernokun.infernoComics.config;
 
-import com.infernokun.infernoComics.clients.InfernoComicsSocketClient;
+import com.infernokun.infernoComics.clients.SocketClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -12,8 +12,8 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 public class WebSocketConfig implements WebSocketConfigurer {
 
     @Bean
-    public InfernoComicsSocketClient socketHandler() {
-        return new InfernoComicsSocketClient();
+    public SocketClient socketHandler() {
+        return new SocketClient();
     }
 
     @Override

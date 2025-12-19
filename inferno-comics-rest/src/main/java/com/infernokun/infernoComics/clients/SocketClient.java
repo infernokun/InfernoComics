@@ -27,12 +27,12 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Slf4j
-public class InfernoComicsSocketClient extends TextWebSocketHandler {
+public class SocketClient extends TextWebSocketHandler {
     private final List<WebSocketSession> currentSessions = new CopyOnWriteArrayList<>();
     private final ObjectWriter writer;
     private final JsonMapper mapper;
 
-    public InfernoComicsSocketClient() {
+    public SocketClient() {
         mapper = JsonMapper.builder().disable(MapperFeature.REQUIRE_HANDLERS_FOR_JAVA8_TIMES).build();
         writer = new ObjectMapper().writerFor(HeartbeatDTO.class);
     }

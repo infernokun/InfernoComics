@@ -1,6 +1,6 @@
 package com.infernokun.infernoComics.services;
 
-import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
+import com.infernokun.infernoComics.clients.WebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.MissingIssueRepository;
@@ -32,7 +32,7 @@ class SeriesServiceTest {
     private InfernoComicsConfig infernoComicsConfig;
 
     @Mock
-    private InfernoComicsWebClient webClient;
+    private WebClient webClient;
 
     @Mock
     private DescriptionGeneratorService descriptionGeneratorService;

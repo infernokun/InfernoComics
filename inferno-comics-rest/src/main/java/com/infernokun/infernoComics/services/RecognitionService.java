@@ -1,7 +1,7 @@
 package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
+import com.infernokun.infernoComics.clients.WebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.RecognitionConfig;
 import com.infernokun.infernoComics.models.enums.StartedBy;
@@ -22,7 +22,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class RecognitionService {
-    private final InfernoComicsWebClient webClient;
+    private final WebClient webClient;
     private final SeriesService seriesService;
 
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();

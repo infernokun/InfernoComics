@@ -21,11 +21,6 @@ public class GlobalExceptionHandler extends BaseController {
         return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
     }
 
-    @ExceptionHandler(CryptoException.class)
-    public ResponseEntity<ApiResponse<String>> handleTokenException(CryptoException ex) {
-        return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
-    }
-
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ApiResponse<String>> handleNoHandlerFoundException(NoHandlerFoundException ex) {
         return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());

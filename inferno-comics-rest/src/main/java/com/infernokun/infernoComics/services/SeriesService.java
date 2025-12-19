@@ -3,7 +3,7 @@ package com.infernokun.infernoComics.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
+import com.infernokun.infernoComics.clients.WebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.dto.SeriesRequest;
@@ -47,7 +47,7 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Transactional
 @RequiredArgsConstructor
 public class SeriesService {
-    private final InfernoComicsWebClient webClient;
+    private final WebClient webClient;
 
     private final WeirdService weirdService;
     private final ProgressDataService progressDataService;
