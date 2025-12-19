@@ -124,7 +124,7 @@ public class ProgressDataService {
         log.info("Initializing processing session: {}", sessionId);
 
         SSEProgressData initialStatus = SSEProgressData.builder()
-                .type(String.valueOf(State.PROCESSING))
+                .type(State.PROCESSING.name())
                 .sessionId(sessionId)
                 .stage("preparing")
                 .progress(0)
@@ -151,9 +151,8 @@ public class ProgressDataService {
         log.debug("Updating progress for session {}: stage={}, progress={}%, message={}",
                 request.getSessionId(), request.getStage(), request.getProgress(), request.getMessage());
 
-        // Create SSE progress data - FIXED: using request.getStage() instead of request.getSessionId()
         SSEProgressData progressData = SSEProgressData.builder()
-                .type(String.valueOf(State.PROCESSING))
+                .type(State.PROCESSING.name())
                 .sessionId(request.getSessionId())
                 .stage(request.getStage())
                 .progress(request.getProgress())
@@ -255,9 +254,9 @@ public class ProgressDataService {
         }
 
         SSEProgressData completeData = SSEProgressData.builder()
-                .type(String.valueOf(State.COMPLETED))
+                .type(State.COMPLETED.name())
                 .sessionId(sessionId)
-                .stage(String.valueOf(State.COMPLETED))
+                .stage(State.COMPLETED.name())
                 .progress(100)
                 .message("Image processing completed successfully")
                 .result(result)
@@ -298,7 +297,7 @@ public class ProgressDataService {
         }
 
         SSEProgressData errorData = SSEProgressData.builder()
-                .type(String.valueOf(State.ERROR))
+                .type(State.ERROR.name())
                 .sessionId(sessionId)
                 .error(errorMessage)
                 .timestamp(Instant.now().toEpochMilli())
@@ -352,7 +351,7 @@ public class ProgressDataService {
                 log.debug("📊 Retrieved status from database for session: {}", sessionId);
                 return Map.of(
                         "sessionId", sessionId,
-                        "type", progressData.getState().toString(),
+                        "type", progressData.getState().name(),
                         "stage", progressData.getCurrentStage() != null ? progressData.getCurrentStage() : "",
                         "progress", progressData.getPercentageComplete() != null ? progressData.getPercentageComplete() : 0,
                         "message", progressData.getStatusMessage() != null ? progressData.getStatusMessage() : "",
