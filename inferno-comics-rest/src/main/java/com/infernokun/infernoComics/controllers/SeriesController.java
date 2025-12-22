@@ -109,7 +109,6 @@ public class SeriesController extends BaseController {
         return createSuccessResponse(folderMappings, "Success", totalCount, page, size);
     }
 
-
     @GetMapping("/search/advanced")
     public ResponseEntity<ApiResponse<List<Series>>> searchSeriesAdvanced(
             @RequestParam(required = false) String publisher,
