@@ -253,6 +253,11 @@
   white-space: nowrap;
   font-weight: 400;
   color: #555;
+
+  &:hover {
+    color: #0013A8;
+    text-decoration: underline;
+  }
 }
 
 .series-id {

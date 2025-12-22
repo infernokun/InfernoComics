@@ -3,15 +3,17 @@ import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from "@angular/material/dial
 import { IssueFormComponent } from "../../../issue-form/issue-form.component";
 import { MaterialModule } from "../../../../material.module";
 import { RecognitionService } from "../../../../services/recognition.service";
+import { DateUtils } from "../../../../utils/date-utils";
 
 @Component({
-  selector: 'comic-book-view-dialog',
+  selector: 'issue-view-dialog',
   templateUrl: './issue-view-dialog.component.html',
   styleUrls: ['./issue-view-dialog.component.scss'],
   imports: [MaterialModule],
 })
 export class IssueViewDialog {
   Math = Math;
+  DateUtils = DateUtils;
   showUploadedImage = false;
 
   constructor(

@@ -97,7 +97,7 @@
                         </div>
                       </div>
                       <div class="item-meta">
-                        <div class="item-series" [title]="getSeriesInfo(item)">
+                        <div class="item-series" [title]="getSeriesInfo(item)" style="cursor: pointer;" (click)="navigateToSeries(item)">
                           {{ getSeriesDisplay(item) }} <span class="series-id">({{ getSeriesId(item) }})</span>
                         </div>
                         <div class="item-user" [title]="'Started by: ' + getUserDisplay(item)">

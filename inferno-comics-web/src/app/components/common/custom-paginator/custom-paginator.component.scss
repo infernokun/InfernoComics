@@ -10,6 +10,11 @@
 .paginator-info {
   font-size: 14px;
   color: rgba(0, 0, 0, 0.54);
+
+  .items-count {
+    font-weight: 500;
+    color: #fff;
+  }
 }
 
 .paginator-controls {

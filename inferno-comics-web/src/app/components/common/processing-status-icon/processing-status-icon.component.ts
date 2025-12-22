@@ -6,6 +6,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiResponse } from '../../../models/api-response.model';
 import { ProgressDataService } from '../../../services/progress-data.service';
 import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
+import { Router } from '@angular/router';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -56,6 +57,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   pendingDismissIds = new Set<number>();
 
   constructor(
+    private router: Router,
     private snackBar: MatSnackBar,
     private elementRef: ElementRef,
     private websocket: WebsocketService,
@@ -367,6 +369,13 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   toggleOverlay(event: Event) {
     event.stopPropagation();
     this.showOverlay = !this.showOverlay;
+  }
+
+  navigateToSeries(item: ProgressData): void {
+    if (item.series && item.series.id) {
+      this.router.navigate(['/series', item.series.id]);
+      this.showOverlay = false;
+    }
   }
 
   dismissProgressData(itemId: number): void {

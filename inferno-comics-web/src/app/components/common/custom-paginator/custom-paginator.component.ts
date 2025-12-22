@@ -9,13 +9,13 @@ import { MaterialModule } from '../../../material.module';
   imports: [CommonModule, MaterialModule]
 })
 export class CustomPaginatorComponent implements OnInit {
-  @Input() length = 0;
-  @Input() pageSize = 6;
-  @Input() pageSizeOptions: number[] = [3, 6, 9, 12, 15, 21, 24, 27, 30, 50, 100];
-  @Output() page = new EventEmitter<any>();
+  @Input() length: number = 0;
+  @Input() pageSize: number = 6;
+  @Input() pageSizeOptions: number[] = [3, 6, 9, 12, 15];
+  @Output() page: EventEmitter<any> = new EventEmitter<any>();
 
-  currentPage = 1;
-  totalPages = 0;
+  currentPage: number = 1;
+  totalPages: number = 0;
   displayedPages: number[] = [];
 
   ngOnInit(): void {

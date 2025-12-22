@@ -64,7 +64,7 @@
             <div class="detail-item">
               <span class="label">Cover Date:</span>
               <span class="value">{{
-                data.issue.coverDate || 'Not specified'
+                DateUtils.formatDate(data.issue.coverDate) || 'Not specified'
               }}</span>
             </div>
             <div class="detail-item">

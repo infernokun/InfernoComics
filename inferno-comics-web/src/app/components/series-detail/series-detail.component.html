@@ -231,16 +231,16 @@
                     <p class="cover-date">Cover Date: {{ DateUtils.formatDate(comic.coverDate) }}</p>
                   }
                 </mat-card-content>
-                <mat-card-actions>
-                  <button mat-button color="accent" (click)="viewIssue(comic.id!)">
+                <mat-card-actions class="action-buttons">
+                  <button mat-button color="accent" class="action-button" (click)="viewIssue(comic.id!)">
                     <mat-icon>visibility</mat-icon>
                     View
                   </button>
-                  <button mat-button color="primary" (click)="editIssue(comic)">
+                  <button mat-button color="primary" class="action-button" (click)="editIssue(comic)">
                     <mat-icon>edit</mat-icon>
                     Edit
                   </button>
-                  <button mat-button color="warn" (click)="deleteIssue(comic.id!)">
+                  <button mat-button color="warn" class="action-button" (click)="deleteIssue(comic.id!)">
                     <mat-icon>delete</mat-icon>
                     Delete
                   </button>
@@ -260,56 +260,60 @@
                     <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'"
                       [alt]="'Issue #' + issue.issueNumber"
                       onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                      @if (issue.variant) {
-                        <div class="key-issue-badge">
-                          <mat-icon>star</mat-icon>
-                        </div>
-                      }
-                    </div>
-                    <!-- Comic Information -->
-                    <div class="compact-info">
-                      <div class="compact-header">
-                        <h3 class="issue-title">Issue #{{ issue.issueNumber }}</h3>
-                        @if (issue.title) {
-                          <span class="issue-subtitle">{{ issue.title }}</span>
-                        }
+                    @if (issue.keyIssue) {
+                      <div class="badge">
+                        <mat-icon>star</mat-icon>
                       </div>
-                      <div class="compact-details">
-                        <span class="detail-item">
-                          <mat-icon class="detail-icon">grade</mat-icon>
-                          {{ issue.condition }}
-                        </span>
-                        <span class="detail-item">
-                          <mat-icon class="detail-icon">attach_money</mat-icon>
-                          ${{ issue.purchasePrice }}
-                        </span>
-                        <span class="detail-item">
-                          <mat-icon class="detail-icon">trending_up</mat-icon>
-                          ${{ issue.currentValue }}
-                        </span>
-                        @if (issue.coverDate) {
-                          <span class="detail-item">
-                            <mat-icon class="detail-icon">calendar_today</mat-icon>
-                            {{ issue.coverDate | date:'MMM yyyy' }}
+                    }
+                  </div>
+                  
+                  <!-- Comic Information -->
+                  <div class="compact-info">
+                    <div class="compact-header">
+                      <div class="header-top">
+                        <h3 class="issue-number">Issue #{{ issue.issueNumber }}</h3>
+                        @if (issue.condition) {
+                          <span class="condition-badge" [class]="'condition-' + issue.condition.toLowerCase()">
+                            {{ issue.condition }}
                           </span>
                         }
                       </div>
+                      @if (issue.title) {
+                        <span class="issue-title">{{ issue.title }}</span>
+                      }
                     </div>
-                    <!-- Action Buttons -->
-                    <div class="compact-actions">
-                      <button mat-icon-button color="accent"
-                        matTooltip="View Details"
-                        (click)="viewIssue(issue.id!)">
+                    
+                    <div class="compact-details">
+                      <div class="detail-group">
+                        <span class="detail-item">
+                          <mat-icon>attach_money</mat-icon>
+                          <span class="detail-label">Purchase:</span>
+                          <span class="detail-value">${{ issue.purchasePrice }}</span>
+                        </span>
+                        <span class="detail-item">
+                          <mat-icon>trending_up</mat-icon>
+                          <span class="detail-label">Value:</span>
+                          <span class="detail-value value-highlight">${{ issue.currentValue }}</span>
+                        </span>
+                      </div>
+                      @if (issue.coverDate) {
+                        <span class="detail-item date-item">
+                          <mat-icon>calendar_today</mat-icon>
+                          {{ issue.coverDate | date:'MMM yyyy' }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  
+                  <!-- Action Buttons -->
+                  <div class="compact-actions">
+                    <button mat-icon-button color="accent" matTooltip="View Details" (click)="viewIssue(issue.id!)">
                       <mat-icon>visibility</mat-icon>
                     </button>
-                    <button mat-icon-button color="primary"
-                      matTooltip="Edit Comic"
-                      (click)="editIssue(issue)">
+                    <button mat-icon-button color="primary" matTooltip="Edit Comic" (click)="editIssue(issue)">
                       <mat-icon>edit</mat-icon>
                     </button>
-                    <button mat-icon-button color="warn"
-                      matTooltip="Delete Comic"
-                      (click)="deleteIssue(issue.id!)">
+                    <button mat-icon-button color="warn" matTooltip="Delete Comic" (click)="deleteIssue(issue.id!)">
                       <mat-icon>delete</mat-icon>
                     </button>
                   </div>
