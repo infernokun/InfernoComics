@@ -27,13 +27,8 @@ export class MessageService {
   snackbar(message: string) {
     this.snackBarIsDisplayed = true;
 
-    const config = new MatSnackBarConfig();
-    config.panelClass = ['bg-accent', 'border-radius'];
-    config.duration = 5000;
-    config.verticalPosition = 'bottom';
-    config.horizontalPosition = 'end';
     this.snackBar
-      .open(message, undefined, config)
+    .open(message, undefined, { panelClass: ['custom-snackbar'], duration: 5000, verticalPosition: 'bottom', horizontalPosition: 'end' } as MatSnackBarConfig)
       .afterDismissed()
       .subscribe(() => {
         this.snackBarIsDisplayed = false;

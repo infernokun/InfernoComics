@@ -86,13 +86,29 @@ public class SeriesController extends BaseController {
     }
 
     @GetMapping("/folder")
-    public ResponseEntity<ApiResponse<List<Series.FolderMapping>>> getSeriesFolderStructure() {
-        List<Series> series = seriesService.getAllSeries();
-        List<Series.FolderMapping> folderMappings = series.stream()
+    public ResponseEntity<ApiResponse<List<Series.FolderMapping>>> getSeriesFolderStructure(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "8") Integer size) {
+
+        List<Series> allSeries = seriesService.getAllSeries();
+        allSeries.sort(Comparator.comparing(Series::getName));
+
+        int totalCount = allSeries.size();
+
+        // Calculate pagination
+        int startIndex = page * size;
+        int endIndex = Math.min(startIndex + size, totalCount);
+
+        // Get the paginated subset
+        List<Series.FolderMapping> folderMappings = allSeries.stream()
+                .skip(startIndex)
+                .limit(size)
                 .map(Series::getFolderMapping)
                 .collect(Collectors.toList());
-        return createSuccessResponse(folderMappings);
+
+        return createSuccessResponse(folderMappings, "Success", totalCount, page, size);
     }
+
 
     @GetMapping("/search/advanced")
     public ResponseEntity<ApiResponse<List<Series>>> searchSeriesAdvanced(

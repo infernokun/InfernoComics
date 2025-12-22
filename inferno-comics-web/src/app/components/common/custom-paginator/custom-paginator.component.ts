@@ -10,8 +10,8 @@ import { MaterialModule } from '../../../material.module';
 })
 export class CustomPaginatorComponent implements OnInit {
   @Input() length = 0;
-  @Input() pageSize = 10;
-  @Input() pageSizeOptions: number[] = [5, 10, 25, 100];
+  @Input() pageSize = 6;
+  @Input() pageSizeOptions: number[] = [3, 6, 9, 12, 15, 21, 24, 27, 30, 50, 100];
   @Output() page = new EventEmitter<any>();
 
   currentPage = 1;

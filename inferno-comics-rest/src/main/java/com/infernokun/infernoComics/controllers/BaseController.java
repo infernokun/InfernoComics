@@ -27,6 +27,11 @@ public abstract class BaseController {
         return ResponseEntity.ok(ApiResponse.success(message));
     }
 
+    protected <T> ResponseEntity<ApiResponse<T>> createSuccessResponse(
+            T data, String message, Integer totalCount, Integer currentPage, Integer pageSize) {
+        return ResponseEntity.ok(ApiResponse.success(data, message, totalCount, currentPage, pageSize));
+    }
+
     protected <T> ResponseEntity<ApiResponse<T>> createErrorResponse(String message) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.error(message));
     }

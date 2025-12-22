@@ -1,13 +1,15 @@
 import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { QuestionBase } from '../../../../models/simple-form-data.model';
-import { FormControl } from '@angular/forms';
+import { FormControl, FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { MaterialModule } from '../../../../material.module';
 
 @Component({
   selector: 'app-common-dialog',
   templateUrl: './common-dialog.component.html',
   styleUrls: ['./common-dialog.component.scss'],
-  standalone: false
+  imports: [CommonModule, MaterialModule, FormsModule]
 })
 export class CommonDialogComponent {
   isCode: boolean = false;

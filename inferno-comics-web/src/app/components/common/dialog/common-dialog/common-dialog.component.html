@@ -3,46 +3,13 @@
   <div class="bg-alert">
     <h1 class="dialog-title" mat-dialog-title>{{ data.title }}</h1>
   </div>
-
-  @if (options) {
-    @for (question of options.questions; track question) {
-      <div class="row width-100-percent" >
-        <mat-form-field floatLabel="always">
-          <mat-label>{{ question.label }}</mat-label>
-          <mat-select [formControl]="formControl" #dropdownMenu (selectionChange)="handleMatSelect($event)" [(value)]="options.current">
-            @for (ent of question.options; track ent) {
-              <mat-option class="option" [value]="ent.value">
-                {{ ent.key }}
-              </mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-      </div>
-    }
-  }
-
-
+  
   <!-- Content Section -->
   <mat-dialog-content class="dialog-content">
     <!-- Regular content display -->
     @if (!isCode) {
       <div class="text-lg enable-crlf">
         {{ data.content }}
-      </div>
-    }
-
-    <!-- Code editor display -->
-    @if (isCode) {
-      <div class="code-editor-wrapper">
-        <amaterasu-code-block
-          id="code-editor"
-          [codeModel]="output"
-          [fileType]="fileType"
-          [readonly]="isReadOnly"
-          [versions]="[1, 2, 3]"
-          (onChange)="onCodeChange($event)"
-          (onVersionChange)="onVersionSelected($event)">
-        </amaterasu-code-block>
       </div>
     }
   </mat-dialog-content>

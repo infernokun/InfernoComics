@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Inject, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { Series } from '../../models/series.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -6,7 +6,7 @@ import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { SlicePipe } from '@angular/common';
 import { CARD_ANIMATION, FADE_IN_UP, SLIDE_IN_UP } from '../../utils/animations';
@@ -14,6 +14,7 @@ import { ApiResponse } from '../../models/api-response.model';
 import { ProcessingResult } from '../../models/processing-result.model';
 import { SeriesService } from '../../services/series.service';
 import { CustomPaginatorComponent } from '../common/custom-paginator/custom-paginator.component';
+import { JsonDialogComponent } from '../common/dialog/json-dialog/json-dialog.component';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';
@@ -358,10 +359,12 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     localStorage.setItem('seriesListPreferences', JSON.stringify(preferences));
   }
 
-  getFolderStructure() {
-    this.seriesService.getSeriesFolderStructure().subscribe((info: ApiResponse<{id: number, name: string}[]>) => {
-      this.openJsonDialog(info);
-    });
+  getFolderStructure(page: number = 0, pageSize: number = 8) {
+    this.seriesService.getSeriesFolderStructure(page, pageSize).subscribe(
+      (info: ApiResponse<{id: number, name: string}[]>) => {
+        this.openJsonDialog(info);
+      }
+    );
   }
 
   openJsonDialog(data: any): void {
@@ -378,100 +381,9 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     });
   }
 
-    syncAllSeries() {
+  syncAllSeries() {
     this.seriesService.syncAllSeries().subscribe((data: ApiResponse<ProcessingResult[]>) => {
       console.log('sync', data);
-    })
-  }
-}
-
-@Component({
-  selector: 'app-json-dialog',
-  template: `
-    <div class="json-dialog">
-      <h2 mat-dialog-title>Series Folder Structure</h2>
-      
-      <mat-dialog-content class="dialog-content">
-        <div class="json-container">
-          <pre class="json-display">{{ formatJson(data) }}</pre>
-        </div>
-      </mat-dialog-content>
-      
-      <mat-dialog-actions align="end">
-        <button mat-button (click)="copyToClipboard()" color="primary">
-          <mat-icon>content_copy</mat-icon>
-          Copy JSON
-        </button>
-        <button mat-button (click)="close()" color="primary">
-          Close
-        </button>
-      </mat-dialog-actions>
-    </div>
-  `,
-  styles: [`
-    .json-dialog {
-      width: 100%;
-      max-width: 800px;
-    }
-    
-    .dialog-content {
-      max-height: 70vh;
-      overflow: auto;
-      padding: 0;
-    }
-    
-    .json-container {
-      background-color: #f5f5f5;
-      border-radius: 8px;
-      padding: 16px;
-      margin: 16px;
-    }
-    
-    .json-display {
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      line-height: 1.4;
-      color: #333;
-      background: transparent;
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    
-    mat-dialog-actions {
-      padding: 16px 24px;
-      margin: 0;
-    }
-    
-    button {
-      margin-left: 8px;
-    }
-    
-    mat-icon {
-      margin-right: 8px;
-    }
-  `],
-  imports: [MaterialModule]
-})
-export class JsonDialogComponent {
-  constructor(
-    public dialogRef: MatDialogRef<JsonDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: any
-  ) {}
-
-  formatJson(obj: any): string {
-    return JSON.stringify(obj, null, 2);
-  }
-
-  async copyToClipboard(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.formatJson(this.data));
-    } catch (err) {
-      console.error('Failed to copy JSON: ', err);
-    }
-  }
-
-  close(): void {
-    this.dialogRef.close();
+    });
   }
 }

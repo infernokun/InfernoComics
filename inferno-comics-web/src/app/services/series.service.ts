@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
 import { ApiResponse } from '../models/api-response.model';
@@ -57,11 +57,14 @@ export class SeriesService extends BaseService {
     );
   }
 
-  getSeriesFolderStructure(): Observable<
-    ApiResponse<{ id: number; name: string }[]>
-  > {
-    return this.get<ApiResponse<{ id: number; name: string }[]>>(
-      `${this.apiUrl}/folder`
+  getSeriesFolderStructure(page: number = 0, pageSize: number = 8): Observable<ApiResponse<{id: number, name: string}[]>> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('size', pageSize.toString());
+    
+    return this.http.get<ApiResponse<{id: number, name: string}[]>>(
+      `${this.apiUrl}/folder`,
+      { params }
     );
   }
 

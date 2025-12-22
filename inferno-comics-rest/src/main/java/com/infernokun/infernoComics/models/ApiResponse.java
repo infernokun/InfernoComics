@@ -66,7 +66,20 @@ public class ApiResponse<T> {
                 .type(TYPE.SUCCESS)
                 .build();
     }
-    
+    public static <T> ApiResponse<T> success(T data, String message, int totalCount,  int currentPage, int pageSize) {
+
+        return ApiResponse.<T>builder()
+                .code(HttpStatus.SC_OK)
+                .message(message)
+                .data(data)
+                .type(ApiResponse.TYPE.SUCCESS)
+                .timestamp(LocalDateTime.now())
+                .totalCount(totalCount)
+                .currentPage(currentPage)
+                .pageSize(pageSize)
+                .build();
+    }
+
     public static <T> ApiResponse<T> error(String message) {
         return ApiResponse.<T>builder()
                 .code(HttpStatus.SC_INTERNAL_SERVER_ERROR)
