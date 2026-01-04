@@ -1,11 +1,8 @@
-// ============================================
-// VARIABLES & MIXINS
-// ============================================
 $transition-fast: 0.2s ease;
 $transition-base: 0.3s ease;
 $radius-sm: 8px;
-$radius-md: 12px;
-$radius-lg: 16px;
+$radius-md: 10px;
+$radius-lg: 12px;
 $shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
 $shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
 $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
@@ -28,167 +25,284 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
 @mixin gradient-bg {
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 }
-
-// ============================================
-// SERIES HEADER
-// ============================================
 .series-detail-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 20px;
+
+  @media (max-width: 768px) {
+    padding: 12px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 8px;
+  }
 }
 
 .series-header {
   display: flex;
-  gap: 32px;
-  margin-bottom: 32px;
+  gap: 24px;
+  margin-bottom: 24px;
   background: var(--surface-color);
-  padding: 32px;
+  padding: 24px;
   border-radius: $radius-lg;
   box-shadow: $shadow-lg;
   border: 1px solid var(--border-color);
 
+  @media (max-width: 768px) {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
   .series-image {
     flex-shrink: 0;
 
+    @media (max-width: 768px) {
+      display: flex;
+      justify-content: center;
+    }
+
     img {
-      width: 220px;
-      height: 330px;
+      width: 180px;
+      height: 270px;
       object-fit: cover;
       border-radius: $radius-md;
       box-shadow: $shadow-lg;
       border: 3px solid var(--border-color);
       transition: transform $transition-base;
 
-      &:hover { transform: scale(1.02); }
+      @media (max-width: 768px) {
+        width: 140px;
+        height: 210px;
+      }
+
+      @media (max-width: 480px) {
+        width: 120px;
+        height: 180px;
+      }
+
+      &:hover {
+        transform: scale(1.02);
+      }
     }
   }
 
   .series-info {
     flex: 1;
+    min-width: 0;
 
     .series-title-header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
+      gap: 10px;
+      margin-bottom: 10px;
+
+      @media (max-width: 768px) {
+        justify-content: center;
+        flex-wrap: wrap;
+      }
     }
-    
+
     h1 {
       margin: 0;
-      font-size: 2.75rem;
+      font-size: 2rem;
       font-weight: 800;
       line-height: 1.2;
       @include gradient-bg;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+
+      @media (max-width: 768px) {
+        font-size: 1.6rem;
+      }
+
+      @media (max-width: 480px) {
+        font-size: 1.4rem;
+      }
     }
-    
+
     h2 {
-      margin: 0 0 24px;
-      font-size: 1.5rem;
+      margin: 0 0 16px;
+      font-size: 1.2rem;
       color: var(--text-secondary);
       font-weight: 500;
+
+      @media (max-width: 768px) {
+        font-size: 1rem;
+        margin-bottom: 12px;
+      }
     }
-    
+
     .title-edit-btn {
       opacity: 0.7;
       transition: opacity $transition-fast;
-      
-      &:hover { opacity: 1; }
-      
+
+      &:hover {
+        opacity: 1;
+      }
+
       mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
       }
     }
-    
+
     .series-meta {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      margin-bottom: 24px;
-      
+      gap: 10px;
+      margin-bottom: 16px;
+
+      @media (max-width: 768px) {
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
       .meta-item {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         color: var(--text-secondary);
         font-weight: 500;
-        
+
+        @media (max-width: 768px) {
+          font-size: 0.9rem;
+          gap: 8px;
+        }
+
         mat-icon {
-          font-size: 22px;
-          width: 22px;
-          height: 22px;
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
           color: var(--primary-color);
+
+          @media (max-width: 768px) {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
         }
       }
     }
-    
+
     .description {
-      margin-bottom: 24px;
-      line-height: 1.7;
-      font-size: 1.05rem;
+      margin-bottom: 16px;
+      line-height: 1.6;
+      font-size: 0.95rem;
       background: var(--background-color);
-      padding: 20px;
+      padding: 14px;
       border-radius: $radius-sm;
       border-left: 4px solid var(--primary-color);
+
+      @media (max-width: 768px) {
+        font-size: 0.9rem;
+        padding: 12px;
+        text-align: left;
+      }
     }
-    
+
     .value-info {
       display: flex;
-      gap: 24px;
-      margin-bottom: 32px;
-      
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+
+      @media (max-width: 768px) {
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
       .value-card {
         @include gradient-bg;
-        padding: 20px 24px;
+        padding: 14px 18px;
         border-radius: $radius-md;
         color: white;
         text-align: center;
-        min-width: 160px;
+        min-width: 130px;
         box-shadow: $shadow-md;
         transition: transform $transition-fast;
-        
-        &:hover { transform: translateY(-2px); }
-        
-        .value-label {
-          font-size: 0.9rem;
-          margin-bottom: 8px;
-          opacity: 0.9;
+
+        @media (max-width: 768px) {
+          padding: 10px 14px;
+          min-width: 100px;
+          flex: 1;
+          max-width: 140px;
         }
-        
+
+        &:hover {
+          transform: translateY(-2px);
+        }
+
+        .value-label {
+          font-size: 0.8rem;
+          margin-bottom: 6px;
+          opacity: 0.9;
+
+          @media (max-width: 768px) {
+            font-size: 0.75rem;
+          }
+        }
+
         .value-amount {
-          font-size: 1.75rem;
+          font-size: 1.4rem;
           font-weight: 700;
+
+          @media (max-width: 768px) {
+            font-size: 1.2rem;
+          }
         }
       }
     }
-    
+
     .action-buttons {
       display: flex;
-      gap: 16px;
+      gap: 12px;
       flex-wrap: wrap;
-      
+
+      @media (max-width: 768px) {
+        justify-content: center;
+        gap: 8px;
+      }
+
       button {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 12px 24px;
+        gap: 6px;
+        padding: 10px 18px;
         font-weight: 600;
         border-radius: $radius-sm;
-        
+        font-size: 0.9rem;
+
+        @media (max-width: 768px) {
+          padding: 8px 14px;
+          font-size: 0.85rem;
+          flex: 1;
+          min-width: 120px;
+          max-width: 160px;
+          justify-content: center;
+        }
+
+        @media (max-width: 480px) {
+          padding: 8px 12px;
+          font-size: 0.8rem;
+        }
+
         &.mat-mdc-raised-button {
           @include gradient-bg;
           color: white;
         }
-        
+
         &.mat-mdc-stroked-button {
           border: 2px solid var(--primary-color);
           color: var(--primary-color);
-          
+
           &:hover {
             background: var(--primary-color);
             color: white;
@@ -199,9 +313,6 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 }
 
-// ============================================
-// TABS & CONTROLS
-// ============================================
 .content-tabs {
   background: var(--surface-color);
   border-radius: $radius-lg;
@@ -209,8 +320,20 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border-color);
   overflow: hidden;
 
+  @media (max-width: 768px) {
+    border-radius: $radius-md;
+  }
+
   .tab-content {
-    padding: 24px;
+    padding: 20px;
+
+    @media (max-width: 768px) {
+      padding: 14px;
+    }
+
+    @media (max-width: 480px) {
+      padding: 10px;
+    }
   }
 }
 
@@ -219,45 +342,65 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 12px 16px;
   background: var(--background-color);
   border-radius: $radius-md;
   border: 2px solid var(--border-color);
-  margin-bottom: 24px;
-  gap: 16px;
+  margin-bottom: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    padding: 10px 12px;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
 
   .view-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 
     .view-label {
       color: var(--text-secondary);
       font-weight: 500;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
+
+      @media (max-width: 768px) {
+        display: none;
+      }
     }
   }
 
   .collection-actions,
   .selection-actions {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     flex-wrap: wrap;
+
+    @media (max-width: 768px) {
+      gap: 6px;
+    }
 
     button {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
+      gap: 4px;
+      padding: 6px 12px;
       font-weight: 500;
       border-radius: 6px;
       transition: all $transition-fast;
+      font-size: 0.85rem;
+
+      @media (max-width: 768px) {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+      }
 
       mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
       }
 
       &:not(:disabled):hover {
@@ -279,53 +422,96 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
     .selection-count {
       font-weight: 600;
       color: var(--primary-color);
-      font-size: 1.1rem;
+      font-size: 1rem;
+
+      @media (max-width: 768px) {
+        font-size: 0.9rem;
+      }
     }
 
     .selection-hint {
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
+
+      @media (max-width: 768px) {
+        font-size: 0.8rem;
+      }
     }
   }
 }
 
-// ============================================
-// COLLECTION VIEWS
-// ============================================
 .collection-grid,
 .browse-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+
+  // Mobile: 2 columns
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  // Small mobile: Still 2 columns
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  // Very small: 1 column
+  @media (max-width: 340px) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 }
 
-// Optimized List View
 .collection-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(550px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: 12px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
 
   .compact-card {
     @include card-hover;
     border: 2px solid var(--border-color);
     background: var(--surface-color);
     overflow: hidden;
+    border-radius: $radius-md;
+
+    @media (max-width: 768px) {
+      border-width: 1px;
+    }
 
     .compact-content {
       display: grid;
-      grid-template-columns: 90px 1fr auto;
+      grid-template-columns: 80px 1fr auto;
       align-items: center;
-      padding: 16px;
-      gap: 20px;
-      min-height: 120px;
+      padding: 12px;
+      gap: 14px;
+      min-height: 100px;
+
+      @media (max-width: 768px) {
+        grid-template-columns: 60px 1fr;
+        padding: 10px;
+        gap: 10px;
+        min-height: auto;
+      }
 
       .compact-image {
         position: relative;
-        width: 90px;
-        height: 110px;
+        width: 80px;
+        height: 100px;
         border-radius: $radius-sm;
         overflow: hidden;
         box-shadow: $shadow-sm;
+
+        @media (max-width: 768px) {
+          width: 60px;
+          height: 80px;
+        }
 
         img {
           width: 100%;
@@ -340,20 +526,31 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
 
         .badge {
           position: absolute;
-          top: 4px;
-          right: 4px;
+          top: 3px;
+          right: 3px;
           background: var(--accent-color);
           color: white;
           border-radius: 50%;
-          width: 26px;
-          height: 26px;
+          width: 22px;
+          height: 22px;
           @include flex-center;
           box-shadow: $shadow-md;
 
+          @media (max-width: 768px) {
+            width: 18px;
+            height: 18px;
+          }
+
           mat-icon {
-            font-size: 16px;
-            width: 16px;
-            height: 16px;
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+
+            @media (max-width: 768px) {
+              font-size: 12px;
+              width: 12px;
+              height: 12px;
+            }
           }
         }
       }
@@ -363,30 +560,43 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
+
+        @media (max-width: 768px) {
+          gap: 6px;
+        }
 
         .compact-header {
           .header-top {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 6px;
+            gap: 8px;
+            margin-bottom: 4px;
             flex-wrap: wrap;
 
             .issue-number {
-              font-size: 1.2rem;
+              font-size: 1rem;
               font-weight: 700;
               margin: 0;
               color: var(--text-primary);
+
+              @media (max-width: 768px) {
+                font-size: 0.9rem;
+              }
             }
 
             .condition-badge {
-              padding: 2px 10px;
-              border-radius: 12px;
-              font-size: 0.75rem;
+              padding: 2px 8px;
+              border-radius: 10px;
+              font-size: 0.7rem;
               font-weight: 600;
               background: var(--primary-color);
               color: white;
+
+              @media (max-width: 768px) {
+                padding: 1px 6px;
+                font-size: 0.65rem;
+              }
 
               &.condition-nm { background: #10b981; }
               &.condition-vf { background: #3b82f6; }
@@ -397,38 +607,56 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
 
           .issue-title {
             display: block;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             color: var(--text-secondary);
             font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+
+            @media (max-width: 768px) {
+              font-size: 0.8rem;
+            }
           }
         }
 
         .compact-details {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
 
           .detail-group {
             display: flex;
-            gap: 16px;
+            gap: 12px;
             flex-wrap: wrap;
+
+            @media (max-width: 768px) {
+              gap: 8px;
+            }
           }
 
           .detail-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 0.9rem;
+            gap: 4px;
+            font-size: 0.8rem;
             color: var(--text-secondary);
 
+            @media (max-width: 768px) {
+              font-size: 0.75rem;
+            }
+
             mat-icon {
-              font-size: 18px;
-              width: 18px;
-              height: 18px;
+              font-size: 16px;
+              width: 16px;
+              height: 16px;
               color: var(--primary-color);
+
+              @media (max-width: 768px) {
+                font-size: 14px;
+                width: 14px;
+                height: 14px;
+              }
             }
 
             .detail-label {
@@ -455,16 +683,35 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
       .compact-actions {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 6px;
+
+        @media (max-width: 768px) {
+          grid-column: 1 / -1;
+          flex-direction: row;
+          justify-content: center;
+          padding-top: 10px;
+          border-top: 1px solid var(--border-color);
+        }
 
         button {
-          width: 40px;
-          height: 40px;
+          width: 36px;
+          height: 36px;
+
+          @media (max-width: 768px) {
+            width: 32px;
+            height: 32px;
+          }
 
           mat-icon {
-            font-size: 20px;
-            width: 20px;
-            height: 20px;
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+
+            @media (max-width: 768px) {
+              font-size: 16px;
+              width: 16px;
+              height: 16px;
+            }
           }
         }
       }
@@ -472,18 +719,25 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 }
 
-// ============================================
-// CARD STYLES (Shared)
-// ============================================
 .comic-card,
 .browse-card {
   @include card-hover;
   border: 2px solid var(--border-color);
   overflow: hidden;
+  border-radius: $radius-md;
+
+  @media (max-width: 768px) {
+    border-width: 1px;
+    border-radius: $radius-sm;
+
+    &:hover {
+      transform: translateY(-3px);
+    }
+  }
 
   .action-buttons {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     justify-content: center;
 
     .action-button {
@@ -491,15 +745,27 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 8px 0;
+      gap: 4px;
+      padding: 6px 0;
       font-weight: 600;
-      border-radius: 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+
+      @media (max-width: 768px) {
+        padding: 5px 0;
+        font-size: 0.75rem;
+      }
 
       mat-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+
+        @media (max-width: 768px) {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+        }
       }
 
       &:hover {
@@ -511,8 +777,16 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   .comic-image,
   .browse-image {
     position: relative;
-    height: 220px;
+    height: 180px;
     overflow: hidden;
+
+    @media (max-width: 768px) {
+      height: 150px;
+    }
+
+    @media (max-width: 480px) {
+      height: 130px;
+    }
 
     img {
       width: 100%;
@@ -528,47 +802,91 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
     .key-issue-badge,
     .selection-indicator {
       position: absolute;
-      top: 12px;
+      top: 8px;
       background: var(--accent-color);
       color: white;
       border-radius: 50%;
-      width: 36px;
-      height: 36px;
+      width: 30px;
+      height: 30px;
       @include flex-center;
       box-shadow: $shadow-md;
 
+      @media (max-width: 768px) {
+        width: 26px;
+        height: 26px;
+        top: 6px;
+      }
+
       mat-icon {
-        font-size: 18px;
+        font-size: 16px;
+
+        @media (max-width: 768px) {
+          font-size: 14px;
+        }
       }
     }
 
-    .key-issue-badge { right: 12px; }
+    .key-issue-badge {
+      right: 8px;
+
+      @media (max-width: 768px) {
+        right: 6px;
+      }
+    }
+
     .selection-indicator {
-      left: 12px;
+      left: 8px;
       background: var(--primary-color);
+
+      @media (max-width: 768px) {
+        left: 6px;
+      }
     }
   }
 
   mat-card-header {
-    padding: 16px;
+    padding: 12px;
+
+    @media (max-width: 768px) {
+      padding: 8px;
+    }
 
     .mat-mdc-card-title {
       font-weight: 600;
-      font-size: 1.1rem;
+      font-size: 1rem;
+
+      @media (max-width: 768px) {
+        font-size: 0.85rem;
+      }
     }
 
     .mat-mdc-card-subtitle {
-      margin-top: 4px;
+      margin-top: 2px;
+      font-size: 0.85rem;
+
+      @media (max-width: 768px) {
+        font-size: 0.75rem;
+      }
     }
   }
 
   mat-card-content {
-    padding: 16px;
+    padding: 12px;
+
+    @media (max-width: 768px) {
+      padding: 8px;
+    }
 
     .comic-details .detail-row {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+
+      @media (max-width: 768px) {
+        font-size: 0.75rem;
+        margin-bottom: 4px;
+      }
 
       .label {
         color: var(--text-secondary);
@@ -582,10 +900,14 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 
   mat-card-actions {
-    padding: 12px 16px;
+    padding: 10px 12px;
     border-top: 1px solid var(--border-color);
     display: flex;
-    gap: 8px;
+    gap: 6px;
+
+    @media (max-width: 768px) {
+      padding: 8px;
+    }
   }
 }
 
@@ -599,103 +921,118 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 }
 
-// ============================================
-// EMPTY & LOADING STATES
-// ============================================
 .empty-collection,
 .loading-container,
 .no-issues-actions {
   text-align: center;
-  padding: 60px 20px;
+  padding: 50px 16px;
   background: var(--surface-color);
   border-radius: $radius-md;
   border: 2px dashed var(--border-color);
 
+  @media (max-width: 768px) {
+    padding: 40px 12px;
+  }
+
   mat-icon {
-    font-size: 64px;
-    width: 64px;
-    height: 64px;
+    font-size: 56px;
+    width: 56px;
+    height: 56px;
     color: var(--text-muted);
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+
+    @media (max-width: 768px) {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+    }
   }
 
   h3 {
-    margin: 20px 0 12px;
-    font-size: 1.5rem;
+    margin: 16px 0 10px;
+    font-size: 1.3rem;
     font-weight: 600;
+
+    @media (max-width: 768px) {
+      font-size: 1.1rem;
+    }
   }
 
   p {
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     color: var(--text-secondary);
+
+    @media (max-width: 768px) {
+      font-size: 0.9rem;
+    }
   }
 }
 
 .loading-container {
   @include flex-center;
   flex-direction: column;
-  height: 400px;
+  height: 300px;
+
+  @media (max-width: 768px) {
+    height: 250px;
+  }
 }
 
-// ============================================
-// COMPLETION PROGRESS
-// ============================================
 .meta-item.collection-item {
   .collection-details {
     .collection-count {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-      
+      gap: 10px;
+      margin-bottom: 6px;
+
       .completion-badge {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 3px;
         background: linear-gradient(135deg, #10b981, #059669);
         color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 0.7rem;
         font-weight: 600;
-        
+
         mat-icon {
-          font-size: 14px;
+          font-size: 12px;
         }
       }
     }
-    
+
     .collection-progress {
       display: flex;
       align-items: center;
-      gap: 12px;
-      
+      gap: 10px;
+
       .progress-bar-wrapper {
         flex: 1;
-        height: 6px;
+        height: 5px;
         background: var(--border-color);
         border-radius: 3px;
         overflow: hidden;
-        
+
         .progress-bar-fill {
           height: 100%;
           @include gradient-bg;
           transition: all $transition-base;
-          
+
           &.complete {
-            background: linear-gradient(90deg, 
-              #10b981 0%, #34d399 50%, #10b981 100%);
+            background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #10b981 100%);
             animation: shimmer 2s infinite;
           }
         }
       }
-      
+
       .progress-text {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
-        min-width: 40px;
+        min-width: 36px;
         text-align: right;
-        
+
         &.complete {
           color: #10b981;
         }
@@ -704,49 +1041,11 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 }
 
-// ============================================
-// RESPONSIVE DESIGN
-// ============================================
-@media (max-width: 1024px) {
-  .collection-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .series-header {
-    flex-direction: column;
-    text-align: center;
-
-    .series-image img {
-      width: 180px;
-      height: 270px;
-    }
-  }
-
-  .collection-list .compact-card .compact-content {
-    grid-template-columns: 70px 1fr;
-    
-    .compact-actions {
-      grid-column: 1 / -1;
-      flex-direction: row;
-      justify-content: center;
-      padding-top: 12px;
-      border-top: 1px solid var(--border-color);
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .series-detail-container {
-    padding: 16px;
-  }
-}
-
-// ============================================
-// ANIMATIONS
-// ============================================
 @keyframes shimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
