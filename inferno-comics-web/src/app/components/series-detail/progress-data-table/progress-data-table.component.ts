@@ -36,6 +36,7 @@ import { CombinedStatusCellRenderer } from './renderers/combined-status-cell.ren
 import { EvaluationLinkCellRenderer } from './renderers/evaluation-link-cell.renderer';
 import { TimeInfoCellRenderer } from './renderers/time-info-cell.renderer';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -132,7 +133,7 @@ import { CommonModule } from '@angular/common';
               </div>
 
               <div class="card-footer">
-                <a class="eval-link" [href]="getEvaluationLink(item.sessionId)" target="_blank">
+                <a class="eval-link" (click)="openEvaluationUrl(item.sessionId)" *ngIf="item.state === 'COMPLETED'" style="cursor: pointer; color: blue; text-decoration: underline;">
                   View Evaluation →
                 </a>
               </div>
@@ -839,6 +840,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
   constructor(
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
+    private httpClient: HttpClient,
     private websocket: WebsocketService,
     private seriesService: SeriesService,
     private recognitionService: RecognitionService,
@@ -882,8 +884,40 @@ export class ProgressDataTable implements OnInit, OnDestroy {
     }
   }
 
-  getEvaluationLink(sessionId: string): string {
-    return `${this.environmentService.settings?.restUrl}/evaluate/${sessionId}`;
+  async openEvaluationUrl(sessionId: string): Promise<void> {
+    try {
+      const response = await this.httpClient
+        .get<{ evaluationUrl: string }>(
+          `${this.environmentService.settings?.restUrl}/progress/evaluation/${sessionId}`
+        )
+        .toPromise();
+
+      if (!response?.evaluationUrl) {
+        console.error('No evaluation URL received from server');
+        return;
+      }
+
+      const rawUrl = response.evaluationUrl.trim();
+
+      const absoluteUrl = /^https?:\/\//i.test(rawUrl)
+        ? rawUrl
+        : `${window.location.protocol}//${rawUrl}`;
+
+      const evaluationUrl = new URL(absoluteUrl);
+
+      evaluationUrl.protocol = window.location.protocol;
+      evaluationUrl.hostname = window.location.hostname;
+
+      if (this.environmentService.settings?.production) {
+        evaluationUrl.port = window.location.port ? window.location.port : '';
+      }
+
+      const finalUrl = evaluationUrl.toString();
+      console.log('Opening evaluation URL:', finalUrl);
+      window.open(finalUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Error fetching evaluation URL:', error);
+    }
   }
 
   ngOnInit(): void {

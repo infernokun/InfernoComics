@@ -750,6 +750,11 @@
         justify-content: flex-end;
 
         button {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 !important;
+          line-height: normal !important;
           background: rgba(255, 255, 255, 0.15) !important;
           color: white !important;
           backdrop-filter: blur(10px);
