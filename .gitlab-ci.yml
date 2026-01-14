@@ -7,7 +7,7 @@ variables:
 
 build-rest:
   stage: build
-  image: docker:24.0.7
+  image: docker:26.1.4
   before_script:
     - echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
     - apk add --no-cache nodejs npm bash jq
@@ -28,7 +28,7 @@ build-rest:
 
 build-recog:
   stage: build
-  image: docker:24.0.7
+  image: docker:26.1.4
   before_script:
     - echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
     - apk add --no-cache nodejs npm bash jq
@@ -49,7 +49,7 @@ build-recog:
 
 build-web:
   stage: build
-  image: docker:24.0.7
+  image: docker:26.1.4
   services:
     - name: docker:dind
       command: ["--host=tcp://0.0.0.0:2375", "--mtu=1500"]
@@ -73,7 +73,7 @@ build-web:
 
 deploy:
   stage: deploy
-  image: ubuntu:20.04
+  image: ubuntu:22.04
   before_script:
     - apt-get -yq update
     - apt-get -yqq install openssh-client iproute2 || { echo "SSH client installation failed"; exit 1; }
