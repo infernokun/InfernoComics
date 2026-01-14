@@ -3,7 +3,7 @@ import { trigger, transition, style, animate } from '@angular/animations';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Series, SeriesWithIssues } from '../../models/series.model';
-import { SeriesListComponent } from '../series-list/series-list.component';
+import { SeriesListComponent } from '../series/series-list/series-list.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';

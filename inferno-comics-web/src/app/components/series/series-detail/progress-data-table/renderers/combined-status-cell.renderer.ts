@@ -1,7 +1,7 @@
 import { Component } from "@angular/core";
 import { ICellRendererAngularComp } from "ag-grid-angular";
-import { State } from "../../../../models/progress-data.model";
-import { upperLower } from "../../../../utils/utils";
+import { State } from "../../../../../models/progress-data.model";
+import { upperLower } from "../../../../../utils/utils";
 
 @Component({
   selector: 'app-combined-status-renderer',

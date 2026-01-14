@@ -2,14 +2,14 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ComicVineSeries, ComicVineSeriesDto } from '../../models/comic-vine.model';
-import { Series } from '../../models/series.model';
 import { CommonModule } from '@angular/common';
-import { MaterialModule } from '../../material.module';
-import { ApiResponse } from '../../models/api-response.model';
 import { Observable } from 'rxjs';
-import { ComicVineService } from '../../services/comic-vine.service';
-import { SeriesService } from '../../services/series.service';
+import { MaterialModule } from '../../../material.module';
+import { ApiResponse } from '../../../models/api-response.model';
+import { ComicVineSeries, ComicVineSeriesDto } from '../../../models/comic-vine.model';
+import { Series } from '../../../models/series.model';
+import { ComicVineService } from '../../../services/comic-vine.service';
+import { SeriesService } from '../../../services/series.service';
 
 @Component({
   selector: 'app-series-form',

@@ -1,13 +1,13 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { SeriesListComponent } from './components/series-list/series-list.component';
-import { SeriesDetailComponent } from './components/series-detail/series-detail.component';
-import { SeriesFormComponent } from './components/series-form/series-form.component';
-import { SeriesAdminComponent } from './components/series-admin/series-admin.component';
-import { IssuesListComponent } from './components/issues-list/issues-list.component';
-import { RecognitionConfigComponent } from './components/config/recognition-config.component';
 import { MissingIssuesComponent } from './components/missing-issues/missing-issues.component';
+import { RecognitionConfigComponent } from './components/config/recognition-config.component';
+import { IssuesListComponent } from './components/issues/issues-list/issues-list.component';
+import { SeriesAdminComponent } from './components/series/series-admin/series-admin.component';
+import { SeriesDetailComponent } from './components/series/series-detail/series-detail.component';
+import { SeriesFormComponent } from './components/series/series-form/series-form.component';
+import { SeriesListComponent } from './components/series/series-list/series-list.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },

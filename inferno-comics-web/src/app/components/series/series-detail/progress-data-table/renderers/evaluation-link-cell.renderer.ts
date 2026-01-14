@@ -1,7 +1,7 @@
 import { HttpClient } from "@angular/common/http";
 import { ICellRendererAngularComp } from "ag-grid-angular";
 import { Component } from "@angular/core";
-import { EnvironmentService } from "../../../../services/environment.service";
+import { EnvironmentService } from "../../../../../services/environment.service";
 
 @Component({
   template: `

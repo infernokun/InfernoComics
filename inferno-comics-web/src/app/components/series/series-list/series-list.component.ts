@@ -1,20 +1,20 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { Series } from '../../models/series.model';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { MatDialog } from '@angular/material/dialog';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { SlicePipe } from '@angular/common';
-import { CARD_ANIMATION, FADE_IN_UP, SLIDE_IN_UP } from '../../utils/animations';
-import { ApiResponse } from '../../models/api-response.model';
-import { ProcessingResult } from '../../models/processing-result.model';
-import { SeriesService } from '../../services/series.service';
-import { CustomPaginatorComponent } from '../common/custom-paginator/custom-paginator.component';
-import { JsonDialogComponent } from '../common/dialog/json-dialog/json-dialog.component';
+import { MaterialModule } from '../../../material.module';
+import { ApiResponse } from '../../../models/api-response.model';
+import { ProcessingResult } from '../../../models/processing-result.model';
+import { Series } from '../../../models/series.model';
+import { SeriesService } from '../../../services/series.service';
+import { FADE_IN_UP, SLIDE_IN_UP, CARD_ANIMATION } from '../../../utils/animations';
+import { CustomPaginatorComponent } from '../../common/custom-paginator/custom-paginator.component';
+import { JsonDialogComponent } from '../../common/dialog/json-dialog/json-dialog.component';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';

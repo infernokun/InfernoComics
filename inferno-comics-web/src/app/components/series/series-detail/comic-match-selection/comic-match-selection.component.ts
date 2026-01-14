@@ -1,8 +1,8 @@
 
 import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MaterialModule } from '../../../material.module';
-import { ComicMatch } from '../../../models/comic-match.model';
+import { MaterialModule } from '../../../../material.module';
+import { ComicMatch } from '../../../../models/comic-match.model';
 
 export interface ImageMatcherResponse {
   session_id: string;

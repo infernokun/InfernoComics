@@ -5,8 +5,8 @@ import {
 } from '@angular/core';
 import { ICellRendererParams } from 'ag-grid-community';
 import { ICellRendererAngularComp } from 'ag-grid-angular';
-import { MaterialModule } from '../../../../material.module';
-import { ProgressData } from '../../../../models/progress-data.model';
+import { MaterialModule } from '../../../../../material.module';
+import { ProgressData } from '../../../../../models/progress-data.model';
 
 
 export interface AdminActionRendererParams extends ICellRendererParams {

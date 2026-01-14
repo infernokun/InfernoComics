@@ -1,10 +1,10 @@
 import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { CommonModule } from '@angular/common';
-import { MaterialModule } from '../../../material.module';
 import { Subscription } from 'rxjs';
-import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
-import { ProgressData, State } from '../../../models/progress-data.model';
+import { MaterialModule } from '../../../../material.module';
+import { ProgressData, State } from '../../../../models/progress-data.model';
+import { WebsocketService, WebSocketResponseList } from '../../../../services/websocket.service';
 
 export interface ImageProcessingData {
   file?: File;

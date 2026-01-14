@@ -1,6 +1,6 @@
 import { Component } from "@angular/core";
 import { ICellRendererAngularComp } from "ag-grid-angular";
-import { ProgressData, State } from "../../../../models/progress-data.model";
+import { ProgressData, State } from "../../../../../models/progress-data.model";
 
 @Component({
   selector: 'app-time-info-renderer',

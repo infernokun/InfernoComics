@@ -2,15 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { IssueFormComponent } from '../issue-form/issue-form.component';
-import { Series } from '../../models/series.model';
-import { ComicVineIssue, ComicVineSeriesDto } from '../../models/comic-vine.model';
-import { RangeSelectionDialog } from '../common/dialog/range-selection-dialog/range-selection-dialog';
-import { IssueViewDialog } from '../common/dialog/issue-view-dialog/issue-view-dialog.component';
 import { CommonModule } from '@angular/common';
-import { MaterialModule } from '../../material.module';
-import { ConfirmationDialogComponent } from '../common/dialog/confirmation-dialog/confirmation-dialog.component';
-import { Issue, IssueCondition } from '../../models/issue.model';
 import { ImageProcessingDialogComponent } from './image-processing-progress/image-processing-progress.component';
 import {
   BulkComicSelectionComponent,
@@ -19,15 +11,22 @@ import {
 } from './bulk-comic-selection/bulk-comic-selection.component';
 import { AgGridModule } from 'ag-grid-angular';
 import { ProgressDataTable } from './progress-data-table/progress-data-table.component';
-import { ComicMatch } from '../../models/comic-match.model';
-import { DateUtils } from '../../utils/date-utils';
-import { ApiResponse } from '../../models/api-response.model';
-import { ProcessingResult } from '../../models/processing-result.model';
-import { ComicVineService } from '../../services/comic-vine.service';
-import { IssueService } from '../../services/issue.service';
-import { SSEProgressData } from '../../services/progress-data.service';
-import { SeriesService } from '../../services/series.service';
 import { firstValueFrom } from 'rxjs';
+import { MaterialModule } from '../../../material.module';
+import { ApiResponse } from '../../../models/api-response.model';
+import { ComicMatch } from '../../../models/comic-match.model';
+import { ComicVineSeriesDto, ComicVineIssue } from '../../../models/comic-vine.model';
+import { Issue, IssueCondition } from '../../../models/issue.model';
+import { ProcessingResult } from '../../../models/processing-result.model';
+import { Series } from '../../../models/series.model';
+import { ComicVineService } from '../../../services/comic-vine.service';
+import { IssueService } from '../../../services/issue.service';
+import { SeriesService, SSEProgressData } from '../../../services/series.service';
+import { DateUtils } from '../../../utils/date-utils';
+import { ConfirmationDialogComponent } from '../../common/dialog/confirmation-dialog/confirmation-dialog.component';
+import { IssueViewDialog } from '../../common/dialog/issue-view-dialog/issue-view-dialog.component';
+import { RangeSelectionDialog } from '../../common/dialog/range-selection-dialog/range-selection-dialog';
+import { IssueFormComponent } from '../../issues/issue-form/issue-form.component';
 
 @Component({
   selector: 'app-series-detail',

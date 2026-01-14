@@ -1,15 +1,15 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, finalize } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Issue } from '../../models/issue.model';
-import { ApiResponse } from '../../models/api-response.model';
-import { SeriesWithIssues } from '../../models/series.model';
-import { EnvironmentService } from '../../services/environment.service';
-import { RecognitionService } from '../../services/recognition.service';
-import { SeriesService } from '../../services/series.service';
+import { MaterialModule } from '../../../material.module';
+import { ApiResponse } from '../../../models/api-response.model';
+import { Issue } from '../../../models/issue.model';
+import { SeriesWithIssues } from '../../../models/series.model';
+import { EnvironmentService } from '../../../services/environment.service';
+import { RecognitionService } from '../../../services/recognition.service';
+import { SeriesService } from '../../../services/series.service';
 
 interface SeriesDisplayState {
   seriesId: number;

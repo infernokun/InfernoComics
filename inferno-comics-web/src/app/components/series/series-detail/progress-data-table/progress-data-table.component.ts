@@ -18,25 +18,25 @@ import {
 } from 'ag-grid-community';
 import { AdminActionRendererParams, AdminActionsComponent } from './renderers/admin-actions.renderer';
 import { AgGridModule } from 'ag-grid-angular';
-import { MaterialModule } from '../../../material.module';
-import { ComicMatch } from '../../../models/comic-match.model';
-import { ApiResponse } from '../../../models/api-response.model';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subscription, interval } from 'rxjs';
-import { ProgressData, State } from '../../../models/progress-data.model';
-import { EnvironmentService } from '../../../services/environment.service';
-import { ProgressDataService } from '../../../services/progress-data.service';
-import { RecognitionService } from '../../../services/recognition.service';
-import { SeriesService } from '../../../services/series.service';
-import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
-import { DateUtils } from '../../../utils/date-utils';
-import { ConfirmationDialogData, ConfirmationDialogComponent } from '../../common/dialog/confirmation-dialog/confirmation-dialog.component';
 import { CombinedStatusCellRenderer } from './renderers/combined-status-cell.renderer';
 import { EvaluationLinkCellRenderer } from './renderers/evaluation-link-cell.renderer';
 import { TimeInfoCellRenderer } from './renderers/time-info-cell.renderer';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { MaterialModule } from '../../../../material.module';
+import { ApiResponse } from '../../../../models/api-response.model';
+import { ComicMatch } from '../../../../models/comic-match.model';
+import { ProgressData, State } from '../../../../models/progress-data.model';
+import { EnvironmentService } from '../../../../services/environment.service';
+import { ProgressDataService } from '../../../../services/progress-data.service';
+import { RecognitionService } from '../../../../services/recognition.service';
+import { SeriesService } from '../../../../services/series.service';
+import { WebsocketService, WebSocketResponseList } from '../../../../services/websocket.service';
+import { DateUtils } from '../../../../utils/date-utils';
+import { ConfirmationDialogData, ConfirmationDialogComponent } from '../../../common/dialog/confirmation-dialog/confirmation-dialog.component';
 
 @Component({
   selector: 'app-progress-data-table',

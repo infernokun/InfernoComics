@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
-import { ImageMatcherResponse } from '../components/series-detail/comic-match-selection/comic-match-selection.component';
+import { ImageMatcherResponse } from '../components/series/series-detail/comic-match-selection/comic-match-selection.component';
 import { ApiResponse } from '../models/api-response.model';
 import { ComicVineSeriesDto } from '../models/comic-vine.model';
 import { ProcessingResult } from '../models/processing-result.model';

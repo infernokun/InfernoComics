@@ -5,13 +5,13 @@ import {
   MAT_DIALOG_DATA,
   MatDialog,
 } from '@angular/material/dialog';
-import { MaterialModule } from '../../../material.module';
 import {
   ComicMatchSelectionComponent,
   ComicMatchDialogData,
 } from '../comic-match-selection/comic-match-selection.component';
-import { ComicMatch } from '../../../models/comic-match.model';
-import { HoverPreviewComponent } from '../../common/image-hover-preview/image-hover-preview.component';
+import { MaterialModule } from '../../../../material.module';
+import { ComicMatch } from '../../../../models/comic-match.model';
+import { HoverPreviewComponent } from '../../../common/image-hover-preview/image-hover-preview.component';
 
 export interface ProcessedImageResult {
   imageIndex: number;
