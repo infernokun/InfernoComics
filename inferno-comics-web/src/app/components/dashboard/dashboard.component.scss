@@ -72,7 +72,7 @@
   gap: 12px;
   margin-bottom: 20px;
 
-  // Mobile: 2 columns
+  // Mobile: 2x2 grid with better proportions
   @media (max-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
@@ -87,17 +87,24 @@
 .stat-card {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
-  border-radius: 10px;
-  padding: 16px 12px;
+  border-radius: 12px;
+  padding: 18px 14px;
   text-align: center;
   color: var(--text-primary);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 
   @media (max-width: 768px) {
-    padding: 12px 8px;
-    border-radius: 8px;
+    padding: 14px 10px;
+    border-radius: 10px;
+    border-width: 1px;
+    
+    &:active {
+      transform: scale(0.98);
+      opacity: 0.95;
+    }
   }
 
   &:hover {
@@ -107,6 +114,12 @@
 
     .stat-icon {
       transform: scale(1.05);
+    }
+  }
+
+  @media (max-width: 768px) {
+    &:hover {
+      transform: none; // Disable hover lift on mobile
     }
   }
 
@@ -126,9 +139,9 @@
   .stat-icon {
     position: relative;
     z-index: 2;
-    width: 36px;
-    height: 36px;
-    margin: 0 auto 10px;
+    width: 40px;
+    height: 40px;
+    margin: 0 auto 12px;
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     border-radius: 50%;
     display: flex;
@@ -137,21 +150,21 @@
     transition: transform 0.3s ease;
 
     @media (max-width: 768px) {
-      width: 32px;
-      height: 32px;
-      margin-bottom: 8px;
+      width: 36px;
+      height: 36px;
+      margin-bottom: 10px;
     }
 
     mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
       color: white;
 
       @media (max-width: 768px) {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
       }
     }
   }
@@ -162,23 +175,23 @@
   }
 
   .stat-number {
-    font-size: 1.8rem;
+    font-size: 2rem;
     font-weight: 800;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
     line-height: 1;
     color: var(--text-primary);
 
     @media (max-width: 768px) {
-      font-size: 1.5rem;
+      font-size: 1.6rem;
     }
 
     @media (max-width: 400px) {
-      font-size: 1.3rem;
+      font-size: 1.4rem;
     }
   }
 
   .stat-label {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     font-weight: 600;
     margin-bottom: 2px;
     color: var(--text-primary);
@@ -189,7 +202,7 @@
   }
 
   .stat-detail {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-secondary);
 

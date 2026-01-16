@@ -81,3 +81,29 @@
 <div class="main-content">
   <router-outlet></router-outlet>
 </div>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">
+    <mat-icon>dashboard</mat-icon>
+    <span>Home</span>
+  </a>
+  <a routerLink="/series" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">
+    <mat-icon>library_books</mat-icon>
+    <span>Series</span>
+  </a>
+  <a routerLink="/series/new" routerLinkActive="active" class="nav-item nav-item-fab">
+    <div class="fab-button">
+      <mat-icon>add</mat-icon>
+    </div>
+    <span>Add</span>
+  </a>
+  <a routerLink="/issues" routerLinkActive="active" class="nav-item">
+    <mat-icon>collections_bookmark</mat-icon>
+    <span>Issues</span>
+  </a>
+  <a routerLink="/missing" routerLinkActive="active" class="nav-item">
+    <mat-icon>check_box_outline_blank</mat-icon>
+    <span>Missing</span>
+  </a>
+</nav>

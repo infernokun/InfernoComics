@@ -339,40 +339,213 @@ $warn-color: #ff9800;
 // Responsive design
 @media (max-width: 768px) {
   .config-wrapper {
-    padding: 16px;
+    padding: 12px 8px;
+    background: var(--background-color);
   }
 
   .config-card {
-    padding: 20px;
+    padding: 16px;
+    border-radius: 12px;
 
     mat-card-header {
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      
       .header-content {
         flex-direction: column;
         align-items: flex-start;
         gap: 12px;
+        
+        mat-card-title {
+          font-size: 22px;
+        }
+        
+        mat-card-subtitle {
+          font-size: 13px;
+        }
+        
+        .more-options {
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          width: 44px !important;
+          height: 44px !important;
+        }
+      }
+    }
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+    
+    h3 {
+      font-size: 18px;
+      
+      mat-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
       }
     }
   }
 
   .section-global {
-    padding: 16px;
+    padding: 14px;
+    border-radius: 10px;
+    margin-bottom: 24px;
 
     .settings-grid {
       grid-template-columns: 1fr;
+      gap: 12px;
+      
+      mat-form-field {
+        .mat-mdc-form-field-infix {
+          min-height: 48px;
+        }
+        
+        input {
+          font-size: 16px !important; // Prevent iOS zoom
+        }
+      }
     }
   }
 
   .section-presets {
-    ::ng-deep .mat-mdc-tab-body-wrapper {
-      padding: 16px;
+    ::ng-deep .mat-mdc-tab-group {
+      .mat-mdc-tab-labels {
+        border-radius: 10px 10px 0 0;
+      }
+      
+      .mat-mdc-tab {
+        min-width: auto;
+        padding: 0 12px;
+        min-height: 48px;
+        
+        .tab-icon {
+          margin-right: 4px;
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+        
+        .mdc-tab__text-label {
+          font-size: 13px;
+        }
+      }
+      
+      .mat-mdc-tab-body-wrapper {
+        padding: 14px;
+        border-radius: 0 0 10px 10px;
+      }
+    }
+
+    .preset-content {
+      gap: 14px;
+    }
+    
+    .sub-section-panel {
+      border-radius: 10px !important;
+      margin-bottom: 12px;
+      
+      ::ng-deep {
+        .mat-expansion-panel-header {
+          padding: 14px 16px !important;
+          min-height: 52px !important;
+          
+          mat-panel-title {
+            font-size: 15px;
+            gap: 10px;
+            
+            mat-icon {
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+            }
+          }
+        }
+        
+        .mat-expansion-panel-body {
+          padding: 16px !important;
+        }
+      }
     }
 
     .param-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      
+      @media (max-width: 400px) {
+        grid-template-columns: 1fr;
+      }
+      
+      .compact-field {
+        ::ng-deep {
+          .mat-mdc-form-field-infix {
+            padding: 10px 0;
+            min-height: 44px;
+          }
+          
+          input {
+            font-size: 16px !important;
+          }
+        }
+      }
+    }
+    
+    .settings-row {
       grid-template-columns: 1fr;
+      gap: 12px;
     }
 
     .options-container {
       grid-template-columns: 1fr !important;
+      gap: 12px;
+      
+      .option-card {
+        padding: 14px;
+        border-radius: 10px;
+        
+        &:active {
+          transform: scale(0.99);
+        }
+        
+        mat-slide-toggle {
+          .toggle-content {
+            margin-left: 10px;
+            
+            strong {
+              font-size: 14px;
+            }
+            
+            .toggle-hint {
+              font-size: 11px;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  .action-bar {
+    margin-top: 24px;
+    padding-top: 20px;
+    flex-direction: column;
+    gap: 10px;
+    
+    button {
+      width: 100%;
+      min-width: auto;
+      min-height: 48px;
+      font-size: 15px;
+      
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
     }
   }
 }

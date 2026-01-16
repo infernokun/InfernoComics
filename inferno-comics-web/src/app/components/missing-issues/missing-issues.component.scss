@@ -277,20 +277,58 @@
 // Responsive adjustments
 @media (max-width: 768px) {
   .missing-issues-container {
+    .page-header {
+      padding: 0 12px;
+      min-height: 52px;
+      
+      mat-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+      
+      span:not(.spacer) {
+        font-size: 16px;
+      }
+      
+      button[mat-icon-button] {
+        width: 40px !important;
+        height: 40px !important;
+      }
+    }
+    
     .search-filter-container {
-      padding: 16px;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 10px;
       
       .search-bar {
+        margin-bottom: 10px;
+        
         .search-field {
           max-width: 100%;
+          
+          input {
+            font-size: 16px !important; // Prevent iOS zoom
+          }
         }
         
         .issue-count {
           margin-top: 12px;
+          text-align: center;
+          
+          mat-chip {
+            font-size: 14px;
+            padding: 8px 16px;
+          }
         }
       }
       
       .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        
         .publisher-filter {
           min-width: 100%;
         }
@@ -298,24 +336,109 @@
     }
 
     .grouped-view {
+      mat-expansion-panel {
+        border-radius: 10px !important;
+        margin-bottom: 10px;
+        
+        mat-expansion-panel-header {
+          padding: 0 14px !important;
+          min-height: 56px !important;
+        }
+        
+        mat-panel-title {
+          font-size: 16px;
+        }
+        
+        mat-panel-description {
+          font-size: 13px;
+          height: auto;
+          flex-wrap: wrap;
+          
+          .publisher {
+            font-size: 13px;
+          }
+        }
+      }
+      
       .issues-grid {
         grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 10px;
       }
     }
 
-    .issue-card .issue-header {
-      flex-direction: column;
-      align-items: stretch;
+    .issue-card {
+      border-radius: 10px !important;
       
-      .image-container {
-        order: 2;
+      &.compact mat-card-content {
+        padding: 14px;
       }
       
-      .actions {
-        width: 100%;
-        justify-content: flex-end;
-        margin-top: 8px;
+      .issue-header {
+        gap: 14px;
+        
+        &.compact {
+          flex-direction: row;
+          align-items: flex-start;
+        }
+        
+        .issue-info {
+          flex: 1;
+          
+          h3 {
+            font-size: 15px;
+            margin-bottom: 6px;
+          }
+          
+          .issue-name {
+            font-size: 13px;
+            margin-bottom: 4px;
+          }
+          
+          .cover-date {
+            font-size: 12px;
+          }
+        }
+        
+        .image-container {
+          flex-shrink: 0;
+          
+          img {
+            width: 70px;
+            height: 100px;
+            border-radius: 6px;
+          }
+        }
+        
+        .actions {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          
+          button {
+            width: 40px !important;
+            height: 40px !important;
+          }
+        }
       }
+    }
+    
+    .empty-state {
+      padding: 40px 16px;
+      
+      mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+      }
+      
+      h2 {
+        font-size: 18px;
+      }
+    }
+    
+    .loading-state {
+      padding: 40px 16px;
     }
   }
 }

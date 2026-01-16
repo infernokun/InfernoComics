@@ -55,6 +55,12 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   totalImagesProcessed = 0;
   totalMatchesFound = 0;
 
+  // Image zoom state
+  zoomVisible = false;
+  zoomOriginalSrc = '';
+  zoomMatchSrc = '';
+  zoomTitle = '';
+
   constructor(
     public dialogRef: MatDialogRef<ComicMatchSelectionComponent>,
     @Inject(MAT_DIALOG_DATA) public data: ComicMatchDialogData
@@ -387,5 +393,25 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     }
 
     return `${this.sortedMatches.length} matches found`;
+  }
+
+  // Image zoom methods for mobile
+  openZoom(imageSrc: string, title: string): void {
+    this.zoomOriginalSrc = this.currentImagePreview!;
+    this.zoomMatchSrc = imageSrc;
+    this.zoomTitle = title;
+    this.zoomVisible = true;
+    document.body.style.overflow = 'hidden';
+  }
+
+  closeZoom(): void {
+    this.zoomVisible = false;
+    document.body.style.overflow = '';
+  }
+
+  onZoomBackdropClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement).classList.contains('image-zoom-overlay')) {
+      this.closeZoom();
+    }
   }
 }

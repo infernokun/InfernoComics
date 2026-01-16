@@ -60,13 +60,17 @@
           <span>Original Image</span>
         </div>
 
-        <div class="original-preview">
+        <div class="original-preview" (click)="currentImagePreview && openZoom(currentImagePreview, 'Original: ' + getDisplayFileName())">
           @if (currentImagePreview) {
             <img
               [src]="currentImagePreview"
               [alt]="getDisplayFileName()"
               class="original-image"
               (error)="onImageError($event)" />
+            <div class="tap-to-zoom">
+              <mat-icon>zoom_in</mat-icon>
+              <span>Tap to zoom</span>
+            </div>
           } @else {
             <div class="no-image-placeholder">
               <mat-icon>image</mat-icon>
@@ -122,12 +126,16 @@
                     <span>{{ getSourceImageIndicator(match) }}</span>
                   </div>
                 }
-                <div class="image-container">
+                <div class="image-container" (click)="openZoom(match.url, match.comic_name + ' #' + match.issue_number); $event.stopPropagation()">
                   <img [src]="match.url"
                     [alt]="match.comic_name"
                     (error)="onImageError($event)"
                     loading="lazy" />
                   <div class="similarity-overlay">{{ (match.similarity * 100).toFixed(1) }}%</div>
+                  <div class="tap-to-zoom">
+                    <mat-icon>zoom_in</mat-icon>
+                    <span>Tap to zoom</span>
+                  </div>
                 </div>
                 <div class="match-info">
                   <h3 class="comic-title">{{ match.comic_name }}</h3>
@@ -217,4 +225,30 @@
       </button>
     }
   </div>
+
+
+  <!-- Image Zoom Overlay -->
+  @if (zoomVisible) {
+    <div class="image-zoom-overlay" (click)="onZoomBackdropClick($event)">
+      <button mat-icon-button class="zoom-close-btn" (click)="closeZoom()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <div class="zoom-images-container">
+        <div class="zoom-image-wrapper">
+          <span class="zoom-label">Original</span>
+          <img [src]="zoomOriginalSrc" alt="Original image" />
+        </div>
+        @if (zoomMatchSrc) {
+          <div class="zoom-image-wrapper">
+            <span class="zoom-label">Match</span>
+            <img [src]="zoomMatchSrc" alt="Matched comic" />
+          </div>
+        }
+      </div>
+      <div class="zoom-info">
+        <div class="zoom-title">{{ zoomTitle }}</div>
+        <div class="zoom-hint">Tap anywhere to close</div>
+      </div>
+    </div>
+  }
 </div>

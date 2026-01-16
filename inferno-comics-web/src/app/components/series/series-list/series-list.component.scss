@@ -36,6 +36,7 @@
     text-align: center;
     padding: 16px 0;
     margin-bottom: 16px;
+    gap: 16px;
   }
 
   h1 {
@@ -56,9 +57,10 @@
     flex-wrap: wrap;
 
     @media (max-width: 768px) {
-      flex-direction: row;
+      flex-direction: column;
       justify-content: center;
       width: 100%;
+      gap: 10px;
     }
 
     @media (max-width: 480px) {
@@ -70,26 +72,26 @@
       gap: 6px;
       align-items: center;
 
-      @media (max-width: 480px) {
+      @media (max-width: 768px) {
         width: 100%;
         justify-content: center;
-        margin-bottom: 8px;
+        order: -1; // Move stats to top on mobile
       }
 
       .stat-chip {
         display: flex;
         align-items: center;
         gap: 4px;
-        padding: 6px 10px;
+        padding: 8px 12px;
         background: var(--surface-color);
         border: 2px solid var(--border-color);
-        border-radius: 16px;
-        font-size: 0.8rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
         font-weight: 600;
         color: var(--text-secondary);
 
         @media (max-width: 480px) {
-          padding: 4px 8px;
+          padding: 6px 10px;
           font-size: 0.75rem;
         }
 
@@ -99,10 +101,23 @@
         }
 
         mat-icon {
-          font-size: 14px;
-          width: 14px;
-          height: 14px;
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
         }
+      }
+    }
+
+    // Mobile button row layout
+    .button-row {
+      display: contents;
+
+      @media (max-width: 768px) {
+        display: flex;
+        width: 100%;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
       }
     }
 
@@ -110,14 +125,34 @@
       background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
       color: white !important;
       font-weight: 600;
-      padding: 10px 16px;
+      padding: 12px 20px;
       font-size: 0.9rem;
+      border-radius: 12px !important;
+      min-height: 44px;
+      transition: all 0.2s ease;
+
+      &:active {
+        transform: scale(0.98);
+      }
+
+      @media (max-width: 768px) {
+        flex: 1;
+        min-width: calc(50% - 4px);
+        max-width: calc(50% - 4px);
+        padding: 10px 16px;
+        font-size: 0.85rem;
+        
+        // Hide "Add New Series" text on mobile, show only in bottom nav
+        &[routerLink="/series/new"] {
+          display: none;
+        }
+      }
 
       @media (max-width: 480px) {
-        padding: 8px 12px;
+        padding: 10px 12px;
         font-size: 0.8rem;
-        flex: 1;
-        min-width: 0;
+        min-width: 100%;
+        max-width: 100%;
       }
 
       mat-icon {
@@ -542,9 +577,10 @@
       gap: 16px;
     }
 
+    // Mobile: 2 columns with better spacing
     @media (max-width: 768px) {
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      gap: 10px;
     }
 
     @media (max-width: 480px) {
@@ -552,6 +588,7 @@
       gap: 8px;
     }
 
+    // Very small screens: single column
     @media (max-width: 340px) {
       grid-template-columns: 1fr;
       gap: 10px;
@@ -561,6 +598,19 @@
       height: 100%;
       display: flex;
       flex-direction: column;
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+
+      @media (max-width: 768px) {
+        border-radius: 10px;
+        
+        &:active {
+          transform: scale(0.98);
+        }
+      }
     }
   }
 
@@ -619,15 +669,21 @@
 .series-card {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   transition: all 0.3s ease;
   cursor: pointer;
   color: var(--text-primary);
+  -webkit-tap-highlight-color: transparent;
 
   @media (max-width: 768px) {
-    border-radius: 8px;
+    border-radius: 10px;
     border-width: 1px;
+    
+    &:active {
+      transform: scale(0.98);
+      opacity: 0.95;
+    }
   }
 
   &:hover {
@@ -646,7 +702,7 @@
 
   @media (max-width: 768px) {
     &:hover {
-      transform: translateY(-3px);
+      transform: none; // Disable hover lift on mobile
     }
   }
 
@@ -656,13 +712,14 @@
     width: 100%;
     height: 200px;
     overflow: hidden;
+    background: var(--background-color);
 
     @media (max-width: 768px) {
-      height: 160px;
+      height: 150px;
     }
 
     @media (max-width: 480px) {
-      height: 140px;
+      height: 130px;
     }
 
     img {
@@ -695,10 +752,10 @@
         padding: 6px;
         opacity: 1;
         background: linear-gradient(to bottom,
-            rgba(0, 0, 0, 0.3) 0%,
-            transparent 40%,
-            transparent 60%,
-            rgba(0, 0, 0, 0.6) 100%);
+            rgba(0, 0, 0, 0.2) 0%,
+            transparent 30%,
+            transparent 50%,
+            rgba(0, 0, 0, 0.7) 100%);
       }
 
       .series-badges {
@@ -707,15 +764,23 @@
         flex-wrap: wrap;
 
         .badge {
-          padding: 2px 6px;
-          border-radius: 4px;
+          padding: 3px 8px;
+          border-radius: 6px;
           font-size: 0.65rem;
           font-weight: 600;
           backdrop-filter: blur(10px);
 
           @media (max-width: 768px) {
-            padding: 2px 4px;
-            font-size: 0.6rem;
+            padding: 2px 5px;
+            font-size: 0.55rem;
+            border-radius: 4px;
+          }
+
+          @media (max-width: 480px) {
+            // Hide year badge on very small screens to save space
+            &.year {
+              display: none;
+            }
           }
 
           &.publisher {

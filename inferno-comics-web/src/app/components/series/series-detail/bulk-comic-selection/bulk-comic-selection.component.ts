@@ -50,6 +50,12 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   currentStatusFilter: 'all' | 'auto_selected' | 'manually_selected' | 'needs_review' | 'no_match' | 'rejected' = 'all';
   currentConfidenceFilter: 'all' | 'high' | 'medium' | 'low' = 'all';
 
+  // Image zoom state
+  zoomVisible = false;
+  zoomOriginalSrc = '';
+  zoomMatchSrc = '';
+  zoomTitle = '';
+
   private imagePreviewUrls: string[] = [];
   private highConfidenceThreshold: number = 0.7;
   private mediumConfidenceThreshold: number = 0.55;
@@ -884,6 +890,27 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       this.currentReviewIndex++;
       this.openNextReviewDialog();
     });
+  }
+
+  openZoom(result: ProcessedImageResult): void {
+    this.zoomOriginalSrc = result.imagePreview;
+    this.zoomMatchSrc = result.bestMatch?.url || '';
+    this.zoomTitle = result.bestMatch ? 
+      `${result.bestMatch.comic_name} #${result.bestMatch.issue_number}` : 
+      result.imageName;
+    this.zoomVisible = true;
+    document.body.style.overflow = 'hidden';
+  }
+
+  closeZoom(): void {
+    this.zoomVisible = false;
+    document.body.style.overflow = '';
+  }
+
+  onZoomBackdropClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement).classList.contains('image-zoom-overlay')) {
+      this.closeZoom();
+    }
   }
 
   restoreRejectedToReview(): void {

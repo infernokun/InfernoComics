@@ -351,9 +351,11 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   flex-wrap: wrap;
 
   @media (max-width: 768px) {
-    padding: 10px 12px;
-    gap: 10px;
+    padding: 12px;
+    gap: 12px;
     margin-bottom: 12px;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .view-controls {
@@ -361,13 +363,28 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
     align-items: center;
     gap: 6px;
 
+    @media (max-width: 768px) {
+      justify-content: center;
+      width: 100%;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
     .view-label {
       color: var(--text-secondary);
       font-weight: 500;
       font-size: 0.85rem;
 
       @media (max-width: 768px) {
-        display: none;
+        display: block;
+        font-size: 0.8rem;
+      }
+    }
+    
+    button[mat-icon-button] {
+      @media (max-width: 768px) {
+        width: 44px !important;
+        height: 44px !important;
       }
     }
   }
@@ -379,32 +396,44 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
     flex-wrap: wrap;
 
     @media (max-width: 768px) {
-      gap: 6px;
+      width: 100%;
+      justify-content: center;
+      gap: 8px;
     }
 
     button {
       display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 6px 12px;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 16px;
       font-weight: 500;
-      border-radius: 6px;
+      border-radius: 10px;
       transition: all $transition-fast;
       font-size: 0.85rem;
+      min-height: 44px;
 
       @media (max-width: 768px) {
-        padding: 5px 10px;
+        flex: 1;
+        min-width: calc(50% - 4px);
+        max-width: calc(50% - 4px);
+        padding: 12px 10px;
         font-size: 0.8rem;
       }
 
-      mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
+      @media (max-width: 400px) {
+        min-width: 100%;
+        max-width: 100%;
       }
 
-      &:not(:disabled):hover {
-        transform: translateY(-1px);
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      &:not(:disabled):active {
+        transform: scale(0.98);
       }
 
       &.mat-mdc-raised-button {
@@ -419,13 +448,19 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 
   .selection-info {
+    @media (max-width: 768px) {
+      text-align: center;
+      width: 100%;
+      padding-bottom: 8px;
+    }
+    
     .selection-count {
       font-weight: 600;
       color: var(--primary-color);
       font-size: 1rem;
 
       @media (max-width: 768px) {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
       }
     }
 
@@ -434,7 +469,9 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
       color: var(--text-muted);
 
       @media (max-width: 768px) {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+        display: block;
+        margin-top: 4px;
       }
     }
   }
@@ -465,6 +502,58 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 }
 
+// Collection and Browse cards enhanced for mobile
+.comic-card,
+.browse-card {
+  @media (max-width: 768px) {
+    -webkit-tap-highlight-color: transparent;
+    
+    &:active {
+      transform: scale(0.98);
+      opacity: 0.95;
+    }
+    
+    mat-card-header {
+      padding: 8px 10px !important;
+      
+      .mat-mdc-card-title {
+        font-size: 0.85rem !important;
+        line-height: 1.2;
+      }
+      
+      .mat-mdc-card-subtitle {
+        font-size: 0.7rem !important;
+        margin-top: 2px;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+    }
+    
+    mat-card-content {
+      padding: 6px 10px !important;
+    }
+    
+    mat-card-actions {
+      padding: 6px 8px !important;
+      
+      button {
+        min-height: 36px !important;
+        padding: 6px 10px !important;
+        font-size: 0.75rem !important;
+        
+        mat-icon {
+          font-size: 16px !important;
+          width: 16px !important;
+          height: 16px !important;
+          margin-right: 4px !important;
+        }
+      }
+    }
+  }
+}
+
 .collection-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
@@ -483,6 +572,10 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
 
     @media (max-width: 768px) {
       border-width: 1px;
+      
+      &:active {
+        transform: scale(0.99);
+      }
     }
 
     .compact-content {

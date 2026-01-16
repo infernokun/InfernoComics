@@ -296,6 +296,238 @@ body {
   outline-offset: 2px;
 }
 
+// ===== MOBILE-FIRST RESPONSIVE ENHANCEMENTS =====
+
+// Touch-friendly button sizes
+@media (max-width: 768px) {
+  .mat-mdc-button,
+  .mat-mdc-raised-button,
+  .mat-mdc-stroked-button,
+  .mat-mdc-icon-button {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  .mat-mdc-button,
+  .mat-mdc-raised-button,
+  .mat-mdc-stroked-button {
+    padding: 0 16px !important;
+    font-size: 14px !important;
+  }
+}
+
+// Improved mobile form fields
+@media (max-width: 768px) {
+  .mat-mdc-form-field {
+    width: 100% !important;
+    
+    .mat-mdc-text-field-wrapper {
+      padding: 0 12px !important;
+    }
+    
+    .mat-mdc-form-field-infix {
+      min-height: 48px !important;
+      padding: 12px 0 !important;
+    }
+    
+    input, textarea {
+      font-size: 16px !important; // Prevents iOS zoom
+    }
+  }
+}
+
+// Mobile-friendly cards
+@media (max-width: 768px) {
+  .mat-mdc-card {
+    margin: 8px !important;
+    border-radius: 12px !important;
+  }
+  
+  .mat-mdc-card-header {
+    padding: 12px 16px !important;
+  }
+  
+  .mat-mdc-card-content {
+    padding: 12px 16px !important;
+  }
+  
+  .mat-mdc-card-actions {
+    padding: 8px 12px !important;
+  }
+}
+
+// Mobile tabs
+@media (max-width: 768px) {
+  .mat-mdc-tab-header {
+    .mat-mdc-tab {
+      min-width: auto !important;
+      padding: 0 12px !important;
+      flex: 1 !important;
+    }
+    
+    .mdc-tab__text-label {
+      font-size: 13px !important;
+    }
+  }
+}
+
+// Mobile dialogs
+@media (max-width: 768px) {
+  .mat-mdc-dialog-container {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    
+    .mat-mdc-dialog-surface {
+      border-radius: 16px !important;
+    }
+  }
+  
+  .mat-mdc-dialog-content {
+    max-height: 60vh !important;
+    padding: 16px !important;
+  }
+  
+  .mat-mdc-dialog-actions {
+    padding: 12px 16px !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    
+    button {
+      width: 100% !important;
+      margin: 0 !important;
+    }
+  }
+}
+
+// Mobile expansion panels
+@media (max-width: 768px) {
+  .mat-expansion-panel {
+    border-radius: 12px !important;
+    margin-bottom: 8px !important;
+    
+    .mat-expansion-panel-header {
+      padding: 0 16px !important;
+      min-height: 52px !important;
+    }
+    
+    .mat-expansion-panel-body {
+      padding: 0 16px 16px !important;
+    }
+  }
+}
+
+// Mobile menu
+@media (max-width: 768px) {
+  .mat-mdc-menu-panel {
+    min-width: 200px !important;
+    max-width: 90vw !important;
+    border-radius: 12px !important;
+  }
+  
+  .mat-mdc-menu-item {
+    min-height: 48px !important;
+    padding: 0 16px !important;
+    font-size: 14px !important;
+  }
+}
+
+// Mobile chips
+@media (max-width: 768px) {
+  .mat-mdc-chip {
+    font-size: 12px !important;
+    min-height: 28px !important;
+    padding: 0 10px !important;
+  }
+}
+
+// Mobile slide toggle
+@media (max-width: 768px) {
+  .mat-mdc-slide-toggle {
+    .mdc-switch {
+      transform: scale(0.9);
+    }
+    
+    .mdc-label {
+      font-size: 14px !important;
+    }
+  }
+}
+
+// Safe area padding for notched phones
+@supports (padding: env(safe-area-inset-bottom)) {
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .mobile-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+// Mobile utility classes
+@media (max-width: 768px) {
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: block !important; }
+  .show-mobile-flex { display: flex !important; }
+  .show-mobile-inline { display: inline !important; }
+  
+  .mobile-full-width { width: 100% !important; }
+  .mobile-text-center { text-align: center !important; }
+  .mobile-stack { 
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  
+  .mobile-p-0 { padding: 0 !important; }
+  .mobile-p-1 { padding: 8px !important; }
+  .mobile-p-2 { padding: 16px !important; }
+  
+  .mobile-m-0 { margin: 0 !important; }
+  .mobile-m-1 { margin: 8px !important; }
+  .mobile-m-2 { margin: 16px !important; }
+  
+  .mobile-gap-1 { gap: 8px !important; }
+  .mobile-gap-2 { gap: 12px !important; }
+  .mobile-gap-3 { gap: 16px !important; }
+}
+
+@media (min-width: 769px) {
+  .hide-desktop { display: none !important; }
+  .show-desktop { display: block !important; }
+  .show-desktop-flex { display: flex !important; }
+}
+
+// Smooth scrolling for mobile
+@media (max-width: 768px) {
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  // Prevent horizontal scroll
+  body {
+    overflow-x: hidden;
+    width: 100%;
+  }
+}
+
+// Touch feedback
+@media (hover: none) and (pointer: coarse) {
+  .touch-feedback {
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+    
+    &:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+  }
+}
+
+// Pull-to-refresh prevention (when not wanted)
+.no-pull-refresh {
+  overscroll-behavior-y: contain;
+}
+
 .custom-snackbar {
   .mdc-snackbar__surface {
     background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%) !important;
