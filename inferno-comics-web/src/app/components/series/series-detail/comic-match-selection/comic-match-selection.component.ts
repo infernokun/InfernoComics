@@ -41,6 +41,7 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   sortedMatches: ComicMatch[] = [];
   imagePreviewUrls: string[] = [];
   currentImagePreview: string | null = null;
+  selectedZoomMatch: ComicMatch | undefined = undefined;
 
   groupedMatches: { [key: number]: ComicMatch[] } = {};
   imageGroups: {
@@ -270,6 +271,8 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
   }
 
   selectMatch(match: ComicMatch): void {
+    if (this.selectedZoomMatch) { this.closeZoom() };
+
     this.dialogRef.close({
       action: 'select',
       match,
@@ -395,18 +398,21 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     return `${this.sortedMatches.length} matches found`;
   }
 
-  // Image zoom methods for mobile
-  openZoom(imageSrc: string, title: string): void {
+  openZoom(imageSrc: string, title: string, match: ComicMatch | undefined = undefined, original: boolean = false): void {
     this.zoomOriginalSrc = this.currentImagePreview!;
-    this.zoomMatchSrc = imageSrc;
+    this.zoomMatchSrc = original ? '' : imageSrc;
     this.zoomTitle = title;
     this.zoomVisible = true;
     document.body.style.overflow = 'hidden';
+
+    this.selectedZoomMatch = match;
   }
 
   closeZoom(): void {
     this.zoomVisible = false;
     document.body.style.overflow = '';
+
+    this.selectedZoomMatch = undefined;
   }
 
   onZoomBackdropClick(event: MouseEvent): void {
