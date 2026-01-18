@@ -60,7 +60,7 @@
           <span>Original Image</span>
         </div>
 
-        <div class="original-preview" (click)="currentImagePreview && openZoom(currentImagePreview, 'Original: ' + getDisplayFileName(), undefined, true)">
+        <div class="original-preview" (click)="currentImagePreview && openZoom(currentImagePreview, 'Original: ' + getDisplayFileName())">
           @if (currentImagePreview) {
             <img
               [src]="currentImagePreview"
@@ -238,14 +238,14 @@
           <span class="zoom-label">Original</span>
           <img [src]="zoomOriginalSrc" alt="Original image" />
         </div>
-        @if (zoomMatchSrc) {
+        @if (selectedZoomMatch) {
           <div class="zoom-image-wrapper">
             <span class="zoom-label">Match</span>
             <img [src]="zoomMatchSrc" alt="Matched comic" />
             <button mat-raised-button
-                [color]="'accent'"
+                color="accent"
                 class="select-btn"
-                (click)="selectMatch(selectedZoomMatch!); $event.stopPropagation()">
+                (click)="selectMatch(selectedZoomMatch); $event.stopPropagation()">
                 <mat-icon>check</mat-icon>
                 Select
             </button>

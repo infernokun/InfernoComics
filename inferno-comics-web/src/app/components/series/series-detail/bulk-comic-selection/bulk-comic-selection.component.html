@@ -202,7 +202,7 @@
               } @else {
                 <div class="no-match-content">
                   <mat-icon>search_off</mat-icon>
-                  <span>No matches found</span>
+                  <span>No matches</span>
                 </div>
               }
             </div>
@@ -280,8 +280,7 @@
             </div>
             <!-- Selected Match Indicator (when different from best match) -->
             @if (result.selectedMatch && result.selectedMatch !== result.bestMatch) {
-              <div class="selected-match-indicator"
-                >
+              <div class="selected-match-indicator">
                 <div class="selected-label">
                   <mat-icon>check_circle</mat-icon>
                   <span>Selected: {{ result.selectedMatch.comic_name }} #{{ result.selectedMatch.issue_number }}</span>
@@ -290,8 +289,7 @@
             }
             <!-- Status Change Indicator -->
             @if (result.status === 'manually_accepted') {
-              <div class="status-change-indicator"
-                >
+              <div class="status-change-indicator">
                 <mat-icon>touch_app</mat-icon>
                 <span>Manually selected</span>
               </div>

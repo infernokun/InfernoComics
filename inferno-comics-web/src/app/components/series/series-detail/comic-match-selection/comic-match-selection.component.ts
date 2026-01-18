@@ -398,14 +398,13 @@ export class ComicMatchSelectionComponent implements OnInit, OnDestroy {
     return `${this.sortedMatches.length} matches found`;
   }
 
-  openZoom(imageSrc: string, title: string, match: ComicMatch | undefined = undefined, original: boolean = false): void {
+  openZoom(imageSrc: string, title: string, match?: ComicMatch): void {
     this.zoomOriginalSrc = this.currentImagePreview!;
-    this.zoomMatchSrc = original ? '' : imageSrc;
+    this.zoomMatchSrc = match ? imageSrc : '';
     this.zoomTitle = title;
     this.zoomVisible = true;
-    document.body.style.overflow = 'hidden';
-
     this.selectedZoomMatch = match;
+    document.body.style.overflow = 'hidden';
   }
 
   closeZoom(): void {
