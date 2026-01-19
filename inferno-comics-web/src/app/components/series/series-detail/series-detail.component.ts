@@ -18,7 +18,7 @@ import { ComicMatch } from '../../../models/comic-match.model';
 import { ComicVineSeriesDto, ComicVineIssue } from '../../../models/comic-vine.model';
 import { Issue, IssueCondition } from '../../../models/issue.model';
 import { ProcessingResult } from '../../../models/processing-result.model';
-import { Series } from '../../../models/series.model';
+import { generateSlug, Series } from '../../../models/series.model';
 import { ComicVineService } from '../../../services/comic-vine.service';
 import { IssueService } from '../../../services/issue.service';
 import { SeriesService, SSEProgressData } from '../../../services/series.service';
@@ -63,11 +63,37 @@ export class SeriesDetailComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id');
-    if (id) {
-      this.loadSeries(+id);
-      this.loadIssues(+id);
+    const slug = this.route.snapshot.paramMap.get('slug');
+    if (slug) {
+      this.loadSeriesBySlug(slug);
     }
+  }
+
+  loadSeriesBySlug(slug: string): void {
+    this.loading = true;
+    this.seriesService.getAllSeries().subscribe({
+      next: (res: ApiResponse<Series[]>) => {
+        if (!res.data) {
+          this.loading = false;
+          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+          return;
+        }
+        const found = res.data.find(s => generateSlug(s.name) === slug);
+        if (found) {
+          this.loadSeries(found.id!);
+          this.loadIssues(found.id!);
+        } else {
+          this.loading = false;
+          this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+          this.router.navigate(['/series']);
+        }
+      },
+      error: (err: Error) => {
+        console.error('Error loading series:', err);
+        this.loading = false;
+        this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+      },
+    });
   }
 
   loadSeries(id: number): void {
@@ -373,7 +399,7 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   editSeries(): void {
-    this.router.navigate(['/series', this.series?.id, 'edit']);
+    this.router.navigate(['/series', this.series?.slug, 'edit']);
   }
 
   deleteSeries(): void {
@@ -1208,12 +1234,12 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   manageComicVineSeries(): void {
-    if (!this.series?.id) {
+    if (!this.series) {
       this.snackBar.open('Series not found', 'Close', { duration: 3000 });
       return;
     }
 
-    this.router.navigate(['/series', this.series.id, 'edit'], {
+    this.router.navigate(['/series', this.series.slug, 'edit'], {
       queryParams: { mode: 'comic-vine-management' }
     });
   }

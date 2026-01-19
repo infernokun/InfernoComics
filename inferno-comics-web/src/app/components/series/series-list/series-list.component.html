@@ -165,7 +165,7 @@
       @for (series of displaySeries; track trackBySeries($index, series)) {
         <div class="series-card" [@cardAnimation]>
           <!-- Series Image -->
-          <div class="series-image-container" (click)="viewSeries(series.id)">
+          <div class="series-image-container" (click)="viewSeries(series)">
             <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name" loading="lazy"
               onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
               <div class="series-overlay">
@@ -198,7 +198,7 @@
             </div>
           </div>
           <!-- Series Content -->
-          <div class="series-content" (click)="viewSeries(series.id)">
+          <div class="series-content" (click)="viewSeries(series)">
             <div class="series-title-section">
               <h3>{{ series.name }}</h3>
               @if (isSeriesComplete(series)) {
@@ -245,7 +245,7 @@
           </div>
           <!-- Action Buttons -->
           <div class="series-card-actions">
-            <button mat-button color="primary" (click)="viewSeries(series.id)">
+            <button mat-button color="primary" (click)="viewSeries(series)">
               <mat-icon>visibility</mat-icon>
               View Details
             </button>

@@ -10,7 +10,7 @@ import { SlicePipe } from '@angular/common';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { ProcessingResult } from '../../../models/processing-result.model';
-import { Series } from '../../../models/series.model';
+import { generateSlug, Series } from '../../../models/series.model';
 import { SeriesService } from '../../../services/series.service';
 import { FADE_IN_UP, SLIDE_IN_UP, CARD_ANIMATION } from '../../../utils/animations';
 import { CustomPaginatorComponent } from '../../common/custom-paginator/custom-paginator.component';
@@ -298,9 +298,9 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     return seriesId ? this.favoriteSeriesIds.has(seriesId) : false;
   }
 
-  viewSeries(id: number | undefined): void {
-    if (id) {
-      this.router.navigate(['/series', id]);
+  viewSeries(series: Series): void {
+    if (series?.name) {
+      this.router.navigate(['/series', generateSlug(series.name)]);
     }
   }
 

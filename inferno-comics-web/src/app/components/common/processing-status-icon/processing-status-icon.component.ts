@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, HostListener, ElementRef, signal, WritableSignal } from '@angular/core';
 import { finalize, interval, Subscription } from 'rxjs';
 import { ProgressData, State } from '../../../models/progress-data.model';
+import { generateSlug } from '../../../models/series.model';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiResponse } from '../../../models/api-response.model';
@@ -372,8 +373,8 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   }
 
   navigateToSeries(item: ProgressData): void {
-    if (item.series && item.series.id) {
-      this.router.navigate(['/series', item.series.id]);
+    if (item.series && item.series.name) {
+      this.router.navigate(['/series', generateSlug(item.series.name)]);
       this.showOverlay = false;
     }
   }

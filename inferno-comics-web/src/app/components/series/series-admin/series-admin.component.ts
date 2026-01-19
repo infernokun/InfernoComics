@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { Issue } from '../../../models/issue.model';
-import { Series, SeriesWithIssues } from '../../../models/series.model';
+import { generateSlug, Series, SeriesWithIssues } from '../../../models/series.model';
 import { RecognitionService } from '../../../services/recognition.service';
 import { SeriesService } from '../../../services/series.service';
 import { DateUtils } from '../../../utils/date-utils';
@@ -36,15 +36,46 @@ export class SeriesAdminComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private snackBar: MatSnackBar,
     private seriesService: SeriesService,
     private recognitionService: RecognitionService
   ) {
-    this.seriesId = +this.route.snapshot.paramMap.get('id')!;
+    this.seriesId = 0;
   }
 
   ngOnInit(): void {
-    this.loadSeries();
+    const slug = this.route.snapshot.paramMap.get('slug');
+    if (slug) {
+      this.loadSeriesBySlug(slug);
+    }
+  }
+
+  loadSeriesBySlug(slug: string): void {
+    this.loading = true;
+    this.seriesService.getAllSeries().subscribe({
+      next: (res: ApiResponse<Series[]>) => {
+        if (!res.data) {
+          this.loading = false;
+          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+          return;
+        }
+        const found = res.data.find(s => generateSlug(s.name) === slug);
+        if (found) {
+          this.seriesId = found.id!;
+          this.loadSeries();
+        } else {
+          this.loading = false;
+          this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+          this.router.navigate(['/series']);
+        }
+      },
+      error: (err: Error) => {
+        console.error('Error loading series:', err);
+        this.loading = false;
+        this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+      },
+    });
   }
 
   loadSeries(): void {

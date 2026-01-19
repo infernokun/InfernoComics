@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { ComicVineSeries, ComicVineSeriesDto } from '../../../models/comic-vine.model';
-import { Series } from '../../../models/series.model';
+import { generateSlug, Series } from '../../../models/series.model';
 import { ComicVineService } from '../../../services/comic-vine.service';
 import { SeriesService } from '../../../services/series.service';
 
@@ -66,18 +66,44 @@ export class SeriesFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
-      if (params['id']) {
+      if (params['slug']) {
         this.isEditMode = true;
-        this.seriesId = +params['id'];
-        
+
         this.route.queryParams.subscribe(queryParams => {
           if (queryParams['mode'] === 'comic-vine-management') {
             this.isComicVineManagementMode = true;
           }
         });
-        
-        this.loadSeries();
+
+        this.loadSeriesBySlug(params['slug']);
       }
+    });
+  }
+
+  loadSeriesBySlug(slug: string): void {
+    this.loading = true;
+    this.seriesService.getAllSeries().subscribe({
+      next: (res: ApiResponse<Series[]>) => {
+        if (!res.data) {
+          this.loading = false;
+          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+          return;
+        }
+        const found = res.data.find(s => generateSlug(s.name) === slug);
+        if (found) {
+          this.seriesId = found.id!;
+          this.loadSeries();
+        } else {
+          this.loading = false;
+          this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+          this.router.navigate(['/series']);
+        }
+      },
+      error: (err: Error) => {
+        console.error('Error loading series:', err);
+        this.loading = false;
+        this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+      },
     });
   }
 
@@ -546,7 +572,7 @@ export class SeriesFormComponent implements OnInit {
     this.seriesForm.get('issuesOwnedCount')?.disable();
 
     // Build clean series object with only the data we need
-    const seriesData: Series = {
+    const seriesData = new Series({
       name: formData.name,
       description: formData.description,
       publisher: formData.publisher,
@@ -558,7 +584,7 @@ export class SeriesFormComponent implements OnInit {
       generatedDescription: false,
       comicVineId: formData.comicVineId,
       comicVineIds: formData.comicVineIds || []
-    };
+    });
 
     // Add ID for updates
     if (this.isEditMode && this.seriesId) {
@@ -575,7 +601,7 @@ export class SeriesFormComponent implements OnInit {
 
         const message = this.isEditMode ? 'Series updated successfully' : 'Series created successfully';
         this.snackBar.open(message, 'Close', { duration: 3000 });
-        this.router.navigate(['/series', res.data.id]);
+        this.router.navigate(['/series', generateSlug(res.data.name)]);
       },
       error: (err: Error) => {
         console.error('Error saving series:', err);
@@ -587,7 +613,8 @@ export class SeriesFormComponent implements OnInit {
 
   cancel(): void {
     if (this.isEditMode && this.seriesId) {
-      this.router.navigate(['/series', this.seriesId]);
+      const currentName = this.seriesForm.get('name')?.value;
+      this.router.navigate(['/series', generateSlug(currentName)]);
     } else {
       this.router.navigate(['/series']);
     }

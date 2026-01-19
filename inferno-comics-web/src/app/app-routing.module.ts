@@ -17,9 +17,9 @@ const routes: Routes = [
   { path: 'missing', component: MissingIssuesComponent },
   { path: 'issues', component: IssuesListComponent },
   { path: 'series/new', component: SeriesFormComponent },
-  { path: 'series/:id', component: SeriesDetailComponent },
-  { path: 'series/:id/edit', component: SeriesFormComponent },
-  { path: 'series/:id/admin', component: SeriesAdminComponent },
+  { path: 'series/:slug', component: SeriesDetailComponent },
+  { path: 'series/:slug/edit', component: SeriesFormComponent },
+  { path: 'series/:slug/admin', component: SeriesAdminComponent },
   { path: '**', redirectTo: '/dashboard' }
 ];
 
