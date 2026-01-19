@@ -937,7 +937,6 @@ export class ProgressDataTable implements OnInit, OnDestroy {
         }
 
         this.isLoading = false;
-        console.log('Received data', processed.forEach((data: ProgressData) => console.log(`percent complete=${data.getProgressPercentage()}%`)));
       }
     });
     //this.startAutoRefresh();
