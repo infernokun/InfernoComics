@@ -96,7 +96,7 @@ public class SeriesService {
                             if (gcdSeriesOptional.isPresent()) {
                                 String gcdId = String.valueOf(gcdSeriesOptional.get().getId());
                                 newGcdIds.add(gcdId);
-                                log.debug("✅ Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
+                                log.debug("Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
                             } else {
                                 log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
                             }
@@ -144,7 +144,7 @@ public class SeriesService {
             log.warn("Error during cache eviction for series {}: {}", seriesId, e.getMessage());
         }
 
-        log.info("✅ Reverification complete for '{}': {} issues from {} Comic Vine IDs → {} GCD mappings",
+        log.info("Reverification complete for '{}': {} issues from {} Comic Vine IDs → {} GCD mappings",
                 updatedSeries.getName(), totalComics.get(), originalComicVineIds.size(), newGcdIds.size());
 
 
@@ -251,7 +251,7 @@ public class SeriesService {
                             totalIssuesAvailable += dto.getIssueCount();
                         }
                         Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
-                                .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), dto.getIssueCount());
+                                .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), totalIssuesAvailable);
                         if (gcdSeriesOptional.isPresent()) {
                             gcdIds.add(String.valueOf(gcdSeriesOptional.get().getId()));
                             log.debug("Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdSeriesOptional.get().getId());
@@ -335,7 +335,7 @@ public class SeriesService {
             // FIX 1: Add explicit flush to ensure data is persisted before cache operations
             seriesRepository.flush();
 
-            log.info("✅ Series saved and flushed to database");
+            log.info("Series saved and flushed to database");
 
             // FIX 2: Wrap cache evictions in try-catch to prevent them from blocking the response
             try {
@@ -381,7 +381,7 @@ public class SeriesService {
                         if (gcdSeriesOptional.isPresent()) {
                             String gcdId = String.valueOf(gcdSeriesOptional.get().getId());
                             newGcdIds.add(gcdId);
-                            log.debug("✅ Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
+                            log.debug("Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
                         } else {
                             log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
                         }
@@ -411,7 +411,7 @@ public class SeriesService {
 
                     if (dto != null) {
                         comicVineData.add(dto);
-                        log.debug("✅ Got metadata: name='{}', startYear={}, endYear={}, issueCount={}",
+                        log.debug("Got metadata: name='{}', startYear={}, endYear={}, issueCount={}",
                                 dto.getName(), dto.getStartYear(), dto.getEndYear(), dto.getIssueCount());
                     } else {
                         log.warn("No Comic Vine data found for ID: {}", comicVineId);
