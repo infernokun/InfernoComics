@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { IssueFormComponent } from './issue-form.component';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { ReactiveFormsModule } from '@angular/forms';
 
 describe('IssueFormComponent', () => {
   let component: IssueFormComponent;
@@ -10,7 +11,8 @@ describe('IssueFormComponent', () => {
     await TestBed.configureTestingModule({
       imports: [
         IssueFormComponent,
-        MatDialogModule
+        MatDialogModule,
+        ReactiveFormsModule
       ],
       providers: [
         { provide: MatDialogRef, useValue: {} }

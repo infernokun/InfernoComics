@@ -1,6 +1,6 @@
 {
   "name": "inferno-comics-web",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "scripts": {
     "ng": "ng",
     "start": "ng serve --host 0.0.0.0 --port=4300",
@@ -8,13 +8,17 @@
     "watch": "ng build --watch --configuration development",
     "name": "echo ${npm_package_name}",
     "test": "ng test",
+    "lint": "ng lint",
+
     "gen-version": "node scripts/gen-version.js",
+
     "build:app": "NODE_OPTIONS=--max_old_space_size=8192 pnpm build --configuration=production",
     "build:prod": "pnpm build --configuration production",
+
+    "docker:build": "npm run gen-version && npm run docker:build-compile -s && npm run docker:build-runtime -s && npm run docker:push -s",
     "docker:build-compile": "export PROJECT=$(jq -r .name package.json) && docker buildx build --target compile-stage --build-arg BUILDKIT_INLINE_CACHE=1 -t infernokun/$PROJECT:compile .",
     "docker:build-runtime": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker buildx build --target runtime-stage --build-arg BUILDKIT_INLINE_CACHE=1 -t infernokun/$PROJECT:$VERSION -t infernokun/${npm_package_name}:latest .",
-    "docker:push": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker push infernokun/$PROJECT:$VERSION && docker push infernokun/$PROJECT:latest",
-    "docker:build": "npm run gen-version && npm run docker:build-compile -s && npm run docker:build-runtime -s && npm run docker:push -s"
+    "docker:push": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker push infernokun/$PROJECT:$VERSION && docker push infernokun/$PROJECT:latest"
   },
   "private": true,
   "dependencies": {
@@ -67,123 +71,5 @@
     "nx": "21.1.2",
     "sass": "1.58.3",
     "typescript": "~5.9.3"
-  },
-  "nx": {
-    "projectType": "application",
-    "generators": {
-      "@schematics/angular:component": {
-        "style": "scss",
-        "standalone": false
-      }
-    },
-    "sourceRoot": "src",
-    "prefix": "app",
-    "targets": {
-      "build": {
-        "executor": "@angular-devkit/build-angular:application",
-        "options": {
-          "outputPath": "dist/app",
-          "index": "src/index.html",
-          "browser": "src/main.ts",
-          "polyfills": [
-            "zone.js"
-          ],
-          "tsConfig": "tsconfig.app.json",
-          "inlineStyleLanguage": "scss",
-          "assets": [
-            "src/favicon.ico",
-            "src/assets",
-            {
-              "glob": "**/*",
-              "input": "node_modules/monaco-editor/min",
-              "output": "assets/monaco-editor/min"
-            },
-            {
-              "glob": "**/*",
-              "input": "node_modules/monaco-editor/min-maps",
-              "output": "assets/monaco-editor/min-maps"
-            }
-          ],
-          "styles": [
-            "src/styles.scss"
-          ],
-          "stylePreprocessorOptions": {
-            "includePaths": [
-              "node_modules/@angular/material/"
-            ],
-            "sass": {
-              "silenceDeprecations": [
-                "mixed-decls",
-                "color-functions",
-                "global-builtin",
-                "import"
-              ]
-            }
-          },
-          "scripts": []
-        },
-        "configurations": {
-          "production": {
-            "budgets": [
-              {
-                "type": "initial",
-                "maximumWarning": "1mb",
-                "maximumError": "4mb"
-              },
-              {
-                "type": "anyComponentStyle",
-                "maximumWarning": "4kb",
-                "maximumError": "8kb"
-              }
-            ],
-            "outputHashing": "all"
-          },
-          "development": {
-            "optimization": false,
-            "extractLicenses": false,
-            "sourceMap": true
-          }
-        },
-        "defaultConfiguration": "production"
-      },
-      "serve": {
-        "executor": "@angular-devkit/build-angular:dev-server",
-        "configurations": {
-          "production": {
-            "buildTarget": "inferno-comics-web:build:production"
-          },
-          "development": {
-            "buildTarget": "inferno-comics-web:build:development"
-          }
-        },
-        "defaultConfiguration": "development",
-        "continuous": true
-      },
-      "extract-i18n": {
-        "executor": "@angular-devkit/build-angular:extract-i18n",
-        "options": {
-          "buildTarget": "inferno-comics-web:build"
-        }
-      },
-      "test": {
-        "executor": "@angular-devkit/build-angular:karma",
-        "options": {
-          "polyfills": [
-            "zone.js",
-            "zone.js/testing"
-          ],
-          "tsConfig": "tsconfig.spec.json",
-          "inlineStyleLanguage": "scss",
-          "assets": [
-            "src/favicon.ico",
-            "src/assets"
-          ],
-          "styles": [
-            "src/styles.scss"
-          ],
-          "scripts": []
-        }
-      }
-    }
   }
 }

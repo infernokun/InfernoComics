@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { SeriesListComponent } from './series-list.component';
-import { MaterialModule } from '../../material.module';
+import { MaterialModule } from '../../../material.module';
 import { FormsModule } from '@angular/forms';
 import { SlicePipe } from '@angular/common';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';

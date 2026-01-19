@@ -7,20 +7,14 @@
     "start": "./gradlew bootRun",
     "build": "./gradlew build --no-daemon -x test",
     "test" : "./gradlew test",
+    "lint": "./gradlew check",
+
     "version": "./gradlew --version -PnewVersion=${npm_package_version}",
+    
+    "docker:build": "npm run docker:build-compile -s && npm run docker:build-runtime -s && npm run docker:push -s",    
     "docker:build-compile": "export PROJECT=$(jq -r .name package.json) && docker buildx build --target compile-stage --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg PROJECT=$PROJECT -t infernokun/${npm_package_name}:compile .",
     "docker:build-runtime": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && PORT=$(jq -r .port package.json) && docker buildx build --target runtime-stage --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg PORT=$PORT --build-arg PROJECT=$PROJECT -t infernokun/${npm_package_name}:$VERSION -t infernokun/${npm_package_name}:latest .",
-    "docker:push": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker push infernokun/$PROJECT:$VERSION && docker push infernokun/$PROJECT:latest",
-    "docker:build": "npm run docker:build-compile -s && npm run docker:build-runtime -s && npm run docker:push -s"
+    "docker:push": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker push infernokun/$PROJECT:$VERSION && docker push infernokun/$PROJECT:latest"
   },
-  "repository": {
-    "type": "git",
-    "url": "ssh://git@github.com:infernokun/InfernoComics.git"
-  },
-  "author": "InfernoKun",
-  "email": "infernokun@infernokun.com",
-  "devDependencies": {
-    "nodemon": "^2.0.16"
-  },
-  "dependencies": {}
+  "private": true
 }

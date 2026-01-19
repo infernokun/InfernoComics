@@ -7,7 +7,6 @@ import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { Issue } from '../../../models/issue.model';
 import { SeriesWithIssues } from '../../../models/series.model';
-import { EnvironmentService } from '../../../services/environment.service';
 import { RecognitionService } from '../../../services/recognition.service';
 import { SeriesService } from '../../../services/series.service';
 
@@ -44,7 +43,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     private readonly seriesService: SeriesService,
     private readonly recognitionService: RecognitionService,
     private readonly snackBar: MatSnackBar,
-    private readonly environmentService: EnvironmentService,
     private readonly cdr: ChangeDetectorRef
   ) {}
 
@@ -71,7 +69,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
           if (!res.data) throw new Error('issue getSeriesWithIssues');
 
           this.seriesWithIssues = res.data;
-          this.showSuccessMessage(`Loaded ${this.getTotalIssuesCount()} issues from ${res.data.length} series`);
         },
         error: (err: Error) => {
           console.error('Error loading series with issues:', err);
@@ -174,13 +171,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     this.seriesDisplayStates.set(seriesId, !currentState);
     this.saveSeriesDisplayStates();
     this.cdr.markForCheck();
-    
-    const action = !currentState ? 'Showing all issues' : 'Showing fewer issues';
-    this.snackBar.open(action, undefined, {
-      duration: 1500,
-      horizontalPosition: 'center',
-      verticalPosition: 'bottom'
-    });
   }
   
   expandAllSeries(): void {
@@ -191,24 +181,12 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     });
     this.saveSeriesDisplayStates();
     this.cdr.markForCheck();
-    
-    this.snackBar.open('All series expanded', undefined, {
-      duration: 2000,
-      horizontalPosition: 'center',
-      verticalPosition: 'bottom'
-    });
   }
   
   collapseAllSeries(): void {
     this.seriesDisplayStates.clear();
     this.saveSeriesDisplayStates();
     this.cdr.markForCheck();
-    
-    this.snackBar.open('All series collapsed', undefined, {
-      duration: 2000,
-      horizontalPosition: 'center',
-      verticalPosition: 'bottom'
-    });
   }
 
   hasIssues(series: SeriesWithIssues): boolean {
@@ -242,13 +220,6 @@ export class IssuesListComponent implements OnInit, OnDestroy {
   onToggleChange(): void {
     this.saveTogglePreference();
     this.imageCache.clear();
-    
-    const photoType = this.uploadedPhotos ? 'uploaded' : 'original';
-    this.snackBar.open(`Showing ${photoType} photos`, undefined, {
-      duration: 2000,
-      horizontalPosition: 'center',
-      verticalPosition: 'bottom'
-    });
   }
 
   refresh(): void {
