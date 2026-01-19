@@ -63,10 +63,22 @@ export class SeriesDetailComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const slug = this.route.snapshot.paramMap.get('slug');
-    if (slug) {
-      this.loadSeriesBySlug(slug);
-    }
+    this.route.paramMap.subscribe(params => {
+      const slug = params.get('slug');
+      if (slug) {
+        this.resetState();
+        this.loadSeriesBySlug(slug);
+      }
+    });
+  }
+
+  private resetState(): void {
+    this.series = null;
+    this.issues = [];
+    this.comicVineIssues = [];
+    this.selectedIssues.clear();
+    this.expandedIssues.clear();
+    this.loading = true;
   }
 
   loadSeriesBySlug(slug: string): void {
