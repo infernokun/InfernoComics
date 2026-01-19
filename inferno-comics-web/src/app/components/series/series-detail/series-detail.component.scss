@@ -193,17 +193,79 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
 
     .description {
       margin-bottom: 16px;
-      line-height: 1.6;
+      line-height: 1.7;
       font-size: 0.95rem;
       background: var(--background-color);
-      padding: 14px;
+      padding: 16px;
       border-radius: $radius-sm;
       border-left: 4px solid var(--primary-color);
+      position: relative;
 
       @media (max-width: 768px) {
         font-size: 0.9rem;
         padding: 12px;
         text-align: left;
+      }
+
+      .generated-description {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--primary-color);
+        background: rgba(59, 130, 246, 0.1);
+        padding: 3px 8px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+      }
+
+      .show-more-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: transparent;
+        border: none;
+        color: var(--primary-color);
+        font-weight: 600;
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        margin-left: 4px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all $transition-fast;
+        position: relative;
+
+        &::before {
+          content: '';
+          position: absolute;
+          bottom: 4px;
+          left: 12px;
+          right: 12px;
+          height: 1px;
+          background: var(--primary-color);
+          opacity: 0;
+          transition: opacity $transition-fast;
+        }
+
+        &:hover {
+          background: rgba(59, 130, 246, 0.1);
+
+          &::before {
+            opacity: 0.5;
+          }
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
+
+        @media (max-width: 768px) {
+          font-size: 0.8rem;
+          padding: 5px 10px;
+        }
       }
     }
 
@@ -1131,6 +1193,76 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
         }
       }
     }
+  }
+}
+
+// Issue description styles for comic cards
+.issue-description-container {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+
+  @media (max-width: 768px) {
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+
+  .issue-description {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 0;
+
+    @media (max-width: 768px) {
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+  }
+
+  .show-more-btn.issue-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    margin-top: 6px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    &:active {
+      transform: scale(0.96);
+    }
+
+    @media (max-width: 768px) {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 10px;
+    }
+  }
+}
+
+.cover-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  @media (max-width: 768px) {
+    font-size: 0.75rem;
+    margin-top: 6px;
   }
 }
 
