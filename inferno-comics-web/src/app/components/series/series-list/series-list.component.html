@@ -29,129 +29,75 @@
     </div>
   </div>
 
-  <!-- Search and Filter Bar -->
-  <div class="search-filter-container" [@slideInUp]>
-    <div class="search-bar">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Search series</mat-label>
-        <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" placeholder="Search by name or publisher">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
+  <!-- Unified Toolbar -->
+  <div class="toolbar-container" [@slideInUp]>
+    <!-- Row 1: Search + View Toggle + Count -->
+    <div class="toolbar-row toolbar-main">
+      <div class="search-section">
+        <mat-form-field appearance="outline" class="search-field">
+          <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" placeholder="Search series...">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+      </div>
+
+      <div class="toolbar-actions">
+        <mat-button-toggle-group [value]="viewMode" (change)="toggleView()" class="view-toggle">
+          <mat-button-toggle value="grid" matTooltip="Grid View">
+            <mat-icon>grid_view</mat-icon>
+          </mat-button-toggle>
+          <mat-button-toggle value="list" matTooltip="List View">
+            <mat-icon>list</mat-icon>
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+
+        <span class="series-count">{{ getFilteredSeriesCount() }}/{{ getTotalSeriesCount() }}</span>
+      </div>
     </div>
 
-    <div class="filter-controls">
-      <mat-form-field appearance="outline" class="publisher-filter">
+    <!-- Row 2: Filters + Sort (collapsible on mobile) -->
+    <div class="toolbar-row toolbar-filters">
+      <!-- Publisher Filter -->
+      <mat-form-field appearance="outline" class="filter-field publisher-filter">
         <mat-label>Publisher</mat-label>
         <mat-select [(value)]="selectedPublisher" (selectionChange)="onPublisherFilterChange()">
-          <mat-option value="">All Publishers</mat-option>
+          <mat-option value="">All</mat-option>
           @for (pub of publishers; track pub) {
             <mat-option [value]="pub">{{ pub }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
 
+      <!-- Sort Options -->
+      <div class="sort-chips">
+        @for (option of sortOptions; track option) {
+          <button mat-button class="sort-chip"
+            [class.active]="currentSortOption === option.value"
+            (click)="onSortChange(option.value)"
+            [matTooltip]="'Sort by ' + option.label">
+            <mat-icon>{{ option.icon }}</mat-icon>
+            <span class="chip-label">{{ option.label }}</span>
+            @if (currentSortOption === option.value) {
+              <mat-icon class="sort-direction">{{ currentSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            }
+          </button>
+        }
+      </div>
+
+      <!-- Completion Toggle -->
       <mat-slide-toggle
         [(ngModel)]="showCompletedOnly"
         (change)="onCompletionFilterChange()"
-        class="completion-filter">
-        Show Completed Only
+        class="completion-toggle"
+        matTooltip="Show only completed series">
+        <span class="toggle-label">Completed</span>
       </mat-slide-toggle>
 
-      <button mat-button class="clear-filters-btn" (click)="clearFilters()"
-        [disabled]="!searchTerm && !selectedPublisher && !showCompletedOnly">
-        <mat-icon>clear</mat-icon>
-        Clear Filters
-      </button>
-    </div>
-  </div>
-
-  <!-- Sorting Controls -->
-  <div class="sorting-controls" [@slideInUp]>
-    <div class="sort-label">
-      <mat-icon>sort</mat-icon>
-      Sort by:
-    </div>
-
-    <!-- Desktop Sorting Controls -->
-    <div class="sort-dropdown" [style.display]="'none'" [style.display.gt-md]="'block'">
-      <mat-select [value]="currentSortOption" (selectionChange)="onSortChange($event.value)"
-        placeholder="Choose sort option">
-        @for (option of sortOptions; track option) {
-          <mat-option [value]="option.value">
-            <mat-icon>{{option.icon}}</mat-icon>
-            {{option.label}}
-          </mat-option>
-        }
-      </mat-select>
-    </div>
-
-    <button mat-stroked-button class="sort-direction-toggle" [style.display]="'none'"
-      [style.display.gt-md]="'flex'" (click)="toggleSortDirection()">
-      <mat-icon [class.desc-arrow]="currentSortDirection === 'desc'">arrow_upward</mat-icon>
-      <span class="sort-direction-text">
-        {{currentSortDirection === 'asc' ? 'Ascending' : 'Descending'}}
-      </span>
-    </button>
-
-    <div class="current-sort-info" [style.display]="'none'" [style.display.gt-md]="'flex'">
-      <mat-icon>{{getCurrentSortDetails()?.icon}}</mat-icon>
-      {{getCurrentSortDetails()?.label}}
-      ({{currentSortDirection === 'asc' ? 'A-Z' : 'Z-A'}})
-    </div>
-
-    <!-- Mobile Sorting Controls -->
-    <div class="sort-options-mobile">
-      <div class="sort-label">Choose sorting option:</div>
-      @for (option of sortOptions; track option) {
-        <button mat-button class="sort-option-btn"
-          [class.active]="currentSortOption === option.value" (click)="onSortChange(option.value)">
-          <div class="option-info">
-            <mat-icon>{{option.icon}}</mat-icon>
-            <span>{{option.label}}</span>
-          </div>
-          @if (currentSortOption === option.value) {
-            <div class="sort-direction-indicator">
-              <mat-icon>{{currentSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}}</mat-icon>
-              <span>{{currentSortDirection === 'asc' ? 'Asc' : 'Desc'}}</span>
-            </div>
-          }
+      <!-- Clear Filters -->
+      @if (searchTerm || selectedPublisher || showCompletedOnly) {
+        <button mat-icon-button class="clear-btn" (click)="clearFilters()" matTooltip="Clear all filters">
+          <mat-icon>close</mat-icon>
         </button>
       }
-    </div>
-  </div>
-
-  <!-- View Controls -->
-  <div class="view-controls" [@slideInUp]>
-    <div class="controls-left">
-      <mat-button-toggle-group [value]="viewMode" (change)="toggleView()">
-        <mat-button-toggle value="grid">
-          <mat-icon>grid_view</mat-icon>
-          Grid
-        </mat-button-toggle>
-        <mat-button-toggle value="list">
-          <mat-icon>list</mat-icon>
-          List
-        </mat-button-toggle>
-      </mat-button-toggle-group>
-    </div>
-
-    <div class="controls-right">
-      <div class="series-count">
-        Showing {{ getFilteredSeriesCount() }} of {{ getTotalSeriesCount() }} series
-      </div>
-
-      <!-- Quick Sort Buttons (Desktop Only) -->
-      <div class="quick-sort-btns">
-        <button mat-button [class.active]="currentSortOption === 'name'" (click)="onSortChange('name')">
-          Name
-        </button>
-        <button mat-button [class.active]="currentSortOption === 'completion'" (click)="onSortChange('completion')">
-          Progress
-        </button>
-        <button mat-button [class.active]="currentSortOption === 'publisher'" (click)="onSortChange('publisher')">
-          Publisher
-        </button>
-      </div>
     </div>
   </div>
 
