@@ -280,22 +280,23 @@ export class SeriesFormComponent implements OnInit {
       return;
     }
 
+    const addedCount = this.selectedSeries.length;
     const addedNames = this.selectedSeries.map(s => s.name).join(', ');
     const beforeCount = this.existingComicVineData.length;
-    
+
     this.existingComicVineData.push(...this.selectedSeries);
     this.updateFormFromCurrentData();
-    
+
     // Mark form as dirty to enable save
     this.seriesForm.markAsDirty();
-    
+
     this.clearSelection();
     this.comicVineResults = [];
-    
+
     const afterCount = this.existingComicVineData.length;
     this.snackBar.open(
-      `Added ${this.selectedSeries.length} series (${beforeCount} → ${afterCount} total): ${addedNames}`, 
-      'Close', 
+      `Added ${addedCount} series (${beforeCount} → ${afterCount} total): ${addedNames}`,
+      'Close',
       { duration: 5000 }
     );
   }
@@ -387,11 +388,12 @@ export class SeriesFormComponent implements OnInit {
   }
 
   private addToExistingSeriesWithConfig(): void {
-    const beforeCount = this.existingComicVineData.length;
+    const addedCount = this.selectedSeries.length;
     const addedNames = this.selectedSeries.map(s => s.name).join(', ');
-    
+    const beforeCount = this.existingComicVineData.length;
+
     this.existingComicVineData.push(...this.selectedSeries);
-    
+
     // Always update cover if selected
     if (this.selectedCover) {
       this.seriesForm.patchValue({ imageUrl: this.selectedCover });
@@ -407,18 +409,18 @@ export class SeriesFormComponent implements OnInit {
     }
 
     this.updateFormFromCurrentData();
-    
+
     // Mark form as dirty to enable save
     this.seriesForm.markAsDirty();
-    
+
     this.clearSelection();
     this.comicVineResults = [];
     this.showCombinationConfig = false;
-    
+
     const afterCount = this.existingComicVineData.length;
     this.snackBar.open(
-      `Added ${this.selectedSeries.length} series (${beforeCount} → ${afterCount} total): ${addedNames}`, 
-      'Close', 
+      `Added ${addedCount} series (${beforeCount} → ${afterCount} total): ${addedNames}`,
+      'Close',
       { duration: 5000 }
     );
   }

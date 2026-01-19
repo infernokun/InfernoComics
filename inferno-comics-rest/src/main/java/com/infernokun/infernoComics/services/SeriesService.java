@@ -241,11 +241,15 @@ public class SeriesService {
 
         // Process Comic Vine IDs
         List<String> gcdIds = new ArrayList<>();
+        int totalIssuesAvailable = 0;
         if (request.getComicVineIds() != null) {
             for (String comicVineId : request.getComicVineIds()) {
                 try {
                     ComicVineService.ComicVineSeriesDto dto = comicVineService.getComicVineSeriesById(Long.valueOf(comicVineId));
                     if (dto != null) {
+                        if (dto.getIssueCount() != null) {
+                            totalIssuesAvailable += dto.getIssueCount();
+                        }
                         Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
                                 .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), dto.getIssueCount());
                         if (gcdSeriesOptional.isPresent()) {
@@ -262,6 +266,7 @@ public class SeriesService {
         }
 
         series.setGcdIds(gcdIds);
+        series.setIssuesAvailableCount(totalIssuesAvailable);
         Series savedSeries = seriesRepository.save(series);
 
         evictListCaches();
@@ -549,7 +554,6 @@ public class SeriesService {
                 .collect(Collectors.toList());
     }
 
-    // Create series from Comic Vine data
     public Series createSeriesFromComicVine(String comicVineId, ComicVineService.ComicVineSeriesDto comicVineData) {
         Series series = new Series();
         series.setName(comicVineData.getName());
@@ -558,8 +562,10 @@ public class SeriesService {
         series.setStartYear(comicVineData.getStartYear());
         series.setImageUrl(comicVineData.getImageUrl());
         series.setComicVineId(comicVineId);
+        if (comicVineData.getIssueCount() != null) {
+            series.setIssuesAvailableCount(comicVineData.getIssueCount());
+        }
 
-        // Generate description if Comic Vine description is empty
         if (series.getDescription() == null || series.getDescription().trim().isEmpty()) {
             DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                     series.getName(),
@@ -580,14 +586,12 @@ public class SeriesService {
         return savedSeries;
     }
 
-    // Batch import series with cache management
     @Transactional
     public List<Series> createMultipleSeriesFromComicVine(List<ComicVineService.ComicVineSeriesDto> comicVineSeriesList) {
         log.info("Batch creating {} series from Comic Vine data", comicVineSeriesList.size());
 
         List<Series> createdSeries = comicVineSeriesList.stream()
                 .map(comicVineData -> {
-                    // Don't call createSeriesFromComicVine to avoid multiple cache evictions
                     Series series = new Series();
                     series.setName(comicVineData.getName());
                     series.setDescription(comicVineData.getDescription());
@@ -595,12 +599,14 @@ public class SeriesService {
                     series.setStartYear(comicVineData.getStartYear());
                     series.setImageUrl(comicVineData.getImageUrl());
                     series.setComicVineId(comicVineData.getId());
+                    if (comicVineData.getIssueCount() != null) {
+                        series.setIssuesAvailableCount(comicVineData.getIssueCount());
+                    }
 
                     return seriesRepository.save(series);
                 })
                 .collect(Collectors.toList());
 
-        // Single cache eviction after all series are created
         evictListCaches();
 
         return createdSeries;
