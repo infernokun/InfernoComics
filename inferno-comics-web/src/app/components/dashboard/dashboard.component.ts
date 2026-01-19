@@ -9,7 +9,6 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
 import { ApiResponse } from '../../models/api-response.model';
-import { IssueService } from '../../services/issue.service';
 import { SeriesService } from '../../services/series.service';
 
 interface PublisherStat {
@@ -85,8 +84,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   constructor(
-    private seriesService: SeriesService,
-    private issueService: IssueService
+    private seriesService: SeriesService
   ) {
     this.loadUserPreferences();
   }

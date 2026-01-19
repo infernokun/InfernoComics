@@ -94,7 +94,7 @@
 
       <!-- Clear Filters -->
       @if (searchTerm || selectedPublisher || showCompletedOnly) {
-        <button mat-icon-button class="clear-btn" (click)="clearFilters()" matTooltip="Clear all filters">
+        <button class="clear-btn" (click)="clearFilters()" matTooltip="Clear all filters">
           <mat-icon>close</mat-icon>
         </button>
       }
@@ -215,7 +215,6 @@
       <h3>No series found</h3>
       <p>Try adjusting your search terms or filters</p>
       <button mat-button (click)="clearFilters()" class="clear-filters-btn">
-        <mat-icon>clear</mat-icon>
         Clear All Filters
       </button>
     </div>
@@ -227,7 +226,6 @@
       <h3>No series yet</h3>
       <p>Start building your collection by adding your first series</p>
       <button mat-raised-button color="primary" routerLink="/series/new">
-        <mat-icon>add</mat-icon>
         Add First Series
       </button>
     </div>

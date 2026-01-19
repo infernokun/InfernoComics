@@ -16,9 +16,9 @@
         <mat-icon matSuffix>search</mat-icon>
 
         @if (filter()) {
-          <button mat-icon-button matSuffix (click)="clearFilter()">
-            <mat-icon>clear</mat-icon>
-          </button>
+        <button mat-icon-button matSuffix (click)="clearFilter()">
+          <mat-icon>clear</mat-icon>
+        </button>
         }
       </mat-form-field>
 
@@ -26,84 +26,82 @@
         <mat-chip>{{ filteredIssues().length }} Missing</mat-chip>
       </div>
     </div>
-  </div>
-
-  @if (!loading()) {
-  <div class="content">
-    <!-- Empty State -->
-    @if (filteredIssues().length === 0) {
-    <div class="empty-state">
-      <mat-icon>check_circle</mat-icon>
-      <h2>No Missing Issues</h2>
-      @if (filter()) { 
-        <p class="empty-state-text">Try adjusting your search filter</p> 
+    <!-- Loading State -->
+    @if (!loading()) {
+    <div class="content">
+      <!-- Empty State -->
+      @if (filteredIssues().length === 0) {
+      <div class="empty-state">
+        <mat-icon>check_circle</mat-icon>
+        <h2>No Missing Issues</h2>
+        @if (filter()) {
+        <p class="empty-state-text">Try adjusting your search filter</p>
+        }
+        @if (!filter()) {
+        <p class="empty-state-text">All your series are complete!</p>
+        }
+      </div>
       }
-      @if (!filter()) { 
-        <p class="empty-state-text">All your series are complete!</p> 
-      }
-    </div>
-    }
 
-    <!-- Grouped View -->
-    @if (filteredIssues().length > 0) {
+      <!-- Grouped View -->
+      @if (filteredIssues().length > 0) {
       <div class="grouped-view">
         <mat-accordion multi>
           @for (group of getGroupedIssues() | keyvalue; track group.key) {
-            <mat-expansion-panel [expanded]="true">
-              <mat-expansion-panel-header>
-                <mat-panel-title>
-                  <strong>{{ group.key }}</strong>
-                </mat-panel-title>
-                <mat-panel-description>
-                  {{ group.value.length }} missing issue{{ group.value.length !== 1 ? 's' : '' }}
-                  @if (group.value[0].series?.publisher) {
-                    <span class="publisher">
-                      • {{ group.value[0].series?.publisher }}
-                    </span>
-                  }
-                </mat-panel-description>
-              </mat-expansion-panel-header>
+          <mat-expansion-panel [expanded]="true">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <strong>{{ group.key }}</strong>
+              </mat-panel-title>
+              <mat-panel-description>
+                {{ group.value.length }} missing issue{{ group.value.length !== 1 ? 's' : '' }}
+                @if (group.value[0].series?.publisher) {
+                <span class="publisher">
+                  • {{ group.value[0].series?.publisher }}
+                </span>
+                }
+              </mat-panel-description>
+            </mat-expansion-panel-header>
 
-              <div class="issues-grid">
-                <mat-card *ngFor="let issue of group.value; trackBy: trackById" class="issue-card compact">
-                  <mat-card-content>
-                    <div class="issue-header compact">
-                      <div class="issue-info">
-                        <h3>Issue #{{ issue.issueNumber }}</h3>
-                        <p class="issue-name">
-                          {{ issue.expectedIssueName }}
-                        </p>
-                        <p class="cover-date">
-                          <mat-icon inline>calendar_today</mat-icon>
-                          {{  DateUtils.formatDate(issue.expectedCoverDate) }}
-                        </p>
-                      </div>
-                      <div class="image-container">
-                        <img src="{{issue.imageUrl}}" alt="">
-                      </div>
-                      <div class="actions">
-                        <button mat-icon-button color="warn" (click)="removeMissingIssue(issue.id!)"
-                          matTooltip="Remove from tracking">
-                          <mat-icon>delete</mat-icon>
-                        </button>
-                      </div>
+            <div class="issues-grid">
+              <mat-card *ngFor="let issue of group.value; trackBy: trackById" class="issue-card compact">
+                <mat-card-content>
+                  <div class="issue-header compact">
+                    <div class="issue-info">
+                      <h3>Issue #{{ issue.issueNumber }}</h3>
+                      <p class="issue-name">
+                        {{ issue.expectedIssueName }}
+                      </p>
+                      <p class="cover-date">
+                        <mat-icon inline>calendar_today</mat-icon>
+                        {{ DateUtils.formatDate(issue.expectedCoverDate) }}
+                      </p>
                     </div>
-                  </mat-card-content>
-                </mat-card>
-              </div>
-            </mat-expansion-panel>
+                    <div class="image-container">
+                      <img src="{{issue.imageUrl}}" alt="">
+                    </div>
+                    <div class="actions">
+                      <button mat-icon-button color="warn" (click)="removeMissingIssue(issue.id!)"
+                        matTooltip="Remove from tracking">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+          </mat-expansion-panel>
           }
         </mat-accordion>
       </div>
       }
     </div>
-  }
-
-  <!-- Loading State -->
-  @if (loading()) {
-  <div class="loading-state">
-    <mat-spinner diameter="40"></mat-spinner>
-    <p>Loading missing issues...</p>
+    } @else {
+    <div class="loading-state">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading missing issues...</p>
+    </div>
+    }
   </div>
-  }
+
 </div>
