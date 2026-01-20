@@ -50,6 +50,9 @@ export class SeriesDetailComponent implements OnInit {
   readonly ISSUE_DESCRIPTION_LIMIT = 150;
   expandedIssues: Set<number> = new Set();
 
+  // Track current variant cover index for each issue (by issue id)
+  variantCoverIndex: Map<string, number> = new Map();
+
   DateUtils = DateUtils;
   
   constructor(
@@ -1044,6 +1047,67 @@ export class SeriesDetailComponent implements OnInit {
     } else {
       this.expandedIssues.add(issueId);
     }
+  }
+
+  // Variant cover navigation methods
+  getCurrentCoverIndex(issueId: string): number {
+    return this.variantCoverIndex.get(issueId) || 0;
+  }
+
+  getTotalCovers(issue: any): number {
+    // Main cover (index 0) + variants
+    return 1 + (issue.variants?.length || 0);
+  }
+
+  hasVariants(issue: any): boolean {
+    return issue.variants && issue.variants.length > 0;
+  }
+
+  getCurrentCoverUrl(issue: any): string {
+    const currentIndex = this.getCurrentCoverIndex(issue.id);
+    if (currentIndex === 0) {
+      return issue.imageUrl || 'assets/placeholder-comic.jpg';
+    }
+    // Variants are 1-indexed in our display (0 is main cover)
+    const variantIndex = currentIndex - 1;
+    if (issue.variants && issue.variants[variantIndex]) {
+      return issue.variants[variantIndex].originalUrl || 'assets/placeholder-comic.jpg';
+    }
+    return issue.imageUrl || 'assets/placeholder-comic.jpg';
+  }
+
+  previousCover(event: Event, issueId: string, issue: any): void {
+    event.stopPropagation();
+    const currentIndex = this.getCurrentCoverIndex(issueId);
+    const totalCovers = this.getTotalCovers(issue);
+    // Wrap around to last cover if at first
+    const newIndex = currentIndex === 0 ? totalCovers - 1 : currentIndex - 1;
+    this.variantCoverIndex.set(issueId, newIndex);
+  }
+
+  nextCover(event: Event, issueId: string, issue: any): void {
+    event.stopPropagation();
+    const currentIndex = this.getCurrentCoverIndex(issueId);
+    const totalCovers = this.getTotalCovers(issue);
+    // Wrap around to first cover if at last
+    const newIndex = (currentIndex + 1) % totalCovers;
+    this.variantCoverIndex.set(issueId, newIndex);
+  }
+
+  getCoverLabel(issue: any): string {
+    const currentIndex = this.getCurrentCoverIndex(issue.id);
+    if (currentIndex === 0) {
+      return 'Main Cover';
+    }
+    const variantIndex = currentIndex - 1;
+    if (issue.variants && issue.variants[variantIndex]) {
+      const variant = issue.variants[variantIndex];
+      // Check for valid caption (not null, not "null" string, not empty)
+      if (variant.caption && variant.caption !== 'null' && variant.caption.trim() !== '') {
+        return variant.caption;
+      }
+    }
+    return `Variant #${currentIndex}`;
   }
 
   isSeriesComplete(): boolean {

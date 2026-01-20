@@ -113,4 +113,11 @@ export class IssueService extends BaseService {
       `${this.apiUrl}/total-value?type=purchase`
     );
   }
+
+  reverifyIssues(seriesId: number): Observable<ApiResponse<{ updated: number; skipped: number; failed: number }>> {
+    return this.post<ApiResponse<{ updated: number; skipped: number; failed: number }>>(
+      `${this.apiUrl}/reverify/${seriesId}`,
+      {}
+    );
+  }
 }

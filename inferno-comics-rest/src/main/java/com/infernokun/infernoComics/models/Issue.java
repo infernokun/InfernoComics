@@ -127,4 +127,6 @@ public class Issue {
     }
 
     public record BulkDeleteResult(int successful, int failed) { }
+
+    public record BulkUpdateResult(int updated, int skipped, int failed) { }
 }

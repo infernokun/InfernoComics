@@ -5,6 +5,7 @@ import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { Issue } from '../../../models/issue.model';
 import { generateSlug, Series, SeriesWithIssues } from '../../../models/series.model';
+import { IssueService } from '../../../services/issue.service';
 import { RecognitionService } from '../../../services/recognition.service';
 import { SeriesService } from '../../../services/series.service';
 import { DateUtils } from '../../../utils/date-utils';
@@ -19,6 +20,7 @@ export class SeriesAdminComponent implements OnInit {
   seriesId: number;
   series: Series | null = null;
   loading = true;
+  reverifyingIssues = false;
   error: string | null = null;
 
   // Expanded sections
@@ -39,6 +41,7 @@ export class SeriesAdminComponent implements OnInit {
     private router: Router,
     private snackBar: MatSnackBar,
     private seriesService: SeriesService,
+    private issueService: IssueService,
     private recognitionService: RecognitionService
   ) {
     this.seriesId = 0;
@@ -178,5 +181,31 @@ export class SeriesAdminComponent implements OnInit {
 
   getImageUrl(issue: Issue) {
     return this.recognitionService.getCurrentImageUrl({issue: issue});
+  }
+
+  reverifyIssues(): void {
+    this.reverifyingIssues = true;
+    this.issueService.reverifyIssues(this.seriesId).subscribe({
+      next: (res) => {
+        if (!res.data) throw new Error('issue reverifyIssues');
+
+        const { updated, skipped, failed } = res.data;
+        this.snackBar.open(
+          `Issues reverified: ${updated} updated, ${skipped} skipped, ${failed} failed`,
+          'Close',
+          { duration: 5000 }
+        );
+        this.reverifyingIssues = false;
+        // Reload to show updated data
+        this.loadSeries();
+      },
+      error: (err) => {
+        this.snackBar.open('Failed to reverify issues', 'Close', {
+          duration: 3000,
+        });
+        console.error('Error reverifying issues:', err);
+        this.reverifyingIssues = false;
+      },
+    });
   }
 }

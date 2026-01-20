@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
 import { MaterialModule } from '../../../material.module';
 
 @Component({
@@ -8,9 +8,10 @@ import { MaterialModule } from '../../../material.module';
   styleUrls: ['./custom-paginator.component.scss'],
   imports: [CommonModule, MaterialModule]
 })
-export class CustomPaginatorComponent implements OnInit {
+export class CustomPaginatorComponent implements OnInit, OnChanges {
   @Input() length: number = 0;
   @Input() pageSize: number = 6;
+  @Input() pageIndex: number = 0;
   @Input() pageSizeOptions: number[] = [3, 6, 9, 12, 15];
   @Output() page: EventEmitter<any> = new EventEmitter<any>();
 
@@ -19,10 +20,16 @@ export class CustomPaginatorComponent implements OnInit {
   displayedPages: number[] = [];
 
   ngOnInit(): void {
+    // Initialize currentPage from pageIndex input
+    this.currentPage = this.pageIndex + 1;
     this.updatePagination();
   }
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
+    // Sync currentPage with pageIndex input when it changes
+    if (changes['pageIndex']) {
+      this.currentPage = this.pageIndex + 1;
+    }
     this.updatePagination();
   }
 

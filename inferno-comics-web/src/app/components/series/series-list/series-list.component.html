@@ -104,7 +104,7 @@
 
   <!-- Series Display -->
   @if (!loading) {
-    <app-custom-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" 
+    <app-custom-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageIndex]="pageIndex"
       (page)="onPageChange($event)">
     </app-custom-paginator>
     <div class="series-container" [class.grid]="viewMode === 'grid'" [class.list]="viewMode === 'list'" [@fadeInUp]>
@@ -203,7 +203,7 @@
         </div>
       }
     </div>
-    <app-custom-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize"
+    <app-custom-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageIndex]="pageIndex"
       (page)="onPageChange($event)">
     </app-custom-paginator>
   }

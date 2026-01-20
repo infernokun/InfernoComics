@@ -29,7 +29,7 @@
           <div class="series-meta">
             <div class="meta-item">
               <mat-icon>calendar_today</mat-icon>
-              <span>Started: {{ series.startYear }}</span>
+              <span>Run: {{ series.startYear }}{{ series.endYear ? ' - ' + series.endYear : ' - Present' }}</span>
             </div>
             <!-- Enhanced collection status item -->
             <div class="meta-item collection-item">
@@ -186,66 +186,71 @@
         @if (issues.length > 0 && !isCompactView) {
           <div class="collection-grid">
             @for (comic of issues; track comic) {
-              <mat-card class="comic-card">
-                <div class="comic-image">
-                  <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + comic.issueNumber"
+              <div class="collection-card-wrapper">
+                <!-- Cover Image Section -->
+                <div class="collection-cover-section">
+                  <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'"
+                    [alt]="'Issue #' + comic.issueNumber"
+                    class="collection-cover-img"
                     onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                    @if (comic.keyIssue) {
-                      <div class="key-issue-badge">
-                        <mat-icon>star</mat-icon>
-                      </div>
+
+                  <!-- Key Issue Badge -->
+                  @if (comic.keyIssue) {
+                    <div class="key-issue-badge">
+                      <mat-icon>star</mat-icon>
+                      <span>Key Issue</span>
+                    </div>
+                  }
+
+                  <!-- Condition Badge -->
+                  @if (comic.condition) {
+                    <div class="condition-overlay" [class]="'condition-' + comic.condition.toLowerCase()">
+                      {{ comic.condition }}
+                    </div>
+                  }
+                </div>
+
+                <!-- Issue Info Section -->
+                <div class="collection-info-section">
+                  <div class="issue-header">
+                    <span class="issue-number">Issue #{{ comic.issueNumber }}</span>
+                    @if (comic.coverDate) {
+                      <span class="issue-date">{{ DateUtils.formatDate(comic.coverDate) }}</span>
                     }
                   </div>
-                  <mat-card-header>
-                    <mat-card-title>Issue #{{ comic.issueNumber }}</mat-card-title>
-                    <mat-card-subtitle>{{ comic.title }}</mat-card-subtitle>
-                  </mat-card-header>
-                  <mat-card-content>
-                    <div class="comic-details">
-                      <div class="detail-row">
-                        <span class="label">Condition:</span>
-                        <span class="value">{{ comic.condition }}</span>
-                      </div>
-                      <div class="detail-row">
-                        <span class="label">Purchase Price:</span>
-                        <span class="value">${{ comic.purchasePrice }}</span>
-                      </div>
-                      <div class="detail-row">
-                        <span class="label">Current Value:</span>
-                        <span class="value">${{ comic.currentValue }}</span>
-                      </div>
-                    </div>
-                    <!-- Updated issue description with toggle -->
-                    @if (comic.description) {
-                      <div class="issue-description-container">
-                        <p class="issue-description">{{ getIssueDescription(comic) }}</p>
-                        @if (shouldShowIssueToggle(comic)) {
-                          <button (click)="toggleIssueDescription(comic.id!)"
-                            class="show-more-btn issue-toggle">
-                          {{ isIssueDescriptionExpanded(comic.id!) ? 'Show less' : 'Show more' }}
-                        </button>
-                      }
-                    </div>
+
+                  @if (comic.title) {
+                    <p class="issue-title">{{ comic.title }}</p>
                   }
-                  @if (comic.coverDate) {
-                    <p class="cover-date">Cover Date: {{ DateUtils.formatDate(comic.coverDate) }}</p>
-                  }
-                </mat-card-content>
-                <mat-card-actions class="action-buttons">
-                  <button mat-button color="accent" class="action-button" (click)="viewIssue(comic.id!)">
-                    <mat-icon>visibility</mat-icon>
-                    View
-                  </button>
-                  <button mat-button color="primary" class="action-button" (click)="editIssue(comic)">
-                    <mat-icon>edit</mat-icon>
-                    Edit
-                  </button>
-                  <button mat-button color="warn" class="action-button" (click)="deleteIssue(comic.id!)">
-                    <mat-icon>delete</mat-icon>
-                    Delete
-                  </button>
-                </mat-card-actions>
-              </mat-card>
+
+                  <!-- Price Info -->
+                  <div class="price-info">
+                    <div class="price-item">
+                      <span class="price-label">Paid</span>
+                      <span class="price-value">${{ comic.purchasePrice || 0 }}</span>
+                    </div>
+                    <div class="price-item">
+                      <span class="price-label">Value</span>
+                      <span class="price-value highlight">${{ comic.currentValue || 0 }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div class="card-actions">
+                    <button mat-button class="action-btn view" (click)="viewIssue(comic.id!)">
+                      <mat-icon>visibility</mat-icon>
+                      View
+                    </button>
+                    <button mat-button class="action-btn edit" (click)="editIssue(comic)">
+                      <mat-icon>edit</mat-icon>
+                      Edit
+                    </button>
+                    <button mat-button class="action-btn delete" (click)="deleteIssue(comic.id!)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
             }
           </div>
         }
@@ -378,47 +383,56 @@
           @if (!loadingComicVine && comicVineIssues.length > 0) {
             <div class="browse-grid">
               @for (issue of comicVineIssues; track issue; let i = $index) {
-                <mat-card class="browse-card"
-                  [class.selected]="isIssueSelected(issue.id)"
-                  (click)="onIssueClick($event, issue.id, i)">
-                  <div class="browse-image">
-                    <img [src]="issue.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + issue.issueNumber"
+                <div class="browse-card-wrapper" [class.selected]="isIssueSelected(issue.id)">
+                  <!-- Cover Image Section -->
+                  <div class="browse-cover-section">
+                    <img [src]="getCurrentCoverUrl(issue)" [alt]="'Issue #' + issue.issueNumber"
+                      class="browse-cover-img"
                       onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
-                      @if (isIssueSelected(issue.id)) {
-                        <div class="selection-indicator">
-                          <mat-icon>check_circle</mat-icon>
-                        </div>
-                      }
+
+                    <!-- Selection checkbox overlay -->
+                    <div class="selection-checkbox" (click)="onIssueClick($event, issue.id, i)">
+                      <mat-icon>{{ isIssueSelected(issue.id) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
                     </div>
-                    <mat-card-header>
-                      <mat-card-title>Issue #{{ issue.issueNumber }}</mat-card-title>
-                      <mat-card-subtitle>{{ issue.name }}</mat-card-subtitle>
-                    </mat-card-header>
-                    <mat-card-content>
-                      <!-- Updated browse issue description with toggle -->
-                      @if (issue.description) {
-                        <div class="issue-description-container">
-                          <p class="issue-description">{{ getIssueDescription(issue) }}</p>
-                          @if (shouldShowIssueToggle(issue)) {
-                            <button
-                              (click)="toggleIssueDescription(issue.id); $event.stopPropagation()"
-                              class="show-more-btn issue-toggle">
-                            {{ isIssueDescriptionExpanded(issue.id) ? 'Show less' : 'Show more' }}
-                          </button>
-                        }
+
+                    <!-- Variant navigation (only if has variants) -->
+                    @if (hasVariants(issue)) {
+                      <div class="variant-nav-overlay">
+                        <button class="variant-btn prev" (click)="previousCover($event, issue.id, issue)">
+                          <mat-icon>chevron_left</mat-icon>
+                        </button>
+                        <div class="variant-info">
+                          <span class="variant-count">{{ getCurrentCoverIndex(issue.id) + 1 }} / {{ getTotalCovers(issue) }}</span>
+                          <span class="variant-label">{{ getCoverLabel(issue) }}</span>
+                        </div>
+                        <button class="variant-btn next" (click)="nextCover($event, issue.id, issue)">
+                          <mat-icon>chevron_right</mat-icon>
+                        </button>
                       </div>
                     }
-                    @if (issue.coverDate) {
-                      <p class="cover-date">{{ issue.coverDate }}</p>
+                  </div>
+
+                  <!-- Issue Info Section -->
+                  <div class="browse-info-section">
+                    <div class="issue-header">
+                      <span class="issue-number">Issue #{{ issue.issueNumber }}</span>
+                      @if (issue.coverDate) {
+                        <span class="issue-date">{{ issue.coverDate }}</span>
+                      }
+                    </div>
+                    @if (issue.name) {
+                      <p class="issue-title">{{ issue.name }}</p>
                     }
-                  </mat-card-content>
-                  <mat-card-actions>
-                    <button mat-button color="primary" (click)="addFromComicVine(issue); $event.stopPropagation()">
+                    @if (issue.description) {
+                      <p class="issue-desc">{{ getIssueDescription(issue) | slice:0:100 }}{{ issue.description.length > 100 ? '...' : '' }}</p>
+                    }
+                    <button mat-flat-button color="primary" class="add-btn"
+                      (click)="addFromComicVine(issue); $event.stopPropagation()">
                       <mat-icon>add</mat-icon>
                       Add to Collection
                     </button>
-                  </mat-card-actions>
-                </mat-card>
+                  </div>
+                </div>
               }
             </div>
           }

@@ -1066,13 +1066,247 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
 }
 
-.browse-card {
-  cursor: pointer;
+// New browse card wrapper styles
+.browse-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-color);
+  border-radius: $radius-md;
+  border: 2px solid var(--border-color);
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $shadow-lg;
+    border-color: var(--primary-color);
+  }
 
   &.selected {
     border-color: var(--primary-color);
     background: rgba(59, 130, 246, 0.05);
     box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+  }
+
+  .browse-cover-section {
+    position: relative;
+    width: 100%;
+    background: var(--background-color);
+
+    .browse-cover-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 2/3;
+      object-fit: contain;
+      background: #1a1a2e;
+    }
+
+    // Selection checkbox in top-right corner
+    .selection-checkbox {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 36px;
+      height: 36px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      @include flex-center;
+      cursor: pointer;
+      transition: all $transition-fast;
+      z-index: 10;
+
+      mat-icon {
+        color: white;
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+
+      &:hover {
+        background: rgba(59, 130, 246, 0.8);
+        transform: scale(1.1);
+      }
+    }
+
+    // Variant navigation at bottom of cover
+    .variant-nav-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px;
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+      z-index: 5;
+
+      .variant-btn {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+        cursor: pointer;
+        @include flex-center;
+        transition: all $transition-fast;
+        flex-shrink: 0;
+
+        mat-icon {
+          font-size: 24px;
+          width: 24px;
+          height: 24px;
+        }
+
+        &:hover {
+          background: white;
+          transform: scale(1.1);
+        }
+
+        &:active {
+          transform: scale(0.95);
+        }
+
+        @media (max-width: 768px) {
+          width: 32px;
+          height: 32px;
+
+          mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+          }
+        }
+      }
+
+      .variant-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+
+        .variant-count {
+          color: white;
+          font-size: 0.85rem;
+          font-weight: 700;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .variant-label {
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 0.75rem;
+          font-weight: 500;
+          text-align: center;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
+          padding: 0 8px;
+        }
+
+        @media (max-width: 768px) {
+          .variant-count {
+            font-size: 0.8rem;
+          }
+          .variant-label {
+            font-size: 0.7rem;
+          }
+        }
+      }
+    }
+  }
+
+  .browse-info-section {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .issue-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+
+      .issue-number {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .issue-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+    }
+
+    .issue-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .issue-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .add-btn {
+      margin-top: 8px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-weight: 600;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      padding: 10px;
+      gap: 6px;
+
+      .issue-header .issue-number {
+        font-size: 0.9rem;
+      }
+
+      .issue-title {
+        font-size: 0.8rem;
+      }
+
+      .issue-desc {
+        font-size: 0.75rem;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+      }
+
+      .add-btn {
+        font-size: 0.85rem;
+        padding: 8px 12px;
+      }
+    }
   }
 }
 
@@ -1272,5 +1506,288 @@ $shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
   }
   50% {
     background-position: 100% 50%;
+  }
+}
+
+// Collection card wrapper styles (My Collection grid)
+.collection-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-color);
+  border-radius: $radius-md;
+  border: 2px solid var(--border-color);
+  overflow: hidden;
+  transition: all $transition-base;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $shadow-lg;
+    border-color: var(--primary-color);
+  }
+
+  .collection-cover-section {
+    position: relative;
+    width: 100%;
+    background: var(--background-color);
+
+    .collection-cover-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 2/3;
+      object-fit: contain;
+      background: #1a1a2e;
+    }
+
+    // Key issue badge in top-left corner
+    .key-issue-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+      z-index: 10;
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      @media (max-width: 768px) {
+        padding: 3px 8px;
+        font-size: 0.7rem;
+
+        mat-icon {
+          font-size: 12px;
+          width: 12px;
+          height: 12px;
+        }
+      }
+    }
+
+    // Condition badge in top-right corner
+    .condition-overlay {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      z-index: 10;
+
+      // Condition color variations
+      &.condition-mint,
+      &.condition-nm {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+      }
+
+      &.condition-vf {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+      }
+
+      &.condition-fn,
+      &.condition-fine {
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        color: white;
+      }
+
+      &.condition-vg {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+      }
+
+      &.condition-good,
+      &.condition-g {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+      }
+
+      &.condition-fair,
+      &.condition-poor {
+        background: var(--surface-color);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+      }
+
+      @media (max-width: 768px) {
+        padding: 3px 8px;
+        font-size: 0.65rem;
+      }
+    }
+  }
+
+  .collection-info-section {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+
+    .issue-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+
+      .issue-number {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .issue-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+    }
+
+    .issue-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .price-info {
+      display: flex;
+      gap: 16px;
+      padding: 8px 0;
+      border-top: 1px solid var(--border-color);
+      margin-top: auto;
+
+      .price-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .price-label {
+          font-size: 0.7rem;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .price-value {
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: var(--text-primary);
+
+          &.highlight {
+            color: #10b981;
+          }
+        }
+      }
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 4px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+
+      .action-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 6px 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border-radius: $radius-sm;
+        min-width: unset;
+
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+
+        &.view {
+          color: var(--primary-color);
+
+          &:hover {
+            background: rgba(59, 130, 246, 0.1);
+          }
+        }
+
+        &.edit {
+          color: #8b5cf6;
+
+          &:hover {
+            background: rgba(139, 92, 246, 0.1);
+          }
+        }
+
+        &.delete {
+          color: #ef4444;
+          flex: 0;
+          padding: 6px;
+
+          &:hover {
+            background: rgba(239, 68, 68, 0.1);
+          }
+        }
+      }
+
+      @media (max-width: 768px) {
+        .action-btn {
+          font-size: 0.75rem;
+          padding: 5px 6px;
+
+          mat-icon {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+          }
+        }
+      }
+    }
+
+    @media (max-width: 768px) {
+      padding: 10px;
+      gap: 6px;
+
+      .issue-header .issue-number {
+        font-size: 0.9rem;
+      }
+
+      .issue-title {
+        font-size: 0.8rem;
+      }
+
+      .price-info {
+        gap: 12px;
+        padding: 6px 0;
+
+        .price-item {
+          .price-label {
+            font-size: 0.65rem;
+          }
+
+          .price-value {
+            font-size: 0.85rem;
+          }
+        }
+      }
+    }
   }
 }

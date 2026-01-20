@@ -16,6 +16,14 @@
             <mat-icon>refresh</mat-icon>
             Reverify Metadata
           </button>
+          <button mat-raised-button color="accent" (click)="reverifyIssues()" [disabled]="reverifyingIssues">
+            @if (reverifyingIssues) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <mat-icon>sync</mat-icon>
+            }
+            Reverify Issues
+          </button>
           <button mat-stroked-button color="warn" (click)="clearCache()">
             <mat-icon>clear_all</mat-icon>
             Clear Cache

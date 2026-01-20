@@ -148,4 +148,9 @@ public class IssueController extends BaseController {
         issueService.clearAllIssueCaches();
         return createSuccessResponse();
     }
+
+    @PostMapping("/reverify/{seriesId}")
+    public ResponseEntity<ApiResponse<Issue.BulkUpdateResult>> reverifyIssues(@PathVariable Long seriesId) {
+        return createSuccessResponse(issueService.reverifyIssues(seriesId));
+    }
 }

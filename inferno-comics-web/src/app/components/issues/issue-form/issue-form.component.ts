@@ -122,7 +122,9 @@ export class IssueFormComponent implements OnInit {
         issueNumber: issue.issueNumber,
         title: issue.name,
         description: issue.description,
-        coverDate: issue.coverDate ? new Date(issue.coverDate) : null,
+        // Parse date as local date to avoid timezone shift
+        // Comic Vine returns dates like "2023-05-15"
+        coverDate: issue.coverDate ? this.parseLocalDate(issue.coverDate) : null,
         condition: IssueCondition.FAIR,
         purchasePrice: 0,
         currentValue: 0,
@@ -132,6 +134,27 @@ export class IssueFormComponent implements OnInit {
         variant: issue.variant || false
       });
     }
+  }
+
+  /**
+   * Parse a date string as a local date to avoid timezone issues.
+   * new Date("2023-05-15") creates UTC midnight which shifts when displayed locally.
+   * This parses the date components directly to create a local date.
+   */
+  private parseLocalDate(dateStr: string): Date | null {
+    if (!dateStr) return null;
+
+    // Handle YYYY-MM-DD format
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+      const day = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+
+    // Fallback for other formats
+    return new Date(dateStr);
   }
 
   onSubmit(): void {
