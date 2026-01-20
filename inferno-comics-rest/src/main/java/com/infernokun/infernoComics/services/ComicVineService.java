@@ -354,6 +354,15 @@ public class ComicVineService {
 
                 dto.setStartYear(result.path("start_year").asInt(0));
 
+                // Parse end_year if available
+                JsonNode endYearNode = result.path("end_year");
+                if (!endYearNode.isMissingNode() && !endYearNode.isNull()) {
+                    int endYear = endYearNode.asInt(0);
+                    if (endYear > 0) {
+                        dto.setEndYear(endYear);
+                    }
+                }
+
                 JsonNode image = result.path("image");
                 if (!image.isMissingNode()) {
                     dto.setImageUrl(image.path("medium_url").asText());
@@ -380,6 +389,15 @@ public class ComicVineService {
                 dto.setDescription(result.path("description").asText());
                 dto.setPublisher(result.path("publisher").path("name").asText());
                 dto.setStartYear(result.path("start_year").asInt(0));
+
+                // Parse end_year if available
+                JsonNode endYearNode = result.path("end_year");
+                if (!endYearNode.isMissingNode() && !endYearNode.isNull()) {
+                    int endYear = endYearNode.asInt(0);
+                    if (endYear > 0) {
+                        dto.setEndYear(endYear);
+                    }
+                }
 
                 JsonNode image = result.path("image");
                 if (!image.isMissingNode()) {
@@ -411,6 +429,15 @@ public class ComicVineService {
             }
 
             dto.setStartYear(result.path("start_year").asInt(0));
+
+            // Parse end_year if available from ComicVine (field name varies - try common variations)
+            JsonNode endYearNode = result.path("end_year");
+            if (!endYearNode.isMissingNode() && !endYearNode.isNull()) {
+                int endYear = endYearNode.asInt(0);
+                if (endYear > 0) {
+                    dto.setEndYear(endYear);
+                }
+            }
 
             JsonNode image = result.path("image");
             if (!image.isMissingNode()) {
@@ -590,6 +617,55 @@ public class ComicVineService {
 
         // If no numeric part found, use a hash for consistent ordering
         return (double) issueNumber.hashCode();
+    }
+
+    /**
+     * Derives the end year from a list of issues by finding the most recent cover date.
+     * Only returns a value if the most recent issue is at least 2 years old (to avoid
+     * marking ongoing series as ended).
+     *
+     * @param issues List of issues to analyze
+     * @return The year of the most recent issue, or null if the series appears to be ongoing
+     */
+    public Integer deriveEndYearFromIssues(List<ComicVineIssueDto> issues) {
+        if (issues == null || issues.isEmpty()) {
+            return null;
+        }
+
+        int currentYear = LocalDate.now().getYear();
+
+        // Find the most recent cover date year
+        Optional<Integer> latestYear = issues.stream()
+                .map(ComicVineIssueDto::getCoverDate)
+                .filter(date -> date != null && !date.isEmpty())
+                .map(date -> {
+                    try {
+                        return LocalDate.parse(date).getYear();
+                    } catch (Exception e) {
+                        // Try to extract just the year if full date parsing fails
+                        try {
+                            return Integer.parseInt(date.substring(0, 4));
+                        } catch (Exception ex) {
+                            return null;
+                        }
+                    }
+                })
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo);
+
+        if (latestYear.isEmpty()) {
+            return null;
+        }
+
+        int lastIssueYear = latestYear.get();
+
+        // Only consider the series ended if the last issue is at least 2 years old
+        // This avoids marking ongoing series as ended
+        if (currentYear - lastIssueYear >= 2) {
+            return lastIssueYear;
+        }
+
+        return null;
     }
 
     @Setter

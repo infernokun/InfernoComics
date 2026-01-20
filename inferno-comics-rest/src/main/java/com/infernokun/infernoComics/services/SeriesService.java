@@ -78,6 +78,8 @@ public class SeriesService {
 
         AtomicInteger totalComics = new AtomicInteger(0);
         List<String> newGcdIds = new ArrayList<>();
+        List<Integer> endYearsFromApi = new ArrayList<>();
+        List<Integer> startYearsFromApi = new ArrayList<>();
 
         // Process each Comic Vine ID
         if (series.getComicVineIds() != null && !series.getComicVineIds().isEmpty()) {
@@ -87,6 +89,14 @@ public class SeriesService {
 
                     if (dto != null) {
                         totalComics.addAndGet(dto.getIssueCount() != null ? dto.getIssueCount() : 0);
+
+                        // Collect start and end years from ComicVine API
+                        if (dto.getStartYear() != null && dto.getStartYear() > 0) {
+                            startYearsFromApi.add(dto.getStartYear());
+                        }
+                        if (dto.getEndYear() != null && dto.getEndYear() > 0) {
+                            endYearsFromApi.add(dto.getEndYear());
+                        }
 
                         // Try to find GCD mapping
                         try {
@@ -110,6 +120,44 @@ public class SeriesService {
                     log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
+        }
+
+        // Update start year from ComicVine if available (use earliest)
+        if (!startYearsFromApi.isEmpty()) {
+            Integer earliestStart = Collections.min(startYearsFromApi);
+            if (!earliestStart.equals(series.getStartYear())) {
+                log.info("Updating start year from {} to {} for series '{}'",
+                        series.getStartYear(), earliestStart, series.getName());
+                series.setStartYear(earliestStart);
+            }
+        }
+
+        // Determine end year: use API value if available, otherwise derive from issues
+        Integer newEndYear = null;
+        if (!endYearsFromApi.isEmpty()) {
+            // Use the latest end year from all ComicVine series
+            newEndYear = Collections.max(endYearsFromApi);
+            log.debug("Using end year {} from ComicVine API for series '{}'", newEndYear, series.getName());
+        } else if (series.getComicVineIds() != null && !series.getComicVineIds().isEmpty()) {
+            // Try to derive end year from issues
+            try {
+                List<ComicVineService.ComicVineIssueDto> issues = comicVineService.searchIssues(series);
+                newEndYear = comicVineService.deriveEndYearFromIssues(issues);
+
+                if (newEndYear != null) {
+                    log.info("Derived end year {} from last issue cover date for series '{}'",
+                            newEndYear, series.getName());
+                }
+            } catch (Exception e) {
+                log.warn("Could not derive end year from issues for series '{}': {}", series.getName(), e.getMessage());
+            }
+        }
+
+        // Update end year if we found one
+        if (newEndYear != null && !newEndYear.equals(series.getEndYear())) {
+            log.info("Updating end year from {} to {} for series '{}'",
+                    series.getEndYear(), newEndYear, series.getName());
+            series.setEndYear(newEndYear);
         }
 
         // Update series with new metadata
@@ -242,6 +290,9 @@ public class SeriesService {
         // Process Comic Vine IDs
         List<String> gcdIds = new ArrayList<>();
         int totalIssuesAvailable = 0;
+        Integer derivedEndYear = null;
+        List<Integer> endYearsFromApi = new ArrayList<>();
+
         if (request.getComicVineIds() != null) {
             for (String comicVineId : request.getComicVineIds()) {
                 try {
@@ -250,6 +301,12 @@ public class SeriesService {
                         if (dto.getIssueCount() != null) {
                             totalIssuesAvailable += dto.getIssueCount();
                         }
+
+                        // Collect end years from ComicVine API if available
+                        if (dto.getEndYear() != null && dto.getEndYear() > 0) {
+                            endYearsFromApi.add(dto.getEndYear());
+                        }
+
                         Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
                                 .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), totalIssuesAvailable);
                         if (gcdSeriesOptional.isPresent()) {
@@ -263,6 +320,35 @@ public class SeriesService {
                     log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
+        }
+
+        // Determine end year: use API value if available, otherwise derive from issues
+        if (!endYearsFromApi.isEmpty()) {
+            // Use the latest end year from all ComicVine series
+            derivedEndYear = Collections.max(endYearsFromApi);
+            log.debug("Using end year {} from ComicVine API", derivedEndYear);
+        } else if (series.getEndYear() == null && request.getComicVineIds() != null && !request.getComicVineIds().isEmpty()) {
+            // Try to derive end year from issues if not provided by API or request
+            try {
+                // Create a temporary series object to fetch issues
+                Series tempSeries = new Series();
+                tempSeries.setComicVineIds(request.getComicVineIds());
+                tempSeries.setComicVineId(request.getComicVineId() != null ? request.getComicVineId() : request.getComicVineIds().get(0));
+
+                List<ComicVineService.ComicVineIssueDto> issues = comicVineService.searchIssues(tempSeries);
+                derivedEndYear = comicVineService.deriveEndYearFromIssues(issues);
+
+                if (derivedEndYear != null) {
+                    log.info("Derived end year {} from last issue cover date for series '{}'", derivedEndYear, request.getName());
+                }
+            } catch (Exception e) {
+                log.warn("Could not derive end year from issues for series '{}': {}", request.getName(), e.getMessage());
+            }
+        }
+
+        // Set end year if we derived one and it wasn't explicitly provided in the request
+        if (derivedEndYear != null && series.getEndYear() == null) {
+            series.setEndYear(derivedEndYear);
         }
 
         series.setGcdIds(gcdIds);
@@ -562,8 +648,27 @@ public class SeriesService {
         series.setStartYear(comicVineData.getStartYear());
         series.setImageUrl(comicVineData.getImageUrl());
         series.setComicVineId(comicVineId);
+        series.setComicVineIds(List.of(comicVineId));
         if (comicVineData.getIssueCount() != null) {
             series.setIssuesAvailableCount(comicVineData.getIssueCount());
+        }
+
+        // Set end year from ComicVine API if available
+        if (comicVineData.getEndYear() != null && comicVineData.getEndYear() > 0) {
+            series.setEndYear(comicVineData.getEndYear());
+            log.debug("Using end year {} from ComicVine API for series '{}'", comicVineData.getEndYear(), series.getName());
+        } else {
+            // Try to derive end year from issues
+            try {
+                List<ComicVineService.ComicVineIssueDto> issues = comicVineService.searchIssues(series);
+                Integer derivedEndYear = comicVineService.deriveEndYearFromIssues(issues);
+                if (derivedEndYear != null) {
+                    series.setEndYear(derivedEndYear);
+                    log.info("Derived end year {} from last issue cover date for series '{}'", derivedEndYear, series.getName());
+                }
+            } catch (Exception e) {
+                log.warn("Could not derive end year from issues for series '{}': {}", series.getName(), e.getMessage());
+            }
         }
 
         if (series.getDescription() == null || series.getDescription().trim().isEmpty()) {
@@ -599,9 +704,17 @@ public class SeriesService {
                     series.setStartYear(comicVineData.getStartYear());
                     series.setImageUrl(comicVineData.getImageUrl());
                     series.setComicVineId(comicVineData.getId());
+                    series.setComicVineIds(List.of(comicVineData.getId()));
                     if (comicVineData.getIssueCount() != null) {
                         series.setIssuesAvailableCount(comicVineData.getIssueCount());
                     }
+
+                    // Set end year from ComicVine API if available
+                    if (comicVineData.getEndYear() != null && comicVineData.getEndYear() > 0) {
+                        series.setEndYear(comicVineData.getEndYear());
+                    }
+                    // Note: For batch creation, we skip deriving end year from issues
+                    // to avoid excessive API calls. Use reverifyMetadata to populate end years later.
 
                     return seriesRepository.save(series);
                 })
