@@ -35,8 +35,8 @@
     </nav>
 
     <!-- Settings & Theme (always visible) -->
-    <button mat-icon-button class="icon-btn" routerLink="/config" aria-label="Settings">
-      <mat-icon>settings</mat-icon>
+    <button mat-icon-button class="icon-btn" routerLink="/admin" aria-label="Admin">
+      <mat-icon>admin_panel_settings</mat-icon>
     </button>
     <button mat-icon-button class="icon-btn theme-toggle" (click)="toggleTheme()"
             [attr.aria-label]="(isDarkMode$ | async) ? 'Switch to light mode' : 'Switch to dark mode'">
@@ -70,9 +70,9 @@
         <mat-icon>add</mat-icon>
         <span>Add Series</span>
       </a>
-      <a mat-menu-item routerLink="/config" routerLinkActive="active-menu-item">
-        <mat-icon>settings</mat-icon>
-        <span>Settings</span>
+      <a mat-menu-item routerLink="/admin" routerLinkActive="active-menu-item">
+        <mat-icon>admin_panel_settings</mat-icon>
+        <span>Admin</span>
       </a>
     </mat-menu>
 

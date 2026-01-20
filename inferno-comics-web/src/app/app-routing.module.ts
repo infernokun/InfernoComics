@@ -2,7 +2,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { MissingIssuesComponent } from './components/missing-issues/missing-issues.component';
-import { RecognitionConfigComponent } from './components/config/recognition-config.component';
+import { AdminComponent } from './components/admin/admin.component';
 import { IssuesListComponent } from './components/issues/issues-list/issues-list.component';
 import { SeriesAdminComponent } from './components/series/series-admin/series-admin.component';
 import { SeriesDetailComponent } from './components/series/series-detail/series-detail.component';
@@ -12,7 +12,8 @@ import { SeriesListComponent } from './components/series/series-list/series-list
 const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent },
-  { path: 'config', component: RecognitionConfigComponent },
+  { path: 'admin', component: AdminComponent },
+  { path: 'config', redirectTo: '/admin', pathMatch: 'full' },
   { path: 'series', component: SeriesListComponent },
   { path: 'missing', component: MissingIssuesComponent },
   { path: 'issues', component: IssuesListComponent },
