@@ -170,13 +170,41 @@
                 </div>
               </div>
               <div class="image-details">
-                <div class="image-name">{{ result.imageName }}</div>
+                <div class="image-name" [title]="result.imageName">{{ result.imageName }}</div>
                 <div class="image-index">Image {{ result.imageIndex + 1 }}</div>
               </div>
             </div>
             <!-- Match Column -->
             <div class="col-match">
-              @if (result.bestMatch) {
+              @if (result.selectedMatch && result.selectedMatch !== result.bestMatch) {
+                <!-- Show selected match (different from best match) -->
+                <div class="match-content selected-match">
+                  <div class="match-image" (click)="openZoom(result)">
+                    <image-hover-preview [src]="result.imagePreview" [alt]="result.imageName" [matchSrc]="result.selectedMatch.url" [matchAlt]="result.selectedMatch.comic_name">
+                      <img [src]="result.selectedMatch.url"
+                        [alt]="result.selectedMatch.comic_name"
+                        (error)="onImageError($event)" />
+                    </image-hover-preview>
+                    <div class="tap-hint">
+                      <mat-icon>zoom_in</mat-icon>
+                    </div>
+                    <div class="selected-badge">
+                      <mat-icon>check</mat-icon>
+                    </div>
+                  </div>
+                  <div class="match-details">
+                    <div class="match-type-label selected">Selected Match</div>
+                    <div class="comic-title" [title]="result.selectedMatch.comic_name">{{ result.selectedMatch.comic_name }}</div>
+                    <div class="issue-number">Issue #{{ result.selectedMatch.issue_number }}</div>
+                    <div class="similarity">{{ (result.selectedMatch.similarity * 100).toFixed(1) }}% match</div>
+                    <div class="best-match-note">
+                      <mat-icon>info_outline</mat-icon>
+                      Best was: {{ result.bestMatch?.comic_name }} #{{ result.bestMatch?.issue_number }}
+                    </div>
+                  </div>
+                </div>
+              } @else if (result.bestMatch) {
+                <!-- Show best match (default) -->
                 <div class="match-content">
                   <div class="match-image" (click)="openZoom(result)">
                     <image-hover-preview [src]="result.imagePreview" [alt]="result.imageName" [matchSrc]="result.bestMatch.url" [matchAlt]="result.bestMatch.comic_name">
@@ -189,7 +217,8 @@
                     </div>
                   </div>
                   <div class="match-details">
-                    <div class="comic-title">{{ result.bestMatch.comic_name }}</div>
+                    <div class="match-type-label best">Best Match</div>
+                    <div class="comic-title" [title]="result.bestMatch.comic_name">{{ result.bestMatch.comic_name }}</div>
                     <div class="issue-number">Issue #{{ result.bestMatch.issue_number }}</div>
                     <div class="similarity">{{ (result.bestMatch.similarity * 100).toFixed(1) }}% match</div>
                     @if (result.allMatches.length > 1) {
@@ -278,22 +307,6 @@
                 </div>
               </div>
             </div>
-            <!-- Selected Match Indicator (when different from best match) -->
-            @if (result.selectedMatch && result.selectedMatch !== result.bestMatch) {
-              <div class="selected-match-indicator">
-                <div class="selected-label">
-                  <mat-icon>check_circle</mat-icon>
-                  <span>Selected: {{ result.selectedMatch.comic_name }} #{{ result.selectedMatch.issue_number }}</span>
-                </div>
-              </div>
-            }
-            <!-- Status Change Indicator -->
-            @if (result.status === 'manually_accepted') {
-              <div class="status-change-indicator">
-                <mat-icon>touch_app</mat-icon>
-                <span>Manually selected</span>
-              </div>
-            }
           </div>
         }
       </div>

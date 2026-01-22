@@ -893,10 +893,15 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
   }
 
   openZoom(result: ProcessedImageResult): void {
+    // Use selectedMatch if available and different from bestMatch, otherwise use bestMatch
+    const displayMatch = (result.selectedMatch && result.selectedMatch !== result.bestMatch)
+      ? result.selectedMatch
+      : result.bestMatch;
+
     this.zoomOriginalSrc = result.imagePreview;
-    this.zoomMatchSrc = result.bestMatch?.url || '';
-    this.zoomTitle = result.bestMatch ? 
-      `${result.bestMatch.comic_name} #${result.bestMatch.issue_number}` : 
+    this.zoomMatchSrc = displayMatch?.url || '';
+    this.zoomTitle = displayMatch ?
+      `${displayMatch.comic_name} #${displayMatch.issue_number}` :
       result.imageName;
     this.zoomVisible = true;
     document.body.style.overflow = 'hidden';
