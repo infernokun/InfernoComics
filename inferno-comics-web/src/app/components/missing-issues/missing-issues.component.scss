@@ -242,8 +242,6 @@
       padding: 2px;
 
       button {
-        width: 36px;
-        height: 36px;
         border-radius: var(--radius-xs);
 
         mat-icon {
@@ -440,10 +438,6 @@
 
         &:hover {
           background: var(--background-color);
-
-          .remove-btn {
-            opacity: 1;
-          }
         }
 
         .issue-cover {

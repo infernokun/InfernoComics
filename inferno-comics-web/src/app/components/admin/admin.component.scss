@@ -6,7 +6,6 @@
   @include flex-center;
   padding: var(--spacing-2xl);
   min-height: 100vh;
-  @include gradient-primary;
 
   @include md {
     padding: var(--spacing-md) var(--spacing-sm);

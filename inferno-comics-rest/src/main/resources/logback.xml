@@ -21,9 +21,9 @@
 
     <!-- File Appender for detailed logs -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/amaterasu.log</file>
+        <file>logs/inferno-comics.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>logs/amaterasu.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>logs/inferno-comics.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <maxFileSize>10MB</maxFileSize>
             <maxHistory>30</maxHistory>
             <totalSizeCap>300MB</totalSizeCap>
@@ -33,8 +33,8 @@
         </encoder>
     </appender>
 
-    <!-- Logger specifically for AmaterasuLogger with cleaner format -->
-    <logger name="com.infernokun.amaterasu.logger.AmaterasuLogger" level="INFO" additivity="false">
+    <!-- Logger specifically for InfernoComics with cleaner format -->
+    <logger name="com.infernokun.infernoComics.logger.InfernoComicsLogger" level="INFO" additivity="false">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
     </logger>
@@ -60,7 +60,7 @@
 
     <!-- Development profile - more verbose console output -->
     <springProfile name="dev,development">
-        <logger name="com.infernokun.amaterasu" level="DEBUG" />
+        <logger name="com.infernokun.infernoComics" level="DEBUG" />
         <logger name="org.springframework.security" level="DEBUG" />
         <root level="DEBUG">
             <appender-ref ref="STDOUT" />
@@ -70,7 +70,7 @@
 
     <!-- Production profile - less console noise, more file logging -->
     <springProfile name="prod,production">
-        <logger name="com.infernokun.amaterasu.logger.AmaterasuLogger" level="INFO" additivity="false">
+        <logger name="com.infernokun.infernoComics.logger.InfernoComicsLogger" level="INFO" additivity="false">
             <appender-ref ref="FILE" />
         </logger>
         <root level="WARN">
