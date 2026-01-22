@@ -189,7 +189,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     this.saveUserPreferences();
   }
 
-  private applyFiltersAndSorting(): void {
+  applyFiltersAndSorting(): void {
     let filtered = [...this.series];
 
     // Apply search filter

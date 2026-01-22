@@ -46,6 +46,7 @@
                         ],
                         "stylePreprocessorOptions": {
                             "includePaths": [
+                                "src",
                                 "node_modules/@angular/material/"
                             ],
                             "sass": {

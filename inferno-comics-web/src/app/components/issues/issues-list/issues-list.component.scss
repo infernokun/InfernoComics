@@ -1,77 +1,75 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
 .issues-list {
-  padding: 1.25rem;
+  padding: var(--spacing-xl);
   max-width: 1400px;
   margin: 0 auto;
 
-  @media (max-width: 768px) {
-    padding: 1rem 0.75rem;
+  @include md {
+    padding: var(--spacing-lg) var(--spacing-md);
   }
 
-  @media (max-width: 480px) {
-    padding: 0.75rem 0.5rem;
+  @include sm {
+    padding: var(--spacing-md) var(--spacing-sm);
   }
 
   .spinner {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 3rem 0;
+    @include flex-center;
+    margin: var(--spacing-3xl) 0;
     min-height: 180px;
 
-    @media (max-width: 768px) {
-      margin: 2rem 0;
+    @include md {
+      margin: var(--spacing-2xl) 0;
       min-height: 150px;
     }
   }
 
   .controls-section {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding: 0.875rem 1.25rem;
-    background: var(--surface-color, #ffffff);
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border: 1px solid var(--border-color, #e0e0e0);
+    @include flex-between;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+    padding: 0.875rem var(--spacing-xl);
+    background: var(--surface-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
     flex-wrap: wrap;
 
-    @media (max-width: 768px) {
+    @include md {
       flex-direction: row;
       flex-wrap: wrap;
-      gap: 0.75rem;
-      padding: 0.75rem 1rem;
-      margin-bottom: 1rem;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md) var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
     }
 
-    @media (max-width: 480px) {
-      padding: 0.625rem 0.75rem;
-      gap: 0.5rem;
+    @include sm {
+      padding: 0.625rem var(--spacing-md);
+      gap: var(--spacing-sm);
     }
 
     .control-group {
       display: flex;
-      gap: 0.5rem;
+      gap: var(--spacing-sm);
       flex-wrap: wrap;
 
-      @media (max-width: 768px) {
+      @include md {
         justify-content: center;
         width: 100%;
       }
     }
 
     .control-button {
-      display: flex;
-      align-items: center;
+      @include flex-start;
       gap: 0.4rem;
-      font-weight: 500;
+      font-weight: var(--font-weight-medium);
       font-size: 0.85rem;
-      padding: 0.5rem 1rem;
+      padding: var(--spacing-sm) var(--spacing-lg);
 
-      @media (max-width: 768px) {
+      @include md {
         font-size: 0.8rem;
-        padding: 0.4rem 0.75rem;
+        padding: 0.4rem var(--spacing-md);
       }
 
       mat-icon {
@@ -79,7 +77,7 @@
         width: 18px;
         height: 18px;
 
-        @media (max-width: 768px) {
+        @include md {
           font-size: 16px;
           width: 16px;
           height: 16px;
@@ -88,8 +86,8 @@
     }
 
     mat-slide-toggle {
-      font-weight: 500;
-      color: var(--text-primary, #333);
+      font-weight: var(--font-weight-medium);
+      color: var(--text-primary);
 
       .toggle-icon {
         margin-right: 0.4rem;
@@ -102,30 +100,28 @@
   }
 
   .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 3rem 1.5rem;
-    margin: 1.5rem 0;
-    background: var(--surface-color, #ffffff);
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border: 2px dashed var(--border-color, #e0e0e0);
+    @include flex-center;
+    @include flex-column;
+    padding: var(--spacing-3xl) var(--spacing-xl);
+    margin: var(--spacing-xl) 0;
+    background: var(--surface-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 2px dashed var(--border-color);
 
-    @media (max-width: 768px) {
-      padding: 2rem 1rem;
-      margin: 1rem 0;
+    @include md {
+      padding: var(--spacing-2xl) var(--spacing-lg);
+      margin: var(--spacing-lg) 0;
     }
 
     .empty-icon {
       font-size: 56px;
       width: 56px;
       height: 56px;
-      color: var(--text-muted, #999);
+      color: var(--text-muted);
       margin-bottom: 0.875rem;
 
-      @media (max-width: 768px) {
+      @include md {
         font-size: 48px;
         width: 48px;
         height: 48px;
@@ -134,81 +130,80 @@
 
     h3 {
       font-size: 1.3rem;
-      font-weight: 600;
-      color: var(--text-primary, #333);
+      font-weight: var(--font-weight-semibold);
+      color: var(--text-primary);
       margin: 0 0 0.4rem 0;
 
-      @media (max-width: 768px) {
+      @include md {
         font-size: 1.1rem;
       }
     }
 
     p {
-      color: var(--text-secondary, #666);
+      color: var(--text-secondary);
       font-size: 0.9rem;
       margin: 0;
 
-      @media (max-width: 768px) {
+      @include md {
         font-size: 0.85rem;
       }
     }
   }
 
   .series-block {
-    margin-bottom: 2rem;
-    background: var(--surface-color, #ffffff);
-    border-radius: 10px;
-    padding: 1.25rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border: 1px solid var(--border-color, #e0e0e0);
-    transition: box-shadow 0.3s ease;
+    margin-bottom: var(--spacing-2xl);
+    background: var(--surface-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    transition: box-shadow var(--transition-normal);
 
-    @media (max-width: 768px) {
-      padding: 1rem;
-      margin-bottom: 1.5rem;
-      border-radius: 8px;
+    @include md {
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+      border-radius: var(--radius-sm);
     }
 
-    @media (max-width: 480px) {
-      padding: 0.75rem;
-      margin-bottom: 1rem;
+    @include sm {
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
     }
 
     &:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      box-shadow: var(--shadow-md);
     }
   }
 
   .series-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0 0 1rem 0;
-    color: var(--text-primary, #1a1a1a);
+    @include flex-start;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    margin: 0 0 var(--spacing-lg) 0;
+    color: var(--text-primary);
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid var(--border-color, #e0e0e0);
+    border-bottom: 3px solid var(--border-color);
     flex-wrap: wrap;
 
-    @media (max-width: 768px) {
+    @include md {
       font-size: 1.2rem;
       gap: 0.4rem;
       margin-bottom: 0.875rem;
-      padding-bottom: 0.5rem;
+      padding-bottom: var(--spacing-sm);
     }
 
-    @media (max-width: 480px) {
+    @include sm {
       font-size: 1.05rem;
     }
 
     .series-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
-      color: var(--primary-color, #3f51b5);
+      font-size: var(--font-size-2xl);
+      width: var(--font-size-2xl);
+      height: var(--font-size-2xl);
+      color: var(--primary-color);
 
-      @media (max-width: 768px) {
+      @include md {
         font-size: 20px;
         width: 20px;
         height: 20px;
@@ -217,11 +212,11 @@
 
     .issue-count {
       font-size: 0.9rem;
-      font-weight: 400;
-      color: var(--text-secondary, #666);
+      font-weight: var(--font-weight-normal);
+      color: var(--text-secondary);
       margin-left: auto;
 
-      @media (max-width: 768px) {
+      @include md {
         font-size: 0.8rem;
         width: 100%;
         margin-left: 0;
@@ -231,84 +226,81 @@
   }
 
   .issues-container {
-    display: flex;
-    flex-direction: column;
+    @include flex-column;
     gap: 0.875rem;
 
-    @media (max-width: 768px) {
-      gap: 0.75rem;
+    @include md {
+      gap: var(--spacing-md);
     }
   }
 
   .issues-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 1rem;
+    gap: var(--spacing-lg);
     padding: 0.375rem 0;
 
     // Desktop: Auto-fill with reasonable min
-    @media (min-width: 1200px) {
+    @include min-xl {
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
       gap: 1.125rem;
     }
 
     // Tablet: 4-5 columns
-    @media (max-width: 1024px) {
+    @include lg {
       grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: 0.875rem;
     }
 
     // Mobile: 3 columns - MAIN IMPROVEMENT
-    @media (max-width: 768px) {
+    @include md {
       grid-template-columns: repeat(3, 1fr);
       gap: 0.625rem;
       padding: 0.25rem 0;
     }
 
     // Small Mobile: Still 3 columns but tighter
-    @media (max-width: 480px) {
+    @include sm {
       grid-template-columns: repeat(3, 1fr);
-      gap: 0.5rem;
+      gap: var(--spacing-sm);
     }
 
     // Very Small: 2 columns
-    @media (max-width: 340px) {
+    @include xs {
       grid-template-columns: repeat(2, 1fr);
-      gap: 0.5rem;
+      gap: var(--spacing-sm);
     }
   }
 
   .show-more-container {
-    display: flex;
-    justify-content: center;
+    @include flex-center;
     padding: 0.875rem 0 0.375rem 0;
 
-    @media (max-width: 768px) {
-      padding: 0.75rem 0 0.25rem 0;
+    @include md {
+      padding: var(--spacing-md) 0 0.25rem 0;
     }
 
     .show-more-button {
-      display: flex;
-      align-items: center;
+      @include flex-start;
       gap: 0.4rem;
-      font-weight: 600;
+      font-weight: var(--font-weight-semibold);
       font-size: 0.875rem;
-      padding: 0.625rem 1.5rem;
-      border-radius: 8px;
-      transition: all 0.3s ease;
+      padding: 0.625rem var(--spacing-xl);
+      border-radius: var(--radius-sm);
+      transition: all var(--transition-normal);
 
-      @media (max-width: 768px) {
+      @include md {
         font-size: 0.8rem;
-        padding: 0.5rem 1.25rem;
+        padding: var(--spacing-sm) var(--spacing-xl);
       }
 
       mat-icon {
         font-size: 20px;
         width: 20px;
         height: 20px;
-        transition: transform 0.3s ease;
+        transition: transform var(--transition-normal);
 
-        @media (max-width: 768px) {
+        @include md {
           font-size: 18px;
           width: 18px;
           height: 18px;
@@ -326,19 +318,17 @@
   }
 
   .no-issues-msg {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    @include flex-center;
     gap: 0.4rem;
-    padding: 1.5rem 0.875rem;
+    padding: var(--spacing-xl) 0.875rem;
     font-style: italic;
-    color: var(--text-muted, #888);
+    color: var(--text-muted);
     text-align: center;
-    background: var(--background-color, #f9f9f9);
-    border-radius: 8px;
+    background: var(--background-color);
+    border-radius: var(--radius-sm);
 
-    @media (max-width: 768px) {
-      padding: 1.25rem 0.75rem;
+    @include md {
+      padding: var(--spacing-xl) var(--spacing-md);
       font-size: 0.9rem;
     }
 
@@ -346,36 +336,36 @@
       font-size: 18px;
       width: 18px;
       height: 18px;
-      color: var(--text-muted, #aaa);
+      color: var(--text-muted);
     }
   }
 
   .issue-item {
     position: relative;
     text-align: center;
-    background: var(--surface-color, #ffffff);
-    border-radius: 8px;
+    background: var(--surface-color);
+    border-radius: var(--radius-sm);
     padding: 0.625rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--border-color, #e8e8e8);
-    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-normal);
     cursor: pointer;
     overflow: hidden;
 
-    @media (max-width: 768px) {
+    @include md {
       border-radius: 6px;
       padding: 0.4rem;
     }
 
-    @media (max-width: 480px) {
+    @include sm {
       padding: 0.3rem;
       border-radius: 5px;
     }
 
     &:hover {
       transform: translateY(-3px);
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-      border-color: var(--primary-color, #3f51b5);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-color);
 
       .issue-image-wrapper::after {
         opacity: 1;
@@ -386,7 +376,7 @@
       }
     }
 
-    @media (max-width: 768px) {
+    @include md {
       &:hover {
         transform: translateY(-2px);
       }
@@ -400,13 +390,13 @@
   .issue-image-wrapper {
     position: relative;
     width: 100%;
-    aspect-ratio: 2/3;
+    @include aspect-ratio(2, 3);
     overflow: hidden;
     border-radius: 5px;
     background: linear-gradient(135deg, #f5f5f5 0%, #e9e9e9 100%);
     margin-bottom: 0.375rem;
 
-    @media (max-width: 768px) {
+    @include md {
       border-radius: 4px;
       margin-bottom: 0.25rem;
     }
@@ -420,7 +410,7 @@
       bottom: 0;
       background: linear-gradient(180deg, transparent 50%, rgba(0, 0, 0, 0.3) 100%);
       opacity: 0;
-      transition: opacity 0.3s ease;
+      transition: opacity var(--transition-normal);
       pointer-events: none;
     }
   }
@@ -431,42 +421,41 @@
     object-fit: cover;
     object-position: top;
     display: block;
-    transition: transform 0.3s ease;
+    transition: transform var(--transition-normal);
   }
 
   .issue-info {
-    display: flex;
-    flex-direction: column;
+    @include flex-column;
     gap: 0.125rem;
     padding-top: 0.125rem;
   }
 
   .issue-number {
     font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-primary, #333);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
     letter-spacing: 0.2px;
-    line-height: 1.2;
+    line-height: var(--line-height-tight);
 
-    @media (max-width: 768px) {
+    @include md {
       font-size: 0.7rem;
     }
 
-    @media (max-width: 480px) {
+    @include sm {
       font-size: 0.65rem;
     }
   }
 
   .issue-id {
     font-size: 0.65rem;
-    color: var(--text-muted, #888);
-    font-weight: 400;
+    color: var(--text-muted);
+    font-weight: var(--font-weight-normal);
 
-    @media (max-width: 768px) {
+    @include md {
       font-size: 0.6rem;
     }
 
-    @media (max-width: 480px) {
+    @include sm {
       font-size: 0.55rem;
       display: none; // Hide on very small screens
     }
@@ -478,39 +467,39 @@
     .controls-section,
     .series-block,
     .issue-item {
-      background: var(--surface-color, #2d2d2d);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-      border-color: var(--border-color, #404040);
+      background: var(--surface-color);
+      box-shadow: var(--shadow-dark);
+      border-color: var(--border-color);
     }
 
     .series-title {
-      color: var(--text-primary, #f5f5f5);
-      border-bottom-color: var(--border-color, #444);
+      color: var(--text-primary);
+      border-bottom-color: var(--border-color);
     }
 
     .issue-number {
-      color: var(--text-primary, #f0f0f0);
+      color: var(--text-primary);
     }
 
     .issue-id {
-      color: var(--text-muted, #aaa);
+      color: var(--text-muted);
     }
 
     .no-issues-msg {
-      background: var(--background-color, #252525);
-      color: var(--text-muted, #999);
+      background: var(--background-color);
+      color: var(--text-muted);
     }
 
     .empty-state {
-      background: var(--surface-color, #2d2d2d);
-      border-color: var(--border-color, #404040);
+      background: var(--surface-color);
+      border-color: var(--border-color);
 
       h3 {
-        color: var(--text-primary, #f5f5f5);
+        color: var(--text-primary);
       }
 
       p {
-        color: var(--text-secondary, #aaa);
+        color: var(--text-secondary);
       }
     }
   }
@@ -518,50 +507,50 @@
 
 .issues-list {
   // Ensure proper theme variable fallbacks
-  background: var(--background-color, transparent);
+  background: var(--background-color);
 
   .controls-section,
   .series-block,
   .issue-item,
   .empty-state {
-    background: var(--surface-color, #ffffff);
-    color: var(--text-primary, #333);
+    background: var(--surface-color);
+    color: var(--text-primary);
   }
 
   .series-title {
-    color: var(--text-primary, #1a1a1a);
+    color: var(--text-primary);
 
     .series-icon {
-      color: var(--primary-color, #3f51b5);
+      color: var(--primary-color);
     }
   }
 
   .issue-number {
-    color: var(--text-primary, #333);
+    color: var(--text-primary);
   }
 
   .issue-id,
   .issue-count {
-    color: var(--text-secondary, #888);
+    color: var(--text-secondary);
   }
 
   .no-issues-msg {
-    background: var(--background-color, #f9f9f9);
-    color: var(--text-muted, #888);
+    background: var(--background-color);
+    color: var(--text-muted);
 
     mat-icon {
-      color: var(--text-muted, #aaa);
+      color: var(--text-muted);
     }
   }
 
   .issue-item {
     &:hover {
-      border-color: var(--primary-color, #3f51b5);
+      border-color: var(--primary-color);
     }
   }
 
   .show-more-button {
-    color: var(--primary-color, #3f51b5);
+    color: var(--primary-color);
 
     &:hover {
       background: rgba(var(--primary-color-rgb, 63, 81, 181), 0.08);

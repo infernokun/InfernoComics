@@ -1,98 +1,89 @@
-:root {
-  --primary-gradient: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  --surface-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
-  --success-color: #10b981;
-  --success-gradient: linear-gradient(135deg, #10b981, #059669);
-}
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
 
 .series-list-container {
   max-width: 1400px;
   margin: 0 auto;
-  padding-bottom: 32px;
-  padding-left: 24px;
-  padding-right: 24px;
+  padding-bottom: var(--spacing-2xl);
+  padding-left: var(--spacing-xl);
+  padding-right: var(--spacing-xl);
   min-height: 100vh;
   background: var(--background-color);
 
-  @media (max-width: 768px) {
-    padding: 16px 12px;
+  @include md {
+    padding: var(--spacing-lg) var(--spacing-md);
   }
 
-  @media (max-width: 480px) {
-    padding: 12px 8px;
+  @include sm {
+    padding: var(--spacing-md) var(--spacing-sm);
   }
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
+  @include flex-between;
+  margin-bottom: var(--spacing-xl);
   padding: 20px 0;
   border-bottom: 2px solid var(--border-color);
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--spacing-md);
 
-  @media (max-width: 768px) {
+  @include md {
     flex-direction: column;
     text-align: center;
-    padding: 16px 0;
-    margin-bottom: 16px;
-    gap: 16px;
+    padding: var(--spacing-lg) 0;
+    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-lg);
   }
 
   h1 {
     margin: 0;
     color: var(--text-primary);
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     font-size: clamp(1.5rem, 4vw, 2.5rem);
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    @include gradient-primary;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
 
   .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    @include flex-start;
+    gap: var(--spacing-md);
     flex-wrap: wrap;
 
-    @media (max-width: 768px) {
+    @include md {
       flex-direction: column;
       justify-content: center;
       width: 100%;
       gap: 10px;
     }
 
-    @media (max-width: 480px) {
-      gap: 8px;
+    @include sm {
+      gap: var(--spacing-sm);
     }
 
     .stats-summary {
-      display: flex;
+      @include flex-start;
       gap: 6px;
-      align-items: center;
 
-      @media (max-width: 768px) {
+      @include md {
         width: 100%;
         justify-content: center;
         order: -1; // Move stats to top on mobile
       }
 
       .stat-chip {
-        display: flex;
-        align-items: center;
+        @include flex-start;
         gap: 4px;
-        padding: 8px 12px;
+        padding: var(--spacing-sm) var(--spacing-md);
         background: var(--surface-color);
         border: 2px solid var(--border-color);
         border-radius: 20px;
         font-size: 0.85rem;
-        font-weight: 600;
+        font-weight: var(--font-weight-semibold);
         color: var(--text-secondary);
 
-        @media (max-width: 480px) {
+        @include sm {
           padding: 6px 10px;
           font-size: 0.75rem;
         }
@@ -114,44 +105,44 @@
     .button-row {
       display: contents;
 
-      @media (max-width: 768px) {
+      @include md {
         display: flex;
         width: 100%;
-        gap: 8px;
+        gap: var(--spacing-sm);
         flex-wrap: wrap;
         justify-content: center;
       }
     }
 
     button {
-      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+      @include gradient-primary;
       color: white !important;
-      font-weight: 600;
-      padding: 12px 20px;
+      font-weight: var(--font-weight-semibold);
+      padding: var(--spacing-md) 20px;
       font-size: 0.9rem;
-      border-radius: 12px !important;
+      border-radius: var(--radius-md) !important;
       min-height: 44px;
-      transition: all 0.2s ease;
+      transition: all var(--transition-fast);
 
       &:active {
         transform: scale(0.98);
       }
 
-      @media (max-width: 768px) {
+      @include md {
         flex: 1;
         min-width: calc(50% - 4px);
         max-width: calc(50% - 4px);
-        padding: 10px 16px;
+        padding: 10px var(--spacing-lg);
         font-size: 0.85rem;
-        
+
         // Hide "Add New Series" text on mobile, show only in bottom nav
         &[routerLink="/series/new"] {
           display: none;
         }
       }
 
-      @media (max-width: 480px) {
-        padding: 10px 12px;
+      @include sm {
+        padding: 10px var(--spacing-md);
         font-size: 0.8rem;
         min-width: 100%;
         max-width: 100%;
@@ -160,7 +151,7 @@
       mat-icon {
         margin-right: 6px;
 
-        @media (max-width: 480px) {
+        @include sm {
           margin-right: 4px;
           font-size: 18px;
           width: 18px;
@@ -174,23 +165,22 @@
 .toolbar-container {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   margin-bottom: 20px;
   overflow: hidden;
 
-  @media (max-width: 768px) {
+  @include md {
     border-radius: 10px;
-    margin-bottom: 16px;
+    margin-bottom: var(--spacing-lg);
   }
 
   .toolbar-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
+    @include flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
 
-    @media (max-width: 768px) {
-      padding: 10px 12px;
+    @include md {
+      padding: 10px var(--spacing-md);
       gap: 10px;
     }
   }
@@ -198,7 +188,7 @@
   .toolbar-main {
     border-bottom: 1px solid var(--border-color);
 
-    @media (max-width: 768px) {
+    @include md {
       flex-wrap: wrap;
     }
 
@@ -206,7 +196,7 @@
       flex: 1;
       min-width: 200px;
 
-      @media (max-width: 768px) {
+      @include md {
         min-width: 100%;
         order: 1;
       }
@@ -215,7 +205,7 @@
         width: 100%;
         max-width: 400px;
 
-        @media (max-width: 768px) {
+        @include md {
           max-width: 100%;
         }
 
@@ -238,21 +228,20 @@
     }
 
     .toolbar-actions {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      @include flex-start;
+      gap: var(--spacing-md);
       flex-shrink: 0;
 
-      @media (max-width: 768px) {
+      @include md {
         order: 0;
         width: 100%;
         justify-content: space-between;
-        margin-bottom: 8px;
+        margin-bottom: var(--spacing-sm);
       }
 
       .view-toggle {
         background: var(--background-color);
-        border-radius: 8px;
+        border-radius: var(--radius-sm);
         border: 1px solid var(--border-color);
         overflow: hidden;
 
@@ -292,7 +281,7 @@
             }
 
             &.mat-button-toggle-checked {
-              background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+              @include gradient-primary;
 
               mat-icon {
                 color: white;
@@ -304,7 +293,7 @@
 
       .series-count {
         font-size: 0.8rem;
-        font-weight: 600;
+        font-weight: var(--font-weight-semibold);
         color: var(--text-secondary);
         background: var(--background-color);
         padding: 6px 10px;
@@ -319,8 +308,8 @@
     flex-wrap: wrap;
     background: var(--background-color);
 
-    @media (max-width: 768px) {
-      gap: 8px;
+    @include md {
+      gap: var(--spacing-sm);
     }
 
     .filter-field {
@@ -345,7 +334,7 @@
       min-width: 140px;
       max-width: 180px;
 
-      @media (max-width: 768px) {
+      @include md {
         flex: 1;
         min-width: 120px;
         max-width: none;
@@ -357,32 +346,24 @@
       gap: 4px;
       flex-wrap: wrap;
 
-      @media (max-width: 768px) {
-        flex: 1;
-        justify-content: flex-start;
+      @include md {
+        // Hide individual sort chips on mobile
+        display: none;
       }
 
       .sort-chip {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+        @include flex-center;
         gap: 4px;
         padding: 4px 10px !important;
         min-height: 32px;
-        border-radius: 16px !important;
+        border-radius: var(--spacing-lg) !important;
         font-size: 0.8rem !important;
-        font-weight: 600 !important;
+        font-weight: var(--font-weight-semibold) !important;
         background: var(--surface-color) !important;
         border: 1px solid var(--border-color) !important;
         color: var(--text-secondary) !important;
-        transition: all 0.2s ease !important;
+        transition: all var(--transition-fast) !important;
         line-height: 1;
-
-        @media (max-width: 768px) {
-          padding: 4px 8px !important;
-          font-size: 0.75rem !important;
-          min-height: 30px;
-        }
 
         ::ng-deep .mdc-button__label {
           display: inline-flex;
@@ -392,14 +373,12 @@
         }
 
         mat-icon {
+          @include flex-center;
           font-size: 16px;
           width: 16px;
           height: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
 
-          @media (max-width: 768px) {
+          @include md {
             font-size: 14px;
             width: 14px;
             height: 14px;
@@ -409,20 +388,18 @@
         .chip-label {
           line-height: 1;
 
-          @media (max-width: 480px) {
+          @include sm {
             display: none;
           }
         }
 
         .sort-direction {
+          @include flex-center;
           font-size: 14px;
           width: 14px;
           height: 14px;
           margin-left: 2px;
           opacity: 0.8;
-          display: flex;
-          align-items: center;
-          justify-content: center;
         }
 
         &:hover {
@@ -431,7 +408,7 @@
         }
 
         &.active {
-          background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+          @include gradient-primary;
           border-color: transparent !important;
           color: white !important;
 
@@ -442,22 +419,99 @@
       }
     }
 
+    // Mobile-only sort controls
+    .mobile-sort-controls {
+      display: none;
+
+      @include md {
+        display: flex;
+        gap: var(--spacing-sm);
+        width: 100%;
+        align-items: center;
+        margin-bottom: var(--spacing-sm);
+      }
+
+      .sort-select {
+        flex: 1;
+        min-width: 0;
+
+        ::ng-deep .mat-mdc-form-field {
+          width: 100%;
+
+          .mat-mdc-text-field-wrapper {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+          }
+
+          .mat-mdc-form-field-infix {
+            min-height: 44px;
+          }
+
+          .mat-mdc-select-value {
+            font-size: 0.9rem;
+            font-weight: var(--font-weight-medium);
+          }
+        }
+      }
+
+      .sort-direction-toggle {
+        @include flex-center;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        background: var(--surface-color) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: var(--radius-sm) !important;
+        color: var(--text-secondary) !important;
+        transition: all var(--transition-fast);
+        padding: 0 !important;
+
+        &:hover {
+          border-color: var(--primary-color) !important;
+          color: var(--primary-color) !important;
+        }
+
+        &.ascending {
+          @include gradient-primary;
+          border-color: transparent !important;
+          color: white !important;
+
+          mat-icon {
+            transform: rotate(0deg) !important;
+          }
+        }
+
+        &.descending {
+          mat-icon {
+            transform: rotate(180deg) !important;
+          }
+        }
+
+        mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+          transition: transform var(--transition-normal) !important;
+        }
+      }
+    }
+
     .completion-toggle {
-      display: flex;
-      align-items: center;
+      @include flex-start;
       margin-left: auto;
 
-      @media (max-width: 768px) {
+      @include md {
         margin-left: 0;
       }
 
       .toggle-label {
         font-size: 0.8rem;
-        font-weight: 500;
+        font-weight: var(--font-weight-medium);
         color: var(--text-secondary);
         margin-left: 6px;
 
-        @media (max-width: 480px) {
+        @include sm {
           display: none;
         }
       }
@@ -478,7 +532,7 @@
       color: var(--error-color) !important;
       background: rgba(239, 68, 68, 0.1) !important;
       border: 1px solid var(--error-color) !important;
-      transition: all 0.2s ease;
+      transition: all var(--transition-fast);
 
       &:hover {
         background: var(--error-color) !important;
@@ -495,7 +549,7 @@
 }
 
 .series-container {
-  transition: opacity 0.3s ease;
+  transition: opacity var(--transition-normal);
 
   // GRID VIEW - KEY MOBILE OPTIMIZATION
   &.grid {
@@ -504,41 +558,40 @@
     gap: 20px;
 
     // TABLET: 2-3 columns
-    @media (max-width: 1024px) {
+    @include lg {
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
+      gap: var(--spacing-lg);
     }
 
     // Mobile: 2 columns with better spacing
-    @media (max-width: 768px) {
+    @include md {
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
     }
 
-    @media (max-width: 480px) {
+    @include sm {
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      gap: var(--spacing-sm);
     }
 
     // Very small screens: single column
-    @media (max-width: 340px) {
+    @include xs {
       grid-template-columns: 1fr;
       gap: 10px;
     }
 
     .series-card {
       height: 100%;
-      display: flex;
-      flex-direction: column;
-      border-radius: 12px;
+      @include flex-column;
+      border-radius: var(--radius-md);
       overflow: hidden;
       background: var(--surface-color);
       border: 1px solid var(--border-color);
-      transition: all 0.3s ease;
+      transition: all var(--transition-normal);
 
-      @media (max-width: 768px) {
+      @include md {
         border-radius: 10px;
-        
+
         &:active {
           transform: scale(0.98);
         }
@@ -547,9 +600,8 @@
   }
 
   &.list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    @include flex-column;
+    gap: var(--spacing-md);
 
     .series-card {
       display: flex;
@@ -562,12 +614,12 @@
         height: 180px;
         flex-shrink: 0;
 
-        @media (max-width: 768px) {
+        @include md {
           width: 100px;
           height: 140px;
         }
 
-        @media (max-width: 480px) {
+        @include sm {
           width: 80px;
           height: 110px;
         }
@@ -575,9 +627,9 @@
 
       .series-content {
         flex: 1;
-        padding: 16px;
+        padding: var(--spacing-lg);
 
-        @media (max-width: 480px) {
+        @include sm {
           padding: 10px;
         }
       }
@@ -588,7 +640,7 @@
         min-width: 100px;
         justify-content: center;
 
-        @media (max-width: 768px) {
+        @include md {
           flex-direction: row;
           width: 100%;
           min-width: auto;
@@ -601,17 +653,17 @@
 .series-card {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all var(--transition-normal);
   cursor: pointer;
   color: var(--text-primary);
   -webkit-tap-highlight-color: transparent;
 
-  @media (max-width: 768px) {
+  @include md {
     border-radius: 10px;
     border-width: 1px;
-    
+
     &:active {
       transform: scale(0.98);
       opacity: 0.95;
@@ -632,7 +684,7 @@
     }
   }
 
-  @media (max-width: 768px) {
+  @include md {
     &:hover {
       transform: none; // Disable hover lift on mobile
     }
@@ -646,11 +698,11 @@
     overflow: hidden;
     background: var(--background-color);
 
-    @media (max-width: 768px) {
+    @include md {
       height: 150px;
     }
 
-    @media (max-width: 480px) {
+    @include sm {
       height: 130px;
     }
 
@@ -659,7 +711,7 @@
       height: 100%;
       object-fit: cover;
       object-position: top;
-      transition: transform 0.3s ease;
+      transition: transform var(--transition-normal);
     }
 
     .series-overlay {
@@ -674,13 +726,12 @@
           transparent 70%,
           rgba(0, 0, 0, 0.8) 100%);
       opacity: 0;
-      transition: opacity 0.3s ease;
-      display: flex;
-      flex-direction: column;
+      transition: opacity var(--transition-normal);
+      @include flex-column;
       justify-content: space-between;
       padding: 10px;
 
-      @media (max-width: 768px) {
+      @include md {
         padding: 6px;
         opacity: 1;
         background: linear-gradient(to bottom,
@@ -696,19 +747,19 @@
         flex-wrap: wrap;
 
         .badge {
-          padding: 3px 8px;
+          padding: 3px var(--spacing-sm);
           border-radius: 6px;
           font-size: 0.65rem;
-          font-weight: 600;
+          font-weight: var(--font-weight-semibold);
           backdrop-filter: blur(10px);
 
-          @media (max-width: 768px) {
+          @include md {
             padding: 2px 5px;
             font-size: 0.55rem;
             border-radius: 4px;
           }
 
-          @media (max-width: 480px) {
+          @include sm {
             // Hide year badge on very small screens to save space
             &.year {
               display: none;
@@ -716,7 +767,7 @@
           }
 
           &.publisher {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            @include gradient-primary;
             color: white;
           }
 
@@ -726,10 +777,9 @@
           }
 
           &.complete {
-            background: var(--success-gradient);
+            @include gradient-success;
             color: white;
-            display: flex;
-            align-items: center;
+            @include flex-start;
             gap: 2px;
             animation: pulse 2s infinite;
 
@@ -748,24 +798,23 @@
         justify-content: flex-end;
 
         button {
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          @include flex-center;
           padding: 0 !important;
           line-height: normal !important;
           background: rgba(255, 255, 255, 0.15) !important;
           color: white !important;
           backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.2) !important;
-          border-radius: 4px !important;
+          border-radius: 6px !important;
           width: 32px !important;
           height: 32px !important;
           min-width: 32px !important;
 
-          @media (max-width: 768px) {
-            width: 28px !important;
-            height: 28px !important;
-            min-width: 28px !important;
+          @include md {
+            width: 30px !important;
+            height: 30px !important;
+            min-width: 30px !important;
+            border-radius: 50% !important; // Circular on mobile for better design
           }
 
           &:hover {
@@ -785,59 +834,52 @@
     flex-grow: 1;
     cursor: pointer;
 
-    @media (max-width: 768px) {
+    @include md {
       padding: 10px;
     }
 
-    @media (max-width: 480px) {
-      padding: 8px;
+    @include sm {
+      padding: var(--spacing-sm);
     }
 
     .series-title-section {
-      display: flex;
+      @include flex-between;
       align-items: flex-start;
-      justify-content: space-between;
       gap: 6px;
       margin-bottom: 6px;
 
-      @media (max-width: 768px) {
+      @include md {
         flex-direction: column;
         gap: 4px;
       }
 
       h3 {
         font-size: 1rem;
-        font-weight: 600;
+        font-weight: var(--font-weight-semibold);
         margin: 0;
         color: var(--text-primary);
         line-height: 1.2;
         flex: 1;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
+        @include line-clamp(2);
 
-        @media (max-width: 768px) {
+        @include md {
           font-size: 0.85rem;
-          -webkit-line-clamp: 2;
         }
 
-        @media (max-width: 480px) {
+        @include sm {
           font-size: 0.8rem;
         }
       }
 
       .completion-badge {
-        display: flex;
-        align-items: center;
+        @include flex-start;
         gap: 3px;
-        background: var(--success-gradient);
+        @include gradient-success;
         color: white;
         padding: 2px 6px;
         border-radius: 10px;
         font-size: 0.6rem;
-        font-weight: 600;
+        font-weight: var(--font-weight-semibold);
         flex-shrink: 0;
         animation: pulse 2s infinite;
 
@@ -852,10 +894,10 @@
     .series-publisher {
       font-size: 0.8rem;
       color: var(--text-secondary);
-      margin: 0 0 8px 0;
-      font-weight: 500;
+      margin: 0 0 var(--spacing-sm) 0;
+      font-weight: var(--font-weight-medium);
 
-      @media (max-width: 768px) {
+      @include md {
         font-size: 0.7rem;
         margin-bottom: 6px;
       }
@@ -863,38 +905,32 @@
 
     .description {
       color: var(--text-secondary);
-      margin-bottom: 12px;
+      margin-bottom: var(--spacing-md);
       line-height: 1.4;
       font-size: 0.8rem;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      @include line-clamp(2);
 
-      @media (max-width: 768px) {
+      @include md {
         display: none; // Hide description on mobile for space
       }
     }
 
     .series-meta {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      @include flex-column;
+      gap: var(--spacing-sm);
 
-      @media (max-width: 768px) {
+      @include md {
         gap: 6px;
       }
 
       > div {
-        display: flex;
-        align-items: center;
+        @include flex-start;
         gap: 6px;
         font-size: 0.8rem;
         color: var(--text-muted);
-        font-weight: 500;
+        font-weight: var(--font-weight-medium);
 
-        @media (max-width: 768px) {
+        @include md {
           font-size: 0.7rem;
           gap: 4px;
         }
@@ -905,7 +941,7 @@
           height: 14px;
           color: var(--primary-color);
 
-          @media (max-width: 768px) {
+          @include md {
             font-size: 12px;
             width: 12px;
             height: 12px;
@@ -914,8 +950,7 @@
       }
 
       .completion-progress {
-        display: flex;
-        align-items: center;
+        @include flex-start;
         gap: 6px;
 
         .progress-bar-wrapper {
@@ -925,15 +960,15 @@
           border-radius: 3px;
           overflow: hidden;
 
-          @media (max-width: 768px) {
+          @include md {
             height: 4px;
           }
 
           .progress-bar-fill {
             height: 100%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            @include gradient-primary;
             border-radius: 3px;
-            transition: all 0.3s ease;
+            transition: all var(--transition-normal);
 
             &.complete {
               background: linear-gradient(90deg,
@@ -951,18 +986,18 @@
         .progress-text {
           font-size: 0.7rem;
           color: var(--text-muted);
-          font-weight: 600;
+          font-weight: var(--font-weight-semibold);
           min-width: 30px;
           text-align: right;
 
-          @media (max-width: 768px) {
+          @include md {
             font-size: 0.65rem;
             min-width: 26px;
           }
 
           &.complete {
             color: var(--success-color);
-            font-weight: 700;
+            font-weight: var(--font-weight-bold);
           }
         }
       }
@@ -974,30 +1009,36 @@
     border-top: 1px solid var(--border-color);
     background: var(--surface-color);
     display: flex;
-    gap: 8px;
+    gap: var(--spacing-sm);
 
-    @media (max-width: 768px) {
-      padding: 8px;
+    @include md {
+      padding: var(--spacing-sm);
       gap: 6px;
     }
 
     button {
-      font-weight: 500;
+      font-weight: var(--font-weight-medium);
       border-radius: 6px;
       flex: 1;
       font-size: 0.8rem;
-      padding: 6px 8px !important;
+      padding: 6px var(--spacing-sm) !important;
       min-height: 32px;
 
-      @media (max-width: 768px) {
-        font-size: 0.7rem;
-        padding: 4px 6px !important;
-        min-height: 28px;
+      @include md {
+        font-size: 0.75rem;
+        padding: 6px var(--spacing-sm) !important;
+        min-height: 32px;
+
+        // Hide icons on mobile to prevent overflow
+        mat-icon {
+          display: none;
+        }
       }
 
-      @media (max-width: 480px) {
-        font-size: 0.65rem;
-        padding: 4px !important;
+      @include sm {
+        font-size: 0.7rem;
+        padding: 6px 4px !important;
+        min-height: 30px;
       }
 
       &[color="primary"] {
@@ -1026,14 +1067,14 @@
         width: 16px;
         height: 16px;
 
-        @media (max-width: 768px) {
+        @include md {
           font-size: 14px;
           width: 14px;
           height: 14px;
           margin-right: 2px;
         }
 
-        @media (max-width: 480px) {
+        @include sm {
           margin-right: 0;
         }
       }
@@ -1048,7 +1089,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@include md {
   .series-container.list .series-card {
     flex-direction: column;
 
@@ -1091,12 +1132,12 @@
   text-align: center;
   padding: 60px 20px;
   background: var(--surface-color);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 2px dashed var(--border-color);
   color: var(--text-secondary);
 
-  @media (max-width: 768px) {
-    padding: 40px 16px;
+  @include md {
+    padding: 40px var(--spacing-lg);
   }
 
   mat-icon {
@@ -1106,57 +1147,55 @@
     color: var(--text-muted);
     margin-bottom: 20px;
 
-    @media (max-width: 768px) {
+    @include md {
       font-size: 48px;
       width: 48px;
       height: 48px;
-      margin-bottom: 16px;
+      margin-bottom: var(--spacing-lg);
     }
   }
 
   h3 {
     margin: 20px 0 10px 0;
     color: var(--text-primary);
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     font-size: 1.3rem;
 
-    @media (max-width: 768px) {
+    @include md {
       font-size: 1.1rem;
-      margin: 16px 0 8px 0;
+      margin: var(--spacing-lg) 0 var(--spacing-sm) 0;
     }
   }
 
   p {
-    margin-bottom: 24px;
+    margin-bottom: var(--spacing-xl);
     color: var(--text-secondary);
     font-size: 1rem;
-    line-height: 1.5;
+    line-height: var(--line-height-normal);
 
-    @media (max-width: 768px) {
+    @include md {
       font-size: 0.9rem;
       margin-bottom: 20px;
     }
   }
 
   button {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+    @include gradient-primary;
     color: white !important;
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     padding: 10px 20px;
   }
 }
 
 .loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  @include flex-center;
+  @include flex-column;
   height: 300px;
   background: var(--surface-color);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   border: 2px dashed var(--border-color);
 
-  @media (max-width: 768px) {
+  @include md {
     height: 250px;
   }
 
@@ -1171,21 +1210,20 @@
   p {
     color: var(--text-secondary);
     font-size: 1rem;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
 
-    @media (max-width: 768px) {
+    @include md {
       font-size: 0.9rem;
     }
   }
 }
 
 .paginator {
-  display: flex;
-  justify-content: center;
+  @include flex-center;
   margin: 20px 0;
 
-  @media (max-width: 768px) {
-    margin: 16px 0;
+  @include md {
+    margin: var(--spacing-lg) 0;
   }
 }
 
@@ -1195,7 +1233,7 @@
 
   .mat-select-trigger {
     padding: 0 6px;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
   }
 
   .mat-select-panel {
@@ -1205,7 +1243,7 @@
 }
 
 .paginator .mat-paginator-range-label {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   margin: 0 10px;
 }
 

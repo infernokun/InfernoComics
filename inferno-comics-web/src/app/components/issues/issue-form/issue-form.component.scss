@@ -1,3 +1,6 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
 .comic-book-form-container {
     max-width: 700px;
 
@@ -238,6 +241,12 @@ mat-dialog-actions {
     justify-content: flex-end;
     gap: 16px;
 
+    @include md {
+        padding: var(--spacing-lg) !important;
+        gap: var(--spacing-md);
+        flex-wrap: wrap;
+    }
+
     button {
         display: flex;
         align-items: center;
@@ -246,6 +255,25 @@ mat-dialog-actions {
         font-weight: 600;
         border-radius: 8px;
         transition: all 0.2s ease;
+
+        @include md {
+          flex: 1;
+          min-width: calc(50% - 8px);
+          justify-content: center;
+          padding: var(--spacing-md) var(--spacing-lg);
+
+          // Hide icons on mobile to prevent weirdness
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+        }
+
+        @include sm {
+          min-width: 100%;
+          font-size: 0.9rem;
+        }
 
         &.mat-mdc-button {
             color: var(--text-secondary) !important;

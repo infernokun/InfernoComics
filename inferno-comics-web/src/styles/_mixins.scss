@@ -1,0 +1,265 @@
+// ========================================
+// Reusable SCSS Mixins
+// ========================================
+// Consolidates repeated patterns from components
+
+@use 'breakpoints' as *;
+
+// Layout Mixins
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// Card Mixins (replaces 15+ duplicate card styles)
+@mixin card-base {
+  background: var(--surface-color);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-normal);
+}
+
+@mixin card-hover {
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-color);
+  }
+}
+
+@mixin card-interactive {
+  @include card-base;
+  cursor: pointer;
+
+  @include hover {
+    @include card-hover;
+  }
+}
+
+// Button Mixins
+@mixin button-base {
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-weight-semibold);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: none;
+  padding: var(--spacing-md) var(--spacing-xl);
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+@mixin button-gradient($from: var(--primary-color), $to: var(--secondary-color)) {
+  background: linear-gradient(135deg, $from, $to);
+  color: white;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+}
+
+@mixin hover-lift($distance: -4px) {
+  transition: transform var(--transition-normal);
+
+  @include hover {
+    &:hover {
+      transform: translateY($distance);
+    }
+  }
+}
+
+// Shadow Mixins
+@mixin shadow-hover {
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-normal);
+
+  &:hover {
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+// Grid Mixins (consolidates responsive grid patterns)
+@mixin responsive-grid($min-width: 250px, $gap: var(--spacing-lg)) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax($min-width, 1fr));
+  gap: $gap;
+
+  @include md {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  @include sm {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+}
+
+@mixin auto-fit-grid($min-width: 200px) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
+  gap: var(--spacing-lg);
+}
+
+// Text Utilities
+@mixin text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin line-clamp($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// Gradient Backgrounds (replaces 34 duplicates)
+@mixin gradient-primary {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+}
+
+@mixin gradient-success {
+  background: linear-gradient(135deg, var(--success-color), #059669);
+}
+
+@mixin gradient-accent {
+  background: linear-gradient(135deg, var(--accent-color), #f97316);
+}
+
+// Backdrop/Overlay
+@mixin backdrop-blur {
+  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.5);
+}
+
+// Focus States
+@mixin focus-ring($color: var(--primary-color)) {
+  &:focus,
+  &:focus-visible {
+    outline: 2px solid $color;
+    outline-offset: 2px;
+  }
+}
+
+// Shimmer/Loading Animation
+@mixin shimmer-animation {
+  background: linear-gradient(
+    90deg,
+    var(--surface-color) 0%,
+    var(--border-color) 50%,
+    var(--surface-color) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+// Scrollbar Styling
+@mixin custom-scrollbar($width: 8px) {
+  &::-webkit-scrollbar {
+    width: $width;
+    height: $width;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--background-color);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: calc($width / 2);
+
+    &:hover {
+      background: var(--text-muted);
+    }
+  }
+}
+
+// Aspect Ratio (for images/videos)
+@mixin aspect-ratio($width, $height) {
+  aspect-ratio: $width / $height;
+
+  @supports not (aspect-ratio: $width / $height) {
+    &::before {
+      content: '';
+      float: left;
+      padding-top: calc(($height / $width) * 100%);
+    }
+
+    &::after {
+      content: '';
+      display: block;
+      clear: both;
+    }
+  }
+}
+
+// Safe Area (for mobile notches)
+@mixin safe-area-inset($property, $direction, $fallback: 0px) {
+  #{$property}-#{$direction}: $fallback;
+  #{$property}-#{$direction}: calc(#{$fallback} + env(safe-area-inset-#{$direction}));
+}
+
+// Touch Feedback
+@mixin touch-feedback {
+  @include touch {
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+
+    &:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
+  }
+}
+
+// Icon Button (common pattern)
+@mixin icon-button($size: 40px) {
+  @include flex-center;
+  width: $size;
+  height: $size;
+  border-radius: 50%;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  &:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+  }
+}

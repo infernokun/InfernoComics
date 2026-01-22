@@ -1,50 +1,88 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
 .missing-issues-container {
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  @include flex-column;
 
   .page-header {
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 16px;
+    @include flex-start;
+    gap: var(--spacing-sm);
+    padding: 0 var(--spacing-lg);
+
+    @include md {
+      padding: 0 var(--spacing-md);
+      min-height: 52px;
+    }
 
     mat-icon {
       font-size: 24px;
       width: 24px;
       height: 24px;
+
+      @include md {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
     }
 
     span:not(.spacer) {
-      font-size: 18px;
-      font-weight: 500;
+      font-size: 1.125rem;
+      font-weight: var(--font-weight-medium);
+
+      @include md {
+        font-size: 1rem;
+      }
     }
 
     .spacer {
       flex: 1;
     }
+
+    button[mat-icon-button] {
+      @include md {
+        width: 40px !important;
+        height: 40px !important;
+      }
+    }
   }
 
   .search-filter-container {
-    margin-bottom: 24px;
-    padding: 24px;
-    background: var(--surface-color);
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
+    margin-bottom: var(--spacing-2xl);
+    @include card-base;
+
+    @include md {
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      border-radius: 10px;
+    }
 
     .search-bar {
-      margin-bottom: 20px;
+      margin-bottom: var(--spacing-xl);
+
+      @include md {
+        margin-bottom: 10px;
+      }
 
       .search-field {
         width: 100%;
         max-width: 500px;
 
+        @include md {
+          max-width: 100%;
+
+          input {
+            font-size: 16px !important;
+          }
+        }
+
         .mat-mdc-form-field-wrapper {
           background-color: var(--background-color);
           border: 2px solid var(--border-color);
-          border-radius: 8px;
-          transition: border-color 0.2s ease-in-out;
+          border-radius: var(--radius-sm);
+          transition: border-color var(--transition-fast);
         }
 
         &.mat-focused .mat-mdc-form-field-wrapper {
@@ -53,33 +91,43 @@
       }
 
       .issue-count {
-        margin-top: 8px;
+        margin-top: var(--spacing-sm);
+
+        @include md {
+          margin-top: var(--spacing-md);
+          text-align: center;
+
+          mat-chip {
+            font-size: 0.875rem;
+            padding: var(--spacing-sm) var(--spacing-lg);
+          }
+        }
       }
     }
 
     .filter-controls {
-      display: flex;
-      align-items: center;
-      gap: 16px;
+      @include flex-start;
+      gap: var(--spacing-lg);
       flex-wrap: wrap;
 
-      @media (max-width: 768px) {
+      @include md {
         flex-direction: column;
         align-items: stretch;
-        gap: 12px;
+        gap: var(--spacing-md);
       }
 
       .publisher-filter {
         min-width: 200px;
 
-        @media (max-width: 768px) {
+        @include md {
           width: 100%;
+          min-width: 100%;
         }
       }
 
       .completion-filter {
         color: var(--text-primary);
-        font-weight: 500;
+        font-weight: var(--font-weight-medium);
 
         .mat-slide-toggle-thumb {
           background-color: var(--surface-color);
@@ -93,8 +141,8 @@
       .clear-filters-btn {
         color: var(--text-secondary) !important;
         border: 1px solid var(--border-color) !important;
-        font-weight: 500 !important;
-        padding: 8px 16px;
+        font-weight: var(--font-weight-medium) !important;
+        padding: var(--spacing-sm) var(--spacing-lg);
 
         &:hover:not([disabled]) {
           background-color: var(--error-color) !important;
@@ -113,91 +161,136 @@
   .content {
     flex: 1;
     overflow-y: auto;
-    padding: 8px;
+    padding: var(--spacing-sm);
   }
 
   .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px 16px;
+    @include flex-column;
+    @include flex-center;
+    padding: var(--spacing-2xl) var(--spacing-lg);
     text-align: center;
+
+    @include md {
+      padding: 40px var(--spacing-lg);
+    }
 
     mat-icon {
       font-size: 48px;
       width: 48px;
       height: 48px;
-      margin-bottom: 12px;
-      color: #4caf50;
+      margin-bottom: var(--spacing-md);
+      color: var(--success-color);
     }
 
     h2 {
-      margin: 0 0 8px 0;
-      font-weight: 400;
-      font-size: 18px;
+      margin: 0 0 var(--spacing-sm) 0;
+      font-weight: var(--font-weight-normal);
+      font-size: 1.125rem;
+
+      @include md {
+        font-size: 1.125rem;
+      }
     }
 
     .empty-state-text {
       margin: 0;
-      font-size: 14px;
+      font-size: 0.875rem;
     }
   }
 
   .grouped-view {
     mat-expansion-panel {
-      margin-bottom: 8px;
-      background: var(--surface-color);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      margin-bottom: var(--spacing-sm);
+      @include card-base;
+
+      @include md {
+        border-radius: 10px !important;
+        margin-bottom: 10px;
+
+        mat-expansion-panel-header {
+          padding: 0 14px !important;
+          min-height: 56px !important;
+        }
+      }
 
       mat-panel-title {
-        font-size: 25px;
+        font-size: 1.5625rem;
         color: var(--text-primary);
+
+        @include md {
+          font-size: 1rem;
+        }
       }
 
       mat-panel-description {
-        font-size: 25px;
+        font-size: 1.5625rem;
         color: var(--text-secondary);
-        display: flex;
-        align-items: center;
+        @include flex-start;
         height: 3rem;
+
+        @include md {
+          font-size: 0.8125rem;
+          height: auto;
+          flex-wrap: wrap;
+        }
 
         .publisher {
           margin-left: 6px;
-          font-size: 25px;
+          font-size: 1.5625rem;
+
+          @include md {
+            font-size: 0.8125rem;
+          }
         }
       }
     }
 
     .issues-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 8px;
-      padding: 8px;
+      @include responsive-grid(300px);
+      padding: var(--spacing-sm);
+
+      @include md {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding: 10px;
+      }
     }
   }
 
   .issue-card {
-    margin-bottom: 8px;
-    
+    margin-bottom: var(--spacing-sm);
+
+    @include md {
+      border-radius: 10px !important;
+    }
+
     &.compact {
       mat-card-content {
-        padding: 12px;
+        padding: var(--spacing-md);
+
+        @include md {
+          padding: 14px;
+        }
       }
     }
 
     .issue-header {
-      display: flex;
-      justify-content: space-between;
+      @include flex-between;
       align-items: flex-start;
-      gap: 12px;
+      gap: var(--spacing-md);
+
+      @include md {
+        gap: 14px;
+      }
 
       &.compact {
         flex-direction: row;
         align-items: center;
-        gap: 12px;
+        gap: var(--spacing-md);
+
+        @include md {
+          align-items: flex-start;
+        }
       }
 
       .issue-info {
@@ -205,30 +298,43 @@
 
         h3 {
           margin: 0 0 4px 0;
-          font-size: 14px;
-          font-weight: 500;
+          font-size: 0.875rem;
+          font-weight: var(--font-weight-medium);
           color: var(--text-primary);
+
+          @include md {
+            font-size: 0.9375rem;
+            margin-bottom: 6px;
+          }
         }
 
         .publisher {
           margin: 2px 0;
-          font-size: 11px;
+          font-size: 0.6875rem;
           color: var(--text-secondary);
         }
 
         .issue-name {
           margin: 2px 0;
-          font-size: 12px;
+          font-size: 0.75rem;
           color: var(--text-primary);
+
+          @include md {
+            font-size: 0.8125rem;
+            margin-bottom: 4px;
+          }
         }
 
         .cover-date {
           margin: 2px 0;
-          font-size: 11px;
+          font-size: 0.6875rem;
           color: var(--text-secondary);
-          display: flex;
-          align-items: center;
+          @include flex-start;
           gap: 3px;
+
+          @include md {
+            font-size: 0.75rem;
+          }
 
           mat-icon {
             font-size: 14px;
@@ -240,12 +346,18 @@
 
       .image-container {
         flex-shrink: 0;
-        
+
         img {
           width: 80px;
           height: 110px;
           object-fit: cover;
-          border-radius: 4px;
+          border-radius: var(--radius-xs);
+
+          @include md {
+            width: 70px;
+            height: 100px;
+            border-radius: var(--radius-sm);
+          }
         }
       }
 
@@ -253,167 +365,11 @@
         display: flex;
         gap: 4px;
         flex-shrink: 0;
-      }
-    }
-  }
 
-  .loading-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 24px;
-    gap: 12px;
-
-    p {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
-  }
-}
-
-// Responsive adjustments
-@media (max-width: 768px) {
-  .missing-issues-container {
-    .page-header {
-      padding: 0 12px;
-      min-height: 52px;
-      
-      mat-icon {
-        font-size: 22px;
-        width: 22px;
-        height: 22px;
-      }
-      
-      span:not(.spacer) {
-        font-size: 16px;
-      }
-      
-      button[mat-icon-button] {
-        width: 40px !important;
-        height: 40px !important;
-      }
-    }
-    
-    .search-filter-container {
-      padding: 12px;
-      margin-bottom: 12px;
-      border-radius: 10px;
-      
-      .search-bar {
-        margin-bottom: 10px;
-        
-        .search-field {
-          max-width: 100%;
-          
-          input {
-            font-size: 16px !important; // Prevent iOS zoom
-          }
-        }
-        
-        .issue-count {
-          margin-top: 12px;
-          text-align: center;
-          
-          mat-chip {
-            font-size: 14px;
-            padding: 8px 16px;
-          }
-        }
-      }
-      
-      .filter-controls {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-        
-        .publisher-filter {
-          min-width: 100%;
-        }
-      }
-    }
-
-    .grouped-view {
-      mat-expansion-panel {
-        border-radius: 10px !important;
-        margin-bottom: 10px;
-        
-        mat-expansion-panel-header {
-          padding: 0 14px !important;
-          min-height: 56px !important;
-        }
-        
-        mat-panel-title {
-          font-size: 16px;
-        }
-        
-        mat-panel-description {
-          font-size: 13px;
-          height: auto;
-          flex-wrap: wrap;
-          
-          .publisher {
-            font-size: 13px;
-          }
-        }
-      }
-      
-      .issues-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
-        padding: 10px;
-      }
-    }
-
-    .issue-card {
-      border-radius: 10px !important;
-      
-      &.compact mat-card-content {
-        padding: 14px;
-      }
-      
-      .issue-header {
-        gap: 14px;
-        
-        &.compact {
-          flex-direction: row;
-          align-items: flex-start;
-        }
-        
-        .issue-info {
-          flex: 1;
-          
-          h3 {
-            font-size: 15px;
-            margin-bottom: 6px;
-          }
-          
-          .issue-name {
-            font-size: 13px;
-            margin-bottom: 4px;
-          }
-          
-          .cover-date {
-            font-size: 12px;
-          }
-        }
-        
-        .image-container {
-          flex-shrink: 0;
-          
-          img {
-            width: 70px;
-            height: 100px;
-            border-radius: 6px;
-          }
-        }
-        
-        .actions {
-          display: flex;
-          flex-direction: column;
+        @include md {
+          @include flex-column;
           gap: 6px;
-          
+
           button {
             width: 40px !important;
             height: 40px !important;
@@ -421,23 +377,22 @@
         }
       }
     }
-    
-    .empty-state {
-      padding: 40px 16px;
-      
-      mat-icon {
-        font-size: 48px;
-        width: 48px;
-        height: 48px;
-      }
-      
-      h2 {
-        font-size: 18px;
-      }
+  }
+
+  .loading-state {
+    @include flex-column;
+    @include flex-center;
+    padding: var(--spacing-2xl);
+    gap: var(--spacing-md);
+
+    @include md {
+      padding: 40px var(--spacing-lg);
     }
-    
-    .loading-state {
-      padding: 40px 16px;
+
+    p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
     }
   }
 }

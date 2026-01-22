@@ -1,7 +1,10 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
 .admin-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 20px;
+    padding: var(--spacing-xl);
     background-color: #f5f5f5;
     min-height: 100vh;
 }
@@ -604,7 +607,7 @@
 }
 
 // Responsive design
-@media (max-width: 768px) {
+@include md {
     .admin-container {
         padding: 16px;
     }
@@ -657,6 +660,7 @@
 }
 
 // Dark theme support
+// Dark theme handled by CSS variables
 @media (prefers-color-scheme: dark) {
     .admin-container {
         background-color: #121212;
@@ -968,7 +972,7 @@
 }
 
 // Responsive design
-@media (max-width: 768px) {
+@include md {
     .admin-container {
         padding: 16px;
     }
@@ -1005,6 +1009,7 @@
     }
 }
 
+// Dark theme handled by CSS variables
 @media (prefers-color-scheme: dark) {
     .admin-container {
         background-color: #121212;

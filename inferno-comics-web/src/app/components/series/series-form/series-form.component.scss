@@ -1,134 +1,12 @@
-@media (max-width: 768px) {
-  .series-form-container {
-    padding: 16px;
-  }
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
 
-  .form-row {
-    flex-direction: column;
-    
-    .three-quarter-width,
-    .half-width,
-    .quarter-width {
-      flex: 1;
-      min-width: 100%;
-    }
-  }
+@use 'styles/mixins' as *;
 
-  .existing-series-grid,
-  .results-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .cover-options {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  }
-
-  .search-input-section {
-    flex-direction: column;
-    align-items: stretch;
-
-    .search-button {
-      height: 48px;
-    }
-  }
-
-  .selected-series-actions {
-    flex-direction: column;
-    align-items: stretch;
-    
-    button {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  .config-actions {
-    flex-direction: column;
-    
-    button {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  mat-card-actions {
-    flex-direction: column;
-    
-    button {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  .bulk-actions {
-    flex-direction: column;
-    
-    button {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  .preview-card {
-    flex-direction: column;
-    text-align: center;
-
-    .preview-image {
-      align-self: center;
-      margin-bottom: 16px;
-    }
-
-    .preview-details {
-      text-align: center;
-    }
-  }
-}
-
-// Animation Classes
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.animate-slide-in {
-  animation: slideInUp 0.4s ease-out;
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-// Scrollbar Styling
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--background-color);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
-
-  &:hover {
-    background: #606060;
-  }
-}// Unified Series Form Styles
+// Unified Series Form Styles
 // ===========================
 
-// Color Variables
+// Color Variables (legacy - prefer CSS variables)
 $primary-color: #bb86fc;
 $accent-color: #03dac6;
 $warn-color: #cf6679;
@@ -1364,7 +1242,7 @@ mat-card-actions {
 }
 
 // Responsive Design
-@media (max-width: 768px) {
+@include md {
   .series-form-container {
     padding: 16px;
   }

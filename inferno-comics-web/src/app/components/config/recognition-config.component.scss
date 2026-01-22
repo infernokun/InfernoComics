@@ -1,35 +1,25 @@
-// Variables
-$card-radius: 12px;
-$section-gap: 32px;
-$sub-section-gap: 16px;
-$primary-color: #1976d2;
-$accent-color: #ff4081;
-$success-color: #4caf50;
-$warn-color: #ff9800;
-
-// Mixins
-@mixin responsive-grid($min-width) {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax($min-width, 1fr));
-  gap: 16px;
-}
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
 
 // Main wrapper
 .config-wrapper {
-  display: flex;
-  justify-content: center;
-  padding: 24px;
+  @include flex-center;
+  padding: var(--spacing-2xl);
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  @include gradient-primary;
+
+  @include md {
+    padding: var(--spacing-md) var(--spacing-sm);
+    background: var(--background-color);
+  }
 }
 
 .config-card {
   width: 100%;
   max-width: 1400px;
-  border-radius: $card-radius;
-  padding: 32px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  background: white;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2xl);
+  @include card-base;
   animation: slideIn 0.4s ease-out;
 
   mat-card-header {
@@ -337,7 +327,7 @@ $warn-color: #ff9800;
 }
 
 // Responsive design
-@media (max-width: 768px) {
+@include md {
   .config-wrapper {
     padding: 12px 8px;
     background: var(--background-color);
@@ -477,7 +467,7 @@ $warn-color: #ff9800;
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
       
-      @media (max-width: 400px) {
+      @include between(0px, 400px) {
         grid-template-columns: 1fr;
       }
       

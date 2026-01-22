@@ -1,71 +1,68 @@
-/* Base Dialog Container */
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
 ::ng-deep .mat-dialog-container {
-  background-color: #1e1e2e;
-  color: #f8f9fa;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  box-shadow: var(--shadow-2xl);
   max-width: 650px;
   width: 90%;
-  display: flex;
-  flex-direction: column;
+  @include flex-column;
   height: 90vh;
   max-height: 800px;
+
+  @include between(0px, 600px) {
+    padding: var(--spacing-lg);
+  }
 }
 
-/* Alert/Title Section */
 .bg-alert {
   background-color: rgba(211, 47, 47, 0.1);
-  padding: 16px;
-  border-left: 4px solid #d32f2f;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  transition: all 0.3s ease;
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-left: 4px solid var(--error-color);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-xl);
+  transition: all var(--transition-normal);
 }
 
 .dialog-title {
   font-size: 1.6rem;
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: #ff6b6b;
   margin: 0;
   letter-spacing: 0.5px;
+
+  @include between(0px, 600px) {
+    font-size: 1.4rem;
+  }
 }
 
-/* Content Section */
 .dialog-content {
-  padding: 8px 4px;
+  padding: var(--spacing-sm) 4px;
   overflow-y: auto;
-  margin: 16px 0;
-  color: #c9d1d9;
+  margin: var(--spacing-lg) 0;
+  color: var(--text-secondary);
   font-size: 1.1rem;
   line-height: 1.6;
-  scrollbar-width: thin;
-  scrollbar-color: #555 #2d2d3d;
+  @include custom-scrollbar(8px);
   background-color: transparent !important;
   flex: 1;
-  min-height: 0; /* Important for flex children to properly scroll */
+  min-height: 0;
+
+  @include between(0px, 600px) {
+    max-height: 350px;
+    font-size: 1rem;
+  }
 }
 
 .code-editor-wrapper {
   width: 100%;
   background-color: #282a36;
-  border-radius: 8px;
-  border: 1px solid #444;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
   overflow: hidden;
-}
-
-.dialog-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.dialog-content::-webkit-scrollbar-track {
-  background: #2d2d3d;
-  border-radius: 4px;
-}
-
-.dialog-content::-webkit-scrollbar-thumb {
-  background-color: #555;
-  border-radius: 4px;
 }
 
 .text-lg {
@@ -73,25 +70,23 @@
   line-height: 1.6;
 }
 
-/* Code Block */
 app-code-block {
   flex: 1;
   overflow: auto;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   background-color: #282a36;
-  border-radius: 8px;
-  padding: 16px;
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-lg);
   white-space: pre-wrap;
   word-wrap: break-word;
   height: 100%;
-  border: 1px solid #444;
+  border: 1px solid var(--border-color);
   font-size: 0.95rem;
   line-height: 1.5;
   display: block;
   width: 100%;
 }
 
-/* Fix for code editor background issue */
 ::ng-deep app-code-block .monaco-editor,
 ::ng-deep app-code-block .monaco-editor-background,
 ::ng-deep app-code-block .monaco-editor .margin {
@@ -102,7 +97,6 @@ app-code-block {
   color: inherit;
 }
 
-/* Ensure no white backgrounds in code block */
 ::ng-deep #code-editor {
   background-color: #282a36 !important;
 }
@@ -112,80 +106,60 @@ app-code-block {
   background-color: transparent !important;
 }
 
-/* Button Actions */
 .dialog-actions {
-  display: flex;
+  @include flex-between;
   justify-content: flex-end;
-  padding: 16px 0 0;
-  margin-top: 8px;
-  gap: 12px;
+  padding: var(--spacing-lg) 0 0;
+  margin-top: var(--spacing-sm);
+  gap: var(--spacing-md);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 20px;
+  padding-top: var(--spacing-xl);
   padding-right: 1rem;
 }
 
 button.mat-raised-button {
+  @include button-base;
   min-width: 100px;
-  padding: 8px 16px;
-  font-weight: 500;
   text-transform: uppercase;
-  border-radius: 8px;
   letter-spacing: 0.5px;
-  transition: all 0.2s ease;
+
+  @include between(0px, 600px) {
+    min-width: 80px;
+    padding: 6px var(--spacing-md);
+  }
 }
 
 .button-text {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   letter-spacing: 0.5px;
 }
 
 .transparent-button {
   background-color: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
+  color: white;
   border: 1px solid rgba(255, 255, 255, 0.3);
-}
 
-.transparent-button:hover {
-  background-color: rgba(255, 255, 255, 0.25);
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+  }
 }
 
 .mat-accent {
   background-color: #3f51b5 !important;
   color: white !important;
-}
 
-.mat-accent:hover {
-  background-color: #303f9f !important;
-  box-shadow: 0 4px 12px rgba(63, 81, 181, 0.4);
+  &:hover {
+    background-color: #303f9f !important;
+    box-shadow: 0 4px 12px rgba(63, 81, 181, 0.4);
+  }
 }
 
 .mat-cancel {
-  background-color:#444;
+  background-color: #444;
   color: white !important;
-}
 
-.mat-cancel:hover {
-  background-color:#2d2d3d;
-  color: white !important;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 600px) {
-  ::ng-deep .mat-dialog-container {
-    padding: 16px;
-  }
-  
-  .dialog-title {
-    font-size: 1.4rem;
-  }
-  
-  .dialog-content {
-    max-height: 350px;
-    font-size: 1rem;
-  }
-  
-  button.mat-raised-button {
-    min-width: 80px;
-    padding: 6px 12px;
+  &:hover {
+    background-color: #2d2d3d;
+    color: white !important;
   }
 }

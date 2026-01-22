@@ -67,7 +67,7 @@
         </mat-select>
       </mat-form-field>
 
-      <!-- Sort Options -->
+      <!-- Sort Options (Desktop) -->
       <div class="sort-chips">
         @for (option of sortOptions; track option) {
           <button mat-button class="sort-chip"
@@ -81,6 +81,30 @@
             }
           </button>
         }
+      </div>
+
+      <!-- Mobile Sort Controls -->
+      <div class="mobile-sort-controls">
+        <mat-form-field appearance="outline" class="sort-select">
+          <mat-label>Sort by</mat-label>
+          <mat-select [(value)]="currentSortOption" (selectionChange)="applyFiltersAndSorting()">
+            @for (option of sortOptions; track option) {
+              <mat-option [value]="option.value">
+                <mat-icon>{{ option.icon }}</mat-icon>
+                {{ option.label }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-icon-button
+          class="sort-direction-toggle"
+          [class.ascending]="currentSortDirection === 'asc'"
+          [class.descending]="currentSortDirection === 'desc'"
+          (click)="toggleSortDirection()"
+          [matTooltip]="currentSortDirection === 'asc' ? 'Ascending' : 'Descending'">
+          <mat-icon>arrow_upward</mat-icon>
+        </button>
       </div>
 
       <!-- Completion Toggle -->
