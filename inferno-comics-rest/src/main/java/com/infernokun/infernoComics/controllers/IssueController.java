@@ -96,10 +96,13 @@ public class IssueController extends BaseController {
                                                                   value = "imageData", required = false
                                                           )
                                                           MultipartFile imageData) {
-        JsonNode node;
         if (imageData != null && !imageData.isEmpty()) {
-            node = issueService.placeImageUpload(imageData);
-            request.setUploadedImageUrl(node.get("link").asText());
+            JsonNode node = issueService.placeImageUpload(imageData);
+            if (node != null && node.has("link")) {
+                request.setUploadedImageUrl(node.get("link").asText());
+            } else {
+                throw new IllegalStateException("Image upload failed: no link returned");
+            }
         }
 
         return createSuccessResponse(issueService.createIssue(request));

@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 @Slf4j
 @Service
@@ -472,7 +473,7 @@ public class ProgressDataService {
                             }
                         })
                         .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
+                        .collect(toList());
             }
         } catch (Exception e) {
             log.error("Failed to retrieve progress history from Redis for session {}: {}", sessionId, e.getMessage(), e);
@@ -606,17 +607,17 @@ public class ProgressDataService {
         });
     }
 
-    public List<ProgressData> getSessionsByRelevance() {
-        List<ProgressData> sessions = progressDataRepository.findByStartedOrFinishedWithinLast24Hours(LocalDateTime.now().minusDays(7));
+    public List<ProgressData> getRecentSessions() {
+        List<ProgressData> sessions = progressDataRepository.findWithinLast14Days(LocalDateTime.now().minusDays(14));
         getLatestDataFromRedis(sessions);
 
-        sessions = sessions.stream().filter(s -> !s.dismissed).toList();
-
-        return sessions;
+        return sessions.stream()
+                .filter(s -> !s.dismissed)
+                .toList();
     }
 
     public void sendToWebSocket() {
-        List<ProgressData> progressDataList = getSessionsByRelevance();
+        List<ProgressData> progressDataList = getRecentSessions();
         Long id = progressDataList.getLast().getSeries().getId();
         websocket.broadcastObjUpdate(progressDataList, ProgressData.class.getSimpleName() + "ListRelevance", id);
     }
@@ -632,7 +633,7 @@ public class ProgressDataService {
         weirdService.saveProgressData(progressData);
         sendToWebSocket();
 
-        return getSessionsByRelevance();
+        return getRecentSessions();
     }
 
     public Optional<ProgressData> getProgressDataBySessionId(String sessionId) {

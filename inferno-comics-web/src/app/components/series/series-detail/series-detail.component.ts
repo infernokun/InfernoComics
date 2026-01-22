@@ -133,7 +133,7 @@ export class SeriesDetailComponent implements OnInit {
   loadIssues(seriesId: number): void {
     this.issueService.getIssuesBySeries(seriesId).subscribe({
       next: (res: ApiResponse<Issue[]>) => {
-        if (!res.data) throw new Error('issue getting issues by series id');
+        if (!res.data) throw new Error(`Failed to load issues for series ID ${seriesId}: no data returned`);
 
         this.issues = res.data.map((issue) => new Issue(issue));
         // Re-filter Comic Vine issues after loading collection issues
@@ -151,7 +151,7 @@ export class SeriesDetailComponent implements OnInit {
     this.loadingComicVine = true;
     this.comicVineService.searchIssues(this.series.id.toString()).subscribe({
       next: (res: ApiResponse<ComicVineSeriesDto[]>) => {
-        if (!res.data) throw new Error('comic vine series issue getting issues by id');
+        if (!res.data) throw new Error(`Failed to load Comic Vine issues for series ID ${this.series?.id}: no data returned`);
 
         this.comicVineIssues = res.data;
         // Filter out issues that are already in the collection
@@ -299,24 +299,32 @@ export class SeriesDetailComponent implements OnInit {
         generatedDescription: issue.generatedDescription || false,
       };
 
-      return this.issueService.createIssue(issueData).toPromise();
+      return firstValueFrom(this.issueService.createIssue(issueData));
     });
 
-    Promise.all(creationPromises)
-      .then(() => {
-        this.snackBar.open(
-          `Added ${selectedIssues.length} issues to collection`,
-          'Close',
-          { duration: 3000 }
-        );
+    Promise.allSettled(creationPromises)
+      .then((results) => {
+        const succeeded = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+
+        if (failed > 0) {
+          this.snackBar.open(
+            `Added ${succeeded} issues, ${failed} failed`,
+            'Close',
+            { duration: 5000 }
+          );
+          results.filter(r => r.status === 'rejected').forEach((r, i) => {
+            console.error(`Failed to add issue ${i}:`, (r as PromiseRejectedResult).reason);
+          });
+        } else {
+          this.snackBar.open(
+            `Added ${succeeded} issues to collection`,
+            'Close',
+            { duration: 3000 }
+          );
+        }
         this.loadIssues(this.series?.id!);
         this.clearSelection();
-      })
-      .catch((err: Error) => {
-        console.error('Error adding issues:', err);
-        this.snackBar.open('Error adding some issues', 'Close', {
-          duration: 3000,
-        });
       });
   }
 
@@ -904,9 +912,9 @@ export class SeriesDetailComponent implements OnInit {
         next: (res: ApiResponse<Issue>) => {
           this.snackBar.dismiss();
 
-          const issue: Issue = new (Issue);
+          const issue: Issue | undefined = res.data ? new Issue(res.data) : undefined;
 
-          if (match.parent_comic_vine_id) {
+          if (issue && match.parent_comic_vine_id) {
             issue.imageUrl = match.url;
             issue.variant = true;
           }
@@ -1328,7 +1336,7 @@ export class SeriesDetailComponent implements OnInit {
 
     this.seriesService.reverifySeries(this.series.id).subscribe({
       next: (res: ApiResponse<Series>) => {
-        if (!res.data) throw new Error('No series data returned');
+        if (!res.data) throw new Error(`Failed to reverify series ID ${this.series?.id}: no data returned`);
         this.series = new Series(res.data);
         this.snackBar.open('Series reverified successfully', 'Close', {
           duration: 3000,

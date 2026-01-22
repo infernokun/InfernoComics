@@ -18,8 +18,8 @@ public interface ProgressDataRepository extends JpaRepository<ProgressData, Long
 
     List<ProgressData> findBySeriesId(Long seriesId);
 
-    @Query("SELECT p FROM ProgressData p WHERE p.timeStarted >= :twentyFourHoursAgo OR p.timeFinished >= :twentyFourHoursAgo")
-    List<ProgressData> findByStartedOrFinishedWithinLast24Hours(@Param("twentyFourHoursAgo") LocalDateTime twentyFourHoursAgo);
+    @Query("SELECT p FROM ProgressData p WHERE p.timeStarted >= :fourteenDaysAgo OR p.timeFinished >= :fourteenDaysAgo")
+    List<ProgressData> findWithinLast14Days(@Param("fourteenDaysAgo") LocalDateTime fourteenDaysAgo);
 
     @Modifying
     @Query("DELETE FROM ProgressData p WHERE p.sessionId = :sessionId")

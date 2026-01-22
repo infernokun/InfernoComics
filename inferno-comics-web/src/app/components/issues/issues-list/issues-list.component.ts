@@ -66,7 +66,7 @@ export class IssuesListComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (res: ApiResponse<SeriesWithIssues[]>) => {
-          if (!res.data) throw new Error('issue getSeriesWithIssues');
+          if (!res.data) throw new Error('Failed to load series with issues: no data returned');
 
           this.seriesWithIssues = res.data;
         },

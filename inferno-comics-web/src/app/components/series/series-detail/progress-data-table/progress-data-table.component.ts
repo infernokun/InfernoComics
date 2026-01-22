@@ -952,7 +952,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
   private loadProgressData(): void {
     this.progressDataService.getProgressData(this.id).subscribe({
       next: (res: ApiResponse<ProgressData[]>) => {
-        if (!res.data) throw new Error('issue getting progress data by id');
+        if (!res.data) throw new Error(`Failed to load progress data for ID ${this.id}: no data returned`);
 
         this.progressData.set(res.data.map(data => new ProgressData(data)));
         if (this.gridApi) {

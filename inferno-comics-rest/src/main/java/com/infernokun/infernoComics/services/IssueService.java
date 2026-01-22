@@ -481,10 +481,9 @@ public class IssueService {
                 } else {
                     log.warn("Image URL format unexpected. Existing: {}, New: {}", existingUrl, newUrl);
                 }
+            } else {
+                issue.setId(existingIssueOpt.get().getId());
             }
-
-            // This line seems redundant - you're setting ID twice
-            issue.setId(existingIssueOpt.get().getId());
         }
 
         // Generate description if not provided

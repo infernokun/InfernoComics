@@ -52,10 +52,12 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   });
 
   isLoading = true;
-  maxDisplayItems = 5;
+  maxDisplayItems = 25;
   showOverlay = false;
   state = State;
   pendingDismissIds = new Set<number>();
+  activeFilter: 'all' | 'processing' | 'completed' | 'error' = 'all';
+  expandedItemId: number | null = null;
 
   constructor(
     private router: Router,
@@ -226,8 +228,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   
         // 4️⃣  Compare timestamps
         return timeB.getTime() - timeA.getTime();
-      })
-      .slice(0, this.maxDisplayItems);
+      });
   }
 
   getItemClass(item: ProgressData): string {
@@ -395,12 +396,10 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
       next: (res: ApiResponse<ProgressData[]>) => {
         if (!res.data) throw new Error('issue dismissProgressData');
 
-        // 4️⃣  Push the new status
         this.processingStatus.set(this.convertToProcessingStatus(res.data.map(item => new ProgressData(item))));
 
-        // 5️⃣  Show a success snackbar
         this.snackBar.open(
-          `Progress for series "${itemId}" dismissed`,
+          `Progress dismissed`,
           'Close',
           { duration: 3000, panelClass: ['snackbar-success'] }
         );
@@ -413,6 +412,124 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
           { duration: 3000, panelClass: ['snackbar-error'] }
         );
       }
+    });
+  }
+
+  // Filter and count methods
+  getCompletedCount(): number {
+    return this.processingStatus().items.filter(item => item.state === State.COMPLETED).length;
+  }
+
+  getErrorCount(): number {
+    return this.processingStatus().items.filter(item => item.state === State.ERROR).length;
+  }
+
+  setFilter(filter: 'all' | 'processing' | 'completed' | 'error'): void {
+    this.activeFilter = filter;
+  }
+
+  filterByState(state: string): void {
+    switch (state) {
+      case 'PROCESSING':
+        this.activeFilter = 'processing';
+        break;
+      case 'COMPLETED':
+        this.activeFilter = 'completed';
+        break;
+      case 'ERROR':
+        this.activeFilter = 'error';
+        break;
+      default:
+        this.activeFilter = 'all';
+    }
+  }
+
+  getFilteredItems(): ProgressData[] {
+    const items = this.getSortedItems();
+
+    switch (this.activeFilter) {
+      case 'processing':
+        return items.filter(item => item.state === State.PROCESSING);
+      case 'completed':
+        return items.filter(item => item.state === State.COMPLETED);
+      case 'error':
+        return items.filter(item => item.state === State.ERROR);
+      default:
+        return items;
+    }
+  }
+
+  // Expand/collapse functionality
+  toggleItemExpand(itemId: number): void {
+    this.expandedItemId = this.expandedItemId === itemId ? null : itemId;
+  }
+
+  // Refresh functionality
+  refreshStatus(): void {
+    this.fetchStatus();
+  }
+
+  // Relative time formatting
+  formatRelativeTime(date: Date | undefined): string {
+    if (!date) return 'Unknown';
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSeconds < 10) return 'Just now';
+    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  // Retry failed processing
+  retryProcessing(item: ProgressData, event: Event): void {
+    event.stopPropagation();
+
+    if (!item.series?.id) {
+      this.snackBar.open('Cannot retry: Series information missing', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.snackBar.open('Retry functionality coming soon', 'Close', { duration: 3000 });
+  }
+
+  // Clear all completed/failed items
+  clearCompleted(): void {
+    const itemsToClear = this.processingStatus().items
+      .filter(item => item.state === State.COMPLETED || item.state === State.ERROR)
+      .map(item => item.id!)
+      .filter(id => id !== undefined);
+
+    if (itemsToClear.length === 0) return;
+
+    let cleared = 0;
+    itemsToClear.forEach(id => {
+      this.progressDataService.dismissProgressData(id).subscribe({
+        next: (res: ApiResponse<ProgressData[]>) => {
+          cleared++;
+          if (cleared === itemsToClear.length && res.data) {
+            this.processingStatus.set(this.convertToProcessingStatus(res.data.map(item => new ProgressData(item))));
+            this.snackBar.open(`Cleared ${cleared} finished tasks`, 'Close', { duration: 3000 });
+          }
+        },
+        error: (err: Error) => {
+          console.error('Error clearing item:', err);
+        }
+      });
     });
   }
 }
