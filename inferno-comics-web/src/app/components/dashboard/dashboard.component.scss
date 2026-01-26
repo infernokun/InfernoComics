@@ -1,13 +1,6 @@
 @use 'styles/breakpoints' as *;
 @use 'styles/mixins' as *;
 
-:root {
-  --primary-gradient: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-  --surface-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
-  --success-color: #10b981;
-  --success-gradient: linear-gradient(135deg, #10b981, #059669);
-}
-
 .dashboard-container {
   max-width: 1400px;
   margin: 0 auto;
