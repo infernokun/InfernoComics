@@ -43,26 +43,33 @@
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
-  
+
+  // Gradients
   --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --surface-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
-  --success-color: #10b981;
   --success-gradient: linear-gradient(135deg, #10b981, #059669);
 }
 
-// Light theme overrides
 :root.light-theme {
   --primary-color: #2563eb;
   --primary-dark: #1d4ed8;
   --secondary-color: #10b981;
   --accent-color: #f59e0b;
-  --background-color: #f8fafc;
+
+  --background-color: #ffffff;
+  --background-primary: #c7c7c7;
+  --background-secondary: #ffffff;
+  --background-tertiary: #ffffff;
+
   --surface-color: #ffffff;
+
   --text-primary: #1f2937;
   --text-secondary: #6b7280;
   --text-muted: #9ca3af;
+
   --border-color: #e5e7eb;
   --border-strong: #dddddd;
+
   --error-color: #ef4444;
   --success-color: #10b981;
   --warning-color: #f59e0b;
@@ -71,7 +78,6 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-// Dark theme explicit class (same as default)
 :root.dark-theme {
   --primary-color: #3b82f6;
   --primary-dark: #2563eb;
@@ -90,9 +96,12 @@
   --text-muted: #94a3b8;
 
   --border-color: #334155;
+  --border-strong: #292929;
+
   --error-color: #ef4444;
   --success-color: #10b981;
   --warning-color: #f59e0b;
+  
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
@@ -277,9 +286,6 @@ body {
   color: white !important;
 }
 
-// Utility classes now in _utilities.scss
-// Animation classes now in _animations.scss
-
 // Focus states
 .mat-mdc-button:focus,
 .mat-mdc-raised-button:focus,
@@ -325,7 +331,7 @@ body {
     }
     
     input, textarea {
-      font-size: 16px !important; // Prevents iOS zoom
+      font-size: 16px !important;
     }
   }
 }
@@ -457,8 +463,6 @@ body {
     padding-top: env(safe-area-inset-top);
   }
 }
-
-// Mobile utility classes (moved to _utilities.scss)
 
 // Smooth scrolling for mobile
 @include md {

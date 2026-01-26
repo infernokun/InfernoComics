@@ -397,7 +397,7 @@
         }
         
         input {
-          font-size: 16px !important; // Prevent iOS zoom
+          font-size: 16px !important;
         }
       }
     }
@@ -540,7 +540,7 @@
   }
 }
 
-// Dark mode support (optional)
+// Dark mode support
 @media (prefers-color-scheme: dark) {
   .config-wrapper {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);

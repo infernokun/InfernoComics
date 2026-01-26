@@ -1,7 +1,6 @@
 // ========================================
 // Reusable SCSS Mixins
 // ========================================
-// Consolidates repeated patterns from components
 
 @use 'breakpoints' as *;
 
@@ -29,7 +28,7 @@
   flex-direction: column;
 }
 
-// Card Mixins (replaces 15+ duplicate card styles)
+// Card Mixins
 @mixin card-base {
   background: var(--surface-color);
   border: 2px solid var(--border-color);
@@ -102,7 +101,7 @@
   }
 }
 
-// Grid Mixins (consolidates responsive grid patterns)
+// Grid Mixins
 @mixin responsive-grid($min-width: 250px, $gap: var(--spacing-lg)) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax($min-width, 1fr));
@@ -139,7 +138,7 @@
   overflow: hidden;
 }
 
-// Gradient Backgrounds (replaces 34 duplicates)
+// Gradient Backgrounds
 @mixin gradient-primary {
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
 }
@@ -246,7 +245,7 @@
   }
 }
 
-// Icon Button (common pattern)
+// Icon Button
 @mixin icon-button($size: 40px) {
   @include flex-center;
   width: $size;

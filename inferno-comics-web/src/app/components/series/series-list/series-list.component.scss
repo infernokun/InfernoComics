@@ -551,7 +551,7 @@
 .series-container {
   transition: opacity var(--transition-normal);
 
-  // GRID VIEW - KEY MOBILE OPTIMIZATION
+  // GRID VIEW
   &.grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

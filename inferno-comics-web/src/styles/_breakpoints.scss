@@ -1,7 +1,6 @@
 // ========================================
 // Responsive Breakpoints
 // ========================================
-// Centralized breakpoint system to replace 235+ hardcoded media queries
 
 // Breakpoint values
 $breakpoint-xs: 340px;
@@ -42,7 +41,7 @@ $breakpoint-2xl: 1400px;
   }
 }
 
-// Min-width (desktop-first) mixins
+// Min-width (desktop) mixins
 @mixin min-sm {
   @media (min-width: #{$breakpoint-sm + 1px}) {
     @content;

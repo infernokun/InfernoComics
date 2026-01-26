@@ -1,9 +1,7 @@
 // ========================================
 // Design Tokens & Variables
 // ========================================
-// All design values centralized for consistency
 
-// Spacing Scale (8px base)
 :root {
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -13,12 +11,12 @@
   --spacing-2xl: 32px;
   --spacing-3xl: 48px;
 
-  // Border Radius (standardized to 3 values)
+  // Border Radius
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  // Transitions (standardized timing)
+  // Transitions
   --transition-fast: 0.2s ease;
   --transition-normal: 0.3s ease;
   --transition-slow: 0.5s ease;
