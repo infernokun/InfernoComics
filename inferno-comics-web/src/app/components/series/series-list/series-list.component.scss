@@ -822,7 +822,7 @@
           }
 
           mat-icon.favorited {
-            color: #ef4444;
+            color: var(--error-color);
           }
         }
       }

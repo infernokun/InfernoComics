@@ -138,9 +138,8 @@
   overflow: hidden;
 }
 
-// Gradient Backgrounds
 @mixin gradient-primary {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
 }
 
 @mixin gradient-success {
@@ -148,7 +147,7 @@
 }
 
 @mixin gradient-accent {
-  background: linear-gradient(135deg, var(--accent-color), #f97316);
+  background: linear-gradient(135deg, var(--accent-color), #d97706);
 }
 
 // Backdrop/Overlay
@@ -233,7 +232,6 @@
   #{$property}-#{$direction}: calc(#{$fallback} + env(safe-area-inset-#{$direction}));
 }
 
-// Touch Feedback
 @mixin touch-feedback {
   @include touch {
     -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);

@@ -11,68 +11,65 @@
 // Angular Material Theme
 @import '@angular/material/prebuilt-themes/purple-green.css';
 
-// ========================================
-// Theme Colors (Dark Theme Default)
-// ========================================
-
 :root {
-  // Brand Colors
   --primary-color: #3b82f6;
   --primary-dark: #2563eb;
+  --primary-light: #60a5fa;
   --secondary-color: #10b981;
   --accent-color: #f59e0b;
 
-  // Surface Colors
   --background-color: #0f172a;
+  --background-primary: #0f172a;
+  --background-secondary: #1e293b;
+  --background-tertiary: #334155;
   --surface-color: #1e293b;
 
-  // Text Colors
-  --text-primary: #f1f5f9;
+  --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
 
-  // UI Colors
   --border-color: #334155;
+  --border-strong: #475569;
   --error-color: #ef4444;
   --success-color: #10b981;
   --warning-color: #f59e0b;
-  --info-color: #667eea;
-  --selected-color: rgba(187, 134, 252, 0.2);
+  --info-color: #3b82f6;
+  --selected-color: rgba(59, 130, 246, 0.2);
 
-  // Shadows
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
 
-  // Gradients
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   --surface-gradient: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
   --success-gradient: linear-gradient(135deg, #10b981, #059669);
+  --accent-gradient: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
 :root.light-theme {
-  --primary-color: #2563eb;
-  --primary-dark: #1d4ed8;
+  --primary-color: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-light: #60a5fa;
   --secondary-color: #10b981;
   --accent-color: #f59e0b;
 
-  --background-color: #ffffff;
-  --background-primary: #c7c7c7;
+  --background-color: #f8fafc;
+  --background-primary: #f1f5f9;
   --background-secondary: #ffffff;
   --background-tertiary: #ffffff;
-
   --surface-color: #ffffff;
 
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
 
-  --border-color: #e5e7eb;
-  --border-strong: #dddddd;
+  --border-color: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --error-color: #dc2626;
+  --success-color: #059669;
+  --warning-color: #d97706;
+  --info-color: #2563eb;
 
-  --error-color: #ef4444;
-  --success-color: #10b981;
-  --warning-color: #f59e0b;
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
@@ -81,30 +78,30 @@
 :root.dark-theme {
   --primary-color: #3b82f6;
   --primary-dark: #2563eb;
+  --primary-light: #60a5fa;
   --secondary-color: #10b981;
   --accent-color: #f59e0b;
 
   --background-color: #0f172a;
-  --background-primary: #121212;
-  --background-secondary: #1e1e1e;
-  --background-tertiary: #2d2d2d;
-
+  --background-primary: #0f172a;
+  --background-secondary: #1e293b;
+  --background-tertiary: #334155;
   --surface-color: #1e293b;
 
-  --text-primary: #f1f5f9;
+  --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
 
   --border-color: #334155;
-  --border-strong: #292929;
-
+  --border-strong: #475569;
   --error-color: #ef4444;
   --success-color: #10b981;
   --warning-color: #f59e0b;
-  
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --info-color: #3b82f6;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
 }
 
 // ========================================
@@ -478,7 +475,6 @@ body {
   }
 }
 
-// Touch feedback
 @include touch {
   .touch-feedback {
     -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
@@ -490,17 +486,15 @@ body {
   }
 }
 
-// Pull-to-refresh prevention (when not wanted)
 .no-pull-refresh {
   overscroll-behavior-y: contain;
 }
 
-// Custom success snackbar styling
 .custom-snackbar {
   .mdc-snackbar__surface {
-    background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%) !important;
+    background: linear-gradient(135deg, var(--success-color) 0%, #059669 100%) !important;
     border-radius: var(--radius-md) !important;
-    box-shadow: 0 8px 24px rgba(76, 175, 80, 0.6) !important;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5) !important;
     padding: var(--spacing-xl) 28px !important;
     min-width: 400px !important;
     border: 2px solid rgba(255, 255, 255, 0.3) !important;
@@ -512,14 +506,45 @@ body {
       top: 0;
       bottom: 0;
       width: 4px;
-      background-color: #2e7d32;
+      background-color: #059669;
       border-radius: var(--radius-md) 0 0 var(--radius-md);
     }
   }
 
   .mdc-snackbar__label,
   .mat-mdc-snack-bar-label {
-    color: #000000 !important;
+    color: #FFFFFF !important;
+    font-weight: var(--font-weight-bold) !important;
+    font-size: var(--font-size-lg) !important;
+    line-height: var(--line-height-normal) !important;
+    letter-spacing: 0.3px !important;
+  }
+}
+
+.error-snackbar {
+  .mdc-snackbar__surface {
+    background: linear-gradient(135deg, var(--error-color) 0%, #dc2626 100%) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5) !important;
+    padding: var(--spacing-xl) 28px !important;
+    min-width: 400px !important;
+    border: 2px solid rgba(255, 255, 255, 0.3) !important;
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: #dc2626;
+      border-radius: var(--radius-md) 0 0 var(--radius-md);
+    }
+  }
+
+  .mdc-snackbar__label,
+  .mat-mdc-snack-bar-label {
+    color: #FFFFFF !important;
     font-weight: var(--font-weight-bold) !important;
     font-size: var(--font-size-lg) !important;
     line-height: var(--line-height-normal) !important;

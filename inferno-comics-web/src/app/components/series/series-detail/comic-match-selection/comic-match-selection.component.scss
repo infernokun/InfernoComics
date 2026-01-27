@@ -589,11 +589,11 @@
           }
 
           &.medium {
-            background: #f59e0b;
+            background: var(--accent-color);
           }
 
           &.low {
-            background: #ef4444;
+            background: var(--error-color);
           }
         }
       }
