@@ -1,6 +1,6 @@
 package com.infernokun.infernoComics.services.sync;
 
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.exceptions.NextcloudFolderNotFound;
 import com.infernokun.infernoComics.models.sync.NextcloudFile;
@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class NextcloudService {
-    private final WebClient webClient;
+    private final InfernoComicsWebClient webClient;
     private final InfernoComicsConfig infernoComicsConfig;
 
     public NextcloudFolderInfo getFolderInfo(String folderPath) {

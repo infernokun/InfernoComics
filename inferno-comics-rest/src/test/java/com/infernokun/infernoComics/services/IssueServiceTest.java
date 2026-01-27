@@ -1,6 +1,6 @@
 package com.infernokun.infernoComics.services;
 
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Issue;
@@ -46,7 +46,7 @@ public class IssueServiceTest {
     private InfernoComicsConfig infernoComicsConfig;
 
     @Mock
-    private WebClient webClient;
+    private InfernoComicsWebClient webClient;
 
     @Mock
     private DescriptionGeneratorService descriptionGeneratorService;

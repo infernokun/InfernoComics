@@ -3,7 +3,7 @@ package com.infernokun.infernoComics.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.dto.SeriesRequest;
@@ -20,6 +20,7 @@ import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -47,7 +48,7 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Transactional
 @RequiredArgsConstructor
 public class SeriesService {
-    private final WebClient webClient;
+    private final InfernoComicsWebClient webClient;
 
     private final WeirdService weirdService;
     private final ProgressDataService progressDataService;
@@ -61,6 +62,8 @@ public class SeriesService {
     private final ProcessedFileRepository processedFileRepository;
 
     private final CacheManager cacheManager;
+
+    private final SearxngImageSearchService imageSearchService;
 
     @CacheEvict(value = "series", key = "#seriesId")
     @Transactional
@@ -1097,7 +1100,40 @@ public class SeriesService {
         }
     }
 
+    public VariantsResponse getVariantsBySearch(Series series) {
+
+        VariantsResponse response = new VariantsResponse();
+
+        searchComicVineIssues(series.getId()).forEach(issue -> {
+            String issueNumber = issue.getIssueNumber();
+
+            List<String> urls = imageSearchService
+                    .findVariantImages(
+                            series.getName(),
+                            Integer.parseInt(issueNumber),
+                            series.getPublisher()
+                    );
+
+            response.addIssue(issueNumber, urls);
+        });
+
+        return response;
+    }
+
     public List<MissingIssue> getMissingIssues() {
         return missingIssueRepository.findUnresolvedMissingIssues();
+    }
+
+    @Getter
+    public static class VariantsResponse {
+        private final Map<String, List<String>> issues = new HashMap<>();
+
+        public VariantsResponse() { }
+
+        public void addIssue(String issueNumber, List<String> imageUrls) {
+            if (!imageUrls.isEmpty()) {
+                issues.put(issueNumber, imageUrls);
+            }
+        }
     }
 }

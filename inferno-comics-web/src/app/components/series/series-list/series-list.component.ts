@@ -300,7 +300,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
 
   viewSeries(series: Series): void {
     if (series?.name) {
-      this.router.navigate(['/series', generateSlug(series.name)]);
+      this.router.navigate(['/series', series.id, generateSlug(series.name)]);
     }
   }
 

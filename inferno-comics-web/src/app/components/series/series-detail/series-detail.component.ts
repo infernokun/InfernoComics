@@ -45,6 +45,9 @@ export class SeriesDetailComponent implements OnInit {
   selectedTabIndex = 0;
   isCompactView = false;
   showFullDescription = false;
+  seriesVariants?: {
+    issues: Record<string, string[]>;
+  };
 
   readonly DESCRIPTION_LIMIT = 100;
   readonly ISSUE_DESCRIPTION_LIMIT = 150;
@@ -67,10 +70,26 @@ export class SeriesDetailComponent implements OnInit {
 
   ngOnInit(): void {
     this.route.paramMap.subscribe(params => {
+      const id = Number(params.get('id'));
       const slug = params.get('slug');
-      if (slug) {
-        this.resetState();
-        this.loadSeriesBySlug(slug);
+
+      if (!id) {
+        this.snackBar.open('Invalid series ID', 'Close', { duration: 3000 });
+        this.router.navigate(['/series']);
+        return;
+      }
+
+      this.resetState();
+
+      this.loadSeries(id);
+      this.loadIssues(id);
+      this.loadSeriesVariants(id);
+
+      if (slug && this.series?.name) {
+        const expectedSlug = generateSlug(this.series.name);
+        if (slug !== expectedSlug) {
+          this.router.navigate(['/series', id, expectedSlug],{ replaceUrl: true });
+        }
       }
     });
   }
@@ -82,33 +101,6 @@ export class SeriesDetailComponent implements OnInit {
     this.selectedIssues.clear();
     this.expandedIssues.clear();
     this.loading = true;
-  }
-
-  loadSeriesBySlug(slug: string): void {
-    this.loading = true;
-    this.seriesService.getAllSeries().subscribe({
-      next: (res: ApiResponse<Series[]>) => {
-        if (!res.data) {
-          this.loading = false;
-          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
-          return;
-        }
-        const found = res.data.find(s => generateSlug(s.name) === slug);
-        if (found) {
-          this.loadSeries(found.id!);
-          this.loadIssues(found.id!);
-        } else {
-          this.loading = false;
-          this.snackBar.open('Series not found', 'Close', { duration: 3000 });
-          this.router.navigate(['/series']);
-        }
-      },
-      error: (err: Error) => {
-        console.error('Error loading series:', err);
-        this.loading = false;
-        this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
-      },
-    });
   }
 
   loadSeries(id: number): void {
@@ -164,6 +156,17 @@ export class SeriesDetailComponent implements OnInit {
         this.snackBar.open('Error loading Comic Vine issues', 'Close', {
           duration: 3000,
         });
+      },
+    });
+  }
+
+  loadSeriesVariants(seriesId: number): void {
+    this.seriesService.getSeriesVariantsById(seriesId).subscribe({
+      next: (res: ApiResponse<any>) => {
+        this.seriesVariants = res.data;
+      },
+      error: (err: Error) => {
+        console.error('Error loading series variants:', err);
       },
     });
   }
@@ -422,7 +425,7 @@ export class SeriesDetailComponent implements OnInit {
   }
 
   editSeries(): void {
-    this.router.navigate(['/series', this.series?.slug, 'edit']);
+    this.router.navigate(['/series', this.series?.id, this.series?.slug, 'edit']);
   }
 
   deleteSeries(): void {
@@ -1323,7 +1326,7 @@ export class SeriesDetailComponent implements OnInit {
       return;
     }
 
-    this.router.navigate(['/series', this.series.slug, 'edit'], {
+    this.router.navigate(['/series', this.series.id, this.series.slug, 'edit'], {
       queryParams: { mode: 'comic-vine-management' }
     });
   }
@@ -1355,5 +1358,9 @@ export class SeriesDetailComponent implements OnInit {
     this.seriesService.syncSeries(id).subscribe((data: ApiResponse<ProcessingResult>) => {
       console.log('sync', data);
     })
+  }
+
+  get issueEntries() {
+    return Object.entries(this.seriesVariants?.issues ?? []);
   }
 }

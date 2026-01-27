@@ -16,7 +16,7 @@
                 class="title-edit-btn">
               <mat-icon>edit</mat-icon>
             </button>
-            <a mat-stroked-button color="accent" [routerLink]="['/series', series.slug, 'admin']">
+            <a mat-stroked-button color="accent" [routerLink]="['/series', series.id, series.slug, 'admin']">
               <mat-icon>admin_panel_settings</mat-icon>
               Admin View
             </a>
@@ -452,6 +452,43 @@
         </div>
       </mat-tab>
     }
+    <mat-tab label="Variants">
+  <div class="tab-content">
+
+    @if (issueEntries.length === 0) {
+      <div class="empty-collection">
+        <mat-icon>photo_library</mat-icon>
+        <h3>No Variant Covers Found</h3>
+        <p>We couldn’t find any variant covers for this series yet.</p>
+      </div>
+    }
+
+    @for (entry of issueEntries; track entry[0]) {
+      <div class="variant-issue-section">
+
+        <!-- Issue Header -->
+        <h3 class="variant-issue-title">
+          Issue #{{ entry[0] }}
+        </h3>
+
+        <!-- Variant Grid -->
+        <div class="variant-grid">
+          @for (imageUrl of entry[1]; track imageUrl) {
+            <mat-card class="variant-card">
+              <img
+                [src]="imageUrl"
+                alt="Variant cover for issue #{{ entry[0] }}"
+                loading="lazy"
+                onerror="this.src='assets/placeholder-comic.jpg'"
+              />
+            </mat-card>
+          }
+        </div>
+
+      </div>
+    }
+  </div>
+</mat-tab>
   </mat-tab-group>
 </div>
 </div>

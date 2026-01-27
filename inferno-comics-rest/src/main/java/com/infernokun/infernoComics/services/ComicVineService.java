@@ -2,7 +2,7 @@ package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.utils.GenericTextCleaner;
@@ -28,7 +28,7 @@ public class ComicVineService {
     private final ObjectMapper objectMapper;
     private final InfernoComicsConfig infernoComicsConfig;
     private final StringRedisTemplate stringRedisTemplate;
-    private final WebClient webClient;
+    private final InfernoComicsWebClient webClient;
 
     private static final String SERIES_CACHE_PREFIX = "comic_vine_series:";
     private static final String ISSUES_CACHE_PREFIX = "comic_vine_issues:";

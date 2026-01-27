@@ -43,6 +43,10 @@ export class SeriesService extends BaseService {
     return this.get<ApiResponse<Series>>(`${this.apiUrl}/${id}`);
   }
 
+  getSeriesVariantsById(id: number): Observable<ApiResponse<any>> {
+    return this.get<ApiResponse<any>>(`${this.apiUrl}/${id}/variants`);
+  }
+
   getSeriesByIdWithIssues(
     id: number
   ): Observable<ApiResponse<SeriesWithIssues>> {

@@ -4,19 +4,20 @@ import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Base64;
 
 @Component
-public class WebClient {
+public class InfernoComicsWebClient {
     private final InfernoComicsConfig infernoComicsConfig;
 
-    public WebClient(InfernoComicsConfig infernoComicsConfig1) {
+    public InfernoComicsWebClient(InfernoComicsConfig infernoComicsConfig1) {
         this.infernoComicsConfig = infernoComicsConfig1;
     }
 
-    public org.springframework.web.reactive.function.client.WebClient recognitionClient() {
-        return org.springframework.web.reactive.function.client.WebClient.builder()
+    public WebClient recognitionClient() {
+        return WebClient.builder()
                 .baseUrl("http://" + infernoComicsConfig.getRecognitionServerHost() + ":" + infernoComicsConfig.getRecognitionServerPort() + "/inferno-comics-recognition/api/v1")
                 .exchangeStrategies(ExchangeStrategies.builder()
                         .codecs(configurer -> configurer
@@ -26,8 +27,8 @@ public class WebClient {
                 .build();
     }
 
-    public org.springframework.web.reactive.function.client.WebClient groqClient() {
-        return org.springframework.web.reactive.function.client.WebClient.builder()
+    public WebClient groqClient() {
+        return WebClient.builder()
                 .baseUrl("https://api.groq.com/openai/v1/chat/completions")
                 .exchangeStrategies(ExchangeStrategies.builder()
                         .codecs(configurer -> configurer
@@ -37,8 +38,8 @@ public class WebClient {
                 .build();
     }
 
-    public org.springframework.web.reactive.function.client.WebClient comicVineClient() {
-        return org.springframework.web.reactive.function.client.WebClient.builder()
+    public WebClient comicVineClient() {
+        return WebClient.builder()
                 .baseUrl("https://comicvine.gamespot.com/api")
                 .exchangeStrategies(ExchangeStrategies.builder()
                         .codecs(configurer -> configurer
@@ -48,8 +49,8 @@ public class WebClient {
                 .build();
     }
 
-    public org.springframework.web.reactive.function.client.WebClient nextcloudClient() {
-        return org.springframework.web.reactive.function.client.WebClient.builder()
+    public WebClient nextcloudClient() {
+        return WebClient.builder()
                 .baseUrl(infernoComicsConfig.getNextcloudUrl())
                 .defaultHeader(HttpHeaders.AUTHORIZATION, createAuthHeader())
                 .exchangeStrategies(ExchangeStrategies.builder()
@@ -65,5 +66,14 @@ public class WebClient {
                 infernoComicsConfig.getNextcloudPassword();
         String encodedCredentials = Base64.getEncoder().encodeToString(credentials.getBytes());
         return "Basic " + encodedCredentials;
+    }
+
+    public WebClient searxngClient() {
+        return WebClient.builder()
+                .baseUrl(infernoComicsConfig.getSearxngHost())
+                .codecs(configurer ->
+                        configurer.defaultCodecs().maxInMemorySize(2 * 1024 * 1024) // 2MB
+                )
+                .build();
     }
 }

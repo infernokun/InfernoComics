@@ -192,6 +192,13 @@ public class SeriesController extends BaseController {
         }
     }
 
+    @GetMapping("/{id}/variants")
+    public ResponseEntity<ApiResponse<SeriesService.VariantsResponse>> getVariantsBySearch(@PathVariable Long id) {
+        Series series = seriesService.getSeriesById(id);
+
+       return createSuccessResponse(seriesService.getVariantsBySearch(series));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<Series>> createSeries(@Valid @RequestBody SeriesRequest request) {
         return createSuccessResponse(seriesService.createSeries(request));

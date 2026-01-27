@@ -381,7 +381,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
     if (item.series && item.series.name) {
       this.showOverlay = false;
-      this.router.navigate(['/series', generateSlug(item.series.name)]);
+      this.router.navigate(['/series', item.series.id, generateSlug(item.series.name)]);
     }
   }
 
