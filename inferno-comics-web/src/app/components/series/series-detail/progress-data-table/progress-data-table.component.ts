@@ -69,18 +69,18 @@ import { ConfirmationDialogData, ConfirmationDialogComponent } from '../../../co
                     <button class="action-btn replay-btn" 
                             (click)="replaySession(item)"
                             title="Replay">
-                      ▶️
+                            ▶️
                     </button>
                     <button class="action-btn add-btn" 
                             (click)="getSessionJSON(item.sessionId)"
                             title="Add Results">
-                      ➕
+                            ➕
                     </button>
                   }
                   <button class="action-btn delete-btn" 
                           (click)="deleteProgressData(item.sessionId)"
                           title="Delete">
-                    🗑️
+                          🗑️
                   </button>
                 </div>
               </div>
@@ -494,8 +494,8 @@ import { ConfirmationDialogData, ConfirmationDialogComponent } from '../../../co
         color: #333;
       }
 
-      .count-value.success { color: #28a745; }
-      .count-value.failed { color: #dc3545; }
+      .count-value.success { color: --success-color }
+      .count-value.failed { color: --error-color }
 
       /* Card Details */
       .card-details {

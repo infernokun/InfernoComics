@@ -303,7 +303,6 @@ mat-dialog-actions {
     }
 }
 
-// Theme-specific overrides
 .dark-theme {
     .prefill-notice {
         background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(37, 99, 235, 0.08));
@@ -432,7 +431,6 @@ mat-dialog-actions {
     }
 }
 
-// Nuclear option - force override all Material label styles
 ::ng-deep .comic-book-form-container {
     .mat-mdc-form-field .mat-mdc-floating-label,
     .mat-mdc-form-field .mdc-floating-label,
@@ -448,13 +446,11 @@ mat-dialog-actions {
         color: var(--primary-color) !important;
     }
 
-    // Fix checkbox text color
     .mat-mdc-checkbox .mdc-form-field label,
     .mat-mdc-checkbox .mdc-form-field {
         color: white !important;
     }
 
-    // Fix date picker icons
     .mat-datepicker-toggle,
     .mat-datepicker-toggle-default-icon,
     .mat-icon {
@@ -467,7 +463,6 @@ mat-dialog-actions {
         color: var(--primary-color) !important;
     }
 
-    // Ensure auto-fill icons are visible
     .auto-fill-icon {
         color: #4caf50 !important;
     }
@@ -480,7 +475,6 @@ mat-dialog-actions {
         color: #4caf50 !important;
     }
 
-    // Ensure prefill notice icons are visible
     .prefill-notice mat-icon {
         color: var(--primary-color) !important;
     }

@@ -727,28 +727,3 @@
     }
   }
 }
-
-// Dark mode adjustments
-:host-context(.dark-theme) {
-  .stat-card {
-    &.total .stat-icon {
-      background: rgba(244, 67, 54, 0.15);
-    }
-
-    &.series .stat-icon {
-      background: rgba(33, 150, 243, 0.15);
-    }
-
-    &.oldest .stat-icon {
-      background: rgba(255, 152, 0, 0.15);
-    }
-
-    &.recent .stat-icon {
-      background: rgba(76, 175, 80, 0.15);
-    }
-  }
-
-  .series-card .series-header .missing-badge {
-    background: rgba(244, 67, 54, 0.15);
-  }
-}

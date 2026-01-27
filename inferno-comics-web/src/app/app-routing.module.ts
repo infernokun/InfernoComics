@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { MissingIssuesComponent } from './components/missing-issues/missing-issues.component';
+import { IssuesMissingComponent } from './components/issues/issues-missing/issues-missing.component';
 import { AdminComponent } from './components/admin/admin.component';
 import { IssuesListComponent } from './components/issues/issues-list/issues-list.component';
 import { SeriesAdminComponent } from './components/series/series-admin/series-admin.component';
@@ -15,7 +15,7 @@ const routes: Routes = [
   { path: 'admin', component: AdminComponent },
   { path: 'config', redirectTo: '/admin', pathMatch: 'full' },
   { path: 'series', component: SeriesListComponent },
-  { path: 'missing', component: MissingIssuesComponent },
+  { path: 'missing', component: IssuesMissingComponent },
   { path: 'issues', component: IssuesListComponent },
   { path: 'series/new', component: SeriesFormComponent },
   { path: 'series/:id/:slug', component: SeriesDetailComponent },

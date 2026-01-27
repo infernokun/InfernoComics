@@ -1,14 +1,14 @@
 import { Component, OnInit, ChangeDetectionStrategy, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
-import { SeriesService } from '../../services/series.service';
+import { SeriesService } from '../../../services/series.service';
 import { finalize } from 'rxjs/operators';
-import { ApiResponse } from '../../models/api-response.model';
+import { ApiResponse } from '../../../models/api-response.model';
 import { CommonModule } from '@angular/common';
-import { MaterialModule } from '../../material.module';
+import { MaterialModule } from '../../../material.module';
 import { FormsModule } from '@angular/forms';
-import { Series } from '../../models/series.model';
-import { MissingIssue } from '../../models/missing-issue.model';
-import { DateUtils } from '../../utils/date-utils';
+import { Series } from '../../../models/series.model';
+import { MissingIssue } from '../../../models/missing-issue.model';
+import { DateUtils } from '../../../utils/date-utils';
 
 interface SeriesGroup {
   key: string;
@@ -17,13 +17,13 @@ interface SeriesGroup {
 }
 
 @Component({
-  selector: 'app-missing-issues',
-  templateUrl: './missing-issues.component.html',
-  styleUrls: ['./missing-issues.component.scss'],
+  selector: 'app-issues-missing',
+  templateUrl: './issues-missing.component.html',
+  styleUrls: ['./issues-missing.component.scss'],
   imports: [CommonModule, MaterialModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MissingIssuesComponent implements OnInit {
+export class IssuesMissingComponent implements OnInit {
   DateUtils = DateUtils;
 
   // Signals

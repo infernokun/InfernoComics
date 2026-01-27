@@ -551,19 +551,16 @@
 .series-container {
   transition: opacity var(--transition-normal);
 
-  // GRID VIEW
   &.grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 20px;
 
-    // TABLET: 2-3 columns
     @include lg {
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: var(--spacing-lg);
     }
 
-    // Mobile: 2 columns with better spacing
     @include md {
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
@@ -574,7 +571,6 @@
       gap: var(--spacing-sm);
     }
 
-    // Very small screens: single column
     @include xs {
       grid-template-columns: 1fr;
       gap: 10px;
@@ -1245,11 +1241,4 @@
 .paginator .mat-paginator-range-label {
   font-weight: var(--font-weight-medium);
   margin: 0 10px;
-}
-
-@media (max-width: 599px) {
-  .paginator .mat-paginator-navigation-first,
-  .paginator .mat-paginator-navigation-last {
-    display: none;
-  }
 }

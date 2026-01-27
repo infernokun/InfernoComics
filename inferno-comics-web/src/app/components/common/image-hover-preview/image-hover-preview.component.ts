@@ -20,6 +20,7 @@ import { Component, Input, ChangeDetectionStrategy, HostListener } from '@angula
         position: relative;
         display: inline-block;
       }
+
       .preview-container {
         position: absolute;
         top: 0;
@@ -33,27 +34,31 @@ import { Component, Input, ChangeDetectionStrategy, HostListener } from '@angula
         display: flex;
         gap: 8px;
       }
+
       .preview-img,
       .match-img {
         max-width: 300px;
         max-height: 300px;
       }
-      /* Position overrides */
+
       .preview-wrapper.right .preview-container {
         top: 0;
         left: 100%;
         transform: translateX(10px);
       }
+
       .preview-wrapper.left .preview-container {
         top: 0;
         right: 100%;
         transform: translateX(-10px);
       }
+
       .preview-wrapper.top .preview-container {
         bottom: 100%;
         left: 50%;
         transform: translate(-50%, -10px);
       }
+      
       .preview-wrapper.bottom .preview-container {
         top: 100%;
         left: 50%;

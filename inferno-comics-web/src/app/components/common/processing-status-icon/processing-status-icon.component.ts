@@ -8,6 +8,7 @@ import { ApiResponse } from '../../../models/api-response.model';
 import { ProgressDataService } from '../../../services/progress-data.service';
 import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
 import { Router } from '@angular/router';
+import { DateUtils } from '../../../utils/date-utils';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -328,11 +329,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     }
 
     if (item.timeStarted) {
-      info.push(`Started: ${this.formatDateTime(item.timeStarted)}`);
+      info.push(`Started: ${DateUtils.formatDateTime(item.timeStarted)}`);
     }
 
     if (item.timeFinished) {
-      info.push(`Finished: ${this.formatDateTime(item.timeFinished)}`);
+      info.push(`Finished: ${DateUtils.formatDateTime(item.timeFinished)}`);
     }
 
     return info.join(' • ');
@@ -354,18 +355,6 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   getSeriesInfo(item: ProgressData): string {
     if (!item.series) return 'Unknown Series';
     return `${item.series.name} (ID: ${item.series.id})`;
-  }
-
-  private formatDateTime(date: Date): string {
-    return date.toLocaleString('en-US', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
   }
 
   toggleOverlay(event: Event) {

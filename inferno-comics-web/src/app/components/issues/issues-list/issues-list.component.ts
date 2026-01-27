@@ -1,14 +1,15 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, finalize } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { Issue } from '../../../models/issue.model';
-import { SeriesWithIssues } from '../../../models/series.model';
+import { generateSlug, Series, SeriesWithIssues } from '../../../models/series.model';
 import { RecognitionService } from '../../../services/recognition.service';
 import { SeriesService } from '../../../services/series.service';
+import { DateUtils } from '../../../utils/date-utils';
 
 interface SeriesDisplayState {
   seriesId: number;
@@ -23,12 +24,16 @@ interface SeriesDisplayState {
 })
 export class IssuesListComponent implements OnInit, OnDestroy {
   loading = true;
-  seriesWithIssues: SeriesWithIssues[] = [];
   uploadedPhotos = false;
+
+  seriesWithIssues: SeriesWithIssues[] = [];
+  seriesWithoutIssues: SeriesWithIssues[] = [];
+
+  latestIssue: Issue | undefined = undefined;
   
-  readonly DEFAULT_ISSUE_LIMIT = 12;
   private seriesDisplayStates = new Map<number, boolean>(); // Track which series are expanded
   
+  private readonly DEFAULT_ISSUE_LIMIT = 9;
   private readonly destroy$ = new Subject<void>();
   private readonly placeholderImage = 'assets/placeholder-comic.jpg';
   private readonly imageCache = new Map<string, string>();
@@ -39,11 +44,15 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     DEFAULT_LIMIT: 'comicApp_defaultIssueLimit'
   };
 
+  formatDateTime = DateUtils.formatDateTime;
+  parseDateTimeArray = DateUtils.parseDateTimeArray;
+
   constructor(
-    private readonly seriesService: SeriesService,
-    private readonly recognitionService: RecognitionService,
+    private readonly router: Router,
     private readonly snackBar: MatSnackBar,
-    private readonly cdr: ChangeDetectorRef
+    private readonly cdr: ChangeDetectorRef,
+    private readonly seriesService: SeriesService,
+    private readonly recognitionService: RecognitionService
   ) {}
 
   ngOnInit(): void {
@@ -68,7 +77,32 @@ export class IssuesListComponent implements OnInit, OnDestroy {
         next: (res: ApiResponse<SeriesWithIssues[]>) => {
           if (!res.data) throw new Error('Failed to load series with issues: no data returned');
 
-          this.seriesWithIssues = res.data;
+        this.seriesWithIssues = res.data
+          .map((s: SeriesWithIssues) => {
+            const series = new Series(s.series);
+            const issues = s.issues.map((i: Issue) => new Issue(i));
+            return {
+              series,
+              issues
+            };
+          })
+          .filter((s: SeriesWithIssues) => s.issues.length > 0);
+
+          this.seriesWithoutIssues = res.data.filter((s: SeriesWithIssues) => s.issues.length === 0);
+
+          this.latestIssue = this.seriesWithIssues
+            .flatMap(series => series.issues.map(issue => {
+              issue.series = series.series;
+              return issue;
+            }))
+            .reduce((latestIssue: Issue | undefined, issue: Issue) => {
+              if (!issue.createdAt) return latestIssue;
+
+              if (!latestIssue || issue.createdAt > latestIssue.createdAt!) {
+                return issue;
+              }
+              return latestIssue;
+            }, undefined);
         },
         error: (err: Error) => {
           console.error('Error loading series with issues:', err);
@@ -149,8 +183,7 @@ export class IssuesListComponent implements OnInit, OnDestroy {
       return [];
     }
     
-    const showAll = this.isSeriesExpanded(series.series.id!);
-    return showAll ? series.issues : series.issues.slice(0, this.DEFAULT_ISSUE_LIMIT);
+    return this.isSeriesExpanded(series.series.id!) ? series.issues : series.issues.slice(0, this.DEFAULT_ISSUE_LIMIT);
   }
   
   isSeriesExpanded(seriesId: number): boolean {
@@ -225,5 +258,14 @@ export class IssuesListComponent implements OnInit, OnDestroy {
   refresh(): void {
     this.imageCache.clear();
     this.loadSeriesWithIssues();
+  }
+  
+  navigateToSeries(series: SeriesWithIssues, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
+    this.router.navigate(['/series', series.series.id, generateSlug(series.series.name)]);
   }
 }

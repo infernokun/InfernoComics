@@ -638,7 +638,6 @@
   }
 }
 
-// Mobile: Much larger images for better visibility
 @media (max-width: 900px) {
 
   .col-image,
@@ -658,7 +657,7 @@
 
       img {
         width: auto;
-        height: 160px; // Much larger on mobile
+        height: 160px;
         max-width: 100%;
       }
 

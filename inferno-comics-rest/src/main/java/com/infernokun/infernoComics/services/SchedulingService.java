@@ -17,7 +17,7 @@ public class SchedulingService {
     private final NextcloudSyncService nextcloudSyncService;
 
     /**
-     * Runs daily at 2:00 AM (0 0 2 * * *)
+     * Runs daily at 2:00 AM
      * Processes all series for synchronization with Nextcloud
      */
     @Scheduled(cron = "0 0 2 * * *")
@@ -27,7 +27,7 @@ public class SchedulingService {
     }
 
     /**
-     * Runs every Wednesday at 12:00 PM (0 0 12 ? * WED)
+     * Runs every Wednesday at 12:00 PM
      * Re-verifies metadata for all series
      */
     @Scheduled(cron = "0 0 12 ? * WED")
@@ -37,7 +37,7 @@ public class SchedulingService {
     }
 
     /**
-     * Runs daily at 6:00 AM (0 0 6 * * *)
+     * Runs daily at 6:00 AM
      * Automates which issues are missing
      */
     @Scheduled(cron = "0 0 6 * * *")

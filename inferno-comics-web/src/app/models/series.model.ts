@@ -36,26 +36,16 @@ export function generateSlug(name: string | undefined): string {
 
   let slug = name.trim().toLowerCase();
 
-  // Normalize unicode characters
   slug = slug.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  // Replace spaces and underscores with hyphens
   slug = slug.replace(/[\s_]+/g, '-');
-
-  // Remove invalid characters (keep only lowercase letters, numbers, and hyphens)
   slug = slug.replace(/[^a-z0-9-]/g, '');
-
-  // Collapse multiple hyphens into one
   slug = slug.replace(/-+/g, '-');
-
-  // Remove leading/trailing hyphens
   slug = slug.replace(/^-+|-+$/g, '');
 
   if (!slug) {
     return 'unknown';
   }
 
-  // Limit length to 100 characters
   if (slug.length > 100) {
     slug = slug.substring(0, 100).replace(/-+$/, '');
   }

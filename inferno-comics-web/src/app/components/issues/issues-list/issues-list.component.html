@@ -6,6 +6,24 @@
   }
 
   @if (!loading) {
+    @if (latestIssue && latestIssue.series) {
+      <div class="stats-container">
+        <div class="stats-grid">
+          <div class="stat-card" [@slideInUp]>
+            <div class="stat-icon">
+              <mat-icon>library_books</mat-icon>
+            </div>
+            <div class="stat-content">
+              <span class="stat-series">{{latestIssue.series.name}} </span>
+              <span class="stat-issue">{{latestIssue.title ? latestIssue.title : '#' + latestIssue.issueNumber}}</span>
+              <div class="stat-date">{{ formatDateTime(latestIssue.createdAt) }}</div>
+              <div class="stat-label">Latest Issue</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
     <div class="controls-section">
       <div class="control-group">
         <button
@@ -34,6 +52,7 @@
         Show Uploaded Photos
       </mat-slide-toggle>
     </div>
+    
     @if (seriesWithIssues.length === 0) {
       <div class="empty-state" role="status">
         <mat-icon class="empty-icon">library_books</mat-icon>
@@ -41,6 +60,16 @@
         <p>There are currently no comic series available.</p>
       </div>
     }
+
+    @if (seriesWithoutIssues.length > 0) {
+      <span>No Issues Available For: </span>
+      @for (seriesItem of seriesWithoutIssues; track trackBySeriesId($index, seriesItem)) {
+        <button mat-stroked-button class="no-issues-btn" (click)="navigateToSeries(seriesItem, $event)">
+          {{ seriesItem.series.name }}
+        </button>
+      }
+    }
+
     @for (seriesItem of seriesWithIssues; track trackBySeriesId($index, seriesItem)) {
       <div
         class="series-block"

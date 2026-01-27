@@ -140,7 +140,8 @@
   position: relative;
   flex-shrink: 0;
 
-  .uploaded-image, .main-image {
+  .uploaded-image,
+  .main-image {
     width: 140px;
     height: 186px;
     object-fit: contain;
@@ -1003,7 +1004,8 @@
     flex-direction: column;
     gap: --spacing-sm;
 
-    .actions-left, .actions-right {
+    .actions-left,
+    .actions-right {
       width: 100%;
       justify-content: center;
     }
