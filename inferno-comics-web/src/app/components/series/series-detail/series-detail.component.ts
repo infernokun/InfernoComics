@@ -83,7 +83,7 @@ export class SeriesDetailComponent implements OnInit {
 
       this.loadSeries(id);
       this.loadIssues(id);
-      this.loadSeriesVariants(id);
+      //this.loadSeriesVariants(id);
 
       if (slug && this.series?.name) {
         const expectedSlug = generateSlug(this.series.name);
