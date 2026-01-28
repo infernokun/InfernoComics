@@ -1598,36 +1598,6 @@
       @include line-clamp(2);
     }
 
-    .price-info {
-      display: flex;
-      gap: var(--spacing-lg);
-      padding: var(--spacing-sm) 0;
-      border-top: 1px solid var(--border-color);
-      margin-top: auto;
-
-      .price-item {
-        @include flex-column;
-        gap: 2px;
-
-        .price-label {
-          font-size: 0.7rem;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .price-value {
-          font-size: 0.95rem;
-          font-weight: var(--font-weight-bold);
-          color: var(--text-primary);
-
-          &.highlight {
-            color: #10b981;
-          }
-        }
-      }
-    }
-
     .card-actions {
       display: flex;
       gap: var(--spacing-xs);

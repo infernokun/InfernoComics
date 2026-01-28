@@ -1,5 +1,6 @@
 import { Component, OnInit, ChangeDetectionStrategy, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { SeriesService } from '../../../services/series.service';
 import { finalize } from 'rxjs/operators';
 import { ApiResponse } from '../../../models/api-response.model';
@@ -21,7 +22,19 @@ interface SeriesGroup {
   templateUrl: './issues-missing.component.html',
   styleUrls: ['./issues-missing.component.scss'],
   imports: [CommonModule, MaterialModule, FormsModule],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  animations: [
+    trigger('expandCollapse', [
+      transition(':enter', [
+        style({ height: '0', opacity: 0, overflow: 'hidden' }),
+        animate('0.3s ease-out', style({ height: '*', opacity: 1 }))
+      ]),
+      transition(':leave', [
+        style({ height: '*', opacity: 1, overflow: 'hidden' }),
+        animate('0.25s ease-in', style({ height: '0', opacity: 0 }))
+      ])
+    ])
+  ]
 })
 export class IssuesMissingComponent implements OnInit {
   DateUtils = DateUtils;
@@ -32,7 +45,8 @@ export class IssuesMissingComponent implements OnInit {
   readonly loading = signal(true);
   readonly filter = signal('');
   readonly viewMode = signal<'grid' | 'list'>('grid');
-  readonly expandedSeries = signal<Set<string>>(new Set());
+  readonly expandedSeries = signal<Set<string>>(new Set()); // Show more/less within a card
+  readonly collapsedSeries = signal<Set<string>>(new Set()); // Collapsed to header only
 
   // Sort option
   sortBy: 'series' | 'date' | 'count' = 'series';
@@ -222,6 +236,30 @@ export class IssuesMissingComponent implements OnInit {
       current.add(key);
     }
     this.expandedSeries.set(current);
+  }
+
+  // Collapse/Expand - controls whether card content is visible (header only vs full card)
+  isSeriesCollapsed(key: string): boolean {
+    return this.collapsedSeries().has(key);
+  }
+
+  toggleSeriesCollapsed(key: string): void {
+    const current = new Set(this.collapsedSeries());
+    if (current.has(key)) {
+      current.delete(key);
+    } else {
+      current.add(key);
+    }
+    this.collapsedSeries.set(current);
+  }
+
+  expandAllSeries(): void {
+    this.collapsedSeries.set(new Set());
+  }
+
+  collapseAllSeries(): void {
+    const allKeys = this.getSortedGroups().map(g => g.key);
+    this.collapsedSeries.set(new Set(allKeys));
   }
 
   onReload(): void {

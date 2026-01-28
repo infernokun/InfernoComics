@@ -3,6 +3,7 @@ import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, finalize } from 'rxjs';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { trigger, transition, style, animate } from '@angular/animations';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { Issue } from '../../../models/issue.model';
@@ -11,16 +12,29 @@ import { RecognitionService } from '../../../services/recognition.service';
 import { SeriesService } from '../../../services/series.service';
 import { DateUtils } from '../../../utils/date-utils';
 
-interface SeriesDisplayState {
-  seriesId: number;
-  showAll: boolean;
-}
-
 @Component({
   selector: 'app-issues-list',
   templateUrl: './issues-list.component.html',
   styleUrls: ['./issues-list.component.scss'],
-  imports: [MaterialModule, FormsModule, RouterModule]
+  imports: [MaterialModule, FormsModule, RouterModule],
+  animations: [
+    trigger('slideInUp', [
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(20px)' }),
+        animate('0.4s ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
+      ])
+    ]),
+    trigger('expandCollapse', [
+      transition(':enter', [
+        style({ height: '0', opacity: 0, overflow: 'hidden' }),
+        animate('0.3s ease-out', style({ height: '*', opacity: 1 }))
+      ]),
+      transition(':leave', [
+        style({ height: '*', opacity: 1, overflow: 'hidden' }),
+        animate('0.25s ease-in', style({ height: '0', opacity: 0 }))
+      ])
+    ])
+  ]
 })
 export class IssuesListComponent implements OnInit, OnDestroy {
   loading = true;
@@ -30,8 +44,12 @@ export class IssuesListComponent implements OnInit, OnDestroy {
   seriesWithoutIssues: SeriesWithIssues[] = [];
 
   latestIssue: Issue | undefined = undefined;
+  recentIssues: Issue[] = [];
+
+  private readonly RECENT_ISSUES_LIMIT = 5;
   
-  private seriesDisplayStates = new Map<number, boolean>(); // Track which series are expanded
+  private seriesShowAllStates = new Map<number, boolean>(); // Track show more/less per series
+  private seriesCollapsedStates = new Map<number, boolean>(); // Track collapsed/expanded per series
   
   private readonly DEFAULT_ISSUE_LIMIT = 9;
   private readonly destroy$ = new Subject<void>();
@@ -40,8 +58,8 @@ export class IssuesListComponent implements OnInit, OnDestroy {
   
   private readonly STORAGE_KEYS = {
     UPLOADED_PHOTOS: 'comicApp_uploadedPhotosToggle',
-    SERIES_DISPLAY_STATES: 'comicApp_seriesDisplayStates',
-    DEFAULT_LIMIT: 'comicApp_defaultIssueLimit'
+    SERIES_SHOW_ALL_STATES: 'comicApp_seriesShowAllStates',
+    SERIES_COLLAPSED_STATES: 'comicApp_seriesCollapsedStates'
   };
 
   formatDateTime = DateUtils.formatDateTime;
@@ -90,19 +108,23 @@ export class IssuesListComponent implements OnInit, OnDestroy {
 
           this.seriesWithoutIssues = res.data.filter((s: SeriesWithIssues) => s.issues.length === 0);
 
-          this.latestIssue = this.seriesWithIssues
+          const allIssues = this.seriesWithIssues
             .flatMap(series => series.issues.map(issue => {
               issue.series = series.series;
               return issue;
-            }))
-            .reduce((latestIssue: Issue | undefined, issue: Issue) => {
-              if (!issue.createdAt) return latestIssue;
+            }));
 
-              if (!latestIssue || issue.createdAt > latestIssue.createdAt!) {
-                return issue;
-              }
-              return latestIssue;
-            }, undefined);
+          // Sort by createdAt descending and get recent issues
+          const sortedIssues = [...allIssues]
+            .filter(issue => issue.createdAt)
+            .sort((a, b) => {
+              const dateA = new Date(a.createdAt!).getTime();
+              const dateB = new Date(b.createdAt!).getTime();
+              return dateB - dateA;
+            });
+
+          this.latestIssue = sortedIssues[0];
+          this.recentIssues = sortedIssues.slice(1, this.RECENT_ISSUES_LIMIT + 1);
         },
         error: (err: Error) => {
           console.error('Error loading series with issues:', err);
@@ -116,17 +138,30 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     if (savedPhotosPreference !== null) {
       this.uploadedPhotos = savedPhotosPreference === 'true';
     }
-    
-    // Load series display states (which series are expanded)
-    const savedDisplayStates = localStorage.getItem(this.STORAGE_KEYS.SERIES_DISPLAY_STATES);
-    if (savedDisplayStates) {
+
+    // Load show all states (which series show all issues vs limited)
+    const savedShowAllStates = localStorage.getItem(this.STORAGE_KEYS.SERIES_SHOW_ALL_STATES);
+    if (savedShowAllStates) {
       try {
-        const states: SeriesDisplayState[] = JSON.parse(savedDisplayStates);
+        const states: Array<{ seriesId: number; showAll: boolean }> = JSON.parse(savedShowAllStates);
         states.forEach(state => {
-          this.seriesDisplayStates.set(state.seriesId, state.showAll);
+          this.seriesShowAllStates.set(state.seriesId, state.showAll);
         });
       } catch (error) {
-        console.error('Error parsing series display states:', error);
+        console.error('Error parsing series show all states:', error);
+      }
+    }
+
+    // Load collapsed states (which series are collapsed to title only)
+    const savedCollapsedStates = localStorage.getItem(this.STORAGE_KEYS.SERIES_COLLAPSED_STATES);
+    if (savedCollapsedStates) {
+      try {
+        const states: Array<{ seriesId: number; collapsed: boolean }> = JSON.parse(savedCollapsedStates);
+        states.forEach(state => {
+          this.seriesCollapsedStates.set(state.seriesId, state.collapsed);
+        });
+      } catch (error) {
+        console.error('Error parsing series collapsed states:', error);
       }
     }
   }
@@ -134,11 +169,17 @@ export class IssuesListComponent implements OnInit, OnDestroy {
   private saveTogglePreference(): void {
     localStorage.setItem(this.STORAGE_KEYS.UPLOADED_PHOTOS, String(this.uploadedPhotos));
   }
-  
-  private saveSeriesDisplayStates(): void {
-    const states: SeriesDisplayState[] = Array.from(this.seriesDisplayStates.entries())
+
+  private saveShowAllStates(): void {
+    const states = Array.from(this.seriesShowAllStates.entries())
       .map(([seriesId, showAll]) => ({ seriesId, showAll }));
-    localStorage.setItem(this.STORAGE_KEYS.SERIES_DISPLAY_STATES, JSON.stringify(states));
+    localStorage.setItem(this.STORAGE_KEYS.SERIES_SHOW_ALL_STATES, JSON.stringify(states));
+  }
+
+  private saveCollapsedStates(): void {
+    const states = Array.from(this.seriesCollapsedStates.entries())
+      .map(([seriesId, collapsed]) => ({ seriesId, collapsed }));
+    localStorage.setItem(this.STORAGE_KEYS.SERIES_COLLAPSED_STATES, JSON.stringify(states));
   }
 
   trackBySeriesId(_index: number, item: SeriesWithIssues): number {
@@ -182,43 +223,60 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     if (!series.issues || series.issues.length === 0) {
       return [];
     }
-    
-    return this.isSeriesExpanded(series.series.id!) ? series.issues : series.issues.slice(0, this.DEFAULT_ISSUE_LIMIT);
+
+    return this.isShowingAllIssues(series.series.id!) ? series.issues : series.issues.slice(0, this.DEFAULT_ISSUE_LIMIT);
   }
-  
-  isSeriesExpanded(seriesId: number): boolean {
-    return this.seriesDisplayStates.get(seriesId) ?? false;
+
+  // Show More/Less - controls how many issues are displayed
+  isShowingAllIssues(seriesId: number): boolean {
+    return this.seriesShowAllStates.get(seriesId) ?? false;
   }
-  
+
   hasMoreIssues(series: SeriesWithIssues): boolean {
     return (series.issues?.length || 0) > this.DEFAULT_ISSUE_LIMIT;
   }
-  
+
   getHiddenIssuesCount(series: SeriesWithIssues): number {
     const total = series.issues?.length || 0;
     return Math.max(0, total - this.DEFAULT_ISSUE_LIMIT);
   }
-  
-  toggleSeriesExpansion(seriesId: number): void {
-    const currentState = this.seriesDisplayStates.get(seriesId) ?? false;
-    this.seriesDisplayStates.set(seriesId, !currentState);
-    this.saveSeriesDisplayStates();
+
+  toggleShowMore(seriesId: number): void {
+    const currentState = this.seriesShowAllStates.get(seriesId) ?? false;
+    this.seriesShowAllStates.set(seriesId, !currentState);
+    this.saveShowAllStates();
     this.cdr.markForCheck();
   }
-  
+
+  // Expand/Collapse - controls whether content is visible (title only vs full card)
+  isSeriesCollapsed(seriesId: number): boolean {
+    return this.seriesCollapsedStates.get(seriesId) ?? false;
+  }
+
+  toggleSeriesCollapsed(seriesId: number): void {
+    const currentState = this.seriesCollapsedStates.get(seriesId) ?? false;
+    this.seriesCollapsedStates.set(seriesId, !currentState);
+    this.saveCollapsedStates();
+    this.cdr.markForCheck();
+  }
+
   expandAllSeries(): void {
     this.seriesWithIssues.forEach(series => {
-      if (series.series.id && this.hasMoreIssues(series)) {
-        this.seriesDisplayStates.set(series.series.id, true);
+      if (series.series.id) {
+        this.seriesCollapsedStates.set(series.series.id, false);
       }
     });
-    this.saveSeriesDisplayStates();
+    this.saveCollapsedStates();
     this.cdr.markForCheck();
   }
-  
+
   collapseAllSeries(): void {
-    this.seriesDisplayStates.clear();
-    this.saveSeriesDisplayStates();
+    this.seriesWithIssues.forEach(series => {
+      if (series.series.id) {
+        this.seriesCollapsedStates.set(series.series.id, true);
+      }
+    });
+    this.saveCollapsedStates();
     this.cdr.markForCheck();
   }
 
@@ -226,10 +284,56 @@ export class IssuesListComponent implements OnInit, OnDestroy {
     return series.issues?.length > 0;
   }
 
-  private getTotalIssuesCount(): number {
-    return this.seriesWithIssues.reduce((total, series) => 
+  getTotalIssues(): number {
+    return this.seriesWithIssues.reduce((total, series) =>
       total + (series.issues?.length || 0), 0
     );
+  }
+
+  getAverageIssuesPerSeries(): string {
+    if (this.seriesWithIssues.length === 0) return '0';
+    const avg = this.getTotalIssues() / this.seriesWithIssues.length;
+    return avg.toFixed(1);
+  }
+
+  getRecentIssuesCount(): number {
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    return this.seriesWithIssues
+      .flatMap(series => series.issues)
+      .filter(issue => {
+        if (!issue.createdAt) return false;
+        const createdDate = new Date(issue.createdAt);
+        return createdDate >= oneWeekAgo;
+      }).length;
+  }
+
+  getRelativeTime(date: Date | string | number[] | undefined): string {
+    if (!date) return '';
+
+    let parsedDate: Date;
+    if (Array.isArray(date)) {
+      parsedDate = this.parseDateTimeArray(date);
+    } else if (date instanceof Date) {
+      parsedDate = date;
+    } else {
+      parsedDate = new Date(date);
+    }
+
+    if (isNaN(parsedDate.getTime())) return '';
+
+    const now = new Date();
+    const diffMs = now.getTime() - parsedDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return this.formatDateTime(parsedDate);
   }
 
   private showError(message: string): void {

@@ -79,6 +79,19 @@
       </div>
 
       <div class="view-controls">
+        @if (viewMode() === 'grid') {
+          <div class="expand-collapse-controls">
+            <button mat-stroked-button (click)="expandAllSeries()" class="control-button">
+              <mat-icon>unfold_more</mat-icon>
+              Expand All
+            </button>
+            <button mat-stroked-button (click)="collapseAllSeries()" class="control-button">
+              <mat-icon>unfold_less</mat-icon>
+              Collapse All
+            </button>
+          </div>
+        }
+
         <div class="view-toggle">
           <button mat-icon-button
             [class.active]="viewMode() === 'grid'"
@@ -127,8 +140,11 @@
     @if (filteredIssues().length > 0 && viewMode() === 'grid') {
       <div class="series-grid">
         @for (group of getSortedGroups(); track group.key) {
-          <div class="series-card">
-            <div class="series-header">
+          <div class="series-card" [class.collapsed]="isSeriesCollapsed(group.key)">
+            <div class="series-header" (click)="toggleSeriesCollapsed(group.key)">
+              <mat-icon class="collapse-icon">
+                {{ isSeriesCollapsed(group.key) ? 'chevron_right' : 'expand_more' }}
+              </mat-icon>
               <div class="series-info">
                 <h3 class="series-name">{{ group.series?.name || group.key }}</h3>
                 <span class="series-meta">
@@ -146,51 +162,55 @@
               </div>
             </div>
 
-            <div class="issues-list">
-              @for (issue of group.issues; track issue.id; let i = $index) {
-                @if (i < 5 || expandedSeries().has(group.key)) {
-                  <div class="issue-row">
-                    <div class="issue-cover">
-                      @if (issue.imageUrl) {
-                        <img [src]="issue.imageUrl" [alt]="'Issue #' + issue.issueNumber" />
-                      } @else {
-                        <div class="no-cover">
-                          <mat-icon>image</mat-icon>
-                        </div>
-                      }
+            @if (!isSeriesCollapsed(group.key)) {
+              <div class="card-content" [@expandCollapse]>
+              <div class="issues-list">
+                @for (issue of group.issues; track issue.id; let i = $index) {
+                  @if (i < 5 || expandedSeries().has(group.key)) {
+                    <div class="issue-row">
+                      <div class="issue-cover">
+                        @if (issue.imageUrl) {
+                          <img [src]="issue.imageUrl" [alt]="'Issue #' + issue.issueNumber" />
+                        } @else {
+                          <div class="no-cover">
+                            <mat-icon>image</mat-icon>
+                          </div>
+                        }
+                      </div>
+                      <div class="issue-details">
+                        <span class="issue-number">#{{ issue.issueNumber }}</span>
+                        @if (issue.expectedIssueName) {
+                          <span class="issue-name">{{ issue.expectedIssueName }}</span>
+                        }
+                        @if (issue.expectedCoverDate) {
+                          <span class="issue-date">{{ DateUtils.formatDate(issue.expectedCoverDate) }}</span>
+                        }
+                      </div>
                     </div>
-                    <div class="issue-details">
-                      <span class="issue-number">#{{ issue.issueNumber }}</span>
-                      @if (issue.expectedIssueName) {
-                        <span class="issue-name">{{ issue.expectedIssueName }}</span>
-                      }
-                      @if (issue.expectedCoverDate) {
-                        <span class="issue-date">{{ DateUtils.formatDate(issue.expectedCoverDate) }}</span>
-                      }
-                    </div>
-                  </div>
-                }
-              }
-
-              @if (group.issues.length > 5) {
-                <button class="show-more-btn" (click)="toggleSeriesExpanded(group.key)">
-                  @if (expandedSeries().has(group.key)) {
-                    <mat-icon>expand_less</mat-icon>
-                    Show Less
-                  } @else {
-                    <mat-icon>expand_more</mat-icon>
-                    Show {{ group.issues.length - 5 }} More
                   }
-                </button>
-              }
-            </div>
+                }
 
-            <div class="series-actions">
-              <button mat-button class="view-series-btn" (click)="navigateToSeries(group.series)">
-                <mat-icon>visibility</mat-icon>
-                View Series
-              </button>
-            </div>
+                @if (group.issues.length > 5) {
+                  <button class="show-more-btn" (click)="toggleSeriesExpanded(group.key); $event.stopPropagation()">
+                    @if (expandedSeries().has(group.key)) {
+                      <mat-icon>expand_less</mat-icon>
+                      Show Less
+                    } @else {
+                      <mat-icon>expand_more</mat-icon>
+                      Show {{ group.issues.length - 5 }} More
+                    }
+                  </button>
+                }
+              </div>
+
+              <div class="series-actions">
+                <button mat-button class="view-series-btn" (click)="navigateToSeries(group.series); $event.stopPropagation()">
+                  <mat-icon>visibility</mat-icon>
+                  View Series
+                </button>
+              </div>
+              </div>
+            }
           </div>
         }
       </div>

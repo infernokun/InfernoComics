@@ -232,6 +232,32 @@
 
     @include md {
       justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+    .expand-collapse-controls {
+      display: flex;
+      gap: var(--spacing-sm);
+
+      .control-button {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        font-size: 0.8125rem;
+        font-weight: 500;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+
+      @include md {
+        width: 100%;
+        justify-content: center;
+        order: 3;
+      }
     }
 
     .view-toggle {
@@ -343,6 +369,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
   gap: var(--spacing-lg);
+  align-items: start;
 
   @include md {
     grid-template-columns: 1fr;
@@ -354,17 +381,55 @@
     border-radius: var(--radius-md);
     border: 1px solid var(--border-color);
     overflow: hidden;
+    transition: box-shadow var(--transition-normal);
+
+    &:hover {
+      box-shadow: var(--shadow-md);
+    }
+
+    // Collapsed state
+    &.collapsed {
+      .series-header {
+        border-bottom: none;
+      }
+    }
 
     .series-header {
       display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
+      align-items: center;
+      gap: var(--spacing-sm);
       padding: var(--spacing-lg);
       background: var(--background-color);
       border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      user-select: none;
+      transition: background var(--transition-fast);
+
+      &:hover {
+        background: var(--background-secondary);
+
+        .collapse-icon {
+          color: var(--primary-color);
+        }
+      }
 
       @include md {
         padding: var(--spacing-md);
+      }
+
+      .collapse-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+        color: var(--text-secondary);
+        flex-shrink: 0;
+        transition: color var(--transition-normal), transform var(--transition-normal);
+
+        @include md {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
       }
 
       .series-info {
@@ -423,6 +488,11 @@
           letter-spacing: 0.5px;
         }
       }
+    }
+
+    // When collapsed, rotate the icon
+    &.collapsed .collapse-icon {
+      transform: rotate(-90deg);
     }
 
     .issues-list {

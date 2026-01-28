@@ -216,18 +216,6 @@
                         <p class="issue-title">{{ comic.title }}</p>
                       }
 
-                      <!-- Price Info -->
-                      <div class="price-info">
-                        <div class="price-item">
-                          <span class="price-label">Paid</span>
-                          <span class="price-value">${{ comic.purchasePrice || 0 }}</span>
-                        </div>
-                        <div class="price-item">
-                          <span class="price-label">Value</span>
-                          <span class="price-value highlight">${{ comic.currentValue || 0 }}</span>
-                        </div>
-                      </div>
-
                       <!-- Action Buttons -->
                       <div class="card-actions">
                         <button mat-button class="action-btn view" (click)="viewIssue(comic.id!)">

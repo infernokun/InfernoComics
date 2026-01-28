@@ -17,6 +17,31 @@
   }
 }
 
+.loading-container {
+  @include flex-center;
+  min-height: calc(100vh - 120px);
+
+  .loading-content {
+    @include flex-center;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    text-align: center;
+
+    h3 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+  }
+}
+
 .stats-container {
   margin-bottom: var(--spacing-xl);
 
