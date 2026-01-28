@@ -1300,13 +1300,69 @@
   }
 }
 
-.loading-container {
-  @include flex-center;
-  @include flex-column;
-  height: 300px;
+.skeleton-loading {
+  ngx-skeleton-loader {
+    display: block;
+
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
+      margin-bottom: 0 !important;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        ) !important;
+      }
+    }
+  }
+
+  .series-image {
+    width: 180px;
+    height: 270px;
+
+    @include md {
+      width: 150px;
+      height: 225px;
+      margin: 0 auto;
+    }
+  }
+}
+
+.skeleton-issues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--spacing-md);
 
   @include md {
-    height: 250px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+  }
+
+  @include sm {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.skeleton-issue-card {
+  ngx-skeleton-loader {
+    display: block;
+
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
+      margin-bottom: 0 !important;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        ) !important;
+      }
+    }
   }
 }
 

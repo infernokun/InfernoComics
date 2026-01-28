@@ -9,6 +9,7 @@ import { MaterialModule } from '../../../material.module';
 import { FormsModule } from '@angular/forms';
 import { Series } from '../../../models/series.model';
 import { MissingIssue } from '../../../models/missing-issue.model';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 import { DateUtils } from '../../../utils/date-utils';
 
 interface SeriesGroup {
@@ -21,7 +22,7 @@ interface SeriesGroup {
   selector: 'app-issues-missing',
   templateUrl: './issues-missing.component.html',
   styleUrls: ['./issues-missing.component.scss'],
-  imports: [CommonModule, MaterialModule, FormsModule],
+  imports: [CommonModule, MaterialModule, FormsModule, NgxSkeletonLoaderModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
     trigger('expandCollapse', [

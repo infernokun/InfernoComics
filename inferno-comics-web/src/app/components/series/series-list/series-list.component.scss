@@ -1183,36 +1183,35 @@
   }
 }
 
-.loading-container {
-  @include flex-center;
-  @include flex-column;
-  height: 300px;
-  background: var(--surface-color);
-  border-radius: var(--radius-md);
-  border: 2px dashed var(--border-color);
+.skeleton-card {
+  pointer-events: none;
 
-  @include md {
-    height: 250px;
-  }
+  ngx-skeleton-loader {
+    display: block;
 
-  mat-spinner {
-    margin-bottom: 20px;
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
 
-    ::ng-deep circle {
-      stroke: var(--primary-color);
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.08),
+          transparent
+        ) !important;
+      }
     }
   }
 
-  p {
-    color: var(--text-secondary);
-    font-size: 1rem;
-    font-weight: var(--font-weight-medium);
+  .series-content {
+    padding: var(--spacing-sm);
+  }
 
-    @include md {
-      font-size: 0.9rem;
-    }
+  .series-card-actions {
+    padding: var(--spacing-sm);
   }
 }
+
 
 .paginator {
   @include flex-center;

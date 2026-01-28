@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 import { ImageProcessingDialogComponent } from './image-processing-progress/image-processing-progress.component';
 import {
   BulkComicSelectionComponent,
@@ -32,7 +33,7 @@ import { IssueFormComponent } from '../../issues/issue-form/issue-form.component
   selector: 'app-series-detail',
   templateUrl: './series-detail.component.html',
   styleUrls: ['./series-detail.component.scss'],
-  imports: [CommonModule, MaterialModule, AgGridModule, ProgressDataTable, RouterModule],
+  imports: [CommonModule, MaterialModule, AgGridModule, ProgressDataTable, RouterModule, NgxSkeletonLoaderModule],
 })
 export class SeriesDetailComponent implements OnInit {
   series: Series | null = null;

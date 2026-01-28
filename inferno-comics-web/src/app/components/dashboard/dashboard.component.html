@@ -88,14 +88,85 @@
     </div>
   }
 
-  <!-- Loading State -->
+  <!-- Loading State with Skeleton -->
   @if (loading) {
-    <div class="loading-container">
-      <div class="loading-content">
-        <mat-spinner diameter="60"></mat-spinner>
-        <h3>Loading your collection...</h3>
-        <p>Gathering your comic data</p>
+    <!-- Stats Skeleton -->
+    <div class="stats-container">
+      <div class="stats-grid">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="stat-card skeleton-card">
+            <ngx-skeleton-loader
+              [theme]="{ width: '40px', height: '40px', borderRadius: '50%', marginBottom: '16px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '60px', height: '32px', marginBottom: '8px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '80px', height: '14px' }">
+            </ngx-skeleton-loader>
+          </div>
+        }
       </div>
+    </div>
+
+    <!-- Publisher Section Skeleton -->
+    <div class="content-sections">
+      <section class="publisher-section skeleton-section">
+        <div class="section-header">
+          <ngx-skeleton-loader
+            [theme]="{ width: '200px', height: '28px' }">
+          </ngx-skeleton-loader>
+        </div>
+        <div class="publisher-grid">
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+            <div class="publisher-card skeleton-card">
+              <ngx-skeleton-loader
+                [theme]="{ width: '44px', height: '44px', borderRadius: '10px' }">
+              </ngx-skeleton-loader>
+              <div class="publisher-info">
+                <ngx-skeleton-loader
+                  [theme]="{ width: '120px', height: '16px', marginBottom: '4px' }">
+                </ngx-skeleton-loader>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '60px', height: '12px', marginBottom: '8px' }">
+                </ngx-skeleton-loader>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '100%', height: '4px', borderRadius: '2px' }">
+                </ngx-skeleton-loader>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Series Section Skeleton -->
+      <section class="series-section skeleton-section">
+        <div class="section-header">
+          <ngx-skeleton-loader
+            [theme]="{ width: '150px', height: '28px' }">
+          </ngx-skeleton-loader>
+        </div>
+        <div class="series-skeleton-grid">
+          @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+            <div class="series-card-skeleton">
+              <ngx-skeleton-loader
+                [theme]="{ width: '100%', height: '200px', borderRadius: '10px 10px 0 0' }">
+              </ngx-skeleton-loader>
+              <div class="series-card-content">
+                <ngx-skeleton-loader
+                  [theme]="{ width: '80%', height: '16px', marginBottom: '8px' }">
+                </ngx-skeleton-loader>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '60%', height: '12px', marginBottom: '12px' }">
+                </ngx-skeleton-loader>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '100%', height: '4px', borderRadius: '2px' }">
+                </ngx-skeleton-loader>
+              </div>
+            </div>
+          }
+        </div>
+      </section>
     </div>
   }
 </div>

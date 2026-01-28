@@ -474,8 +474,57 @@
 }
 
 @if (loading) {
-  <div class="loading-container">
-    <mat-spinner></mat-spinner>
-    <p>Loading series details...</p>
+  <div class="series-detail-container skeleton-loading">
+    <div class="series-header">
+      <div class="series-image">
+        <ngx-skeleton-loader
+          [theme]="{ width: '100%', height: '300px', borderRadius: '8px' }">
+        </ngx-skeleton-loader>
+      </div>
+      <div class="series-info">
+        <div class="series-title-header">
+          <ngx-skeleton-loader
+            [theme]="{ width: '300px', height: '36px', marginBottom: '8px' }">
+          </ngx-skeleton-loader>
+        </div>
+        <ngx-skeleton-loader
+          [theme]="{ width: '150px', height: '24px', marginBottom: '16px' }">
+        </ngx-skeleton-loader>
+        <div class="series-meta">
+          @for (i of [1, 2, 3, 4]; track i) {
+            <div class="meta-item">
+              <ngx-skeleton-loader
+                [theme]="{ width: '200px', height: '20px' }">
+              </ngx-skeleton-loader>
+            </div>
+          }
+        </div>
+        <ngx-skeleton-loader
+          [theme]="{ width: '100%', height: '80px', marginTop: '16px', borderRadius: '4px' }">
+        </ngx-skeleton-loader>
+      </div>
+    </div>
+
+    <div class="series-content">
+      <ngx-skeleton-loader
+        [theme]="{ width: '300px', height: '48px', marginBottom: '24px' }">
+      </ngx-skeleton-loader>
+
+      <div class="skeleton-issues-grid">
+        @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+          <div class="skeleton-issue-card">
+            <ngx-skeleton-loader
+              [theme]="{ width: '100%', height: '200px', borderRadius: '8px', marginBottom: '8px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '60%', height: '16px', marginBottom: '4px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '40%', height: '14px' }">
+            </ngx-skeleton-loader>
+          </div>
+        }
+      </div>
+    </div>
   </div>
 }

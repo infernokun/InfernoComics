@@ -11,12 +11,13 @@ import { generateSlug, Series, SeriesWithIssues } from '../../../models/series.m
 import { RecognitionService } from '../../../services/recognition.service';
 import { SeriesService } from '../../../services/series.service';
 import { DateUtils } from '../../../utils/date-utils';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 @Component({
   selector: 'app-issues-list',
   templateUrl: './issues-list.component.html',
   styleUrls: ['./issues-list.component.scss'],
-  imports: [MaterialModule, FormsModule, RouterModule],
+  imports: [MaterialModule, FormsModule, RouterModule, NgxSkeletonLoaderModule],
   animations: [
     trigger('slideInUp', [
       transition(':enter', [

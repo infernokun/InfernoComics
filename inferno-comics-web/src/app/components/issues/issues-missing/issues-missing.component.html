@@ -15,11 +15,83 @@
     </div>
   </div>
 
-  <!-- Loading State -->
   @if (loading()) {
-    <div class="loading-state">
-      <mat-spinner diameter="40"></mat-spinner>
-      <p>Loading missing issues...</p>
+    <div class="summary-dashboard">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="stat-card skeleton-card">
+          <div class="stat-icon">
+            <ngx-skeleton-loader
+              [theme]="{ width: '48px', height: '48px', borderRadius: '8px' }">
+            </ngx-skeleton-loader>
+          </div>
+          <div class="stat-content">
+            <ngx-skeleton-loader
+              [theme]="{ width: '50px', height: '24px', marginBottom: '4px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '80px', height: '12px' }">
+            </ngx-skeleton-loader>
+          </div>
+        </div>
+      }
+    </div>
+
+    <div class="controls-bar">
+      <div class="search-section">
+        <ngx-skeleton-loader
+          [theme]="{ width: '100%', height: '56px', borderRadius: '4px' }">
+        </ngx-skeleton-loader>
+      </div>
+      <div class="view-controls">
+        <ngx-skeleton-loader
+          [theme]="{ width: '200px', height: '36px', borderRadius: '4px' }">
+        </ngx-skeleton-loader>
+      </div>
+    </div>
+
+    <div class="series-grid">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="series-card skeleton-card">
+          <div class="series-header">
+            <ngx-skeleton-loader
+              [theme]="{ width: '24px', height: '24px', borderRadius: '4px' }">
+            </ngx-skeleton-loader>
+            <div class="series-info" style="flex: 1;">
+              <ngx-skeleton-loader
+                [theme]="{ width: '70%', height: '16px', marginBottom: '4px' }">
+              </ngx-skeleton-loader>
+              <ngx-skeleton-loader
+                [theme]="{ width: '50%', height: '12px' }">
+              </ngx-skeleton-loader>
+            </div>
+            <ngx-skeleton-loader
+              [theme]="{ width: '50px', height: '40px', borderRadius: '4px' }">
+            </ngx-skeleton-loader>
+          </div>
+          <div class="issues-list">
+            @for (j of [1, 2, 3]; track j) {
+              <div class="issue-row">
+                <ngx-skeleton-loader
+                  [theme]="{ width: '40px', height: '56px', borderRadius: '4px' }">
+                </ngx-skeleton-loader>
+                <div class="issue-details" style="flex: 1;">
+                  <ngx-skeleton-loader
+                    [theme]="{ width: '40px', height: '14px', marginBottom: '4px' }">
+                  </ngx-skeleton-loader>
+                  <ngx-skeleton-loader
+                    [theme]="{ width: '100px', height: '12px' }">
+                  </ngx-skeleton-loader>
+                </div>
+              </div>
+            }
+          </div>
+          <div class="series-actions">
+            <ngx-skeleton-loader
+              [theme]="{ width: '100%', height: '36px', borderRadius: '4px' }">
+            </ngx-skeleton-loader>
+          </div>
+        </div>
+      }
     </div>
   }
 

@@ -1,7 +1,114 @@
 <div class="issues-list">
   @if (loading) {
-    <div class="spinner" role="status" aria-label="Loading issues">
-      <mat-progress-spinner mode="indeterminate" diameter="60"></mat-progress-spinner>
+    <div class="dashboard-header">
+      <div class="stats-row">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="stat-card skeleton-card">
+            <ngx-skeleton-loader
+              [theme]="{ width: '40px', height: '40px', borderRadius: '50%', marginBottom: '12px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '50px', height: '28px', marginBottom: '6px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '70px', height: '12px' }">
+            </ngx-skeleton-loader>
+          </div>
+        }
+      </div>
+
+      <div class="activity-section">
+        <div class="latest-issue-card skeleton-card">
+          <div class="card-header">
+            <ngx-skeleton-loader
+              [theme]="{ width: '120px', height: '20px' }">
+            </ngx-skeleton-loader>
+          </div>
+          <div class="latest-issue-content">
+            <ngx-skeleton-loader
+              [theme]="{ width: '80px', height: '120px', borderRadius: '4px' }">
+            </ngx-skeleton-loader>
+            <div class="latest-issue-info">
+              <ngx-skeleton-loader
+                [theme]="{ width: '100%', height: '16px', marginBottom: '8px' }">
+              </ngx-skeleton-loader>
+              <ngx-skeleton-loader
+                [theme]="{ width: '60%', height: '14px', marginBottom: '6px' }">
+              </ngx-skeleton-loader>
+              <ngx-skeleton-loader
+                [theme]="{ width: '80px', height: '12px' }">
+              </ngx-skeleton-loader>
+            </div>
+          </div>
+        </div>
+
+        <div class="recent-activity-card skeleton-card">
+          <div class="card-header">
+            <ngx-skeleton-loader
+              [theme]="{ width: '120px', height: '20px' }">
+            </ngx-skeleton-loader>
+          </div>
+          <div class="activity-list">
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <div class="activity-item">
+                <ngx-skeleton-loader
+                  [theme]="{ width: '40px', height: '56px', borderRadius: '4px' }">
+                </ngx-skeleton-loader>
+                <div class="activity-details" style="flex: 1;">
+                  <ngx-skeleton-loader
+                    [theme]="{ width: '80%', height: '14px', marginBottom: '4px' }">
+                  </ngx-skeleton-loader>
+                  <ngx-skeleton-loader
+                    [theme]="{ width: '50%', height: '12px' }">
+                  </ngx-skeleton-loader>
+                </div>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '40px', height: '12px' }">
+                </ngx-skeleton-loader>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-section">
+      <div class="control-group">
+        <ngx-skeleton-loader
+          [theme]="{ width: '110px', height: '36px', borderRadius: '4px' }">
+        </ngx-skeleton-loader>
+        <ngx-skeleton-loader
+          [theme]="{ width: '120px', height: '36px', borderRadius: '4px' }">
+        </ngx-skeleton-loader>
+      </div>
+      <ngx-skeleton-loader
+        [theme]="{ width: '180px', height: '24px', borderRadius: '12px' }">
+      </ngx-skeleton-loader>
+    </div>
+
+    <div class="series-list">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="series-block skeleton-block">
+          <ngx-skeleton-loader
+            [theme]="{ width: '250px', height: '28px', marginBottom: '16px' }">
+          </ngx-skeleton-loader>
+          <div class="issues-grid skeleton-grid">
+            @for (j of [1, 2, 3, 4, 5, 6]; track j) {
+              <div class="issue-item-skeleton">
+                <ngx-skeleton-loader
+                  [theme]="{ width: '100%', height: '180px', borderRadius: '8px', marginBottom: '8px' }">
+                </ngx-skeleton-loader>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '40px', height: '14px', marginBottom: '4px' }">
+                </ngx-skeleton-loader>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '60px', height: '12px' }">
+                </ngx-skeleton-loader>
+              </div>
+            }
+          </div>
+        </div>
+      }
     </div>
   }
 

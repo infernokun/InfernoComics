@@ -10,6 +10,7 @@ import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
 import { ApiResponse } from '../../models/api-response.model';
 import { SeriesService } from '../../services/series.service';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 interface PublisherStat {
   name: string;
@@ -62,6 +63,7 @@ interface PublisherStat {
     FormsModule,
     RouterModule,
     SeriesListComponent,
+    NgxSkeletonLoaderModule,
   ],
 })
 export class DashboardComponent implements OnInit, OnDestroy {

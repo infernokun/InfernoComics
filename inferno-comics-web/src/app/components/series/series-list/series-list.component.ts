@@ -15,6 +15,7 @@ import { SeriesService } from '../../../services/series.service';
 import { FADE_IN_UP, SLIDE_IN_UP, CARD_ANIMATION } from '../../../utils/animations';
 import { CustomPaginatorComponent } from '../../common/custom-paginator/custom-paginator.component';
 import { JsonDialogComponent } from '../../common/dialog/json-dialog/json-dialog.component';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 type SortOption = 'name' | 'publisher' | 'year' | 'completion' | 'issueCount' | 'dateAdded';
 type SortDirection = 'asc' | 'desc';
@@ -24,7 +25,7 @@ type ViewMode = 'grid' | 'list';
   selector: 'app-series-list',
   templateUrl: './series-list.component.html',
   styleUrls: ['./series-list.component.scss'],
-  imports: [MaterialModule, FormsModule, RouterModule, SlicePipe, CustomPaginatorComponent],
+  imports: [MaterialModule, FormsModule, RouterModule, SlicePipe, CustomPaginatorComponent, NgxSkeletonLoaderModule],
   animations: [
     FADE_IN_UP,
     SLIDE_IN_UP,

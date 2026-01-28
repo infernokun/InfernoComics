@@ -29,6 +29,81 @@
   }
 }
 
+.skeleton-card {
+  ngx-skeleton-loader {
+    display: block;
+
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
+      margin-bottom: 0 !important;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        ) !important;
+      }
+    }
+  }
+}
+
+.skeleton-block {
+  ngx-skeleton-loader {
+    display: block;
+
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
+      margin-bottom: 0 !important;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        ) !important;
+      }
+    }
+  }
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--spacing-md);
+
+  @include md {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+  }
+
+  @include sm {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.issue-item-skeleton {
+  ngx-skeleton-loader {
+    display: block;
+
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
+      margin-bottom: 0 !important;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        ) !important;
+      }
+    }
+  }
+}
+
 // ========================================
 // Dashboard Header
 // ========================================
