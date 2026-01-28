@@ -13,6 +13,19 @@ Inferno Comics is a full-stack web application for discovering, tracking, and or
 
 All services are containerized with Docker and orchestrated via Docker Compose.
 
+## Screenshots
+
+<p align="center">
+    <img src="https://raw.githubusercontent.com/infernokun/InfernoComics/main/docs/images/comic-selection-1.png" width="340">
+    <img src="https://raw.githubusercontent.com/infernokun/InfernoComics/main/docs/images/comic-selection-2.png" width="340">
+    <img src="https://raw.githubusercontent.com/infernokun/InfernoComics/main/docs/images/dashboard.png" width="340">
+</p>
+<p align="center">
+    <img src="https://raw.githubusercontent.com/infernokun/InfernoComics/main/docs/images/comic-vine-search.png" width="340">
+    <img src="https://raw.githubusercontent.com/infernokun/InfernoComics/main/docs/images/issues.png" width="340">
+    <img src="https://raw.githubusercontent.com/infernokun/InfernoComics/main/docs/images/series-view.png" width="340">
+</p>
+
 ## Build & Development Commands
 
 ### Frontend (inferno-comics-web)

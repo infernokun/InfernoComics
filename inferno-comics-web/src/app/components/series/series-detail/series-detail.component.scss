@@ -1267,16 +1267,15 @@
   }
 
   mat-icon {
-    font-size: 56px;
-    width: 56px;
-    height: 56px;
+    font-size: var(--icon-size-xl);
+    width: var(--icon-size-xl);
+    height: var(--icon-size-xl);
     color: var(--text-muted);
-    margin-bottom: var(--spacing-lg);
 
     @include md {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
+      font-size: var(--icon-size-lg);
+      width: var(--icon-size-lg);
+      height: var(--icon-size-lg);
     }
   }
 

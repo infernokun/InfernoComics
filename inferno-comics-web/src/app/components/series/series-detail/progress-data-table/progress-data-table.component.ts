@@ -142,7 +142,6 @@ import { ConfirmationDialogData, ConfirmationDialogComponent } from '../../../co
 
           @if (progressData().length === 0) {
             <div class="empty-state">
-              <div class="empty-icon">📊</div>
               <p>No progress data available</p>
             </div>
           }
@@ -562,11 +561,6 @@ import { ConfirmationDialogData, ConfirmationDialogComponent } from '../../../co
         text-align: center;
         padding: 40px 20px;
         color: #6c757d;
-      }
-
-      .empty-icon {
-        font-size: 48px;
-        margin-bottom: 12px;
       }
 
       :host-context(.dark-theme),

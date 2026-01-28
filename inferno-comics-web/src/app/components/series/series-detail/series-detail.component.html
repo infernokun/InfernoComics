@@ -171,7 +171,6 @@
               <div class="no-issues-actions">
                 <button mat-stroked-button color="primary" matTooltip="Add Comics By Image"
                   (click)="addComicsByImage(series?.id!)">
-                  <mat-icon>photo_library</mat-icon>
                   Add Comics By Image
                 </button>
               </div>
@@ -310,7 +309,7 @@
             <!-- Empty Collection State -->
             @if (issues.length === 0) {
               <div class="empty-collection">
-                <mat-icon>library_books</mat-icon>
+                <mat-icon class="lg-icon">library_books</mat-icon>
                 <h3>No Issues in Collection</h3>
                 <p>Start building your collection by adding comic book issues!</p>
                 <button mat-raised-button color="primary" (click)="addIssue()">
