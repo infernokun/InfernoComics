@@ -109,18 +109,18 @@ public class SeriesService {
                             if (gcdSeriesOptional.isPresent()) {
                                 String gcdId = String.valueOf(gcdSeriesOptional.get().getId());
                                 newGcdIds.add(gcdId);
-                                log.debug("Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
+                                log.debug("Reverify: mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
                             } else {
-                                log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                                log.warn("Reverify: no GCD mapping found for Comic Vine ID {}", comicVineId);
                             }
                         } catch (Exception e) {
-                            log.error("Error finding GCD mapping for Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                            log.error("Reverify: failed to find GCD mapping for Comic Vine ID {}: {}", comicVineId, e.getMessage());
                         }
                     } else {
-                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("Reverify: no Comic Vine data returned for ID {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Reverify: failed to process Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
         }
@@ -314,26 +314,23 @@ public class SeriesService {
                                 .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), totalIssuesAvailable);
                         if (gcdSeriesOptional.isPresent()) {
                             gcdIds.add(String.valueOf(gcdSeriesOptional.get().getId()));
-                            log.debug("Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdSeriesOptional.get().getId());
+                            log.debug("Create: mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdSeriesOptional.get().getId());
                         } else {
-                            log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                            log.warn("Create: no GCD mapping found for Comic Vine ID {}", comicVineId);
                         }
                     }
                 } catch (Exception e) {
-                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Create: failed to process Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
         }
 
         // Determine end year: use API value if available, otherwise derive from issues
         if (!endYearsFromApi.isEmpty()) {
-            // Use the latest end year from all ComicVine series
             derivedEndYear = Collections.max(endYearsFromApi);
-            log.debug("Using end year {} from ComicVine API", derivedEndYear);
+            log.debug("Create: using end year {} from ComicVine API for '{}'", derivedEndYear, request.getName());
         } else if (series.getEndYear() == null && request.getComicVineIds() != null && !request.getComicVineIds().isEmpty()) {
-            // Try to derive end year from issues if not provided by API or request
             try {
-                // Create a temporary series object to fetch issues
                 Series tempSeries = new Series();
                 tempSeries.setComicVineIds(request.getComicVineIds());
                 tempSeries.setComicVineId(request.getComicVineId() != null ? request.getComicVineId() : request.getComicVineIds().get(0));
@@ -342,10 +339,10 @@ public class SeriesService {
                 derivedEndYear = comicVineService.deriveEndYearFromIssues(issues);
 
                 if (derivedEndYear != null) {
-                    log.info("Derived end year {} from last issue cover date for series '{}'", derivedEndYear, request.getName());
+                    log.debug("Create: derived end year {} from issues for '{}'", derivedEndYear, request.getName());
                 }
             } catch (Exception e) {
-                log.warn("Could not derive end year from issues for series '{}': {}", request.getName(), e.getMessage());
+                log.warn("Create: could not derive end year from issues for '{}': {}", request.getName(), e.getMessage());
             }
         }
 
@@ -424,7 +421,7 @@ public class SeriesService {
             // FIX 1: Add explicit flush to ensure data is persisted before cache operations
             seriesRepository.flush();
 
-            log.info("Series saved and flushed to database");
+            log.debug("Series {} saved and flushed to database", id);
 
             // FIX 2: Wrap cache evictions in try-catch to prevent them from blocking the response
             try {
@@ -461,8 +458,8 @@ public class SeriesService {
                     ComicVineService.ComicVineSeriesDto dto = comicVineService.getComicVineSeriesById(Long.valueOf(comicVineId));
 
                     if (dto != null) {
-                        log.debug("Found Comic Vine data: name='{}', startYear={}, issueCount={}",
-                                dto.getName(), dto.getStartYear(), dto.getIssueCount());
+                        log.debug("Update GCD: Comic Vine ID {} → name='{}', startYear={}, issueCount={}",
+                                comicVineId, dto.getName(), dto.getStartYear(), dto.getIssueCount());
 
                         Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
                                 .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), dto.getIssueCount());
@@ -470,16 +467,15 @@ public class SeriesService {
                         if (gcdSeriesOptional.isPresent()) {
                             String gcdId = String.valueOf(gcdSeriesOptional.get().getId());
                             newGcdIds.add(gcdId);
-                            log.debug("Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
+                            log.debug("Update GCD: mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
                         } else {
-                            log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                            log.warn("Update GCD: no mapping found for Comic Vine ID {}", comicVineId);
                         }
                     } else {
-                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("Update GCD: no Comic Vine data returned for ID {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
-                    // Continue with other IDs even if one fails
+                    log.error("Update GCD: failed to process Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
 
@@ -500,22 +496,22 @@ public class SeriesService {
 
                     if (dto != null) {
                         comicVineData.add(dto);
-                        log.debug("Got metadata: name='{}', startYear={}, endYear={}, issueCount={}",
-                                dto.getName(), dto.getStartYear(), dto.getEndYear(), dto.getIssueCount());
+                        log.debug("Recalculate: Comic Vine ID {} → name='{}', startYear={}, endYear={}, issueCount={}",
+                                comicVineId, dto.getName(), dto.getStartYear(), dto.getEndYear(), dto.getIssueCount());
                     } else {
-                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("Recalculate: no Comic Vine data returned for ID {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Recalculate: failed to fetch Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
 
             if (comicVineData.isEmpty()) {
-                log.warn("No valid Comic Vine data found for metadata recalculation for series {}", series.getId());
+                log.warn("Recalculate: no valid Comic Vine data for series {}", series.getId());
                 return;
             }
 
-            log.debug("Successfully fetched {} Comic Vine series data objects", comicVineData.size());
+            log.debug("Recalculate: fetched {} Comic Vine entries for series {}", comicVineData.size(), series.getId());
 
             // Recalculate date range
             List<Integer> startYears = comicVineData.stream()
@@ -851,7 +847,7 @@ public class SeriesService {
             List<GCDCover> candidateCovers;
 
             if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty() && seriesEntity.getLastCachedCovers() != null) {
-                log.info("Using cached covers for session: {}", sessionId);
+                log.debug("Using cached covers for session: {}", sessionId);
                 progressDataService.updateProgress(new ProgressUpdateRequest(
                         sessionId, "preparing", 8, "Using cached cover data..."));
                 candidateCovers = seriesEntity.getCachedCoverUrls();
@@ -875,8 +871,8 @@ public class SeriesService {
                         .map(Long::parseLong)
                         .collect(Collectors.toSet());
 
-                log.info("Found {} existing Comic Vine IDs in collection: {}", existingComicVineIds.size(), existingComicVineIds);
-                log.info("Processing {} Comic Vine issues for filtering", results.size());
+                log.debug("Found {} existing Comic Vine IDs in collection, filtering {} Comic Vine issues",
+                        existingComicVineIds.size(), results.size());
 
                 candidateCovers = results.stream()
                         .flatMap(issue -> {
@@ -911,12 +907,10 @@ public class SeriesService {
                         })
                         .collect(Collectors.toList());
 
-                log.info("Filtered to {} candidate covers from {} original issues", candidateCovers.size(), results.size());
-                log.info("Breakdown: {} main covers + {} variant covers",
-                        candidateCovers.stream().mapToLong(c -> c.getParentComicVineId() == null ? 1 : 0).sum(),
-                        candidateCovers.stream().mapToLong(c -> c.getParentComicVineId() != null ? 1 : 0).sum());
-
-                log.info("Generated {} candidate covers for session: {}", candidateCovers.size(), sessionId);
+                long mainCovers = candidateCovers.stream().filter(c -> c.getParentComicVineId() == null).count();
+                long variantCovers = candidateCovers.size() - mainCovers;
+                log.info("Filtered {} issues → {} candidate covers ({} main + {} variants) for session: {}",
+                        results.size(), candidateCovers.size(), mainCovers, variantCovers, sessionId);
 
                 if (candidateCovers.isEmpty()) {
                     progressDataService.sendError(sessionId, "No valid candidate cover urls found!");
@@ -1006,13 +1000,11 @@ public class SeriesService {
             JsonNode results = root.get("results");
 
             if (results != null && results.isArray()) {
-                log.info("Matcher found results for {} images (session: {})", results.size(), sessionId);
+                log.info("Image processing completed for session: {} — matched {} images in {}s",
+                        sessionId, results.size(), duration / 1000);
             } else {
-                log.warn("No results found in matcher response (session: {})", sessionId);
+                log.warn("Image processing completed for session: {} — no results in matcher response", sessionId);
             }
-
-
-            log.info("Image processing completed for session: {}", sessionId);
 
         } catch (Exception e) {
             log.error("Error in image processing for session {}: {}", sessionId, e.getMessage());

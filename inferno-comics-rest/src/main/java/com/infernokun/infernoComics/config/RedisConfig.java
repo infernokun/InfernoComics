@@ -1,8 +1,8 @@
 package com.infernokun.infernoComics.config;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -61,31 +61,21 @@ public class RedisConfig {
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
 
-        // Basic configuration without Hibernate modules for now
         mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
-        // Enable default typing to preserve class information
-        mapper.activateDefaultTyping(
-                mapper.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.NON_FINAL,
-                JsonTypeInfo.As.PROPERTY
-        );
-
         return mapper;
     }
 
     @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
+    public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory) {
         ObjectMapper redisMapper = new ObjectMapper();
         redisMapper.registerModule(new JavaTimeModule());
         redisMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         redisMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         redisMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-
-        // This ensures proper type information is preserved in Redis
         redisMapper.activateDefaultTyping(
                 redisMapper.getPolymorphicTypeValidator(),
                 ObjectMapper.DefaultTyping.NON_FINAL,
@@ -124,7 +114,7 @@ public class RedisConfig {
                 .entryTtl(Duration.ofMinutes(30))
                 .prefixCacheNameWith("users:collections:"));
 
-        return RedisCacheManager.builder(redisConnectionFactory)
+        return RedisCacheManager.builder(new JsonRedisCacheWriter(redisConnectionFactory))
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(cacheConfigurations)
                 .transactionAware()
@@ -138,12 +128,8 @@ public class RedisConfig {
 
         ObjectMapper om = new ObjectMapper();
         om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-        om.activateDefaultTyping(om.getPolymorphicTypeValidator(),
-                ObjectMapper.DefaultTyping.NON_FINAL);
         om.registerModule(new JavaTimeModule());
         om.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-
-        // Configure to ignore unknown properties and empty beans
         om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         om.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 

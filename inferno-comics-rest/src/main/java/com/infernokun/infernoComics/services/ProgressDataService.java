@@ -45,6 +45,7 @@ public class ProgressDataService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisJsonService redisJsonService;
 
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
@@ -398,14 +399,14 @@ public class ProgressDataService {
         try {
             String redisKey = "sse:progress:" + sessionId;
 
-            // Store as JSON string
-            String jsonData = objectMapper.writeValueAsString(data);
-            redisTemplate.opsForValue().set(redisKey, jsonData, PROGRESS_TTL);
+            // Store as Redis JSON datatype
+            redisJsonService.jsonSet(redisKey, data, PROGRESS_TTL);
 
-            log.info("Progress data stored in Redis for session: {}", sessionId);
+            log.debug("Progress data stored in Redis for session: {}", sessionId);
 
-            // Also maintain a list of recent progress updates
+            // Also maintain a list of recent progress updates (Redis List, not JSON)
             String listKey = "sse:progress:list:" + sessionId;
+            String jsonData = objectMapper.writeValueAsString(data);
             redisTemplate.opsForList().leftPush(listKey, jsonData);
             redisTemplate.opsForList().trim(listKey, 0, 99);
             redisTemplate.expire(listKey, PROGRESS_TTL);
@@ -429,11 +430,9 @@ public class ProgressDataService {
     public SSEProgressData getLatestProgressFromRedis(String sessionId) {
         try {
             String redisKey = "sse:progress:" + sessionId;
-            String jsonData = (String) redisTemplate.opsForValue().get(redisKey);
+            SSEProgressData progressData = redisJsonService.jsonGet(redisKey, SSEProgressData.class);
 
-            if (jsonData != null) {
-                SSEProgressData progressData = objectMapper.readValue(jsonData, SSEProgressData.class);
-
+            if (progressData != null) {
                 // Check if the progress data is recent (e.g., within last 5 minutes)
                 if (isProgressDataRecent(progressData)) {
                     return progressData;
@@ -443,7 +442,7 @@ public class ProgressDataService {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to retrieve progress data from Redis for session {}: {}", sessionId, e.getMessage());
+            log.error("Failed to retrieve progress data from Redis for session {}: {}", sessionId, e.getMessage(), e);
         }
         return null;
     }

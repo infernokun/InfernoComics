@@ -88,9 +88,8 @@
     </div>
   }
 
-  <!-- Loading State with Skeleton -->
+  <!-- Loading State -->
   @if (loading) {
-    <!-- Stats Skeleton -->
     <div class="stats-container">
       <div class="stats-grid">
         @for (i of [1, 2, 3, 4]; track i) {
@@ -109,7 +108,6 @@
       </div>
     </div>
 
-    <!-- Publisher Section Skeleton -->
     <div class="content-sections">
       <section class="publisher-section skeleton-section">
         <div class="section-header">
@@ -139,7 +137,6 @@
         </div>
       </section>
 
-      <!-- Series Section Skeleton -->
       <section class="series-section skeleton-section">
         <div class="section-header">
           <ngx-skeleton-loader
