@@ -415,12 +415,12 @@ export class JsonDialogComponent {
 
   copyToClipboard(): void {
     this.clipboard.copy(this.formatJson(this.data));
-    this.messageService.snackbar('JSON response copied to clipboard!');
+    this.messageService.success('JSON response copied to clipboard!');
   }
 
   copyFolderId(folderName: string): void {
     this.clipboard.copy(folderName);
-    this.messageService.snackbar(`Folder ID "${folderName}" copied to clipboard!`);
+    this.messageService.success(`Folder ID "${folderName}" copied to clipboard!`);
   }
 
   close(): void {

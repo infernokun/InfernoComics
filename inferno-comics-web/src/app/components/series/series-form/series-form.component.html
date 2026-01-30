@@ -58,7 +58,7 @@
         <div>
           <div class="form-row">
             <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Series Name *</mat-label>
+              <mat-label>Series Name</mat-label>
               <input matInput formControlName="name" required>
               @if (seriesForm.get('name')?.hasError('required')) {
                 <mat-error>
@@ -76,7 +76,7 @@
           <div class="form-row">
             <mat-form-field appearance="outline" class="half-width">
               <mat-label>Issues Available</mat-label>
-              <input matInput type="number" formControlName="issuesAvailableCount" [disabled]="true">
+              <input matInput type="number" formControlName="issuesAvailableCount">
               @if (seriesForm.get('issuesAvailableCount')?.value) {
                 <mat-hint>
                   {{ seriesForm.get('issuesAvailableCount')?.value }} issues available
@@ -86,7 +86,7 @@
 
             <mat-form-field appearance="outline" class="half-width">
               <mat-label>Issues Owned</mat-label>
-              <input matInput type="number" formControlName="issuesOwnedCount" [disabled]="true">
+              <input matInput type="number" formControlName="issuesOwnedCount">
               @if (seriesForm.get('issuesOwnedCount')?.value) {
                 <mat-hint>
                   {{ seriesForm.get('issuesOwnedCount')?.value }} issues in collection
@@ -241,7 +241,7 @@
         }
 
         <!-- No results message -->
-        @if (comicVineResults.length === 0 && !searchingComicVine && customSearchTerm && customSearchTerm.length >= 3) {
+        @if (comicVineResults.length === 0 && !searchingComicVine && hasSearched) {
           <div class="no-results">
             <mat-icon>search_off</mat-icon>
             <h4>No Results Found</h4>
@@ -422,18 +422,18 @@
               onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'; this.style.display='block'} else {this.style.display='none'}">
             </div>
           }
+
+        <mat-card-actions align="end">
+          <button mat-button type="button" (click)="cancel()">Cancel</button>
+          <button mat-raised-button color="primary" type="submit"
+            [disabled]="!seriesForm.valid || loading || (isComicVineManagementMode && !hasChanges())">
+            @if (loading) {
+              <mat-spinner diameter="20"></mat-spinner>
+            }
+            {{ isComicVineManagementMode ? 'Save Changes' : (isEditMode ? 'Update' : 'Create') }} {{ isComicVineManagementMode ? '' : 'Series' }}
+          </button>
+        </mat-card-actions>
         </form>
       </mat-card-content>
-
-      <mat-card-actions align="end">
-        <button mat-button type="button" (click)="cancel()">Cancel</button>
-        <button mat-raised-button color="primary" type="submit" (click)="onSubmit()"
-          [disabled]="!seriesForm.valid || loading || (isComicVineManagementMode && !hasChanges())">
-        @if (loading) {
-          <mat-spinner diameter="20"></mat-spinner>
-        }
-        {{ isComicVineManagementMode ? 'Save Changes' : (isEditMode ? 'Update' : 'Create') }} {{ isComicVineManagementMode ? '' : 'Series' }}
-      </button>
-    </mat-card-actions>
   </mat-card>
 </div>

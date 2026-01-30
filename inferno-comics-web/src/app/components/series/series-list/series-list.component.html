@@ -41,7 +41,7 @@
       </div>
 
       <div class="toolbar-actions">
-        <mat-button-toggle-group [value]="viewMode" (change)="toggleView()" class="view-toggle">
+        <mat-button-toggle-group [value]="viewMode" (change)="onViewModeChange($event.value)" class="view-toggle">
           <mat-button-toggle value="grid" matTooltip="Grid View">
             <mat-icon>grid_view</mat-icon>
           </mat-button-toggle>

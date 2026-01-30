@@ -9,7 +9,6 @@ import { MatPaginator, PageEvent } from '@angular/material/paginator';
 import { SlicePipe } from '@angular/common';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
-import { ProcessingResult } from '../../../models/processing-result.model';
 import { generateSlug, Series } from '../../../models/series.model';
 import { SeriesService } from '../../../services/series.service';
 import { FADE_IN_UP, SLIDE_IN_UP, CARD_ANIMATION } from '../../../utils/animations';
@@ -39,33 +38,32 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   totalSeries: number = 0;
 
   pageSizeOptions: number[] = [3, 6, 9, 15, 18, 50, 100];
-  
+
   series: Series[] = [];
   filteredSeries: Series[] = [];
   displaySeries: Series[] = [];
   loading: boolean = true;
   searchTerm: string = '';
-  
+
   favoriteSeriesIds: Set<number> = new Set();
   viewMode: ViewMode = 'grid';
-  
+
   currentSortOption: SortOption = 'name';
   currentSortDirection: SortDirection = 'asc';
-  
-  // Sort options for dropdown
+
   sortOptions = [
-    { value: 'name', label: 'Series Name', icon: 'sort_by_alpha' },
+    { value: 'name', label: 'Name', icon: 'sort_by_alpha' },
     { value: 'publisher', label: 'Publisher', icon: 'business' },
-    { value: 'year', label: 'Start Year', icon: 'calendar_today' },
-    { value: 'completion', label: 'Completion %', icon: 'pie_chart' },
-    { value: 'issueCount', label: 'Issue Count', icon: 'library_books' },
-    { value: 'dateAdded', label: 'Date Added', icon: 'schedule' }
+    { value: 'year', label: 'Year', icon: 'calendar_today' },
+    { value: 'completion', label: 'Completion', icon: 'pie_chart' },
+    { value: 'issueCount', label: 'Issues', icon: 'library_books' },
+    { value: 'dateAdded', label: 'Added', icon: 'schedule' }
   ];
 
   showCompletedOnly: boolean = false;
   selectedPublisher: string = '';
   publishers: string[] = [];
-  
+
   private destroy$: Subject<void> = new Subject<void>();
 
   constructor(
@@ -96,7 +94,6 @@ export class SeriesListComponent implements OnInit, OnDestroy {
 
           this.series = res.data;
           this.extractPublishers();
-          this.updatePage();
           this.applyFiltersAndSorting();
           this.loading = false;
         },
@@ -120,7 +117,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     this.updatePage();
     this.saveUserPreferences();
   }
-  
+
   private extractPublishers(): void {
     const publisherSet = new Set<string>();
     this.series.forEach(s => {
@@ -131,22 +128,20 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     this.publishers = Array.from(publisherSet).sort();
   }
 
-  // Search functionality
   onSearch(): void {
     this.applyFiltersAndSorting();
   }
 
-  // Sorting methods
   onSortChange(sortOption: SortOption | string): void {
     const validSortOption = this.isValidSortOption(sortOption) ? sortOption : 'name';
-    
+
     if (this.currentSortOption === validSortOption) {
       this.currentSortDirection = this.currentSortDirection === 'asc' ? 'desc' : 'asc';
     } else {
       this.currentSortOption = validSortOption;
       this.currentSortDirection = 'asc';
     }
-    
+
     this.applyFiltersAndSorting();
     this.saveUserPreferences();
   }
@@ -165,10 +160,8 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     return this.sortOptions.find(option => option.value === this.currentSortOption);
   }
 
-  toggleView(): void {
-    console.log(this.viewMode);
-    this.viewMode = this.viewMode === 'grid' ? 'list' : 'grid';
-    console.log(this.viewMode);
+  onViewModeChange(mode: ViewMode): void {
+    this.viewMode = mode;
     this.saveUserPreferences();
   }
 
@@ -193,25 +186,22 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   applyFiltersAndSorting(): void {
     let filtered = [...this.series];
 
-    // Apply search filter
     if (this.searchTerm.trim()) {
+      const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(s =>
-        s.name!.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-        (s.publisher && s.publisher.toLowerCase().includes(this.searchTerm.toLowerCase()))
+        s.name!.toLowerCase().includes(term) ||
+        (s.publisher && s.publisher.toLowerCase().includes(term))
       );
     }
 
-    // Apply publisher filter
     if (this.selectedPublisher) {
       filtered = filtered.filter(s => s.publisher === this.selectedPublisher);
     }
 
-    // Apply completion filter
     if (this.showCompletedOnly) {
       filtered = filtered.filter(s => this.isSeriesComplete(s));
     }
 
-    // Apply sorting
     this.filteredSeries = filtered.sort((a, b) => {
       let comparison = 0;
 
@@ -284,7 +274,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   toggleFavorite(series: Series, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    
+
     if (series.id) {
       if (this.favoriteSeriesIds.has(series.id)) {
         this.favoriteSeriesIds.delete(series.id);
@@ -307,7 +297,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
 
   deleteSeries(event: Event, id: number | undefined): void {
     event.stopPropagation();
-    if (id && confirm('Are you sure you want to delete this series?')) {
+    if (id && confirm('Are you sure you want to delete this series? This action cannot be undone.')) {
       this.seriesService.deleteSeries(id).subscribe({
         next: () => {
           this.snackBar.open('Series deleted successfully', 'Close', { duration: 3000 });
@@ -343,7 +333,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       this.currentSortDirection = prefs.currentSortDirection || 'asc';
       this.selectedPublisher = prefs.selectedPublisher || '';
       this.showCompletedOnly = prefs.showCompletedOnly || false;
-      this.pageSize = prefs.pageSize || 3;
+      this.pageSize = prefs.pageSize || 12;
     }
   }
 
@@ -369,22 +359,25 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   }
 
   openJsonDialog(data: any): void {
-    const dialogRef = this.dialog.open(JsonDialogComponent, {
+    this.dialog.open(JsonDialogComponent, {
       width: '90vw',
       maxWidth: '800px',
       maxHeight: '90vh',
       data: data,
       panelClass: 'json-dialog-panel'
     });
-
-    dialogRef.afterClosed().subscribe(result => {
-      console.log('Dialog closed');
-    });
   }
 
   syncAllSeries() {
-    this.seriesService.syncAllSeries().subscribe((data: ApiResponse<ProcessingResult[]>) => {
-      console.log('sync', data);
+    this.snackBar.open('Syncing series...', '', { duration: 2000 });
+    this.seriesService.syncAllSeries().subscribe({
+      next: () => {
+        this.snackBar.open('Series synced successfully', 'Close', { duration: 3000 });
+        this.loadSeries();
+      },
+      error: () => {
+        this.snackBar.open('Error syncing series', 'Close', { duration: 3000 });
+      }
     });
   }
 }

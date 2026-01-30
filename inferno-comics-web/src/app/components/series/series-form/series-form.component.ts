@@ -1,15 +1,16 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { ComicVineSeries, ComicVineSeriesDto } from '../../../models/comic-vine.model';
 import { generateSlug, Series } from '../../../models/series.model';
 import { ComicVineService } from '../../../services/comic-vine.service';
 import { SeriesService } from '../../../services/series.service';
+import { MessageService } from '../../../services/message.service';
 
 @Component({
   selector: 'app-series-form',
@@ -17,7 +18,7 @@ import { SeriesService } from '../../../services/series.service';
   styleUrls: ['./series-form.component.scss'],
   imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule]
 })
-export class SeriesFormComponent implements OnInit {
+export class SeriesFormComponent implements OnInit, OnDestroy {
   seriesForm: FormGroup;
   isEditMode = false;
   isComicVineManagementMode = false;
@@ -26,9 +27,10 @@ export class SeriesFormComponent implements OnInit {
   comicVineResults: ComicVineSeries[] = [];
   searchingComicVine = false;
   searchByComicVineId = false;
-  
+
   customSearchTerm = '';
-  
+  hasSearched = false;
+
   // Multi-selection properties
   selectedSeries: ComicVineSeries[] = [];
   showCombinationConfig = false;
@@ -36,6 +38,8 @@ export class SeriesFormComponent implements OnInit {
 
   existingComicVineData: ComicVineSeries[] = [];
   allAvailableSeries: ComicVineSeries[] = [];
+
+  private destroy$ = new Subject<void>();
 
   get selectedPrimarySeries(): ComicVineSeries | null {
     return this.seriesForm.get('selectedPrimarySeries')?.value;
@@ -59,52 +63,31 @@ export class SeriesFormComponent implements OnInit {
     private comicVineService: ComicVineService,
     private router: Router,
     private route: ActivatedRoute,
-    private snackBar: MatSnackBar
+    private messageService: MessageService
   ) {
     this.seriesForm = this.createForm();
   }
 
   ngOnInit(): void {
-    this.route.params.subscribe(params => {
-      if (params['slug']) {
+    this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      if (params['id']) {
         this.isEditMode = true;
+        this.seriesId = +params['id'];
 
-        this.route.queryParams.subscribe(queryParams => {
+        this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(queryParams => {
           if (queryParams['mode'] === 'comic-vine-management') {
             this.isComicVineManagementMode = true;
           }
         });
 
-        this.loadSeriesBySlug(params['slug']);
+        this.loadSeries();
       }
     });
   }
 
-  loadSeriesBySlug(slug: string): void {
-    this.loading = true;
-    this.seriesService.getAllSeries().subscribe({
-      next: (res: ApiResponse<Series[]>) => {
-        if (!res.data) {
-          this.loading = false;
-          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
-          return;
-        }
-        const found = res.data.find(s => generateSlug(s.name) === slug);
-        if (found) {
-          this.seriesId = found.id!;
-          this.loadSeries();
-        } else {
-          this.loading = false;
-          this.snackBar.open('Series not found', 'Close', { duration: 3000 });
-          this.router.navigate(['/series']);
-        }
-      },
-      error: (err: Error) => {
-        console.error('Error loading series:', err);
-        this.loading = false;
-        this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
-      },
-    });
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   createForm(): FormGroup {
@@ -117,7 +100,7 @@ export class SeriesFormComponent implements OnInit {
       imageUrl: [''],
       issuesAvailableCount: [{ value: 0, disabled: true }],
       issuesOwnedCount: [{ value: 0, disabled: true }],
-      comicVineId: [''], 
+      comicVineId: [''],
       comicVineIds: [[]],
       selectedPrimarySeries: [null],
       updateMetadataOnAdd: [false],
@@ -134,16 +117,16 @@ export class SeriesFormComponent implements OnInit {
 
           this.seriesForm.patchValue(res.data);
           this.customSearchTerm = res.data.name || '';
-          
+
           if (this.isComicVineManagementMode || this.isEditMode) {
             this.loadExistingComicVineData(res.data.comicVineIds || []);
           }
-          
+
           this.loading = false;
         },
         error: (err: Error) => {
           console.error('Error loading series:', err);
-          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+          this.messageService.error('Error loading series');
           this.loading = false;
         }
       });
@@ -158,7 +141,7 @@ export class SeriesFormComponent implements OnInit {
     }
 
     this.loading = true;
-    const loadPromises = comicVineIds.map(id => 
+    const loadPromises = comicVineIds.map(id =>
       this.comicVineService.getSeriesById(id).toPromise()
     );
 
@@ -172,7 +155,7 @@ export class SeriesFormComponent implements OnInit {
 
           return apiResponse.data;
         });
-      
+
       this.updateFormFromCurrentData();
       this.loading = false;
     }).catch((err: Error) => {
@@ -192,7 +175,7 @@ export class SeriesFormComponent implements OnInit {
     }
 
     const currentIds = this.existingComicVineData.map(s => s.id);
-    
+
     // Set primary ID (keep current if valid, otherwise use first)
     const currentPrimary = this.seriesForm.get('comicVineId')?.value;
     const primaryId = currentIds.includes(currentPrimary) ? currentPrimary : currentIds[0];
@@ -224,11 +207,12 @@ export class SeriesFormComponent implements OnInit {
   searchComicVine(): void {
     const searchTerm = this.customSearchTerm || this.seriesForm.get('name')?.value;
     if (!searchTerm || searchTerm.length < 3) {
-      this.snackBar.open('Please enter at least 3 characters to search', 'Close', { duration: 3000 });
+      this.messageService.warning('Please enter at least 3 characters to search');
       return;
     }
 
     this.searchingComicVine = true;
+    this.hasSearched = true;
 
     // Search by ID if checkbox is checked
     if (this.searchByComicVineId) {
@@ -239,19 +223,19 @@ export class SeriesFormComponent implements OnInit {
             const currentIds = this.existingComicVineData.map(s => s.id);
             if (currentIds.includes(res.data.id)) {
               this.comicVineResults = [];
-              this.snackBar.open('This series is already associated', 'Close', { duration: 3000 });
+              this.messageService.info('This series is already associated');
             } else {
               this.comicVineResults = [res.data];
             }
           } else {
             this.comicVineResults = [];
-            this.snackBar.open('No series found with that ID', 'Close', { duration: 3000 });
+            this.messageService.info('No series found with that ID');
           }
           this.searchingComicVine = false;
         },
         error: (err: Error) => {
           console.error('Error fetching Comic Vine series by ID:', err);
-          this.snackBar.open('Error fetching series by ID', 'Close', { duration: 3000 });
+          this.messageService.error('Error fetching series by ID');
           this.comicVineResults = [];
           this.searchingComicVine = false;
         }
@@ -266,11 +250,11 @@ export class SeriesFormComponent implements OnInit {
             if (a.startYear && b.startYear) {
               return b.startYear - a.startYear;
             } else if (a.startYear) {
-              return -1; 
+              return -1;
             } else if (b.startYear) {
               return 1;
             }
-            return 0; 
+            return 0;
           });
 
           const currentIds = this.existingComicVineData.map(s => s.id);
@@ -292,17 +276,17 @@ export class SeriesFormComponent implements OnInit {
     if (seriesIndex > -1) {
       const removedSeries = this.existingComicVineData[seriesIndex];
       this.existingComicVineData.splice(seriesIndex, 1);
-      
+
       this.updateFormFromCurrentData();
       this.seriesForm.markAsDirty();
-      
-      this.snackBar.open(`Removed "${removedSeries.name}" from series`, 'Close', { duration: 3000 });
+
+      this.messageService.info(`Removed "${removedSeries.name}" from series`);
     }
   }
 
   addToExistingSeries(): void {
     if (this.selectedSeries.length === 0) {
-      this.snackBar.open('Please select at least one series to add', 'Close', { duration: 3000 });
+      this.messageService.warning('Please select at least one series to add');
       return;
     }
 
@@ -320,9 +304,8 @@ export class SeriesFormComponent implements OnInit {
     this.comicVineResults = [];
 
     const afterCount = this.existingComicVineData.length;
-    this.snackBar.open(
+    this.messageService.success(
       `Added ${addedCount} series (${beforeCount} → ${afterCount} total): ${addedNames}`,
-      'Close',
       { duration: 5000 }
     );
   }
@@ -358,7 +341,7 @@ export class SeriesFormComponent implements OnInit {
 
   combineSelectedSeries(): void {
     if (this.selectedSeries.length === 0) {
-      this.snackBar.open('Please select at least one series', 'Close', { duration: 3000 });
+      this.messageService.warning('Please select at least one series');
       return;
     }
 
@@ -368,7 +351,7 @@ export class SeriesFormComponent implements OnInit {
 
     if (this.isComicVineManagementMode || (this.isEditMode && hasExistingSeries && isAppendMode)) {
       const totalSeriesAfterAdd = this.existingComicVineData.length + this.selectedSeries.length;
-      
+
       if (totalSeriesAfterAdd >= 2) {
         this.allAvailableSeries = [...this.existingComicVineData, ...this.selectedSeries];
         this.showCombinationConfig = true;
@@ -399,7 +382,7 @@ export class SeriesFormComponent implements OnInit {
 
   applyCombinedConfiguration(): void {
     if (!this.selectedPrimarySeries || !this.selectedCover) {
-      this.snackBar.open('Please select primary series and cover image', 'Close', { duration: 3000 });
+      this.messageService.warning('Please select primary series and cover image');
       return;
     }
 
@@ -444,9 +427,8 @@ export class SeriesFormComponent implements OnInit {
     this.showCombinationConfig = false;
 
     const afterCount = this.existingComicVineData.length;
-    this.snackBar.open(
+    this.messageService.success(
       `Added ${addedCount} series (${beforeCount} → ${afterCount} total): ${addedNames}`,
-      'Close',
       { duration: 5000 }
     );
   }
@@ -479,9 +461,9 @@ export class SeriesFormComponent implements OnInit {
 
     this.comicVineResults = [];
     this.showCombinationConfig = false;
-    
+
     const seriesNames = this.selectedSeries.map(s => s.name).join(', ');
-    this.snackBar.open(`Combined ${this.selectedSeries.length} series: ${seriesNames}`, 'Close', { duration: 5000 });
+    this.messageService.success(`Combined ${this.selectedSeries.length} series: ${seriesNames}`, { duration: 5000 });
   }
 
   cancelCombination(): void {
@@ -514,17 +496,17 @@ export class SeriesFormComponent implements OnInit {
       comicVineId: comicVineSeries.id,
       comicVineIds: [comicVineSeries.id]
     });
-    
+
     // Clear existing data since we're replacing
     this.existingComicVineData = [comicVineSeries];
-    
+
     this.comicVineResults = [];
     this.clearSelection();
-    
+
     if (hasExistingSeries && !isAppendMode) {
-      this.snackBar.open(`Replaced series data with "${comicVineSeries.name}"`, 'Close', { duration: 3000 });
+      this.messageService.success(`Replaced series data with "${comicVineSeries.name}"`);
     } else {
-      this.snackBar.open(`Selected "${comicVineSeries.name}"`, 'Close', { duration: 3000 });
+      this.messageService.success(`Selected "${comicVineSeries.name}"`);
     }
   }
 
@@ -555,9 +537,9 @@ export class SeriesFormComponent implements OnInit {
   onSubmit(): void {
     if (!this.canSubmitForm()) {
       if (this.isComicVineManagementMode && this.existingComicVineData.length === 0) {
-        this.snackBar.open('Please add at least one Comic Vine series before saving', 'Close', { duration: 3000 });
+        this.messageService.warning('Please add at least one Comic Vine series before saving');
       } else {
-        this.snackBar.open('Please fix form errors before submitting', 'Close', { duration: 3000 });
+        this.messageService.warning('Please fix form errors before submitting');
       }
       return;
     }
@@ -588,7 +570,7 @@ export class SeriesFormComponent implements OnInit {
 
     // Add ID for updates
     if (this.isEditMode && this.seriesId) {
-      seriesData .id = this.seriesId;
+      seriesData.id = this.seriesId;
     }
 
     const operation: Observable<ApiResponse<Series>>  = this.isEditMode && this.seriesId
@@ -600,12 +582,12 @@ export class SeriesFormComponent implements OnInit {
         if (!res.data) throw new Error('Create/update operation provided no data');
 
         const message = this.isEditMode ? 'Series updated successfully' : 'Series created successfully';
-        this.snackBar.open(message, 'Close', { duration: 3000 });
-        this.router.navigate(['/series', generateSlug(res.data.name)]);
+        this.messageService.success(message);
+        this.router.navigate(['/series', res.data.id, generateSlug(res.data.name)]);
       },
       error: (err: Error) => {
         console.error('Error saving series:', err);
-        this.snackBar.open('Error saving series', 'Close', { duration: 3000 });
+        this.messageService.error('Error saving series');
         this.loading = false;
       }
     });
@@ -614,7 +596,7 @@ export class SeriesFormComponent implements OnInit {
   cancel(): void {
     if (this.isEditMode && this.seriesId) {
       const currentName = this.seriesForm.get('name')?.value;
-      this.router.navigate(['/series', generateSlug(currentName)]);
+      this.router.navigate(['/series', this.seriesId, generateSlug(currentName)]);
     } else {
       this.router.navigate(['/series']);
     }
@@ -622,9 +604,7 @@ export class SeriesFormComponent implements OnInit {
 
   hasChanges(): boolean {
     if (!this.isEditMode) return false;
-    
-    // Check if form is dirty OR if we have any validation errors that need to be shown
-    return this.seriesForm.dirty || this.seriesForm.invalid;
+    return this.seriesForm.dirty;
   }
 
   getFormTitle(): string {
@@ -646,7 +626,7 @@ export class SeriesFormComponent implements OnInit {
 
   getPreviewDateRange(): string {
     if (!this.allAvailableSeries.length) return '';
-    
+
     const startYears = this.allAvailableSeries
       .map(s => s.startYear)
       .filter(year => year !== null && year !== undefined);
@@ -674,7 +654,7 @@ export class SeriesFormComponent implements OnInit {
 
   getPreviewAvailableCount(): number {
     if (!this.allAvailableSeries.length) return 0;
-    
+
     return this.allAvailableSeries
       .map(s => s.issueCount || 0)
       .reduce((sum, count) => sum + count, 0);
@@ -696,19 +676,19 @@ export class SeriesFormComponent implements OnInit {
   }
 
   getOperationModeMessage(): string {
-    const hasExisting = this.existingComicVineData.length > 0;
+    const existingCount = this.existingComicVineData.length;
     const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
-    
-    if (!hasExisting) {
+
+    if (existingCount === 0) {
       return 'No existing Comic Vine series - new selections will be added';
     }
-    
+
     if (this.isComicVineManagementMode) {
-      return `Managing ${hasExisting} existing series - new selections will be added`;
+      return `Managing ${existingCount} existing series - new selections will be added`;
     }
-    
-    return isAppendMode 
-      ? `Append mode: New selections will be added to ${hasExisting} existing series`
-      : `Replace mode: New selections will replace ${hasExisting} existing series`;
+
+    return isAppendMode
+      ? `Append mode: New selections will be added to ${existingCount} existing series`
+      : `Replace mode: New selections will replace ${existingCount} existing series`;
   }
 }
