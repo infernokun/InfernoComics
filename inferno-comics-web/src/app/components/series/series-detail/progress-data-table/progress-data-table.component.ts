@@ -858,6 +858,34 @@ export class ProgressDataTable implements OnInit, OnDestroy {
     };
   }
 
+  ngOnInit(): void {
+    this.loadProgressData();
+
+    this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
+      this.isLoading = true;
+      const response: WebSocketResponseList = msg as WebSocketResponseList;
+      if (response.name == 'ProgressDataListTable' && response.seriesId == this.id) {
+        const processed: ProgressData[] = response.payload.map((item) => new ProgressData(item));
+        this.progressData.set(processed);
+        
+        if (this.gridApi) {
+          this.gridApi.setGridOption('rowData', this.progressData());
+          this.gridApi.refreshCells();
+          this.gridApi?.sizeColumnsToFit();
+        }
+
+        this.isLoading = false;
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopAutoRefresh();
+    if (this.wsSub) {
+      this.wsSub.unsubscribe();
+    }
+  }
+
   // Mobile detection methods
   @HostListener('window:resize')
   onResize() {
@@ -911,35 +939,6 @@ export class ProgressDataTable implements OnInit, OnDestroy {
       window.open(finalUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       console.error('Error fetching evaluation URL:', error);
-    }
-  }
-
-  ngOnInit(): void {
-    this.loadProgressData();
-
-    this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
-      this.isLoading = true;
-      const response: WebSocketResponseList = msg as WebSocketResponseList;
-      if (response.name == 'ProgressDataListTable' && response.seriesId == this.id) {
-        const processed: ProgressData[] = response.payload.map((item) => new ProgressData(item));
-        this.progressData.set(processed);
-        
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.progressData());
-          this.gridApi.refreshCells();
-          this.gridApi?.sizeColumnsToFit();
-        }
-
-        this.isLoading = false;
-      }
-    });
-    //this.startAutoRefresh();
-  }
-
-  ngOnDestroy(): void {
-    this.stopAutoRefresh();
-    if (this.wsSub) {
-      this.wsSub.unsubscribe();
     }
   }
 

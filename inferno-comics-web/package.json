@@ -1,6 +1,6 @@
 {
   "name": "inferno-comics-web",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "scripts": {
     "ng": "ng",
     "start": "ng serve --host 0.0.0.0 --port=4300",
@@ -9,12 +9,9 @@
     "name": "echo ${npm_package_name}",
     "test": "ng test",
     "lint": "ng lint",
-
     "gen-version": "node scripts/gen-version.js",
-
     "build:app": "NODE_OPTIONS=--max_old_space_size=8192 pnpm build --configuration=production",
     "build:prod": "pnpm build --configuration production",
-    
     "docker:build": "npm run gen-version && npm run docker:build-compile -s && npm run docker:build-runtime -s && npm run docker:push -s",
     "docker:build-compile": "export PROJECT=$(jq -r .name package.json) && docker buildx build --target compile-stage --build-arg BUILDKIT_INLINE_CACHE=1 -t infernokun/$PROJECT:compile .",
     "docker:build-runtime": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker buildx build --target runtime-stage --build-arg BUILDKIT_INLINE_CACHE=1 -t infernokun/$PROJECT:$VERSION -t infernokun/${npm_package_name}:latest .",
@@ -40,6 +37,7 @@
     "lodash-es": "^4.17.21",
     "luxon": "^3.7.2",
     "material-icons": "1.13.14",
+    "ngx-device-detector": "^11.0.0",
     "ngx-papaparse": "^8.0.0",
     "ngx-skeleton-loader": "^12.0.0",
     "react": "^18.3.1",

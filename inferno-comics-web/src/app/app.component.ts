@@ -11,15 +11,18 @@ import { WebsocketService } from './services/websocket.service';
   standalone: false,
 })
 export class AppComponent implements OnInit, OnDestroy {
-  title = 'Inferno Comics';
-  version: string = APP_VERSION;
-  isDarkMode$: Observable<boolean>;
   private themeSubscription: Subscription = new Subscription();
+
+  title: string = 'Inferno Comics';
+  version: string = APP_VERSION;
+
+  isDarkMode$: Observable<boolean>;
 
   webSocketConnected: boolean = true;
 
-  constructor(private themeService: ThemeService, private websocket: WebsocketService) {
-    this.isDarkMode$ = this.themeService.isDarkMode$;
+  constructor(private themeService: ThemeService, 
+    private websocket: WebsocketService) {
+      this.isDarkMode$ = this.themeService.isDarkMode$;
   }
 
   ngOnInit(): void {
@@ -31,7 +34,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.websocket.isConnected$.subscribe((isConnected: boolean) => {
       this.webSocketConnected = isConnected;
-    })
+    });
   }
 
   ngOnDestroy(): void {
