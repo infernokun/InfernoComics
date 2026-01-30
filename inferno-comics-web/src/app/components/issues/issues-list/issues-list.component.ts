@@ -2,12 +2,12 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, finalize } from 'rxjs';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { Issue } from '../../../models/issue.model';
 import { generateSlug, Series, SeriesWithIssues } from '../../../models/series.model';
+import { MessageService } from '../../../services/message.service';
 import { RecognitionService } from '../../../services/recognition.service';
 import { SeriesService } from '../../../services/series.service';
 import { DateUtils } from '../../../utils/date-utils';
@@ -68,7 +68,7 @@ export class IssuesListComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly router: Router,
-    private readonly snackBar: MatSnackBar,
+    private readonly messageService: MessageService,
     private readonly cdr: ChangeDetectorRef,
     private readonly seriesService: SeriesService,
     private readonly recognitionService: RecognitionService
@@ -338,21 +338,11 @@ export class IssuesListComponent implements OnInit, OnDestroy {
   }
 
   private showError(message: string): void {
-    this.snackBar.open(message, 'Close', {
-      duration: 5000,
-      horizontalPosition: 'center',
-      verticalPosition: 'bottom',
-      panelClass: ['error-snackbar']
-    });
+    this.messageService.error(message);
   }
 
   private showSuccessMessage(message: string): void {
-    this.snackBar.open(message, 'Dismiss', {
-      duration: 3000,
-      horizontalPosition: 'center',
-      verticalPosition: 'bottom',
-      panelClass: ['success-snackbar']
-    });
+    this.messageService.success(message);
   }
 
   onToggleChange(): void {

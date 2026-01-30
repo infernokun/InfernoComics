@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MessageService } from '../../../services/message.service';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -69,7 +69,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   constructor(
     private seriesService: SeriesService,
     private router: Router,
-    private snackBar: MatSnackBar,
+    private messageService: MessageService,
     private dialog: MatDialog
   ) {
     this.loadUserPreferences();
@@ -99,7 +99,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error loading series:', error);
-          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+          this.messageService.error('Error loading series');
           this.loading = false;
         }
       });
@@ -300,12 +300,12 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     if (id && confirm('Are you sure you want to delete this series? This action cannot be undone.')) {
       this.seriesService.deleteSeries(id).subscribe({
         next: () => {
-          this.snackBar.open('Series deleted successfully', 'Close', { duration: 3000 });
+          this.messageService.success('Series deleted successfully');
           this.loadSeries();
         },
         error: (error) => {
           console.error('Error deleting series:', error);
-          this.snackBar.open('Error deleting series', 'Close', { duration: 3000 });
+          this.messageService.error('Error deleting series');
         }
       });
     }
@@ -369,14 +369,14 @@ export class SeriesListComponent implements OnInit, OnDestroy {
   }
 
   syncAllSeries() {
-    this.snackBar.open('Syncing series...', '', { duration: 2000 });
+    this.messageService.loading('Syncing series...');
     this.seriesService.syncAllSeries().subscribe({
       next: () => {
-        this.snackBar.open('Series synced successfully', 'Close', { duration: 3000 });
+        this.messageService.success('Series synced successfully');
         this.loadSeries();
       },
       error: () => {
-        this.snackBar.open('Error syncing series', 'Close', { duration: 3000 });
+        this.messageService.error('Error syncing series');
       }
     });
   }

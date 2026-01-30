@@ -1,12 +1,12 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { ComicVineIssue } from '../../../models/comic-vine.model';
 import { Issue, IssueCondition, IssueRequest } from '../../../models/issue.model';
 import { IssueService } from '../../../services/issue.service';
+import { MessageService } from '../../../services/message.service';
 import { RecognitionService } from '../../../services/recognition.service';
 
 export interface IssueFormData {
@@ -38,7 +38,7 @@ export class IssueFormComponent implements OnInit {
     private issueService: IssueService,
     private recognitionService: RecognitionService,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar,
+    private messageService: MessageService,
     public dialogRef: MatDialogRef<IssueFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: IssueFormData
   ) {
@@ -188,12 +188,12 @@ export class IssueFormComponent implements OnInit {
       operation.subscribe({
         next: (result: ApiResponse<Issue>) => {
           const message = this.isEditMode ? 'Comic book updated successfully' : 'Comic book added successfully';
-          this.snackBar.open(message, 'Close', { duration: 3000 });
+          this.messageService.success(message);
           this.dialogRef.close(result);
         },
         error: (error) => {
           console.error('Error saving comic book:', error);
-          this.snackBar.open('Error saving comic book', 'Close', { duration: 3000 });
+          this.messageService.error('Error saving comic book');
           this.loading = false;
         }
       });

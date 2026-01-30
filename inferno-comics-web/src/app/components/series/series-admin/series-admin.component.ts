@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MessageService } from '../../../services/message.service';
 import { MaterialModule } from '../../../material.module';
 import { ApiResponse } from '../../../models/api-response.model';
 import { Issue } from '../../../models/issue.model';
@@ -39,7 +39,7 @@ export class SeriesAdminComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private snackBar: MatSnackBar,
+    private messageService: MessageService,
     private seriesService: SeriesService,
     private issueService: IssueService,
     private recognitionService: RecognitionService
@@ -60,7 +60,7 @@ export class SeriesAdminComponent implements OnInit {
       next: (res: ApiResponse<Series[]>) => {
         if (!res.data) {
           this.loading = false;
-          this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+          this.messageService.error('Error loading series');
           return;
         }
         const found = res.data.find(s => generateSlug(s.name) === slug);
@@ -69,14 +69,14 @@ export class SeriesAdminComponent implements OnInit {
           this.loadSeries();
         } else {
           this.loading = false;
-          this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+          this.messageService.error('Series not found');
           this.router.navigate(['/series']);
         }
       },
       error: (err: Error) => {
         console.error('Error loading series:', err);
         this.loading = false;
-        this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+        this.messageService.error('Error loading series');
       },
     });
   }
@@ -107,14 +107,10 @@ export class SeriesAdminComponent implements OnInit {
         if (!res.data) throw new Error('issue reverifySeries');
 
         this.series = res.data;
-        this.snackBar.open('Metadata reverified successfully', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.success('Metadata reverified successfully');
       },
       error: (err) => {
-        this.snackBar.open('Failed to reverify metadata', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.error('Failed to reverify metadata');
         console.error('Error reverifying metadata:', err);
       },
     });
@@ -175,7 +171,7 @@ export class SeriesAdminComponent implements OnInit {
 
   copyToClipboard(text: string): void {
     navigator.clipboard.writeText(text).then(() => {
-      this.snackBar.open('Copied to clipboard', 'Close', { duration: 2000 });
+      this.messageService.info('Copied to clipboard');
     });
   }
 
@@ -190,19 +186,13 @@ export class SeriesAdminComponent implements OnInit {
         if (!res.data) throw new Error('issue reverifyIssues');
 
         const { updated, skipped, failed } = res.data;
-        this.snackBar.open(
-          `Issues reverified: ${updated} updated, ${skipped} skipped, ${failed} failed`,
-          'Close',
-          { duration: 5000 }
-        );
+        this.messageService.success(`Issues reverified: ${updated} updated, ${skipped} skipped, ${failed} failed`, { duration: 5000 });
         this.reverifyingIssues = false;
         // Reload to show updated data
         this.loadSeries();
       },
       error: (err) => {
-        this.snackBar.open('Failed to reverify issues', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.error('Failed to reverify issues');
         console.error('Error reverifying issues:', err);
         this.reverifyingIssues = false;
       },

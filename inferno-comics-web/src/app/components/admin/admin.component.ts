@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MessageService } from '../../services/message.service';
 import { Subscription } from 'rxjs';
 import { MaterialModule } from '../../material.module';
 import { ApiResponse } from '../../models/api-response.model';
@@ -63,7 +63,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     private seriesService: SeriesService,
     private issueService: IssueService,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private messageService: MessageService
   ) {}
 
   ngOnInit(): void {
@@ -91,9 +91,7 @@ export class AdminComponent implements OnInit, OnDestroy {
         },
         error: (err: Error) => {
           console.error('Failed to load configuration:', err);
-          this.snackBar.open('Failed to load configuration.', 'Close', {
-            duration: 3000,
-          });
+          this.messageService.error('Failed to load configuration.');
         }
       });
     this.sub.add(load$);
@@ -144,9 +142,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   onSave(): void {
     if (this.configForm.invalid) {
-      this.snackBar.open('Please fix the errors before saving.', 'Close', {
-        duration: 3000,
-      });
+      this.messageService.warning('Please fix the errors before saving.');
       return;
     }
 
@@ -156,18 +152,14 @@ export class AdminComponent implements OnInit, OnDestroy {
       .saveRecognitionConfig(updated)
       .subscribe({
         next: (res: ApiResponse<boolean>) => {
-          this.snackBar.open('Configuration saved successfully', 'Close', {
-            duration: 2500,
-          });
+          this.messageService.success('Configuration saved successfully');
           this.config = updated;
           this.originalFormValue = JSON.parse(JSON.stringify(this.configForm.value));
           this.hasUnsavedChanges = false;
         },
         error: (err: Error) => {
           console.error('Save error:', err);
-          this.snackBar.open('Failed to save configuration', 'Close', {
-            duration: 3000,
-          });
+          this.messageService.error('Failed to save configuration');
         },
       });
     this.sub.add(save$);
@@ -177,7 +169,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     if (this.hasUnsavedChanges) {
       this.configForm.patchValue(this.originalFormValue);
       this.hasUnsavedChanges = false;
-      this.snackBar.open('Changes discarded', 'Close', { duration: 2000 });
+      this.messageService.info('Changes discarded');
     }
   }
 
@@ -195,9 +187,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
     URL.revokeObjectURL(url);
 
-    this.snackBar.open('Configuration exported successfully', 'Close', {
-      duration: 2500,
-    });
+    this.messageService.success('Configuration exported successfully');
   }
 
   onImport(event: Event): void {
@@ -213,14 +203,10 @@ export class AdminComponent implements OnInit, OnDestroy {
         this.buildForm(importedConfig);
         this.hasUnsavedChanges = true;
 
-        this.snackBar.open('Configuration imported. Click Save to apply.', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.info('Configuration imported. Click Save to apply.');
       } catch (error) {
         console.error('Import error:', error);
-        this.snackBar.open('Invalid configuration file', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.error('Invalid configuration file');
       }
     };
 
@@ -265,7 +251,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   reverifyAllSeries(): void {
     if (this.allSeries.length === 0) {
-      this.snackBar.open('No series to reverify', 'Close', { duration: 3000 });
+      this.messageService.warning('No series to reverify');
       return;
     }
 
@@ -278,11 +264,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     const processNext = (index: number) => {
       if (index >= this.allSeries.length) {
         this.reverifyingAllSeries = false;
-        this.snackBar.open(
-          `Reverified ${completed} series (${failed} failed)`,
-          'Close',
-          { duration: 5000 }
-        );
+        this.messageService.success(`Reverified ${completed} series (${failed} failed)`, { duration: 5000 });
         return;
       }
 
@@ -307,7 +289,7 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   reverifyAllIssues(): void {
     if (this.allSeries.length === 0) {
-      this.snackBar.open('No series to reverify issues for', 'Close', { duration: 3000 });
+      this.messageService.warning('No series to reverify issues for');
       return;
     }
 
@@ -321,11 +303,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     const processNext = (index: number) => {
       if (index >= this.allSeries.length) {
         this.reverifyingAllIssues = false;
-        this.snackBar.open(
-          `Issues reverified: ${totalUpdated} updated, ${totalSkipped} skipped, ${totalFailed} failed`,
-          'Close',
-          { duration: 5000 }
-        );
+        this.messageService.success(`Issues reverified: ${totalUpdated} updated, ${totalSkipped} skipped, ${totalFailed} failed`, { duration: 5000 });
         return;
       }
 

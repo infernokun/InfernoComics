@@ -3,8 +3,8 @@ import { finalize, interval, Subscription } from 'rxjs';
 import { ProgressData, State } from '../../../models/progress-data.model';
 import { generateSlug } from '../../../models/series.model';
 import { trigger, transition, style, animate } from '@angular/animations';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiResponse } from '../../../models/api-response.model';
+import { MessageService } from '../../../services/message.service';
 import { ProgressDataService } from '../../../services/progress-data.service';
 import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
 import { Router } from '@angular/router';
@@ -62,7 +62,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
   constructor(
     private router: Router,
-    private snackBar: MatSnackBar,
+    private messageService: MessageService,
     private elementRef: ElementRef,
     private websocket: WebsocketService,
     private progressDataService: ProgressDataService
@@ -387,19 +387,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
 
         this.processingStatus.set(this.convertToProcessingStatus(res.data.map(item => new ProgressData(item))));
 
-        this.snackBar.open(
-          `Progress dismissed`,
-          'Close',
-          { duration: 3000, panelClass: ['snackbar-success'] }
-        );
+        this.messageService.success('Progress dismissed');
       },
       error: (err: Error) => {
         console.error('Error dismissing progress:', err);
-        this.snackBar.open(
-          'Failed to dismiss progress',
-          'Close',
-          { duration: 3000, panelClass: ['snackbar-error'] }
-        );
+        this.messageService.error('Failed to dismiss progress');
       }
     });
   }
@@ -489,11 +481,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     event.stopPropagation();
 
     if (!item.series?.id) {
-      this.snackBar.open('Cannot retry: Series information missing', 'Close', { duration: 3000 });
+      this.messageService.warning('Cannot retry: Series information missing');
       return;
     }
 
-    this.snackBar.open('Retry functionality coming soon', 'Close', { duration: 3000 });
+    this.messageService.info('Retry functionality coming soon');
   }
 
   // Clear all completed/failed items
@@ -512,7 +504,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
           cleared++;
           if (cleared === itemsToClear.length && res.data) {
             this.processingStatus.set(this.convertToProcessingStatus(res.data.map(item => new ProgressData(item))));
-            this.snackBar.open(`Cleared ${cleared} finished tasks`, 'Close', { duration: 3000 });
+            this.messageService.success(`Cleared ${cleared} finished tasks`);
           }
         },
         error: (err: Error) => {

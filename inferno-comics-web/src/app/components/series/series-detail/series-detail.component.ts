@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MessageService } from '../../../services/message.service';
 import { CommonModule } from '@angular/common';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 import { ImageProcessingDialogComponent } from './image-processing-progress/image-processing-progress.component';
@@ -66,7 +66,7 @@ export class SeriesDetailComponent implements OnInit {
     private issueService: IssueService,
     private comicVineService: ComicVineService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private messageService: MessageService
   ) {}
 
   ngOnInit(): void {
@@ -75,7 +75,7 @@ export class SeriesDetailComponent implements OnInit {
       const slug = params.get('slug');
 
       if (!id) {
-        this.snackBar.open('Invalid series ID', 'Close', { duration: 3000 });
+        this.messageService.error('Invalid series ID');
         this.router.navigate(['/series']);
         return;
       }
@@ -118,7 +118,7 @@ export class SeriesDetailComponent implements OnInit {
       error: (err: Error) => {
         console.error('Error loading series:', err);
         this.loading = false;
-        this.snackBar.open('Error loading series', 'Close', { duration: 3000 });
+        this.messageService.error('Error loading series');
       },
     });
   }
@@ -154,9 +154,7 @@ export class SeriesDetailComponent implements OnInit {
       error: (err: Error) => {
         console.error('Error loading Comic Vine issues:', err);
         this.loadingComicVine = false;
-        this.snackBar.open('Error loading Comic Vine issues', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.error('Error loading Comic Vine issues');
       },
     });
   }
@@ -278,7 +276,7 @@ export class SeriesDetailComponent implements OnInit {
 
   addSelectedToCollection(): void {
     if (this.selectedIssues.size === 0) {
-      this.snackBar.open('No issues selected', 'Close', { duration: 3000 });
+      this.messageService.warning('No issues selected');
       return;
     }
 
@@ -312,20 +310,12 @@ export class SeriesDetailComponent implements OnInit {
         const failed = results.filter(r => r.status === 'rejected').length;
 
         if (failed > 0) {
-          this.snackBar.open(
-            `Added ${succeeded} issues, ${failed} failed`,
-            'Close',
-            { duration: 5000 }
-          );
+          this.messageService.warning(`Added ${succeeded} issues, ${failed} failed`, { duration: 5000 });
           results.filter(r => r.status === 'rejected').forEach((r, i) => {
             console.error(`Failed to add issue ${i}:`, (r as PromiseRejectedResult).reason);
           });
         } else {
-          this.snackBar.open(
-            `Added ${succeeded} issues to collection`,
-            'Close',
-            { duration: 3000 }
-          );
+          this.messageService.success(`Added ${succeeded} issues to collection`);
         }
         this.loadIssues(this.series?.id!);
         this.clearSelection();
@@ -395,14 +385,12 @@ export class SeriesDetailComponent implements OnInit {
     if (confirm('Are you sure you want to delete this comic book?')) {
       this.issueService.deleteIssue(id).subscribe({
         next: () => {
-          this.snackBar.open('Comic book deleted', 'Close', { duration: 3000 });
+          this.messageService.success('Comic book deleted');
           this.loadIssues(this.series?.id!);
         },
         error: (err: Error) => {
           console.error('Error deleting comic book:', err);
-          this.snackBar.open('Error deleting comic book', 'Close', {
-            duration: 3000,
-          });
+          this.messageService.error('Error deleting comic book');
         },
       });
     }
@@ -437,14 +425,12 @@ export class SeriesDetailComponent implements OnInit {
     ) {
       this.seriesService.deleteSeries(this.series?.id!).subscribe({
         next: () => {
-          this.snackBar.open('Series deleted', 'Close', { duration: 3000 });
+          this.messageService.success('Series deleted');
           this.router.navigate(['/series']);
         },
         error: (err: Error) => {
           console.error('Error deleting series:', err);
-          this.snackBar.open('Error deleting series', 'Close', {
-            duration: 3000,
-          });
+          this.messageService.error('Error deleting series');
         },
       });
     }
@@ -528,11 +514,7 @@ export class SeriesDetailComponent implements OnInit {
       case 'error':
         console.error('SSE Error received:', data.error);
         dialogComponent.setError(data.error || 'Unknown error occurred');
-        this.snackBar.open(
-          `Error processing images: ${data.error || 'Unknown error'}`,
-          'Close',
-          { duration: 5000 }
-        );
+        this.messageService.error(`Error processing images: ${data.error || 'Unknown error'}`);
         break;
 
       default:
@@ -568,11 +550,7 @@ export class SeriesDetailComponent implements OnInit {
           this.openBulkSelectionDialog(result, seriesId, files);
         } else {
           console.log('No valid results to display');
-          this.snackBar.open(
-            'Processing completed but no results found',
-            'Close',
-            { duration: 3000 }
-          );
+          this.messageService.info('Processing completed but no results found');
         }
       } else {
         console.log('Dialog closed without proceeding to matcher');
@@ -642,15 +620,9 @@ export class SeriesDetailComponent implements OnInit {
       console.log('No matches found in any images');
       const summary = result.summary;
       if (summary && summary.total_images_processed > 0) {
-        this.snackBar.open(
-          `Processed ${summary.total_images_processed} images but found no matching comics`,
-          'Close',
-          { duration: 5000 }
-        );
+        this.messageService.info(`Processed ${summary.total_images_processed} images but found no matching comics`, { duration: 5000 });
       } else {
-        this.snackBar.open('No matching comics found in any images', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.info('No matching comics found in any images');
       }
       return;
     }
@@ -695,16 +667,14 @@ export class SeriesDetailComponent implements OnInit {
     );
 
     if (acceptedResults.length === 0) {
-      this.snackBar.open('No comics selected for addition', 'Close', { duration: 3000 });
+      this.messageService.warning('No comics selected for addition');
       return;
     }
 
     console.log(`Processing ${acceptedResults.length} accepted results out of ${results.length} total`);
 
     // Show loading indicator
-    this.snackBar.open(`Adding ${acceptedResults.length} comics to collection...`, '', {
-      duration: 0,
-    });
+    this.messageService.loading(`Adding ${acceptedResults.length} comics to collection...`);
 
     try {
       // Fetch Comic Vine details for all accepted results in parallel
@@ -716,8 +686,8 @@ export class SeriesDetailComponent implements OnInit {
       const validIssueData = issueDataResults.filter((data): data is NonNullable<typeof data> => data !== null);
 
       if (validIssueData.length === 0) {
-        this.snackBar.dismiss();
-        this.snackBar.open('Failed to fetch comic details for any issues', 'Close', { duration: 3000 });
+        this.messageService.dismiss();
+        this.messageService.error('Failed to fetch comic details for any issues');
         return;
       }
 
@@ -726,7 +696,7 @@ export class SeriesDetailComponent implements OnInit {
       // Single API call for bulk creation
       const response: ApiResponse<Issue[]> = await firstValueFrom(this.issueService.createIssuesBulk(validIssueData));
 
-      this.snackBar.dismiss();
+      this.messageService.dismiss();
 
       if (!response.data) {
         throw new Error('No data returned from bulk creation');
@@ -735,13 +705,14 @@ export class SeriesDetailComponent implements OnInit {
       const successful = response.data.length;
       const failed = acceptedResults.length - successful;
 
-      this.snackBar.open(
-        successful > 0
-          ? `Successfully added ${successful} comics to collection${failed > 0 ? ` (${failed} failed)` : ''}`
-          : 'Failed to add comics to collection',
-        'Close',
-        { duration: 5000 }
-      );
+      if (successful > 0) {
+        this.messageService.success(
+          `Successfully added ${successful} comics to collection${failed > 0 ? ` (${failed} failed)` : ''}`,
+          { duration: 5000 }
+        );
+      } else {
+        this.messageService.error('Failed to add comics to collection');
+      }
 
       if (successful > 0) {
         // Refresh data in parallel
@@ -750,9 +721,9 @@ export class SeriesDetailComponent implements OnInit {
       }
 
     } catch (err) {
-      this.snackBar.dismiss();
+      this.messageService.dismiss();
       console.error('Error in bulk add:', err);
-      this.snackBar.open('Error adding comics to collection', 'Close', { duration: 3000 });
+      this.messageService.error('Error adding comics to collection');
     }
   }
 
@@ -890,18 +861,14 @@ export class SeriesDetailComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadIssues(existingIssue.seriesId);
-        this.snackBar.open('Comic issue updated successfully', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.success('Comic issue updated successfully');
       }
     });
   }
 
   private handleSelectedMatch(match: ComicMatch, seriesId: number): void {
     // Show loading indicator while fetching Comic Vine details
-    this.snackBar.open('Fetching comic details...', '', {
-      duration: 0,
-    });
+    this.messageService.loading('Fetching comic details...');
 
     console.log('Selected match:', match.parent_comic_vine_id);
 
@@ -914,7 +881,7 @@ export class SeriesDetailComponent implements OnInit {
       )
       .subscribe({
         next: (res: ApiResponse<Issue>) => {
-          this.snackBar.dismiss();
+          this.messageService.dismiss();
 
           const issue: Issue | undefined = res.data ? new Issue(res.data) : undefined;
 
@@ -937,9 +904,7 @@ export class SeriesDetailComponent implements OnInit {
 
               if (result != '') {
                 this.loadIssues(seriesId);
-                this.snackBar.open('Comic issue added successfully', 'Close', {
-                  duration: 3000,
-                });
+                this.messageService.success('Comic issue added successfully');
               }
             });
           } else {
@@ -949,18 +914,12 @@ export class SeriesDetailComponent implements OnInit {
         },
         error: (err: Error) => {
           // Dismiss loading indicator
-          this.snackBar.dismiss();
+          this.messageService.dismiss();
 
           console.error('Error fetching issue details:', err);
 
           // Show user-friendly error and offer fallback
-          this.snackBar.open(
-            'Could not fetch comic details. Using basic info.',
-            'Close',
-            {
-              duration: 3000,
-            }
-          );
+          this.messageService.warning('Could not fetch comic details. Using basic info.');
 
           // Fall back to using just the match data
           this.handleSelectedMatchFallback(match, seriesId);
@@ -992,9 +951,7 @@ export class SeriesDetailComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadIssues(seriesId);
-        this.snackBar.open('Comic issue added successfully', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.success('Comic issue added successfully');
       }
     });
   }
@@ -1009,9 +966,7 @@ export class SeriesDetailComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         this.loadIssues(seriesId);
-        this.snackBar.open('Comic issue added successfully', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.success('Comic issue added successfully');
       }
     });
   }
@@ -1148,19 +1103,13 @@ export class SeriesDetailComponent implements OnInit {
     const { matches, sessionId, isMultiple, summary, storedImages } = result;
 
     if (!matches || matches.length === 0) {
-      this.snackBar.open(
-        'No matching comics found in the session data',
-        'Close',
-        {
-          duration: 3000,
-        }
-      );
+      this.messageService.info('No matching comics found in the session data');
       return;
     }
 
     if (summary) {
       const message = `Found ${summary.successful_matches} matches from ${summary.processed} processed images`;
-      this.snackBar.open(message, 'Close', { duration: 3000 });
+      this.messageService.info(message);
     }
 
     // Pass stored images to the bulk selection dialog
@@ -1212,7 +1161,7 @@ export class SeriesDetailComponent implements OnInit {
 
   deleteAllIssues(): void {
     if (!this.issues || this.issues.length === 0) {
-      this.snackBar.open('No issues to delete', 'Close', { duration: 3000 });
+      this.messageService.warning('No issues to delete');
       return;
     }
 
@@ -1248,16 +1197,12 @@ export class SeriesDetailComponent implements OnInit {
     const seriesId = this.series?.id;
     
     if (!seriesId) {
-      this.snackBar.open('Error: Series ID not found', 'Close', {
-        duration: 3000,
-      });
+      this.messageService.error('Error: Series ID not found');
       return;
     }
 
     // Show progress indicator
-    this.snackBar.open(`Deleting ${totalIssues} issues...`, '', {
-      duration: 0, // Keep open until manually dismissed
-    });
+    this.messageService.loading(`Deleting ${totalIssues} issues...`);
 
     // Get all issue IDs
     const issueIds = this.issues.map((issue) => issue.id!);
@@ -1267,18 +1212,14 @@ export class SeriesDetailComponent implements OnInit {
       next: (res: ApiResponse<{ successful: number; failed: number }>) => {
         if (!res.data) throw new Error('No data returned from bulk delete');
         const result = res.data;
-        this.snackBar.dismiss();
+        this.messageService.dismiss();
         
         const successful = result.successful || 0;
         const failed = result.failed || 0;
 
         if (successful === totalIssues) {
           // All deletions successful
-          this.snackBar.open(
-            `Successfully deleted all ${successful} issues`,
-            'Close',
-            { duration: 5000 }
-          );
+          this.messageService.success(`Successfully deleted all ${successful} issues`, { duration: 5000 });
           
           // Clear local issues and refresh both issues and series data
           this.issues = [];
@@ -1286,22 +1227,14 @@ export class SeriesDetailComponent implements OnInit {
           this.loadSeries(seriesId); // This will update issuesOwnedCount
         } else if (successful > 0) {
           // Partial success
-          this.snackBar.open(
-            `Deleted ${successful} of ${totalIssues} issues (${failed} failed)`,
-            'Close',
-            { duration: 5000 }
-          );
+          this.messageService.warning(`Deleted ${successful} of ${totalIssues} issues (${failed} failed)`, { duration: 5000 });
           
           // Refresh both issues and series data
           this.loadIssues(seriesId);
           this.loadSeries(seriesId);
         } else {
           // All failed
-          this.snackBar.open(
-            'Failed to delete issues. Please try again.',
-            'Close',
-            { duration: 5000 }
-          );
+          this.messageService.error('Failed to delete issues. Please try again.');
         }
 
         // Log any failures for debugging
@@ -1310,20 +1243,16 @@ export class SeriesDetailComponent implements OnInit {
         }
       },
       error: (err: Error) => {
-        this.snackBar.dismiss();
+        this.messageService.dismiss();
         console.error('Error during bulk delete:', err);
-        this.snackBar.open(
-          'Unexpected error during deletion. Please try again.',
-          'Close',
-          { duration: 5000 }
-        );
+        this.messageService.error('Unexpected error during deletion. Please try again.');
       }
     });
   }
 
   manageComicVineSeries(): void {
     if (!this.series) {
-      this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+      this.messageService.error('Series not found');
       return;
     }
 
@@ -1334,7 +1263,7 @@ export class SeriesDetailComponent implements OnInit {
 
   reverifySeries(): void {
     if (!this.series?.id) {
-      this.snackBar.open('Series not found', 'Close', { duration: 3000 });
+      this.messageService.error('Series not found');
       return;
     }
 
@@ -1342,15 +1271,11 @@ export class SeriesDetailComponent implements OnInit {
       next: (res: ApiResponse<Series>) => {
         if (!res.data) throw new Error(`Failed to reverify series ID ${this.series?.id}: no data returned`);
         this.series = new Series(res.data);
-        this.snackBar.open('Series reverified successfully', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.success('Series reverified successfully');
       },
       error: (err: Error) => {
         console.error('Error re-verifying series:', err);
-        this.snackBar.open('Error re-verifying series', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.error('Error re-verifying series');
       },
     });
   }

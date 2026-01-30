@@ -19,7 +19,6 @@ import {
 import { AdminActionRendererParams, AdminActionsComponent } from './renderers/admin-actions.renderer';
 import { AgGridModule } from 'ag-grid-angular';
 import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Subscription, interval } from 'rxjs';
 import { CombinedStatusCellRenderer } from './renderers/combined-status-cell.renderer';
 import { EvaluationLinkCellRenderer } from './renderers/evaluation-link-cell.renderer';
@@ -31,6 +30,7 @@ import { ApiResponse } from '../../../../models/api-response.model';
 import { ComicMatch } from '../../../../models/comic-match.model';
 import { ProgressData, State } from '../../../../models/progress-data.model';
 import { EnvironmentService } from '../../../../services/environment.service';
+import { MessageService } from '../../../../services/message.service';
 import { ProgressDataService } from '../../../../services/progress-data.service';
 import { RecognitionService } from '../../../../services/recognition.service';
 import { SeriesService } from '../../../../services/series.service';
@@ -839,7 +839,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
 
   constructor(
     private dialog: MatDialog,
-    private snackBar: MatSnackBar,
+    private messageService: MessageService,
     private httpClient: HttpClient,
     private websocket: WebsocketService,
     private seriesService: SeriesService,
@@ -1112,12 +1112,12 @@ export class ProgressDataTable implements OnInit, OnDestroy {
   deleteProgressData(sessionId: string): void {
     this.progressDataService.deleteProgressData(sessionId).subscribe({
       next: () => {
-        this.snackBar.open('Progress deleted', 'Close', { duration: 3000 });
+        this.messageService.success('Progress deleted');
   
         this.loadProgressData();
       },
       error: (err: Error) => {
-        this.snackBar.open(err.message, 'Close', { duration: 5000 });
+        this.messageService.error(err.message);
       }
     });
   }

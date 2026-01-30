@@ -3,7 +3,7 @@ import { OnInit, OnDestroy, Component } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MessageService } from '../../services/message.service';
 import { Subscription } from 'rxjs';
 import { ApiResponse } from '../../models/api-response.model';
 import { RecognitionConfig, RecognitionService } from '../../services/recognition.service';
@@ -61,7 +61,7 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
   constructor(
     private recognitionService: RecognitionService,
     private fb: FormBuilder,
-    private snackBar: MatSnackBar
+    private messageService: MessageService
   ) {}
 
   ngOnInit(): void {
@@ -86,9 +86,7 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
         },
         error: (err: Error) => {
           console.error('Failed to load configuration:', err);
-          this.snackBar.open('Failed to load configuration.', 'Close', {
-            duration: 3000,
-          });
+          this.messageService.error('Failed to load configuration.');
         }
       });
     this.sub.add(load$);
@@ -139,9 +137,7 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
 
   onSave(): void {
     if (this.configForm.invalid) {
-      this.snackBar.open('Please fix the errors before saving.', 'Close', {
-        duration: 3000,
-      });
+      this.messageService.warning('Please fix the errors before saving.');
       return;
     }
 
@@ -151,18 +147,14 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
       .saveRecognitionConfig(updated)
       .subscribe({
         next: (res: ApiResponse<boolean>) => {
-          this.snackBar.open('✓ Configuration saved successfully', 'Close', {
-            duration: 2500,
-          });
+          this.messageService.success('Configuration saved successfully');
           this.config = updated;
           this.originalFormValue = JSON.parse(JSON.stringify(this.configForm.value));
           this.hasUnsavedChanges = false;
         },
         error: (err: Error) => {
           console.error('Save error:', err);
-          this.snackBar.open('✗ Failed to save configuration', 'Close', {
-            duration: 3000,
-          });
+          this.messageService.error('Failed to save configuration');
         },
       });
     this.sub.add(save$);
@@ -172,7 +164,7 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
     if (this.hasUnsavedChanges) {
       this.configForm.patchValue(this.originalFormValue);
       this.hasUnsavedChanges = false;
-      this.snackBar.open('Changes discarded', 'Close', { duration: 2000 });
+      this.messageService.info('Changes discarded');
     }
   }
 
@@ -190,9 +182,7 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
     
     URL.revokeObjectURL(url);
     
-    this.snackBar.open('Configuration exported successfully', 'Close', {
-      duration: 2500,
-    });
+    this.messageService.success('Configuration exported successfully');
   }
 
   onImport(event: Event): void {
@@ -208,14 +198,10 @@ export class RecognitionConfigComponent implements OnInit, OnDestroy {
         this.buildForm(importedConfig);
         this.hasUnsavedChanges = true;
         
-        this.snackBar.open('Configuration imported. Click Save to apply.', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.info('Configuration imported. Click Save to apply.');
       } catch (error) {
         console.error('Import error:', error);
-        this.snackBar.open('Invalid configuration file', 'Close', {
-          duration: 3000,
-        });
+        this.messageService.error('Invalid configuration file');
       }
     };
 
