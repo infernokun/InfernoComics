@@ -34,13 +34,14 @@
       </button>
     </nav>
 
-    <!-- Settings & Theme (always visible) -->
-    <button mat-icon-button class="icon-btn" routerLink="/admin" aria-label="Admin">
-      <mat-icon>admin_panel_settings</mat-icon>
-    </button>
+    <!-- Settings & Theme -->
     <button mat-icon-button class="icon-btn theme-toggle" (click)="toggleTheme()"
             [attr.aria-label]="(isDarkMode$ | async) ? 'Switch to light mode' : 'Switch to dark mode'">
       <mat-icon>{{ (isDarkMode$ | async) ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
+
+    <button mat-icon-button class="icon-btn" routerLink="/admin" aria-label="Admin">
+      <mat-icon>settings</mat-icon>
     </button>
 
     <!-- Mobile Hamburger Menu (hidden on desktop) -->
@@ -78,6 +79,7 @@
 
   </mat-toolbar-row>
 </mat-toolbar>
+
 <div class="main-content">
   <router-outlet></router-outlet>
 </div>
