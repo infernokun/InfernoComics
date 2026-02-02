@@ -47,7 +47,7 @@ public class SeriesController extends BaseController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<Series>>> getAllSeries() {
-        return ResponseEntity.ok(ApiResponse.<List<Series>>builder().data(seriesService.getAllSeries()).build());
+        return createSuccessResponse(seriesService.getAllSeries());
     }
 
     @GetMapping("/with-issues")
@@ -124,7 +124,7 @@ public class SeriesController extends BaseController {
             return createSuccessResponse(seriesService.getRecentSeries(limit));
         } catch (Exception e) {
             log.error("Error fetching recent series: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
+            return createErrorResponse(e.getMessage());
         }
     }
 
@@ -306,7 +306,7 @@ public class SeriesController extends BaseController {
 
         if (processedFiles.isEmpty()) {
             log.warn("No processed files found for session: {}", sessionId);
-            return ResponseEntity.notFound().build();
+            return createErrorResponse("No processed files found for session: " + sessionId);
         }
 
         Optional<ProgressData> progressDataOptional = progressDataService.getProgressDataBySessionId(sessionId);
@@ -324,11 +324,10 @@ public class SeriesController extends BaseController {
         Series series = seriesService.getSeriesById(seriesId);
         if (series == null) {
             log.error("Series {} not found for session {}", seriesId, sessionId);
-            return ResponseEntity.ok(ApiResponse.<ProcessingResult>builder()
-                    .code(HttpStatus.BAD_REQUEST.value())
-                    .message("Series not found: " + seriesId)
-                    .data(ProcessingResult.builder().sessionId(sessionId).build())
-                    .build());
+            return createErrorResponse(
+                    ProcessingResult.builder().sessionId(sessionId).build(),
+                    "Series not found: " + seriesId
+            );
         }
 
         // Fetch query images from the session
@@ -336,11 +335,10 @@ public class SeriesController extends BaseController {
 
         if (images.isEmpty()) {
             log.warn("No query images found for session: {}", sessionId);
-            return ResponseEntity.ok(ApiResponse.<ProcessingResult>builder()
-                    .code(HttpStatus.BAD_REQUEST.value())
-                    .message("No query images found for session")
-                    .data(ProcessingResult.builder().sessionId(sessionId).build())
-                    .build());
+            return createErrorResponse(
+                    ProcessingResult.builder().sessionId(sessionId).build(),
+                    "No query images found for session"
+            );
         }
 
         log.info("Found {} query images for session {}", images.size(), sessionId);
@@ -356,7 +354,10 @@ public class SeriesController extends BaseController {
         // Start async processing with the query images
         recognitionService.startReplay(sessionId, seriesId, StartedBy.AUTOMATIC, images);
 
-        return createSuccessResponse(ProcessingResult.builder().sessionId(sessionId).build(), "Successfully initiated replay for session: " + sessionId);
+        return createSuccessResponse(
+                ProcessingResult.builder().sessionId(sessionId).build(),
+                "Successfully initiated replay for session: " + sessionId
+        );
     }
 
     @PostMapping("/missing-issues/check")
@@ -376,11 +377,7 @@ public class SeriesController extends BaseController {
             seriesService.deleteSeries(id);
             return createSuccessResponse();
         } catch (IllegalArgumentException e) {
-            log.warn("Series {} not found for deletion", id);
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            log.error("Error deleting series {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
+            return createErrorResponse("Series not found for deletion: " + id);
         }
     }
 

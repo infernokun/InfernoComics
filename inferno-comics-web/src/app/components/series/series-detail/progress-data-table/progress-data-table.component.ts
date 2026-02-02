@@ -37,6 +37,7 @@ import { SeriesService } from '../../../../services/series.service';
 import { WebsocketService, WebSocketResponseList } from '../../../../services/websocket.service';
 import { DateUtils } from '../../../../utils/date-utils';
 import { ConfirmationDialogData, ConfirmationDialogComponent } from '../../../common/dialog/confirmation-dialog/confirmation-dialog.component';
+import { ProcessingResult } from '../../../../models/processing-result.model';
 
 @Component({
   selector: 'app-progress-data-table',
@@ -1235,15 +1236,12 @@ export class ProgressDataTable implements OnInit, OnDestroy {
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.seriesService.replaySession(progressData.sessionId!).subscribe({
-          next: (data: any) => {
-            // Handle success
+          next: (data: ApiResponse<ProcessingResult>) => {
             console.log('Session replayed successfully:', data);
-            // Optionally show success notification
+            this.messageService.success(data.message);
           },
-          error: (error: any) => {
-            // Handle error
-            console.error('Error replaying session:', error);
-            // Optionally show error notification
+          error: (data: ApiResponse<ProcessingResult>) => {
+            this.messageService.error(data.message);
           }
         });
       }
