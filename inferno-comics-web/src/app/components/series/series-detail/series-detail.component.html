@@ -13,18 +13,26 @@
             <button mat-icon-button (click)="manageComicVineSeries()" matTooltip="Manage Comic Vine Series" class="title-edit-btn">
               <mat-icon>edit</mat-icon>
             </button>
-            <a mat-stroked-button color="accent" [routerLink]="['/series', series.id, series.slug, 'admin']">
-              <mat-icon>admin_panel_settings</mat-icon>
-              Admin View
-            </a>
-            <button mat-stroked-button color="warn" (click)="syncSeries(series.id!)">
-              <mat-icon>key</mat-icon>
-              Sync Series
+            <button mat-icon-button [matMenuTriggerFor]="actionsMenu">
+              <mat-icon>more_vert</mat-icon>
             </button>
-            <button mat-stroked-button color="accent" (click)="reverifySeries()">
-              <mat-icon>refresh</mat-icon>
-              Reverify Series
-            </button>
+
+            <mat-menu #actionsMenu="matMenu">
+              <a mat-menu-item [routerLink]="['/series', series.id, series.slug, 'admin']">
+                <mat-icon>admin_panel_settings</mat-icon>
+                <span>Admin View</span>
+              </a>
+              
+              <button mat-menu-item (click)="syncSeries(series.id!)">
+                <mat-icon>key</mat-icon>
+                <span>Sync Series</span>
+              </button>
+              
+              <button mat-menu-item (click)="reverifySeries()">
+                <mat-icon>refresh</mat-icon>
+                <span>Reverify Series</span>
+              </button>
+            </mat-menu>
           </div>
           <h2>{{ series.publisher }}</h2>
           <div class="series-meta">
