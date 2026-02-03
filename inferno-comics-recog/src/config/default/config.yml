@@ -1,112 +1,49 @@
+# ==============================================================================
 # Comic Matcher Configuration
-# Hardware Performance Level (overrides individual settings below)
-# Options: "minimal", "fast", "balanced", "high_performance"
-performance_level: "balanced"
-result_batch: 10
-similarity_threshold: 55%
+# ==============================================================================
 
-# Matcher Type: "feature" (SIFT/ORB/AKAZE) or "embedding" (CLIP-based)
-# Embedding-based matching is recommended for camera-to-digital image comparison
+# ------------------------------------------------------------------------------
+# GLOBAL SETTINGS (applies to all matcher types)
+# ------------------------------------------------------------------------------
+
+# Matcher Type: "embedding" (CLIP-based) or "feature" (SIFT/ORB/AKAZE/KAZE)
+#   - embedding: Recommended for camera-to-digital image comparison
+#   - feature: Traditional keypoint matching (legacy)
 matcher_type: "embedding"
 
-# Embedding Model Configuration (used when matcher_type is "embedding")
-# Available models: ViT-B-32 (default, balanced), ViT-B-16 (higher accuracy),
-#                   RN50 (efficient), ViT-L-14 (best accuracy, slowest)
+# Performance level preset to use (see presets below)
+# For embedding: "fast", "balanced", "quality", "high_accuracy"
+# For feature: "minimal", "fast", "balanced", "high_performance", "akaze_focused"
+performance_level: "balanced"
+
+# Number of top results to return
+result_batch: 10
+
+# Minimum similarity score (0-100% or 0.0-1.0)
+similarity_threshold: 55%
+
+
+# ==============================================================================
+# EMBEDDING MATCHER SETTINGS (used when matcher_type is "embedding")
+# ==============================================================================
+# CLIP-based matching using neural network embeddings
+# Better for: camera photos, varying lighting, different angles
+# ------------------------------------------------------------------------------
+
 embedding:
+  # Available models (from fastest to most accurate):
+  #   - ViT-B-32: Balanced speed/accuracy, good for CPU (default)
+  #   - RN50: ResNet-based, efficient on CPU
+  #   - ViT-B-16: Higher accuracy, moderate speed
+  #   - ViT-L-14: Best accuracy, slowest (consider GPU)
   model: "ViT-B-32"
-  device: "cpu"  # Use "cuda" if GPU available
 
-# Performance Presets - Optimized for Processing Power vs Accuracy
-presets:
-  minimal:  # For very slow hardware - ORB only for speed
-    image_size: 300
-    max_workers: 1
-    detectors:
-      sift: 0        # Disable - too slow
-      orb: 500       # Fast and reasonable
-      akaze: 0       # Disable - save processing
-      kaze: 0        # Disable - too slow
-    feature_weights:
-      sift: 0.0
-      orb: 1.0       # 100% ORB for speed
-      akaze: 0.0
-      kaze: 0.0
-    options:
-      use_comic_detection: false
-      use_advanced_matching: false
-      cache_only: true
-      
-  fast:  # For decent hardware - optimized for speed with good accuracy
-    image_size: 800
-    max_workers: 3
-    detectors:
-      sift: 800        # Include SIFT for better matching
-      orb: 1200        # High ORB for speed
-      akaze: 600       # Good AKAZE for accuracy
-      kaze: 0          # Skip KAZE for speed
-    feature_weights:
-      sift: 0.25       # 25% SIFT for quality
-      orb: 0.35        # 35% ORB for speed
-      akaze: 0.40      # 40% AKAZE for accuracy
-      kaze: 0.0
-    options:
-      use_comic_detection: true     # Enable for better accuracy
-      use_advanced_matching: true   # Keep advanced matching for quality
-      
-  balanced:  # AKAZE-focused with SIFT/ORB support
-    image_size: 1000
-    max_workers: 4
-    detectors:
-      sift: 1500     # Moderate SIFT
-      orb: 1500      # Good ORB count
-      akaze: 800     # High AKAZE - our star performer
-      kaze: 400      # Moderate KAZE
-    feature_weights:
-      sift: 0.20     # 20% SIFT
-      orb: 0.20      # 20% ORB  
-      akaze: 0.50    # 50% AKAZE - most accurate
-      kaze: 0.10     # 10% KAZE
-    options:
-      use_comic_detection: true
-      use_advanced_matching: true
-      
-  high_performance:  # Maximum accuracy - all detectors optimized
-    image_size: 1200
-    max_workers: 8
-    detectors:
-      sift: 2500     # Maximum SIFT
-      orb: 2000      # High ORB
-      akaze: 1200    # Maximum AKAZE features
-      kaze: 800      # High KAZE
-    feature_weights:
-      sift: 0.25     # 25% SIFT
-      orb: 0.20      # 20% ORB
-      akaze: 0.45    # 45% AKAZE - still dominant
-      kaze: 0.10     # 10% KAZE
-    options:
-      use_comic_detection: true
-      use_advanced_matching: true
-      
-  akaze_focused:  # Custom preset - AKAZE-dominant for maximum accuracy
-    image_size: 800
-    max_workers: 4
-    detectors:
-      sift: 800
-      orb: 800
-      akaze: 1000    # Maximize AKAZE
-      kaze: 200
-    feature_weights:
-      sift: 0.15     # 15% SIFT
-      orb: 0.15      # 15% ORB
-      akaze: 0.65    # 65% AKAZE - maximum accuracy
-      kaze: 0.05     # 5% KAZE
-    options:
-      use_comic_detection: true
-      use_advanced_matching: true
+  # Device: "cpu" or "cuda" (if GPU available)
+  device: "cpu"
 
-# Embedding-based presets (used when matcher_type is "embedding")
+# Embedding matcher presets
 embedding_presets:
-  fast:  # Fastest embedding model
+  fast:
     embedding:
       model: "ViT-B-32"
       device: "cpu"
@@ -116,7 +53,7 @@ embedding_presets:
       use_comic_detection: false
       use_advanced_matching: false
 
-  balanced:  # Good balance of speed and accuracy
+  balanced:
     embedding:
       model: "ViT-B-32"
       device: "cpu"
@@ -126,7 +63,7 @@ embedding_presets:
       use_comic_detection: true
       use_advanced_matching: true
 
-  quality:  # Higher accuracy, slower
+  quality:
     embedding:
       model: "ViT-B-16"
       device: "cpu"
@@ -136,7 +73,7 @@ embedding_presets:
       use_comic_detection: true
       use_advanced_matching: true
 
-  high_accuracy:  # Best accuracy (requires more resources)
+  high_accuracy:
     embedding:
       model: "ViT-L-14"
       device: "cpu"
@@ -145,3 +82,128 @@ embedding_presets:
     options:
       use_comic_detection: true
       use_advanced_matching: true
+
+
+# ==============================================================================
+# FEATURE MATCHER SETTINGS (used when matcher_type is "feature")
+# ==============================================================================
+# Traditional keypoint-based matching using SIFT/ORB/AKAZE/KAZE
+# Better for: digital-to-digital matching, controlled conditions
+# ------------------------------------------------------------------------------
+
+# Feature detector configuration (feature counts, 0 = disabled)
+detectors:
+  sift: 1500      # Scale-Invariant Feature Transform (slowest, most robust)
+  orb: 1500       # Oriented FAST and Rotated BRIEF (fastest)
+  akaze: 800      # Accelerated-KAZE (best accuracy/speed ratio)
+  kaze: 400       # KAZE features (non-linear diffusion)
+
+# Weight of each detector in final similarity score (must sum to 1.0)
+feature_weights:
+  sift: 0.20
+  orb: 0.20
+  akaze: 0.50     # Star performer for accuracy
+  kaze: 0.10
+
+# Feature matcher presets
+feature_presets:
+  minimal:
+    image_size: 300
+    max_workers: 1
+    detectors:
+      sift: 0
+      orb: 500
+      akaze: 0
+      kaze: 0
+    feature_weights:
+      sift: 0.0
+      orb: 1.0
+      akaze: 0.0
+      kaze: 0.0
+    options:
+      use_comic_detection: false
+      use_advanced_matching: false
+      cache_only: true
+
+  fast:
+    image_size: 800
+    max_workers: 3
+    detectors:
+      sift: 800
+      orb: 1200
+      akaze: 600
+      kaze: 0
+    feature_weights:
+      sift: 0.25
+      orb: 0.35
+      akaze: 0.40
+      kaze: 0.0
+    options:
+      use_comic_detection: true
+      use_advanced_matching: true
+
+  balanced:
+    image_size: 1000
+    max_workers: 4
+    detectors:
+      sift: 1500
+      orb: 1500
+      akaze: 800
+      kaze: 400
+    feature_weights:
+      sift: 0.20
+      orb: 0.20
+      akaze: 0.50
+      kaze: 0.10
+    options:
+      use_comic_detection: true
+      use_advanced_matching: true
+
+  high_performance:
+    image_size: 1200
+    max_workers: 8
+    detectors:
+      sift: 2500
+      orb: 2000
+      akaze: 1200
+      kaze: 800
+    feature_weights:
+      sift: 0.25
+      orb: 0.20
+      akaze: 0.45
+      kaze: 0.10
+    options:
+      use_comic_detection: true
+      use_advanced_matching: true
+
+  akaze_focused:
+    image_size: 800
+    max_workers: 4
+    detectors:
+      sift: 800
+      orb: 800
+      akaze: 1000
+      kaze: 200
+    feature_weights:
+      sift: 0.15
+      orb: 0.15
+      akaze: 0.65
+      kaze: 0.05
+    options:
+      use_comic_detection: true
+      use_advanced_matching: true
+
+
+# ==============================================================================
+# SHARED OPTIONS
+# ==============================================================================
+
+# Image processing settings
+image_size: 800           # Max image dimension (pixels)
+max_workers: 4            # Parallel processing threads
+
+# Detection and matching options
+options:
+  use_comic_detection: true       # Detect and crop comic area from image
+  use_advanced_matching: true     # Use geometric verification (feature) / enhanced preprocessing (embedding)
+  cache_only: false               # Only use cached results, skip processing
