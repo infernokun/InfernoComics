@@ -57,7 +57,7 @@ class ImageMatcherService:
             
             # Initialize matcher
             matcher = get_global_matcher()
-            logger.debug(" Initialized FeatureMatchingComicMatcher with 6 workers for multiple images")
+            logger.debug(f" Initialized {type(matcher).__name__} for multiple images")
             
             java_reporter.update_progress('initializing_matcher', 25, 'Image matching engine ready for multiple images')
             
