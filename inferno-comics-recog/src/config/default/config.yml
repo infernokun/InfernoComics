@@ -1,9 +1,20 @@
-# Comic Matcher Configuration - Optimized for AKAZE Performance
+# Comic Matcher Configuration
 # Hardware Performance Level (overrides individual settings below)
 # Options: "minimal", "fast", "balanced", "high_performance"
 performance_level: "balanced"
 result_batch: 10
 similarity_threshold: 55%
+
+# Matcher Type: "feature" (SIFT/ORB/AKAZE) or "embedding" (CLIP-based)
+# Embedding-based matching is recommended for camera-to-digital image comparison
+matcher_type: "embedding"
+
+# Embedding Model Configuration (used when matcher_type is "embedding")
+# Available models: ViT-B-32 (default, balanced), ViT-B-16 (higher accuracy),
+#                   RN50 (efficient), ViT-L-14 (best accuracy, slowest)
+embedding:
+  model: "ViT-B-32"
+  device: "cpu"  # Use "cuda" if GPU available
 
 # Performance Presets - Optimized for Processing Power vs Accuracy
 presets:
@@ -89,6 +100,48 @@ presets:
       orb: 0.15      # 15% ORB
       akaze: 0.65    # 65% AKAZE - maximum accuracy
       kaze: 0.05     # 5% KAZE
+    options:
+      use_comic_detection: true
+      use_advanced_matching: true
+
+# Embedding-based presets (used when matcher_type is "embedding")
+embedding_presets:
+  fast:  # Fastest embedding model
+    embedding:
+      model: "ViT-B-32"
+      device: "cpu"
+    image_size: 600
+    max_workers: 4
+    options:
+      use_comic_detection: false
+      use_advanced_matching: false
+
+  balanced:  # Good balance of speed and accuracy
+    embedding:
+      model: "ViT-B-32"
+      device: "cpu"
+    image_size: 800
+    max_workers: 4
+    options:
+      use_comic_detection: true
+      use_advanced_matching: true
+
+  quality:  # Higher accuracy, slower
+    embedding:
+      model: "ViT-B-16"
+      device: "cpu"
+    image_size: 1000
+    max_workers: 4
+    options:
+      use_comic_detection: true
+      use_advanced_matching: true
+
+  high_accuracy:  # Best accuracy (requires more resources)
+    embedding:
+      model: "ViT-L-14"
+      device: "cpu"
+    image_size: 1200
+    max_workers: 2
     options:
       use_comic_detection: true
       use_advanced_matching: true
