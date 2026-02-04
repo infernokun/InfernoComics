@@ -1,0 +1,484 @@
+<div class="stats-page">
+
+  <!-- Loading State -->
+  @if (loading) {
+    <div class="page-header">
+      <ngx-skeleton-loader [theme]="{ width: '200px', height: '32px' }"></ngx-skeleton-loader>
+    </div>
+
+    <div class="overview-grid">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <div class="overview-card skeleton-card">
+          <ngx-skeleton-loader [theme]="{ width: '40px', height: '40px', borderRadius: '50%', marginBottom: '12px' }"></ngx-skeleton-loader>
+          <ngx-skeleton-loader [theme]="{ width: '60px', height: '28px', marginBottom: '6px' }"></ngx-skeleton-loader>
+          <ngx-skeleton-loader [theme]="{ width: '80px', height: '14px' }"></ngx-skeleton-loader>
+        </div>
+      }
+    </div>
+
+    <div class="charts-grid">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="chart-card skeleton-card">
+          <ngx-skeleton-loader [theme]="{ width: '150px', height: '20px', marginBottom: '16px' }"></ngx-skeleton-loader>
+          <ngx-skeleton-loader [theme]="{ width: '100%', height: '200px', borderRadius: '8px' }"></ngx-skeleton-loader>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Loaded State -->
+  @if (!loading && stats) {
+    <!-- Page Header -->
+    <div class="page-header" [@fadeInUp]>
+      <div class="header-content">
+        <h1>
+          <mat-icon>insights</mat-icon>
+          Collection Stats
+        </h1>
+        <button mat-icon-button (click)="refresh()" class="refresh-btn" aria-label="Refresh stats">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="overview-grid" [@staggerCards]>
+      <div class="overview-card card-primary" [@slideInUp]>
+        <div class="card-icon">
+          <mat-icon>library_books</mat-icon>
+        </div>
+        <div class="card-value">{{ stats.overview.totalSeries }}</div>
+        <div class="card-label">Total Series</div>
+      </div>
+
+      <div class="overview-card card-secondary" [@slideInUp]>
+        <div class="card-icon">
+          <mat-icon>auto_stories</mat-icon>
+        </div>
+        <div class="card-value">{{ stats.overview.totalIssues }}</div>
+        <div class="card-label">Total Issues</div>
+      </div>
+
+      <div class="overview-card card-accent" [@slideInUp]>
+        <div class="card-icon">
+          <mat-icon>business</mat-icon>
+        </div>
+        <div class="card-value">{{ stats.overview.uniquePublishers }}</div>
+        <div class="card-label">Publishers</div>
+      </div>
+
+      <div class="overview-card card-info" [@slideInUp]>
+        <div class="card-icon">
+          <mat-icon>star</mat-icon>
+        </div>
+        <div class="card-value">{{ stats.overview.keyIssues }}</div>
+        <div class="card-label">Key Issues</div>
+      </div>
+
+      <div class="overview-card card-warning" [@slideInUp]>
+        <div class="card-icon">
+          <mat-icon>style</mat-icon>
+        </div>
+        <div class="card-value">{{ stats.overview.variantIssues }}</div>
+        <div class="card-label">Variants</div>
+      </div>
+
+      <div class="overview-card card-danger" [@slideInUp]>
+        <div class="card-icon">
+          <mat-icon>search_off</mat-icon>
+        </div>
+        <div class="card-value">{{ stats.overview.missingIssues }}</div>
+        <div class="card-label">Missing Issues</div>
+      </div>
+    </div>
+
+    <!-- Value Analysis Row -->
+    <div class="value-row" [@fadeInUp]>
+      <div class="value-card">
+        <div class="value-header">
+          <mat-icon>attach_money</mat-icon>
+          <span>Collection Value</span>
+        </div>
+        <div class="value-main">{{ formatCurrency(stats.valueAnalysis.totalCurrentValue) }}</div>
+        <div class="value-sub">Current market value</div>
+      </div>
+
+      <div class="value-card">
+        <div class="value-header">
+          <mat-icon>shopping_cart</mat-icon>
+          <span>Purchase Cost</span>
+        </div>
+        <div class="value-main">{{ formatCurrency(stats.valueAnalysis.totalPurchaseValue) }}</div>
+        <div class="value-sub">Total invested</div>
+      </div>
+
+      <div class="value-card">
+        <div class="value-header">
+          <mat-icon>trending_up</mat-icon>
+          <span>Profit / Loss</span>
+        </div>
+        <div class="value-main" [class]="getProfitLossClass()">
+          {{ formatCurrency(stats.valueAnalysis.profitLoss) }}
+        </div>
+        <div class="value-sub">{{ stats.valueAnalysis.profitLoss >= 0 ? 'Net gain' : 'Net loss' }}</div>
+      </div>
+
+      <div class="value-card">
+        <div class="value-header">
+          <mat-icon>calculate</mat-icon>
+          <span>Avg Issue Value</span>
+        </div>
+        <div class="value-main">{{ formatCurrency(stats.valueAnalysis.averageIssueValue) }}</div>
+        <div class="value-sub">Per issue ({{ stats.valueAnalysis.issuesWithValue }} valued)</div>
+      </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="charts-grid">
+
+      <!-- Publisher Distribution -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>pie_chart</mat-icon>
+            Publisher Distribution
+          </h2>
+        </div>
+        <div class="donut-chart-container">
+          <div class="donut-chart" [style.background]="getPublisherDonutStyle()">
+            <div class="donut-hole">
+              <span class="donut-value">{{ stats.overview.uniquePublishers }}</span>
+              <span class="donut-label">Publishers</span>
+            </div>
+          </div>
+          <div class="chart-legend">
+            @for (pub of getTopPublishers(); track pub.name; let i = $index) {
+              <div class="legend-item">
+                <span class="legend-color" [style.background]="chartColors[i % chartColors.length]"></span>
+                <span class="legend-name">{{ pub.name }}</span>
+                <span class="legend-value">{{ pub.seriesCount }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Condition Breakdown -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>grade</mat-icon>
+            Condition Breakdown
+          </h2>
+        </div>
+        <div class="bar-chart-container">
+          @for (item of getOrderedConditions(); track item.key) {
+            <div class="bar-row">
+              <span class="bar-label">{{ item.label }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="item.percentage" [style.background]="item.color"></div>
+              </div>
+              <span class="bar-value">{{ item.count }}</span>
+            </div>
+          }
+          @if (getOrderedConditions().length === 0) {
+            <div class="no-data">
+              <mat-icon>info_outline</mat-icon>
+              <span>No condition data available</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Decade Distribution -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>calendar_month</mat-icon>
+            Series by Decade
+          </h2>
+        </div>
+        <div class="vertical-bar-chart">
+          <div class="vertical-bars">
+            @for (item of getDecadeData(); track item.decade; let i = $index) {
+              <div class="vertical-bar-group">
+                <div class="vertical-bar-wrapper">
+                  <div class="vertical-bar" [style.height.%]="item.percentage"
+                       [style.background]="chartColors[i % chartColors.length]">
+                  </div>
+                </div>
+                <span class="vertical-bar-label">{{ item.decade }}</span>
+                <span class="vertical-bar-value">{{ item.count }}</span>
+              </div>
+            }
+          </div>
+          @if (getDecadeData().length === 0) {
+            <div class="no-data">
+              <mat-icon>info_outline</mat-icon>
+              <span>No decade data available</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Read / Unread -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>menu_book</mat-icon>
+            Read Status
+          </h2>
+        </div>
+        <div class="donut-chart-container">
+          <div class="donut-chart donut-sm" [style.background]="getReadDonutStyle()">
+            <div class="donut-hole">
+              <span class="donut-value">{{ stats.readStats.readPercentage }}%</span>
+              <span class="donut-label">Read</span>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-color" style="background: #10b981"></span>
+              <span class="legend-name">Read</span>
+              <span class="legend-value">{{ stats.readStats.read }}</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color" style="background: #6b7280"></span>
+              <span class="legend-name">Unread</span>
+              <span class="legend-value">{{ stats.readStats.unread }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Collection Growth -->
+    @if (getGrowthData().length > 1) {
+      <div class="chart-card full-width" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>show_chart</mat-icon>
+            Collection Growth
+          </h2>
+          <span class="chart-subtitle">Issues added per month</span>
+        </div>
+        <div class="growth-chart-container">
+          <!-- SVG Line Chart for Cumulative -->
+          <div class="growth-line-chart">
+            <svg viewBox="-2 -2 104 104" preserveAspectRatio="none" class="growth-svg">
+              <!-- Grid lines -->
+              <line x1="0" y1="0" x2="0" y2="100" class="grid-line-y"/>
+              <line x1="0" y1="100" x2="100" y2="100" class="grid-line-x"/>
+              @for (i of [25, 50, 75]; track i) {
+                <line x1="0" [attr.y1]="i" x2="100" [attr.y2]="i" class="grid-line"/>
+              }
+              <!-- Area fill -->
+              @if (getGrowthLinePoints()) {
+                <polygon
+                  [attr.points]="'0,100 ' + getGrowthLinePoints() + ' 100,100'"
+                  class="growth-area"/>
+              }
+              <!-- Line -->
+              @if (getGrowthLinePoints()) {
+                <polyline
+                  [attr.points]="getGrowthLinePoints()"
+                  class="growth-line"/>
+              }
+            </svg>
+            <div class="growth-labels">
+              @for (point of getGrowthData(); track point.month; let i = $index) {
+                @if (shouldShowGrowthLabel(i)) {
+                  <span class="growth-label" [style.left.%]="(i / (getGrowthData().length - 1)) * 100">
+                    {{ formatMonth(point.month) }}
+                  </span>
+                }
+              }
+            </div>
+          </div>
+
+          <!-- Bar Chart for Monthly Additions -->
+          <div class="growth-bar-chart">
+            <div class="growth-bars">
+              @for (point of getGrowthData(); track point.month) {
+                <div class="growth-bar-col" [matTooltip]="formatMonth(point.month) + ': ' + point.added + ' added'">
+                  <div class="growth-bar" [style.height.%]="getGrowthBarHeight(point)"></div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Second Row: Top Series + Completion -->
+    <div class="charts-grid two-col">
+
+      <!-- Top Series by Issue Count -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>leaderboard</mat-icon>
+            Top Series by Issues
+          </h2>
+        </div>
+        <div class="bar-chart-container">
+          @for (item of getTopSeries(); track item.name; let i = $index) {
+            <div class="bar-row">
+              <span class="bar-label bar-label-wide">{{ item.name }}</span>
+              <div class="bar-track">
+                <div class="bar-fill"
+                     [style.width.%]="(item.count / getTopSeriesMaxCount()) * 100"
+                     [style.background]="chartColors[i % chartColors.length]">
+                </div>
+              </div>
+              <span class="bar-value">{{ item.count }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Series Completion -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>task_alt</mat-icon>
+            Series Completion
+          </h2>
+          <div class="completion-summary">
+            <span class="completion-badge">
+              {{ stats.completionStats.completedSeries }} / {{ stats.completionStats.totalTrackedSeries }} Complete
+            </span>
+          </div>
+        </div>
+        <div class="bar-chart-container">
+          @for (item of getTopCompletionSeries(); track item.name) {
+            <div class="bar-row">
+              <span class="bar-label bar-label-wide">{{ item.name }}</span>
+              <div class="bar-track">
+                <div class="bar-fill completion-bar"
+                     [style.width.%]="item.percentage"
+                     [class.complete]="item.percentage >= 100">
+                </div>
+              </div>
+              <span class="bar-value">{{ item.percentage }}%</span>
+            </div>
+          }
+          @if (getTopCompletionSeries().length === 0) {
+            <div class="no-data">
+              <mat-icon>info_outline</mat-icon>
+              <span>No tracked series available</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Newest Series & Issues -->
+    <div class="charts-grid two-col">
+
+      <!-- Newest Series -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>new_releases</mat-icon>
+            Newest Series
+          </h2>
+        </div>
+        <div class="newest-list">
+          @for (series of getNewestSeries(); track series.id) {
+            <a class="newest-item" [routerLink]="getSeriesLink(series)">
+              <div class="newest-image">
+                @if (series.imageUrl) {
+                  <img [src]="series.imageUrl" [alt]="series.name" loading="lazy" />
+                } @else {
+                  <div class="newest-placeholder">
+                    <mat-icon>library_books</mat-icon>
+                  </div>
+                }
+              </div>
+              <div class="newest-info">
+                <span class="newest-name">{{ series.name }}</span>
+                <span class="newest-meta">
+                  {{ series.publisher }}
+                  @if (series.startYear) {
+                    <span class="dot-separator"></span> {{ series.startYear }}
+                  }
+                </span>
+                <span class="newest-stats">
+                  {{ series.issuesOwnedCount }} / {{ series.issuesAvailableCount }} issues
+                </span>
+              </div>
+              <span class="newest-time">{{ getRelativeTime(series.createdAt) }}</span>
+            </a>
+          }
+        </div>
+      </div>
+
+      <!-- Newest Issues -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>fiber_new</mat-icon>
+            Newest Issues
+          </h2>
+        </div>
+        <div class="newest-list">
+          @for (issue of getNewestIssues(); track issue.id) {
+            <div class="newest-item">
+              <div class="newest-image">
+                @if (issue.imageUrl) {
+                  <img [src]="issue.imageUrl" [alt]="issue.seriesName + ' #' + issue.issueNumber" loading="lazy" />
+                } @else {
+                  <div class="newest-placeholder">
+                    <mat-icon>auto_stories</mat-icon>
+                  </div>
+                }
+              </div>
+              <div class="newest-info">
+                <span class="newest-name">{{ issue.seriesName }}</span>
+                <span class="newest-meta">
+                  {{ issue.title ? issue.title : '#' + issue.issueNumber }}
+                  @if (issue.condition) {
+                    <span class="condition-chip">{{ conditionLabels[issue.condition] || issue.condition }}</span>
+                  }
+                </span>
+                @if (issue.currentValue) {
+                  <span class="newest-stats">{{ formatCurrency(issue.currentValue) }}</span>
+                }
+              </div>
+              <span class="newest-time">{{ getRelativeTime(issue.createdAt) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Highest Value Issue -->
+    @if (stats.valueAnalysis.highestValueIssue) {
+      <div class="highlight-card" [@fadeInUp]>
+        <div class="highlight-icon">
+          <mat-icon>emoji_events</mat-icon>
+        </div>
+        <div class="highlight-info">
+          <span class="highlight-title">Most Valuable Issue</span>
+          <span class="highlight-name">
+            {{ stats.valueAnalysis.highestValueIssue.seriesName }}
+            {{ stats.valueAnalysis.highestValueIssue.title ? stats.valueAnalysis.highestValueIssue.title : '#' + stats.valueAnalysis.highestValueIssue.issueNumber }}
+          </span>
+        </div>
+        <div class="highlight-value">
+          {{ formatCurrency(stats.valueAnalysis.highestValueIssue.currentValue) }}
+        </div>
+      </div>
+    }
+  }
+
+  <!-- Empty State -->
+  @if (!loading && !stats) {
+    <div class="empty-state">
+      <mat-icon>analytics</mat-icon>
+      <h3>No Stats Available</h3>
+      <p>Add some series and issues to see collection statistics.</p>
+    </div>
+  }
+</div>

@@ -8,6 +8,7 @@ import { SeriesAdminComponent } from './components/series/series-admin/series-ad
 import { SeriesDetailComponent } from './components/series/series-detail/series-detail.component';
 import { SeriesFormComponent } from './components/series/series-form/series-form.component';
 import { SeriesListComponent } from './components/series/series-list/series-list.component';
+import { StatsComponent } from './components/stats/stats.component';
 
 const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
@@ -17,6 +18,7 @@ const routes: Routes = [
   { path: 'series', component: SeriesListComponent },
   { path: 'missing', component: IssuesMissingComponent },
   { path: 'issues', component: IssuesListComponent },
+  { path: 'stats', component: StatsComponent },
   { path: 'series/new', component: SeriesFormComponent },
   { path: 'series/:id/:slug', component: SeriesDetailComponent },
   { path: 'series/:id/:slug/edit', component: SeriesFormComponent },
