@@ -197,6 +197,7 @@ export class SeriesService extends BaseService {
     console.log('Connecting to SSE URL:', sseUrl);
 
     const eventSource = new EventSource(sseUrl);
+    let isCompleted = false; // Track if we've completed successfully
 
     eventSource.onopen = (event) => {
       console.log('SSE connection opened successfully for session:', sessionId);
@@ -217,13 +218,15 @@ export class SeriesService extends BaseService {
         progressSubject.next(data);
 
         // Close connection when complete or error
-        if (data.type === 'complete' || data.type === 'error') {
+        const typeUpper = data.type?.toUpperCase();
+        if (typeUpper === 'COMPLETE' || typeUpper === 'COMPLETED' || typeUpper === 'ERROR') {
           console.log(
             'SSE stream ending for session:',
             sessionId,
             'type:',
             data.type
           );
+          isCompleted = true;
           eventSource.close();
           progressSubject.complete();
         }
@@ -256,6 +259,12 @@ export class SeriesService extends BaseService {
     };
 
     eventSource.onerror = (error) => {
+      // Don't treat as error if we've already completed successfully
+      if (isCompleted) {
+        console.log('SSE connection closed after successful completion');
+        return;
+      }
+
       console.error('SSE connection error details:', {
         readyState: eventSource.readyState,
         url: sseUrl,

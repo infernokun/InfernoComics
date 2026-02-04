@@ -22,6 +22,7 @@ import { ProcessingResult } from '../../../models/processing-result.model';
 import { generateSlug, Series } from '../../../models/series.model';
 import { ComicVineService } from '../../../services/comic-vine.service';
 import { IssueService } from '../../../services/issue.service';
+import { RecognitionService } from '../../../services/recognition.service';
 import { SeriesService, SSEProgressData } from '../../../services/series.service';
 import { DateUtils } from '../../../utils/date-utils';
 import { ConfirmationDialogComponent } from '../../common/dialog/confirmation-dialog/confirmation-dialog.component';
@@ -66,7 +67,8 @@ export class SeriesDetailComponent implements OnInit {
     private issueService: IssueService,
     private comicVineService: ComicVineService,
     private dialog: MatDialog,
-    private messageService: MessageService
+    private messageService: MessageService,
+    private recognitionService: RecognitionService
   ) {}
 
   ngOnInit(): void {
@@ -548,6 +550,10 @@ export class SeriesDetailComponent implements OnInit {
         if (result && result.results && Array.isArray(result.results)) {
           console.log('✅ Processing multiple images result format');
           this.openBulkSelectionDialog(result, seriesId, files);
+        } else if (result?.sessionId) {
+          // SSE didn't deliver the full results — fetch them via REST
+          console.log('Results not in dialog payload, fetching via session JSON for:', result.sessionId);
+          this.fetchAndOpenBulkSelection(result.sessionId, seriesId, files);
         } else {
           console.log('No valid results to display');
           this.messageService.info('Processing completed but no results found');
@@ -656,6 +662,35 @@ export class SeriesDetailComponent implements OnInit {
       } else {
         console.log('User cancelled bulk selection');
       }
+    });
+  }
+
+  private fetchAndOpenBulkSelection(sessionId: string, seriesId: number, originalImages: File[]): void {
+    this.recognitionService.getSessionJSON(sessionId).subscribe({
+      next: (res: ApiResponse<any>) => {
+        const sessionData = res.data;
+        if (!sessionData?.results || !Array.isArray(sessionData.results)) {
+          console.log('No valid results in session JSON');
+          this.messageService.info('Processing completed but no results found');
+          return;
+        }
+
+        const mapped = {
+          session_id: sessionData.session_id ?? sessionId,
+          results: sessionData.results.map((r: any) => ({
+            ...r,
+            top_matches: r.top_matches ?? r.matches ?? [],
+          })),
+          summary: sessionData.summary,
+        };
+
+        console.log('Fetched session results via REST, opening bulk selector');
+        this.openBulkSelectionDialog(mapped, seriesId, originalImages);
+      },
+      error: (err: Error) => {
+        console.error('Failed to fetch session results:', err);
+        this.messageService.error('Failed to load matching results');
+      },
     });
   }
 

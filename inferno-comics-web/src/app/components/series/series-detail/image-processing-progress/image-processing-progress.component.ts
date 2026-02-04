@@ -340,14 +340,21 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
       'success'
     );
 
-    // Store result for the Next button
-    this.processingResult = {
-      sessionId: progressData.sessionId,
-      seriesId: this.data.seriesId,
-      totalImages: this.totalImages,
-      successfulImages: this.successfulImages,
-      failedImages: this.failedImages,
-    };
+    // Store result for the Next button — but don't overwrite if SSE already
+    if (this.processingResult?.results) {
+      this.processingResult.sessionId = progressData.sessionId ?? this.processingResult.sessionId;
+      this.processingResult.totalImages = this.totalImages;
+      this.processingResult.successfulImages = this.successfulImages;
+      this.processingResult.failedImages = this.failedImages;
+    } else {
+      this.processingResult = {
+        sessionId: progressData.sessionId,
+        seriesId: this.data.seriesId,
+        totalImages: this.totalImages,
+        successfulImages: this.successfulImages,
+        failedImages: this.failedImages,
+      };
+    }
 
     this.data.onComplete?.(this.processingResult);
     console.log('Processing completed successfully via WebSocket');
