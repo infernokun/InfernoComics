@@ -28,6 +28,10 @@
         <mat-icon>check_box_outline_blank</mat-icon>
         Missing
       </button>
+      <button mat-button routerLink="/stats" routerLinkActive="active-link">
+        <mat-icon>insights</mat-icon>
+        Stats
+      </button>
       <button mat-button routerLink="/series/new" routerLinkActive="active-link">
         <mat-icon>add</mat-icon>
         Add Series
@@ -65,6 +69,10 @@
       <a mat-menu-item routerLink="/missing" routerLinkActive="active-menu-item">
         <mat-icon>check_box_outline_blank</mat-icon>
         <span>Missing</span>
+      </a>
+      <a mat-menu-item routerLink="/stats" routerLinkActive="active-menu-item">
+        <mat-icon>insights</mat-icon>
+        <span>Stats</span>
       </a>
       <mat-divider></mat-divider>
       <a mat-menu-item routerLink="/series/new" routerLinkActive="active-menu-item">

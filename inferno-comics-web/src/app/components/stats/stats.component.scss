@@ -1,0 +1,1066 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
+.stats-page {
+  padding: var(--spacing-xl);
+  max-width: 1400px;
+  margin: 0 auto;
+  background: var(--background-color);
+  min-height: 100%;
+
+  @include md {
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+
+  @include sm {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+}
+
+// ========================================
+// Skeleton Loading
+// ========================================
+
+.skeleton-card {
+  @include flex-center;
+  flex-direction: column;
+
+  ngx-skeleton-loader {
+    display: block;
+    width: 100%;
+
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        ) !important;
+      }
+    }
+  }
+}
+
+// ========================================
+// Page Header
+// ========================================
+
+.page-header {
+  margin-bottom: var(--spacing-xl);
+
+  @include md {
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .header-content {
+    @include flex-between;
+
+    h1 {
+      @include flex-start;
+      gap: var(--spacing-sm);
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin: 0;
+
+      @include md {
+        font-size: 1.4rem;
+      }
+
+      @include sm {
+        font-size: 1.2rem;
+      }
+
+      mat-icon {
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+        color: var(--primary-color);
+
+        @include md {
+          font-size: 24px;
+          width: 24px;
+          height: 24px;
+        }
+      }
+    }
+
+    .refresh-btn {
+      color: var(--text-secondary);
+      transition: all var(--transition-fast);
+
+      &:hover {
+        color: var(--primary-color);
+        transform: rotate(180deg);
+      }
+    }
+  }
+}
+
+// ========================================
+// Overview Cards
+// ========================================
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+
+  @include lg {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @include md {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+  }
+
+  @include sm {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-xs);
+  }
+}
+
+.overview-card {
+  @include card-base;
+  text-align: center;
+  padding: var(--spacing-lg) var(--spacing-md);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+
+  @include md {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+
+  @include hover {
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+  }
+
+  .card-icon {
+    @include flex-center;
+    width: 44px;
+    height: 44px;
+    margin: 0 auto var(--spacing-sm);
+    border-radius: 50%;
+    transition: transform var(--transition-normal);
+
+    @include md {
+      width: 36px;
+      height: 36px;
+    }
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: white;
+
+      @include md {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
+  .card-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+
+    @include md {
+      font-size: 1.4rem;
+    }
+
+    @include sm {
+      font-size: 1.2rem;
+    }
+  }
+
+  .card-label {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+
+    @include sm {
+      font-size: var(--font-size-xs);
+    }
+  }
+
+  &.card-primary .card-icon { @include gradient-primary; }
+  &.card-secondary .card-icon { @include gradient-success; }
+  &.card-accent .card-icon { @include gradient-accent; }
+  &.card-info .card-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+  &.card-warning .card-icon { background: linear-gradient(135deg, #ec4899, #db2777); }
+  &.card-danger .card-icon { background: linear-gradient(135deg, #ef4444, #dc2626); }
+}
+
+// ========================================
+// Value Row
+// ========================================
+
+.value-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+
+  @include lg {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @include sm {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
+  }
+}
+
+.value-card {
+  @include card-base;
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+
+  @include md {
+    padding: var(--spacing-md);
+  }
+
+  .value-header {
+    @include flex-start;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: var(--primary-color);
+    }
+
+    span {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+  }
+
+  .value-main {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+
+    @include md {
+      font-size: 1.3rem;
+    }
+
+    &.profit { color: var(--success-color); }
+    &.loss { color: var(--error-color); }
+  }
+
+  .value-sub {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+}
+
+// ========================================
+// Charts Grid
+// ========================================
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+
+  @include md {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+
+  &.two-col {
+    grid-template-columns: repeat(2, 1fr);
+
+    @include md {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.chart-card {
+  @include card-base;
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-md);
+
+  @include md {
+    padding: var(--spacing-lg);
+  }
+
+  @include sm {
+    padding: var(--spacing-md);
+  }
+
+  &.full-width {
+    grid-column: 1 / -1;
+    margin-bottom: var(--spacing-xl);
+
+    @include md {
+      margin-bottom: var(--spacing-md);
+    }
+  }
+
+  // ApexCharts donut center text visibility fix for dark mode
+  ::ng-deep {
+    .apexcharts-datalabel-label {
+      fill: var(--text-muted) !important;
+    }
+
+    .apexcharts-datalabel-value {
+      fill: var(--text-primary) !important;
+    }
+
+    .apexcharts-text {
+      &.apexcharts-datalabel-value {
+        fill: var(--text-primary) !important;
+      }
+
+      &.apexcharts-datalabel-label {
+        fill: var(--text-muted) !important;
+      }
+    }
+  }
+}
+
+.chart-header {
+  @include flex-between;
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+
+  @include md {
+    margin-bottom: var(--spacing-md);
+  }
+
+  h2 {
+    @include flex-start;
+    gap: var(--spacing-sm);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+
+    @include md {
+      font-size: 1rem;
+    }
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: var(--primary-color);
+
+      @include md {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+
+  .chart-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .completion-summary {
+    .completion-badge {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: var(--success-color);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+  }
+}
+
+// ========================================
+// Donut Chart
+// ========================================
+
+.donut-chart-container {
+  display: flex;
+  gap: var(--spacing-xl);
+  align-items: center;
+
+  @include sm {
+    flex-direction: column;
+    gap: var(--spacing-md);
+  }
+}
+
+.donut-chart {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  position: relative;
+
+  @include md {
+    width: 140px;
+    height: 140px;
+  }
+
+  @include sm {
+    width: 120px;
+    height: 120px;
+  }
+
+  &.donut-sm {
+    width: 130px;
+    height: 130px;
+
+    @include sm {
+      width: 110px;
+      height: 110px;
+    }
+  }
+
+  .donut-hole {
+    @include flex-center;
+    @include flex-column;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 65%;
+    height: 65%;
+    border-radius: 50%;
+    background: var(--surface-color);
+
+    .donut-value {
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      line-height: 1;
+
+      @include sm {
+        font-size: 1.1rem;
+      }
+    }
+
+    .donut-label {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+  }
+}
+
+.chart-legend {
+  @include flex-column;
+  gap: var(--spacing-xs);
+  flex: 1;
+  min-width: 0;
+}
+
+.legend-item {
+  @include flex-start;
+  gap: var(--spacing-sm);
+
+  .legend-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .legend-name {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+    font-weight: 500;
+    flex: 1;
+    @include text-truncate;
+
+    @include sm {
+      font-size: var(--font-size-xs);
+    }
+  }
+
+  .legend-value {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+
+    @include sm {
+      font-size: var(--font-size-xs);
+    }
+  }
+}
+
+// ========================================
+// Horizontal Bar Chart
+// ========================================
+
+.bar-chart-container {
+  @include flex-column;
+  gap: var(--spacing-sm);
+}
+
+.bar-row {
+  @include flex-start;
+  gap: var(--spacing-sm);
+
+  .bar-label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 80px;
+    @include text-truncate;
+
+    @include sm {
+      font-size: var(--font-size-xs);
+      min-width: 60px;
+    }
+
+    &.bar-label-wide {
+      min-width: 120px;
+
+      @include sm {
+        min-width: 80px;
+      }
+    }
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 20px;
+    background: var(--background-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+
+    @include sm {
+      height: 16px;
+    }
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: var(--radius-sm);
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 2px;
+
+    &.completion-bar {
+      @include gradient-primary;
+
+      &.complete {
+        @include gradient-success;
+      }
+    }
+  }
+
+  .bar-value {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 36px;
+    text-align: right;
+
+    @include sm {
+      font-size: var(--font-size-xs);
+      min-width: 28px;
+    }
+  }
+}
+
+// ========================================
+// Vertical Bar Chart (Decades)
+// ========================================
+
+.vertical-bar-chart {
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+
+  @include sm {
+    min-height: 160px;
+  }
+}
+
+.vertical-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-sm);
+  flex: 1;
+  padding-bottom: var(--spacing-sm);
+
+  @include sm {
+    gap: var(--spacing-xs);
+  }
+}
+
+.vertical-bar-group {
+  @include flex-center;
+  @include flex-column;
+  flex: 1;
+  min-width: 0;
+  gap: 4px;
+
+  .vertical-bar-wrapper {
+    width: 100%;
+    height: 150px;
+    display: flex;
+    align-items: flex-end;
+
+    @include sm {
+      height: 120px;
+    }
+  }
+
+  .vertical-bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 4px;
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
+  .vertical-bar-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+
+    @include sm {
+      font-size: 9px;
+    }
+  }
+
+  .vertical-bar-value {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+}
+
+// ========================================
+// Collection Growth Chart
+// ========================================
+
+.growth-chart-container {
+  @include flex-column;
+  gap: var(--spacing-md);
+}
+
+.growth-line-chart {
+  position: relative;
+  width: 100%;
+  height: 200px;
+
+  @include sm {
+    height: 160px;
+  }
+
+  .growth-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .grid-line,
+  .grid-line-x,
+  .grid-line-y {
+    stroke: var(--border-color);
+    stroke-width: 0.3;
+  }
+
+  .grid-line-x,
+  .grid-line-y {
+    stroke-width: 0.5;
+  }
+
+  .growth-area {
+    fill: var(--primary-color);
+    opacity: 0.12;
+  }
+
+  .growth-line {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .growth-labels {
+    position: absolute;
+    bottom: -24px;
+    left: 0;
+    right: 0;
+    height: 20px;
+
+    .growth-label {
+      position: absolute;
+      transform: translateX(-50%);
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+  }
+}
+
+.growth-bar-chart {
+  margin-top: var(--spacing-lg);
+  height: 60px;
+
+  .growth-bars {
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+    gap: 1px;
+  }
+
+  .growth-bar-col {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    cursor: pointer;
+
+    .growth-bar {
+      width: 100%;
+      @include gradient-primary;
+      border-radius: 2px 2px 0 0;
+      min-height: 2px;
+      transition: opacity var(--transition-fast);
+    }
+
+    &:hover .growth-bar {
+      opacity: 0.8;
+    }
+  }
+}
+
+// ========================================
+// Newest Lists
+// ========================================
+
+.newest-list {
+  @include flex-column;
+  gap: var(--spacing-sm);
+  max-height: 420px;
+  overflow-y: auto;
+  @include custom-scrollbar(6px);
+}
+
+.newest-item {
+  @include flex-start;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  background: var(--background-color);
+  transition: background var(--transition-fast);
+  text-decoration: none;
+  color: inherit;
+  cursor: default;
+
+  @include sm {
+    gap: var(--spacing-sm);
+  }
+
+  & {
+    cursor: pointer;
+  }
+
+  &:hover {
+    background: var(--background-secondary);
+  }
+
+  .newest-image {
+    width: 44px;
+    height: 64px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--border-color);
+
+    @include sm {
+      width: 36px;
+      height: 52px;
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .newest-placeholder {
+      @include flex-center;
+      width: 100%;
+      height: 100%;
+      background: var(--border-color);
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: var(--text-muted);
+      }
+    }
+  }
+
+  .newest-info {
+    @include flex-column;
+    flex: 1;
+    min-width: 0;
+    gap: 2px;
+
+    .newest-name {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--text-primary);
+      @include text-truncate;
+    }
+
+    .newest-meta {
+      @include flex-start;
+      gap: var(--spacing-xs);
+      font-size: var(--font-size-xs);
+      color: var(--text-secondary);
+      flex-wrap: wrap;
+
+      .dot-separator {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--text-muted);
+      }
+
+      .condition-chip {
+        font-size: 10px;
+        font-weight: 600;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: var(--primary-color);
+        color: white;
+      }
+    }
+
+    .newest-stats {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+  }
+
+  .newest-time {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+// ========================================
+// Highlight Card (Most Valuable)
+// ========================================
+
+.highlight-card {
+  @include card-base;
+  @include flex-start;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg) var(--spacing-xl);
+  border-radius: var(--radius-md);
+  border-color: #f59e0b;
+  background: linear-gradient(135deg,
+    var(--surface-color) 0%,
+    rgba(245, 158, 11, 0.05) 100%);
+
+  @include md {
+    padding: var(--spacing-md) var(--spacing-lg);
+    gap: var(--spacing-md);
+  }
+
+  @include sm {
+    flex-direction: column;
+    text-align: center;
+    padding: var(--spacing-md);
+  }
+
+  .highlight-icon {
+    @include flex-center;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    flex-shrink: 0;
+
+    @include md {
+      width: 44px;
+      height: 44px;
+    }
+
+    mat-icon {
+      font-size: 26px;
+      width: 26px;
+      height: 26px;
+      color: white;
+
+      @include md {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+    }
+  }
+
+  .highlight-info {
+    @include flex-column;
+    flex: 1;
+    min-width: 0;
+    gap: 2px;
+
+    .highlight-title {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .highlight-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      @include text-truncate;
+
+      @include md {
+        font-size: 1rem;
+      }
+    }
+  }
+
+  .highlight-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #f59e0b;
+    flex-shrink: 0;
+
+    @include md {
+      font-size: 1.3rem;
+    }
+  }
+}
+
+// ========================================
+// No Data
+// ========================================
+
+.no-data {
+  @include flex-center;
+  @include flex-column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl);
+  color: var(--text-muted);
+
+  mat-icon {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+  }
+
+  span {
+    font-size: var(--font-size-sm);
+  }
+}
+
+// ========================================
+// Empty State
+// ========================================
+
+.empty-state {
+  @include flex-center;
+  @include flex-column;
+  padding: var(--spacing-3xl) var(--spacing-xl);
+  margin: var(--spacing-xl) 0;
+  background: var(--surface-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 2px dashed var(--border-color);
+
+  mat-icon {
+    font-size: 56px;
+    width: 56px;
+    height: 56px;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-md);
+  }
+
+  h3 {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-xs) 0;
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    margin: 0;
+  }
+}
+
+// ========================================
+// Section Divider
+// ========================================
+
+.section-divider {
+  margin: var(--spacing-3xl) 0 var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--border-color);
+
+  @include md {
+    margin: var(--spacing-xl) 0 var(--spacing-lg);
+  }
+
+  .section-title {
+    @include flex-start;
+    gap: var(--spacing-sm);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+
+    @include md {
+      font-size: 1.2rem;
+    }
+
+    mat-icon {
+      font-size: 26px;
+      width: 26px;
+      height: 26px;
+      color: var(--primary-color);
+
+      @include md {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+    }
+  }
+}
