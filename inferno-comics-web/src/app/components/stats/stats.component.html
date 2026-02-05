@@ -6,16 +6,6 @@
       <ngx-skeleton-loader [theme]="{ width: '200px', height: '32px' }"></ngx-skeleton-loader>
     </div>
 
-    <div class="overview-grid">
-      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
-        <div class="overview-card skeleton-card">
-          <ngx-skeleton-loader [theme]="{ width: '40px', height: '40px', borderRadius: '50%', marginBottom: '12px' }"></ngx-skeleton-loader>
-          <ngx-skeleton-loader [theme]="{ width: '60px', height: '28px', marginBottom: '6px' }"></ngx-skeleton-loader>
-          <ngx-skeleton-loader [theme]="{ width: '80px', height: '14px' }"></ngx-skeleton-loader>
-        </div>
-      }
-    </div>
-
     <div class="charts-grid">
       @for (i of [1, 2, 3, 4]; track i) {
         <div class="chart-card skeleton-card">
@@ -42,55 +32,7 @@
     </div>
 
     <!-- Overview Cards -->
-    <div class="overview-grid" [@staggerCards]>
-      <div class="overview-card card-primary" [@slideInUp]>
-        <div class="card-icon">
-          <mat-icon>library_books</mat-icon>
-        </div>
-        <div class="card-value">{{ stats.overview.totalSeries }}</div>
-        <div class="card-label">Total Series</div>
-      </div>
-
-      <div class="overview-card card-secondary" [@slideInUp]>
-        <div class="card-icon">
-          <mat-icon>auto_stories</mat-icon>
-        </div>
-        <div class="card-value">{{ stats.overview.totalIssues }}</div>
-        <div class="card-label">Total Issues</div>
-      </div>
-
-      <div class="overview-card card-accent" [@slideInUp]>
-        <div class="card-icon">
-          <mat-icon>business</mat-icon>
-        </div>
-        <div class="card-value">{{ stats.overview.uniquePublishers }}</div>
-        <div class="card-label">Publishers</div>
-      </div>
-
-      <div class="overview-card card-info" [@slideInUp]>
-        <div class="card-icon">
-          <mat-icon>verified</mat-icon>
-        </div>
-        <div class="card-value">{{ stats.completionStats.completedSeries }}</div>
-        <div class="card-label">Complete Series</div>
-      </div>
-
-      <div class="overview-card card-warning" [@slideInUp]>
-        <div class="card-icon">
-          <mat-icon>style</mat-icon>
-        </div>
-        <div class="card-value">{{ stats.overview.variantIssues }}</div>
-        <div class="card-label">Variants</div>
-      </div>
-
-      <div class="overview-card card-danger" [@slideInUp]>
-        <div class="card-icon">
-          <mat-icon>search_off</mat-icon>
-        </div>
-        <div class="card-value">{{ stats.overview.missingIssues }}</div>
-        <div class="card-label">Missing Issues</div>
-      </div>
-    </div>
+    <app-number-stat [stats]="numberStats"></app-number-stat>
 
     <!-- Charts Grid Row 1 -->
     <div class="charts-grid">
@@ -178,6 +120,7 @@
             [xaxis]="eraChartOptions.xaxis!"
             [yaxis]="eraChartOptions.yaxis!"
             [colors]="eraChartOptions.colors!"
+            [legend]="eraChartOptions.legend!"
             [plotOptions]="eraChartOptions.plotOptions!"
             [dataLabels]="eraChartOptions.dataLabels!"
             [grid]="eraChartOptions.grid!"
@@ -244,6 +187,7 @@
             [chart]="issuesByPublisherOptions.chart!"
             [xaxis]="issuesByPublisherOptions.xaxis!"
             [yaxis]="issuesByPublisherOptions.yaxis!"
+            [legend]="issuesByPublisherOptions.legend!"
             [colors]="issuesByPublisherOptions.colors!"
             [plotOptions]="issuesByPublisherOptions.plotOptions!"
             [dataLabels]="issuesByPublisherOptions.dataLabels!"
@@ -269,6 +213,7 @@
           [chart]="growthChartOptions.chart!"
           [xaxis]="growthChartOptions.xaxis!"
           [yaxis]="growthChartOptions.yaxis!"
+          [legend]="growthChartOptions.legend!"
           [colors]="growthChartOptions.colors!"
           [fill]="growthChartOptions.fill!"
           [stroke]="growthChartOptions.stroke!"
@@ -296,6 +241,7 @@
             [chart]="topSeriesChartOptions.chart!"
             [xaxis]="topSeriesChartOptions.xaxis!"
             [yaxis]="topSeriesChartOptions.yaxis!"
+            [legend]="topSeriesChartOptions.legend!"
             [colors]="topSeriesChartOptions.colors!"
             [plotOptions]="topSeriesChartOptions.plotOptions!"
             [dataLabels]="topSeriesChartOptions.dataLabels!"
@@ -324,6 +270,7 @@
             [chart]="completionChartOptions.chart!"
             [xaxis]="completionChartOptions.xaxis!"
             [yaxis]="completionChartOptions.yaxis!"
+            [legend]="completionChartOptions.legend!"
             [colors]="completionChartOptions.colors!"
             [plotOptions]="completionChartOptions.plotOptions!"
             [dataLabels]="completionChartOptions.dataLabels!"
@@ -418,55 +365,7 @@
       </div>
 
       <!-- Processing Overview Cards -->
-      <div class="overview-grid" [@staggerCards]>
-        <div class="overview-card card-primary" [@slideInUp]>
-          <div class="card-icon">
-            <mat-icon>sync</mat-icon>
-          </div>
-          <div class="card-value">{{ stats.processingStats.totalSessions }}</div>
-          <div class="card-label">Processing Sessions</div>
-        </div>
-
-        <div class="overview-card card-secondary" [@slideInUp]>
-          <div class="card-icon">
-            <mat-icon>insert_drive_file</mat-icon>
-          </div>
-          <div class="card-value">{{ stats.fileStats.totalFiles }}</div>
-          <div class="card-label">Files Processed</div>
-        </div>
-
-        <div class="overview-card card-accent" [@slideInUp]>
-          <div class="card-icon">
-            <mat-icon>cloud_sync</mat-icon>
-          </div>
-          <div class="card-value">{{ stats.syncStats.totalSyncs }}</div>
-          <div class="card-label">Sync Operations</div>
-        </div>
-
-        <div class="overview-card card-info" [@slideInUp]>
-          <div class="card-icon">
-            <mat-icon>timer</mat-icon>
-          </div>
-          <div class="card-value">{{ stats.processingStats.avgDurationFormatted }}</div>
-          <div class="card-label">Avg Duration</div>
-        </div>
-
-        <div class="overview-card card-warning" [@slideInUp]>
-          <div class="card-icon">
-            <mat-icon>storage</mat-icon>
-          </div>
-          <div class="card-value">{{ stats.fileStats.totalFileSizeFormatted }}</div>
-          <div class="card-label">Total File Size</div>
-        </div>
-
-        <div class="overview-card card-danger" [@slideInUp]>
-          <div class="card-icon">
-            <mat-icon>warning</mat-icon>
-          </div>
-          <div class="card-value">{{ stats.syncStats.syncsNeedingAttentionCount }}</div>
-          <div class="card-label">Needs Attention</div>
-        </div>
-      </div>
+      <app-number-stat [stats]="processingStats"></app-number-stat>
 
       <!-- Processing Charts -->
       <div class="charts-grid">
@@ -686,6 +585,7 @@
             [chart]="processingByDayChartOptions.chart!"
             [xaxis]="processingByDayChartOptions.xaxis!"
             [yaxis]="processingByDayChartOptions.yaxis!"
+            [legend]="processingByDayChartOptions.legend!"
             [colors]="processingByDayChartOptions.colors!"
             [plotOptions]="processingByDayChartOptions.plotOptions!"
             [dataLabels]="processingByDayChartOptions.dataLabels!"

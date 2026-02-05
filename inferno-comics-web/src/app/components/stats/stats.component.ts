@@ -29,6 +29,7 @@ import {
   ApexResponsive,
   ApexGrid,
 } from 'ng-apexcharts';
+import { NumberStatComponent, NumberStatDesign } from './stat/number-stat/number-stat.component';
 
 export type DonutChartOptions = {
   series: ApexNonAxisChartSeries;
@@ -46,6 +47,7 @@ export type BarChartOptions = {
   chart: ApexChart;
   xaxis: ApexXAxis;
   yaxis: ApexYAxis;
+  legend: ApexLegend;
   colors: string[];
   plotOptions: ApexPlotOptions;
   dataLabels: ApexDataLabels;
@@ -66,6 +68,7 @@ export type AreaChartOptions = {
   chart: ApexChart;
   xaxis: ApexXAxis;
   yaxis: ApexYAxis;
+  legend: ApexLegend;
   colors: string[];
   fill: ApexFill;
   stroke: ApexStroke;
@@ -78,7 +81,7 @@ export type AreaChartOptions = {
   selector: 'app-stats',
   templateUrl: './stats.component.html',
   styleUrls: ['./stats.component.scss'],
-  imports: [MaterialModule, RouterModule, NgxSkeletonLoaderModule, NgApexchartsModule],
+  imports: [MaterialModule, RouterModule, NgxSkeletonLoaderModule, NgApexchartsModule, NumberStatComponent],
   animations: [
     trigger('fadeInUp', [
       transition(':enter', [
@@ -118,6 +121,9 @@ export class StatsComponent implements OnInit, OnDestroy {
     '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16',
     '#6366f1', '#d946ef',
   ];
+
+  numberStats: NumberStatDesign[] = [];
+  processingStats: NumberStatDesign[] = [];
 
   // Collection charts
   publisherChartOptions!: Partial<DonutChartOptions>;
@@ -163,6 +169,84 @@ export class StatsComponent implements OnInit, OnDestroy {
         next: (res: ApiResponse<CollectionStats>) => {
           if (res.data) {
             this.stats = res.data;
+
+            this.numberStats = [
+              {
+                title: 'Total Series',
+                color: 'card-primary',
+                icon: 'library_books',
+                value: this.stats.overview.totalSeries,
+              },
+              {
+                title: 'Total Issues',
+                color: 'card-secondary',
+                icon: 'auto_stories',
+                value: this.stats.overview.totalIssues,
+              },
+              {
+                title: 'Publishers',
+                color: 'card-accent',
+                icon: 'business',
+                value: this.stats.overview.uniquePublishers,
+              },
+              {
+                title: 'Complete Series',
+                color: 'card-info',
+                icon: 'verified',
+                value: this.stats.completionStats.completedSeries,
+              },
+              {
+                title: 'Variants',
+                color: 'card-warning',
+                icon: 'style',
+                value: this.stats.overview.variantIssues,
+              },
+              {
+                title: 'Missing Issues',
+                color: 'card-danger',
+                icon: 'search_off',
+                value: this.stats.overview.missingIssues,
+              },
+            ];
+
+            this.processingStats = [
+              {
+                title: 'Processing Sessions',
+                color: 'card-primary',
+                icon: 'sync',
+                value: this.stats.processingStats.totalSessions,
+              },
+              {
+                title: 'Files Processed',
+                color: 'card-secondary',
+                icon: 'insert_drive_file',
+                value: this.stats.fileStats.totalFiles,
+              },
+              {
+                title: 'Sync Operations',
+                color: 'card-accent',
+                icon: 'cloud_sync',
+                value: this.stats.syncStats.totalSyncs,
+              },
+              {
+                title: 'Avg Duration',
+                color: 'card-info',
+                icon: 'timer',
+                value: this.stats.processingStats.avgDurationFormatted,
+              },
+              {
+                title: 'Total File Size',
+                color: 'card-warning',
+                icon: 'storage',
+                value: this.stats.fileStats.totalFileSizeFormatted,
+              },
+              {
+                title: 'Needs Attention',
+                color: 'card-danger',
+                icon: 'warning',
+                value: this.stats.syncStats.syncsNeedingAttentionCount,
+              },
+            ];
             this.initializeCharts();
           }
         },
@@ -444,6 +528,11 @@ export class StatsComponent implements OnInit, OnDestroy {
           },
         },
       },
+      legend: {
+        labels: {
+          colors: 'var(--text-primary)'
+        }
+      },
       grid: {
         borderColor: 'var(--border-color)',
         strokeDashArray: 4,
@@ -499,6 +588,11 @@ export class StatsComponent implements OnInit, OnDestroy {
             fontSize: '12px',
           },
         },
+      },
+      legend: {
+        labels: {
+          colors: 'var(--text-primary)'
+        }
       },
       grid: {
         borderColor: 'var(--border-color)',
@@ -568,6 +662,11 @@ export class StatsComponent implements OnInit, OnDestroy {
           },
         },
       },
+      legend: {
+        labels: {
+          colors: 'var(--text-primary)'
+        }
+      },
       grid: {
         borderColor: 'var(--border-color)',
         strokeDashArray: 4,
@@ -628,6 +727,11 @@ export class StatsComponent implements OnInit, OnDestroy {
           maxWidth: 150,
         },
       },
+      legend: {
+        labels: {
+          colors: 'var(--text-primary)'
+        }
+      },
       grid: {
         borderColor: 'var(--border-color)',
         strokeDashArray: 4,
@@ -687,6 +791,11 @@ export class StatsComponent implements OnInit, OnDestroy {
           },
           maxWidth: 150,
         },
+      },
+      legend: {
+        labels: {
+          colors: 'var(--text-primary)'
+        }
       },
       grid: {
         borderColor: 'var(--border-color)',
@@ -786,7 +895,7 @@ export class StatsComponent implements OnInit, OnDestroy {
 
   private initStartedByChart(): void {
     const startedByData = this.stats?.processingStats?.startedByDistribution ?? {};
-    const labels = Object.keys(startedByData);
+    const labels = Object.keys(startedByData).map(val => val.toUpperCase());
     const series = Object.values(startedByData);
 
     this.startedByChartOptions = {
@@ -1024,6 +1133,11 @@ export class StatsComponent implements OnInit, OnDestroy {
             colors: 'var(--text-secondary)',
           },
         },
+      },
+      legend: {
+        labels: {
+          colors: 'var(--text-primary)'
+        }
       },
       grid: {
         borderColor: 'var(--border-color)',
