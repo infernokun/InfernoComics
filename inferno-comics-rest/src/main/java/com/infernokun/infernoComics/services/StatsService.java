@@ -2,10 +2,17 @@ package com.infernokun.infernoComics.services;
 
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.MissingIssue;
+import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.Series;
+import com.infernokun.infernoComics.models.enums.State;
+import com.infernokun.infernoComics.models.sync.ProcessedFile;
+import com.infernokun.infernoComics.models.sync.SeriesSyncStatus;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.MissingIssueRepository;
+import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
+import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
+import com.infernokun.infernoComics.repositories.sync.SeriesSyncStatusRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -27,6 +34,9 @@ public class StatsService {
     private final SeriesRepository seriesRepository;
     private final IssueRepository issueRepository;
     private final MissingIssueRepository missingIssueRepository;
+    private final ProgressDataRepository progressDataRepository;
+    private final ProcessedFileRepository processedFileRepository;
+    private final SeriesSyncStatusRepository seriesSyncStatusRepository;
 
     @Cacheable(value = "collection-stats", key = "'global'")
     public Map<String, Object> getCollectionStats() {
@@ -70,6 +80,18 @@ public class StatsService {
 
         // Read/unread breakdown
         stats.put("readStats", buildReadStats(allIssues));
+
+        // Processing stats
+        List<ProgressData> allProgressData = progressDataRepository.findAll();
+        stats.put("processingStats", buildProcessingStats(allProgressData));
+
+        // Processed file stats
+        List<ProcessedFile> allProcessedFiles = processedFileRepository.findAll();
+        stats.put("fileStats", buildFileStats(allProcessedFiles));
+
+        // Sync stats
+        List<SeriesSyncStatus> allSyncStatuses = seriesSyncStatusRepository.findAll();
+        stats.put("syncStats", buildSyncStats(allSyncStatuses));
 
         return stats;
     }
@@ -352,5 +374,284 @@ public class StatsService {
         result.put("unread", unreadCount);
         result.put("readPercentage", readPercentage);
         return result;
+    }
+
+    // ========================================
+    // Processing Stats (from ProgressData)
+    // ========================================
+
+    private Map<String, Object> buildProcessingStats(List<ProgressData> allProgressData) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        long totalSessions = allProgressData.size();
+        result.put("totalSessions", totalSessions);
+
+        // Session state distribution
+        Map<String, Long> stateDistribution = allProgressData.stream()
+                .filter(p -> p.getState() != null)
+                .collect(Collectors.groupingBy(
+                        p -> p.getState().toString(),
+                        Collectors.counting()
+                ));
+        result.put("stateDistribution", stateDistribution);
+
+        // Manual vs Auto sessions
+        Map<String, Long> startedByDistribution = allProgressData.stream()
+                .filter(p -> p.getStartedBy() != null)
+                .collect(Collectors.groupingBy(
+                        p -> p.getStartedBy().toString(),
+                        Collectors.counting()
+                ));
+        result.put("startedByDistribution", startedByDistribution);
+
+        // Completed sessions for stats
+        List<ProgressData> completedSessions = allProgressData.stream()
+                .filter(p -> p.getState() == State.COMPLETED && p.getTimeStarted() != null && p.getTimeFinished() != null)
+                .toList();
+
+        // Average processing duration (in seconds)
+        double avgDurationSeconds = completedSessions.stream()
+                .mapToLong(p -> p.getDuration().getSeconds())
+                .average()
+                .orElse(0);
+        result.put("avgDurationSeconds", Math.round(avgDurationSeconds));
+
+        // Format as human-readable
+        long avgMinutes = (long) (avgDurationSeconds / 60);
+        long avgSecs = (long) (avgDurationSeconds % 60);
+        result.put("avgDurationFormatted", String.format("%02d:%02d", avgMinutes, avgSecs));
+
+        // Success rate
+        long successfulSessions = allProgressData.stream()
+                .filter(p -> p.getState() == State.COMPLETED)
+                .count();
+        long failedSessions = allProgressData.stream()
+                .filter(p -> p.getState() == State.ERROR)
+                .count();
+        double successRate = (successfulSessions + failedSessions) > 0
+                ? Math.round((successfulSessions * 100.0) / (successfulSessions + failedSessions) * 10.0) / 10.0
+                : 0;
+        result.put("successRate", successRate);
+        result.put("successfulSessions", successfulSessions);
+        result.put("failedSessions", failedSessions);
+
+        // Total items processed
+        long totalItemsProcessed = allProgressData.stream()
+                .filter(p -> p.getProcessedItems() != null)
+                .mapToLong(ProgressData::getProcessedItems)
+                .sum();
+        result.put("totalItemsProcessed", totalItemsProcessed);
+
+        // Average items per session
+        double avgItemsPerSession = completedSessions.isEmpty() ? 0
+                : completedSessions.stream()
+                        .filter(p -> p.getTotalItems() != null)
+                        .mapToInt(ProgressData::getTotalItems)
+                        .average()
+                        .orElse(0);
+        result.put("avgItemsPerSession", Math.round(avgItemsPerSession));
+
+        // Processing activity by day of week
+        Map<String, Long> processingByDayOfWeek = allProgressData.stream()
+                .filter(p -> p.getTimeStarted() != null)
+                .collect(Collectors.groupingBy(
+                        p -> p.getTimeStarted().getDayOfWeek().toString(),
+                        Collectors.counting()
+                ));
+        result.put("processingByDayOfWeek", processingByDayOfWeek);
+
+        // Recent sessions (last 10)
+        List<Map<String, Object>> recentSessions = allProgressData.stream()
+                .filter(p -> p.getTimeStarted() != null)
+                .sorted(Comparator.comparing(ProgressData::getTimeStarted).reversed())
+                .limit(10)
+                .map(p -> {
+                    Map<String, Object> session = new LinkedHashMap<>();
+                    session.put("sessionId", p.getSessionId());
+                    session.put("seriesName", p.getSeries() != null ? p.getSeries().getName() : "Unknown");
+                    session.put("state", p.getState() != null ? p.getState().toString() : null);
+                    session.put("startedBy", p.getStartedBy() != null ? p.getStartedBy().toString() : null);
+                    session.put("duration", p.getFormattedDuration());
+                    session.put("totalItems", p.getTotalItems());
+                    session.put("processedItems", p.getProcessedItems());
+                    session.put("successfulItems", p.getSuccessfulItems());
+                    session.put("failedItems", p.getFailedItems());
+                    session.put("timeStarted", p.getTimeStarted());
+                    session.put("timeFinished", p.getTimeFinished());
+                    return session;
+                })
+                .collect(Collectors.toList());
+        result.put("recentSessions", recentSessions);
+
+        return result;
+    }
+
+    // ========================================
+    // File Stats (from ProcessedFile)
+    // ========================================
+
+    private Map<String, Object> buildFileStats(List<ProcessedFile> allProcessedFiles) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        long totalFiles = allProcessedFiles.size();
+        result.put("totalFiles", totalFiles);
+
+        // File state distribution
+        Map<String, Long> stateDistribution = allProcessedFiles.stream()
+                .filter(f -> f.getState() != null)
+                .collect(Collectors.groupingBy(
+                        f -> f.getState().toString(),
+                        Collectors.counting()
+                ));
+        result.put("stateDistribution", stateDistribution);
+
+        // Calculate file size stats (only for files with sizes)
+        List<ProcessedFile> filesWithSize = allProcessedFiles.stream()
+                .filter(f -> f.getFileSize() != null && f.getFileSize() > 0)
+                .toList();
+
+        long totalFileSize = filesWithSize.stream()
+                .mapToLong(ProcessedFile::getFileSize)
+                .sum();
+        result.put("totalFileSize", totalFileSize);
+        result.put("totalFileSizeFormatted", formatFileSize(totalFileSize));
+
+        double avgFileSize = filesWithSize.isEmpty() ? 0
+                : filesWithSize.stream()
+                        .mapToLong(ProcessedFile::getFileSize)
+                        .average()
+                        .orElse(0);
+        result.put("avgFileSize", Math.round(avgFileSize));
+        result.put("avgFileSizeFormatted", formatFileSize((long) avgFileSize));
+
+        // Files processed per day (last 30 days)
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        Map<String, Long> filesPerDay = allProcessedFiles.stream()
+                .filter(f -> f.getProcessedAt() != null && f.getProcessedAt().isAfter(thirtyDaysAgo))
+                .collect(Collectors.groupingBy(
+                        f -> f.getProcessedAt().format(formatter),
+                        TreeMap::new,
+                        Collectors.counting()
+                ));
+        result.put("filesPerDay", filesPerDay);
+
+        // Success/failure rate
+        long successfulFiles = stateDistribution.getOrDefault("COMPLETED", 0L);
+        long failedFiles = stateDistribution.getOrDefault("ERROR", 0L);
+        double fileSuccessRate = (successfulFiles + failedFiles) > 0
+                ? Math.round((successfulFiles * 100.0) / (successfulFiles + failedFiles) * 10.0) / 10.0
+                : 0;
+        result.put("fileSuccessRate", fileSuccessRate);
+
+        // Top series by processed files
+        Map<Long, Long> filesPerSeries = allProcessedFiles.stream()
+                .collect(Collectors.groupingBy(
+                        ProcessedFile::getSeriesId,
+                        Collectors.counting()
+                ));
+        result.put("filesPerSeriesCount", filesPerSeries.size());
+
+        return result;
+    }
+
+    // ========================================
+    // Sync Stats (from SeriesSyncStatus)
+    // ========================================
+
+    private Map<String, Object> buildSyncStats(List<SeriesSyncStatus> allSyncStatuses) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        long totalSyncs = allSyncStatuses.size();
+        result.put("totalSyncs", totalSyncs);
+
+        // Sync status distribution
+        Map<String, Long> statusDistribution = allSyncStatuses.stream()
+                .filter(s -> s.getSyncStatus() != null)
+                .collect(Collectors.groupingBy(
+                        s -> s.getSyncStatus().toString(),
+                        Collectors.counting()
+                ));
+        result.put("statusDistribution", statusDistribution);
+
+        // Total files tracked
+        long totalFilesTracked = allSyncStatuses.stream()
+                .filter(s -> s.getTotalFilesCount() != null)
+                .mapToLong(SeriesSyncStatus::getTotalFilesCount)
+                .sum();
+        result.put("totalFilesTracked", totalFilesTracked);
+
+        // Average files per sync
+        double avgFilesPerSync = allSyncStatuses.isEmpty() ? 0
+                : allSyncStatuses.stream()
+                        .filter(s -> s.getTotalFilesCount() != null)
+                        .mapToInt(SeriesSyncStatus::getTotalFilesCount)
+                        .average()
+                        .orElse(0);
+        result.put("avgFilesPerSync", Math.round(avgFilesPerSync * 10.0) / 10.0);
+
+        // Sync health (percentage of successful syncs)
+        long completedSyncs = statusDistribution.getOrDefault("COMPLETED", 0L);
+        long failedSyncs = statusDistribution.getOrDefault("FAILED", 0L);
+        double syncHealthRate = (completedSyncs + failedSyncs) > 0
+                ? Math.round((completedSyncs * 100.0) / (completedSyncs + failedSyncs) * 10.0) / 10.0
+                : 100;
+        result.put("syncHealthRate", syncHealthRate);
+
+        // Series with active syncs
+        long uniqueSeriesSynced = allSyncStatuses.stream()
+                .map(SeriesSyncStatus::getSeriesId)
+                .distinct()
+                .count();
+        result.put("uniqueSeriesSynced", uniqueSeriesSynced);
+
+        // Recent sync activity (last 10)
+        List<Map<String, Object>> recentSyncs = allSyncStatuses.stream()
+                .filter(s -> s.getLastSyncTimestamp() != null)
+                .sorted(Comparator.comparing(SeriesSyncStatus::getLastSyncTimestamp).reversed())
+                .limit(10)
+                .map(s -> {
+                    Map<String, Object> sync = new LinkedHashMap<>();
+                    sync.put("id", s.getId());
+                    sync.put("seriesId", s.getSeriesId());
+                    sync.put("folderPath", s.getFolderPath());
+                    sync.put("syncStatus", s.getSyncStatus() != null ? s.getSyncStatus().toString() : null);
+                    sync.put("totalFilesCount", s.getTotalFilesCount());
+                    sync.put("lastSyncTimestamp", s.getLastSyncTimestamp());
+                    sync.put("errorMessage", s.getErrorMessage());
+                    return sync;
+                })
+                .collect(Collectors.toList());
+        result.put("recentSyncs", recentSyncs);
+
+        // Syncs needing attention (failed or in progress for too long)
+        List<Map<String, Object>> syncsNeedingAttention = allSyncStatuses.stream()
+                .filter(s -> s.getSyncStatus() == SeriesSyncStatus.SyncStatus.FAILED ||
+                        (s.getSyncStatus() == SeriesSyncStatus.SyncStatus.IN_PROGRESS &&
+                                s.getUpdatedAt() != null &&
+                                s.getUpdatedAt().isBefore(LocalDateTime.now().minusHours(1))))
+                .map(s -> {
+                    Map<String, Object> sync = new LinkedHashMap<>();
+                    sync.put("id", s.getId());
+                    sync.put("seriesId", s.getSeriesId());
+                    sync.put("syncStatus", s.getSyncStatus() != null ? s.getSyncStatus().toString() : null);
+                    sync.put("errorMessage", s.getErrorMessage());
+                    sync.put("updatedAt", s.getUpdatedAt());
+                    return sync;
+                })
+                .collect(Collectors.toList());
+        result.put("syncsNeedingAttention", syncsNeedingAttention);
+        result.put("syncsNeedingAttentionCount", syncsNeedingAttention.size());
+
+        return result;
+    }
+
+    // Helper method to format file sizes
+    private String formatFileSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        String pre = "KMGTPE".charAt(exp - 1) + "";
+        return String.format("%.1f %sB", bytes / Math.pow(1024, exp), pre);
     }
 }

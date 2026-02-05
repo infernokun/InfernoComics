@@ -319,6 +319,27 @@
       margin-bottom: var(--spacing-md);
     }
   }
+
+  // ApexCharts donut center text visibility fix for dark mode
+  ::ng-deep {
+    .apexcharts-datalabel-label {
+      fill: var(--text-muted) !important;
+    }
+
+    .apexcharts-datalabel-value {
+      fill: var(--text-primary) !important;
+    }
+
+    .apexcharts-text {
+      &.apexcharts-datalabel-value {
+        fill: var(--text-primary) !important;
+      }
+
+      &.apexcharts-datalabel-label {
+        fill: var(--text-muted) !important;
+      }
+    }
+  }
 }
 
 .chart-header {
@@ -763,7 +784,7 @@
     gap: var(--spacing-sm);
   }
 
-  a& {
+  & {
     cursor: pointer;
   }
 
@@ -1001,5 +1022,45 @@
     color: var(--text-secondary);
     font-size: var(--font-size-sm);
     margin: 0;
+  }
+}
+
+// ========================================
+// Section Divider
+// ========================================
+
+.section-divider {
+  margin: var(--spacing-3xl) 0 var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid var(--border-color);
+
+  @include md {
+    margin: var(--spacing-xl) 0 var(--spacing-lg);
+  }
+
+  .section-title {
+    @include flex-start;
+    gap: var(--spacing-sm);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+
+    @include md {
+      font-size: 1.2rem;
+    }
+
+    mat-icon {
+      font-size: 26px;
+      width: 26px;
+      height: 26px;
+      color: var(--primary-color);
+
+      @include md {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+    }
   }
 }

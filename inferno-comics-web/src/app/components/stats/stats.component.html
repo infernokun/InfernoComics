@@ -69,10 +69,10 @@
 
       <div class="overview-card card-info" [@slideInUp]>
         <div class="card-icon">
-          <mat-icon>star</mat-icon>
+          <mat-icon>verified</mat-icon>
         </div>
-        <div class="card-value">{{ stats.overview.keyIssues }}</div>
-        <div class="card-label">Key Issues</div>
+        <div class="card-value">{{ stats.completionStats.completedSeries }}</div>
+        <div class="card-label">Complete Series</div>
       </div>
 
       <div class="overview-card card-warning" [@slideInUp]>
@@ -92,48 +92,7 @@
       </div>
     </div>
 
-    <!-- Value Analysis Row -->
-    <div class="value-row" [@fadeInUp]>
-      <div class="value-card">
-        <div class="value-header">
-          <mat-icon>attach_money</mat-icon>
-          <span>Collection Value</span>
-        </div>
-        <div class="value-main">{{ formatCurrency(stats.valueAnalysis.totalCurrentValue) }}</div>
-        <div class="value-sub">Current market value</div>
-      </div>
-
-      <div class="value-card">
-        <div class="value-header">
-          <mat-icon>shopping_cart</mat-icon>
-          <span>Purchase Cost</span>
-        </div>
-        <div class="value-main">{{ formatCurrency(stats.valueAnalysis.totalPurchaseValue) }}</div>
-        <div class="value-sub">Total invested</div>
-      </div>
-
-      <div class="value-card">
-        <div class="value-header">
-          <mat-icon>trending_up</mat-icon>
-          <span>Profit / Loss</span>
-        </div>
-        <div class="value-main" [class]="getProfitLossClass()">
-          {{ formatCurrency(stats.valueAnalysis.profitLoss) }}
-        </div>
-        <div class="value-sub">{{ stats.valueAnalysis.profitLoss >= 0 ? 'Net gain' : 'Net loss' }}</div>
-      </div>
-
-      <div class="value-card">
-        <div class="value-header">
-          <mat-icon>calculate</mat-icon>
-          <span>Avg Issue Value</span>
-        </div>
-        <div class="value-main">{{ formatCurrency(stats.valueAnalysis.averageIssueValue) }}</div>
-        <div class="value-sub">Per issue ({{ stats.valueAnalysis.issuesWithValue }} valued)</div>
-      </div>
-    </div>
-
-    <!-- Charts Grid -->
+    <!-- Charts Grid Row 1 -->
     <div class="charts-grid">
 
       <!-- Publisher Distribution -->
@@ -144,84 +103,90 @@
             Publisher Distribution
           </h2>
         </div>
-        <div class="donut-chart-container">
-          <div class="donut-chart" [style.background]="getPublisherDonutStyle()">
-            <div class="donut-hole">
-              <span class="donut-value">{{ stats.overview.uniquePublishers }}</span>
-              <span class="donut-label">Publishers</span>
-            </div>
-          </div>
-          <div class="chart-legend">
-            @for (pub of getTopPublishers(); track pub.name; let i = $index) {
-              <div class="legend-item">
-                <span class="legend-color" [style.background]="chartColors[i % chartColors.length]"></span>
-                <span class="legend-name">{{ pub.name }}</span>
-                <span class="legend-value">{{ pub.seriesCount }}</span>
-              </div>
-            }
-          </div>
-        </div>
+        @if (publisherChartOptions) {
+          <apx-chart
+            [series]="publisherChartOptions.series!"
+            [chart]="publisherChartOptions.chart!"
+            [labels]="publisherChartOptions.labels!"
+            [colors]="publisherChartOptions.colors!"
+            [plotOptions]="publisherChartOptions.plotOptions!"
+            [dataLabels]="publisherChartOptions.dataLabels!"
+            [legend]="publisherChartOptions.legend!"
+            [responsive]="publisherChartOptions.responsive!"
+          ></apx-chart>
+        }
       </div>
 
-      <!-- Condition Breakdown -->
+      <!-- Collection Health -->
       <div class="chart-card" [@fadeInUp]>
         <div class="chart-header">
           <h2>
-            <mat-icon>grade</mat-icon>
-            Condition Breakdown
+            <mat-icon>health_and_safety</mat-icon>
+            Collection Health
           </h2>
         </div>
-        <div class="bar-chart-container">
-          @for (item of getOrderedConditions(); track item.key) {
-            <div class="bar-row">
-              <span class="bar-label">{{ item.label }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" [style.width.%]="item.percentage" [style.background]="item.color"></div>
+        <div class="health-stats-container">
+          @if (healthGaugeOptions) {
+            <div class="health-gauge">
+              <apx-chart
+                [series]="healthGaugeOptions.series!"
+                [chart]="healthGaugeOptions.chart!"
+                [labels]="healthGaugeOptions.labels!"
+                [colors]="healthGaugeOptions.colors!"
+                [plotOptions]="healthGaugeOptions.plotOptions!"
+              ></apx-chart>
+            </div>
+          }
+          <div class="health-metrics">
+            <div class="health-metric">
+              <mat-icon>functions</mat-icon>
+              <div class="health-metric-info">
+                <span class="health-metric-value">{{ getAverageIssuesPerSeries() }}</span>
+                <span class="health-metric-label">Avg Issues/Series</span>
               </div>
-              <span class="bar-value">{{ item.count }}</span>
             </div>
-          }
-          @if (getOrderedConditions().length === 0) {
-            <div class="no-data">
-              <mat-icon>info_outline</mat-icon>
-              <span>No condition data available</span>
+            <div class="health-metric">
+              <mat-icon>check_circle</mat-icon>
+              <div class="health-metric-info">
+                <span class="health-metric-value">{{ stats.completionStats.completedSeries }}</span>
+                <span class="health-metric-label">Complete Series</span>
+              </div>
             </div>
-          }
+            <div class="health-metric">
+              <mat-icon>track_changes</mat-icon>
+              <div class="health-metric-info">
+                <span class="health-metric-value">{{ stats.completionStats.totalTrackedSeries }}</span>
+                <span class="health-metric-label">Tracked Series</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Decade Distribution -->
+      <!-- Series by Era -->
       <div class="chart-card" [@fadeInUp]>
         <div class="chart-header">
           <h2>
             <mat-icon>calendar_month</mat-icon>
-            Series by Decade
+            Series by Era
           </h2>
         </div>
-        <div class="vertical-bar-chart">
-          <div class="vertical-bars">
-            @for (item of getDecadeData(); track item.decade; let i = $index) {
-              <div class="vertical-bar-group">
-                <div class="vertical-bar-wrapper">
-                  <div class="vertical-bar" [style.height.%]="item.percentage"
-                       [style.background]="chartColors[i % chartColors.length]">
-                  </div>
-                </div>
-                <span class="vertical-bar-label">{{ item.decade }}</span>
-                <span class="vertical-bar-value">{{ item.count }}</span>
-              </div>
-            }
-          </div>
-          @if (getDecadeData().length === 0) {
-            <div class="no-data">
-              <mat-icon>info_outline</mat-icon>
-              <span>No decade data available</span>
-            </div>
-          }
-        </div>
+        @if (eraChartOptions) {
+          <apx-chart
+            [series]="eraChartOptions.series!"
+            [chart]="eraChartOptions.chart!"
+            [xaxis]="eraChartOptions.xaxis!"
+            [yaxis]="eraChartOptions.yaxis!"
+            [colors]="eraChartOptions.colors!"
+            [plotOptions]="eraChartOptions.plotOptions!"
+            [dataLabels]="eraChartOptions.dataLabels!"
+            [grid]="eraChartOptions.grid!"
+            [tooltip]="eraChartOptions.tooltip!"
+          ></apx-chart>
+        }
       </div>
 
-      <!-- Read / Unread -->
+      <!-- Read Status -->
       <div class="chart-card" [@fadeInUp]>
         <div class="chart-header">
           <h2>
@@ -229,31 +194,68 @@
             Read Status
           </h2>
         </div>
-        <div class="donut-chart-container">
-          <div class="donut-chart donut-sm" [style.background]="getReadDonutStyle()">
-            <div class="donut-hole">
-              <span class="donut-value">{{ stats.readStats.readPercentage }}%</span>
-              <span class="donut-label">Read</span>
-            </div>
-          </div>
-          <div class="chart-legend">
-            <div class="legend-item">
-              <span class="legend-color" style="background: #10b981"></span>
-              <span class="legend-name">Read</span>
-              <span class="legend-value">{{ stats.readStats.read }}</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-color" style="background: #6b7280"></span>
-              <span class="legend-name">Unread</span>
-              <span class="legend-value">{{ stats.readStats.unread }}</span>
-            </div>
-          </div>
+        @if (readStatusChartOptions) {
+          <apx-chart
+            [series]="readStatusChartOptions.series!"
+            [chart]="readStatusChartOptions.chart!"
+            [labels]="readStatusChartOptions.labels!"
+            [colors]="readStatusChartOptions.colors!"
+            [plotOptions]="readStatusChartOptions.plotOptions!"
+            [dataLabels]="readStatusChartOptions.dataLabels!"
+            [legend]="readStatusChartOptions.legend!"
+            [responsive]="readStatusChartOptions.responsive!"
+          ></apx-chart>
+        }
+      </div>
+
+      <!-- Issue Types -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>category</mat-icon>
+            Issue Types
+          </h2>
         </div>
+        @if (issueTypesChartOptions) {
+          <apx-chart
+            [series]="issueTypesChartOptions.series!"
+            [chart]="issueTypesChartOptions.chart!"
+            [labels]="issueTypesChartOptions.labels!"
+            [colors]="issueTypesChartOptions.colors!"
+            [plotOptions]="issueTypesChartOptions.plotOptions!"
+            [dataLabels]="issueTypesChartOptions.dataLabels!"
+            [legend]="issueTypesChartOptions.legend!"
+            [responsive]="issueTypesChartOptions.responsive!"
+          ></apx-chart>
+        }
+      </div>
+
+      <!-- Issues by Publisher -->
+      <div class="chart-card" [@fadeInUp]>
+        <div class="chart-header">
+          <h2>
+            <mat-icon>bar_chart</mat-icon>
+            Issues by Publisher
+          </h2>
+        </div>
+        @if (issuesByPublisherOptions) {
+          <apx-chart
+            [series]="issuesByPublisherOptions.series!"
+            [chart]="issuesByPublisherOptions.chart!"
+            [xaxis]="issuesByPublisherOptions.xaxis!"
+            [yaxis]="issuesByPublisherOptions.yaxis!"
+            [colors]="issuesByPublisherOptions.colors!"
+            [plotOptions]="issuesByPublisherOptions.plotOptions!"
+            [dataLabels]="issuesByPublisherOptions.dataLabels!"
+            [grid]="issuesByPublisherOptions.grid!"
+            [tooltip]="issuesByPublisherOptions.tooltip!"
+          ></apx-chart>
+        }
       </div>
     </div>
 
     <!-- Collection Growth -->
-    @if (getGrowthData().length > 1) {
+    @if (growthChartOptions && (stats.collectionGrowth.length) > 1) {
       <div class="chart-card full-width" [@fadeInUp]>
         <div class="chart-header">
           <h2>
@@ -262,55 +264,22 @@
           </h2>
           <span class="chart-subtitle">Issues added per month</span>
         </div>
-        <div class="growth-chart-container">
-          <!-- SVG Line Chart for Cumulative -->
-          <div class="growth-line-chart">
-            <svg viewBox="-2 -2 104 104" preserveAspectRatio="none" class="growth-svg">
-              <!-- Grid lines -->
-              <line x1="0" y1="0" x2="0" y2="100" class="grid-line-y"/>
-              <line x1="0" y1="100" x2="100" y2="100" class="grid-line-x"/>
-              @for (i of [25, 50, 75]; track i) {
-                <line x1="0" [attr.y1]="i" x2="100" [attr.y2]="i" class="grid-line"/>
-              }
-              <!-- Area fill -->
-              @if (getGrowthLinePoints()) {
-                <polygon
-                  [attr.points]="'0,100 ' + getGrowthLinePoints() + ' 100,100'"
-                  class="growth-area"/>
-              }
-              <!-- Line -->
-              @if (getGrowthLinePoints()) {
-                <polyline
-                  [attr.points]="getGrowthLinePoints()"
-                  class="growth-line"/>
-              }
-            </svg>
-            <div class="growth-labels">
-              @for (point of getGrowthData(); track point.month; let i = $index) {
-                @if (shouldShowGrowthLabel(i)) {
-                  <span class="growth-label" [style.left.%]="(i / (getGrowthData().length - 1)) * 100">
-                    {{ formatMonth(point.month) }}
-                  </span>
-                }
-              }
-            </div>
-          </div>
-
-          <!-- Bar Chart for Monthly Additions -->
-          <div class="growth-bar-chart">
-            <div class="growth-bars">
-              @for (point of getGrowthData(); track point.month) {
-                <div class="growth-bar-col" [matTooltip]="formatMonth(point.month) + ': ' + point.added + ' added'">
-                  <div class="growth-bar" [style.height.%]="getGrowthBarHeight(point)"></div>
-                </div>
-              }
-            </div>
-          </div>
-        </div>
+        <apx-chart
+          [series]="growthChartOptions.series!"
+          [chart]="growthChartOptions.chart!"
+          [xaxis]="growthChartOptions.xaxis!"
+          [yaxis]="growthChartOptions.yaxis!"
+          [colors]="growthChartOptions.colors!"
+          [fill]="growthChartOptions.fill!"
+          [stroke]="growthChartOptions.stroke!"
+          [dataLabels]="growthChartOptions.dataLabels!"
+          [grid]="growthChartOptions.grid!"
+          [tooltip]="growthChartOptions.tooltip!"
+        ></apx-chart>
       </div>
     }
 
-    <!-- Second Row: Top Series + Completion -->
+    <!-- Top Series + Completion -->
     <div class="charts-grid two-col">
 
       <!-- Top Series by Issue Count -->
@@ -321,20 +290,19 @@
             Top Series by Issues
           </h2>
         </div>
-        <div class="bar-chart-container">
-          @for (item of getTopSeries(); track item.name; let i = $index) {
-            <div class="bar-row">
-              <span class="bar-label bar-label-wide">{{ item.name }}</span>
-              <div class="bar-track">
-                <div class="bar-fill"
-                     [style.width.%]="(item.count / getTopSeriesMaxCount()) * 100"
-                     [style.background]="chartColors[i % chartColors.length]">
-                </div>
-              </div>
-              <span class="bar-value">{{ item.count }}</span>
-            </div>
-          }
-        </div>
+        @if (topSeriesChartOptions) {
+          <apx-chart
+            [series]="topSeriesChartOptions.series!"
+            [chart]="topSeriesChartOptions.chart!"
+            [xaxis]="topSeriesChartOptions.xaxis!"
+            [yaxis]="topSeriesChartOptions.yaxis!"
+            [colors]="topSeriesChartOptions.colors!"
+            [plotOptions]="topSeriesChartOptions.plotOptions!"
+            [dataLabels]="topSeriesChartOptions.dataLabels!"
+            [grid]="topSeriesChartOptions.grid!"
+            [tooltip]="topSeriesChartOptions.tooltip!"
+          ></apx-chart>
+        }
       </div>
 
       <!-- Series Completion -->
@@ -350,26 +318,19 @@
             </span>
           </div>
         </div>
-        <div class="bar-chart-container">
-          @for (item of getTopCompletionSeries(); track item.name) {
-            <div class="bar-row">
-              <span class="bar-label bar-label-wide">{{ item.name }}</span>
-              <div class="bar-track">
-                <div class="bar-fill completion-bar"
-                     [style.width.%]="item.percentage"
-                     [class.complete]="item.percentage >= 100">
-                </div>
-              </div>
-              <span class="bar-value">{{ item.percentage }}%</span>
-            </div>
-          }
-          @if (getTopCompletionSeries().length === 0) {
-            <div class="no-data">
-              <mat-icon>info_outline</mat-icon>
-              <span>No tracked series available</span>
-            </div>
-          }
-        </div>
+        @if (completionChartOptions) {
+          <apx-chart
+            [series]="completionChartOptions.series!"
+            [chart]="completionChartOptions.chart!"
+            [xaxis]="completionChartOptions.xaxis!"
+            [yaxis]="completionChartOptions.yaxis!"
+            [colors]="completionChartOptions.colors!"
+            [plotOptions]="completionChartOptions.plotOptions!"
+            [dataLabels]="completionChartOptions.dataLabels!"
+            [grid]="completionChartOptions.grid!"
+            [tooltip]="completionChartOptions.tooltip!"
+          ></apx-chart>
+        }
       </div>
     </div>
 
@@ -438,13 +399,7 @@
                 <span class="newest-name">{{ issue.seriesName }}</span>
                 <span class="newest-meta">
                   {{ issue.title ? issue.title : '#' + issue.issueNumber }}
-                  @if (issue.condition) {
-                    <span class="condition-chip">{{ conditionLabels[issue.condition] || issue.condition }}</span>
-                  }
                 </span>
-                @if (issue.currentValue) {
-                  <span class="newest-stats">{{ formatCurrency(issue.currentValue) }}</span>
-                }
               </div>
               <span class="newest-time">{{ getRelativeTime(issue.createdAt) }}</span>
             </div>
@@ -453,24 +408,294 @@
       </div>
     </div>
 
-    <!-- Highest Value Issue -->
-    @if (stats.valueAnalysis.highestValueIssue) {
-      <div class="highlight-card" [@fadeInUp]>
-        <div class="highlight-icon">
-          <mat-icon>emoji_events</mat-icon>
+    <!-- Processing & Sync Stats Section -->
+    @if (stats.processingStats || stats.fileStats || stats.syncStats) {
+      <div class="section-divider">
+        <h2 class="section-title">
+          <mat-icon>memory</mat-icon>
+          Processing & Sync Statistics
+        </h2>
+      </div>
+
+      <!-- Processing Overview Cards -->
+      <div class="overview-grid" [@staggerCards]>
+        <div class="overview-card card-primary" [@slideInUp]>
+          <div class="card-icon">
+            <mat-icon>sync</mat-icon>
+          </div>
+          <div class="card-value">{{ stats.processingStats.totalSessions }}</div>
+          <div class="card-label">Processing Sessions</div>
         </div>
-        <div class="highlight-info">
-          <span class="highlight-title">Most Valuable Issue</span>
-          <span class="highlight-name">
-            {{ stats.valueAnalysis.highestValueIssue.seriesName }}
-            {{ stats.valueAnalysis.highestValueIssue.title ? stats.valueAnalysis.highestValueIssue.title : '#' + stats.valueAnalysis.highestValueIssue.issueNumber }}
-          </span>
+
+        <div class="overview-card card-secondary" [@slideInUp]>
+          <div class="card-icon">
+            <mat-icon>insert_drive_file</mat-icon>
+          </div>
+          <div class="card-value">{{ stats.fileStats.totalFiles }}</div>
+          <div class="card-label">Files Processed</div>
         </div>
-        <div class="highlight-value">
-          {{ formatCurrency(stats.valueAnalysis.highestValueIssue.currentValue) }}
+
+        <div class="overview-card card-accent" [@slideInUp]>
+          <div class="card-icon">
+            <mat-icon>cloud_sync</mat-icon>
+          </div>
+          <div class="card-value">{{ stats.syncStats.totalSyncs }}</div>
+          <div class="card-label">Sync Operations</div>
+        </div>
+
+        <div class="overview-card card-info" [@slideInUp]>
+          <div class="card-icon">
+            <mat-icon>timer</mat-icon>
+          </div>
+          <div class="card-value">{{ stats.processingStats.avgDurationFormatted }}</div>
+          <div class="card-label">Avg Duration</div>
+        </div>
+
+        <div class="overview-card card-warning" [@slideInUp]>
+          <div class="card-icon">
+            <mat-icon>storage</mat-icon>
+          </div>
+          <div class="card-value">{{ stats.fileStats.totalFileSizeFormatted }}</div>
+          <div class="card-label">Total File Size</div>
+        </div>
+
+        <div class="overview-card card-danger" [@slideInUp]>
+          <div class="card-icon">
+            <mat-icon>warning</mat-icon>
+          </div>
+          <div class="card-value">{{ stats.syncStats.syncsNeedingAttentionCount }}</div>
+          <div class="card-label">Needs Attention</div>
         </div>
       </div>
+
+      <!-- Processing Charts -->
+      <div class="charts-grid">
+
+        <!-- Processing Session States -->
+        <div class="chart-card" [@fadeInUp]>
+          <div class="chart-header">
+            <h2>
+              <mat-icon>donut_large</mat-icon>
+              Session States
+            </h2>
+          </div>
+          @if (processingStateChartOptions.series?.length) {
+            <apx-chart
+              [series]="processingStateChartOptions.series!"
+              [chart]="processingStateChartOptions.chart!"
+              [labels]="processingStateChartOptions.labels!"
+              [colors]="processingStateChartOptions.colors!"
+              [plotOptions]="processingStateChartOptions.plotOptions!"
+              [dataLabels]="processingStateChartOptions.dataLabels!"
+              [legend]="processingStateChartOptions.legend!"
+              [responsive]="processingStateChartOptions.responsive!"
+            ></apx-chart>
+          } @else {
+            <div class="no-data">
+              <mat-icon>info</mat-icon>
+              <span>No processing data yet</span>
+            </div>
+          }
+        </div>
+
+        <!-- Processing Success Rate -->
+        <div class="chart-card" [@fadeInUp]>
+          <div class="chart-header">
+            <h2>
+              <mat-icon>speed</mat-icon>
+              Processing Success
+            </h2>
+          </div>
+          <div class="health-stats-container">
+            @if (processingSuccessGaugeOptions) {
+              <div class="health-gauge">
+                <apx-chart
+                  [series]="processingSuccessGaugeOptions.series!"
+                  [chart]="processingSuccessGaugeOptions.chart!"
+                  [labels]="processingSuccessGaugeOptions.labels!"
+                  [colors]="processingSuccessGaugeOptions.colors!"
+                  [plotOptions]="processingSuccessGaugeOptions.plotOptions!"
+                ></apx-chart>
+              </div>
+            }
+            <div class="health-metrics">
+              <div class="health-metric">
+                <mat-icon>check_circle</mat-icon>
+                <div class="health-metric-info">
+                  <span class="health-metric-value">{{ stats.processingStats.successfulSessions }}</span>
+                  <span class="health-metric-label">Successful</span>
+                </div>
+              </div>
+              <div class="health-metric">
+                <mat-icon>error</mat-icon>
+                <div class="health-metric-info">
+                  <span class="health-metric-value">{{ stats.processingStats.failedSessions }}</span>
+                  <span class="health-metric-label">Failed</span>
+                </div>
+              </div>
+              <div class="health-metric">
+                <mat-icon>inventory_2</mat-icon>
+                <div class="health-metric-info">
+                  <span class="health-metric-value">{{ stats.processingStats.totalItemsProcessed }}</span>
+                  <span class="health-metric-label">Items Processed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Manual vs Auto -->
+        <div class="chart-card" [@fadeInUp]>
+          <div class="chart-header">
+            <h2>
+              <mat-icon>touch_app</mat-icon>
+              Started By
+            </h2>
+          </div>
+          @if (startedByChartOptions.series?.length) {
+            <apx-chart
+              [series]="startedByChartOptions.series!"
+              [chart]="startedByChartOptions.chart!"
+              [labels]="startedByChartOptions.labels!"
+              [colors]="startedByChartOptions.colors!"
+              [plotOptions]="startedByChartOptions.plotOptions!"
+              [dataLabels]="startedByChartOptions.dataLabels!"
+              [legend]="startedByChartOptions.legend!"
+              [responsive]="startedByChartOptions.responsive!"
+            ></apx-chart>
+          } @else {
+            <div class="no-data">
+              <mat-icon>info</mat-icon>
+              <span>No data available</span>
+            </div>
+          }
+        </div>
+
+        <!-- File States -->
+        <div class="chart-card" [@fadeInUp]>
+          <div class="chart-header">
+            <h2>
+              <mat-icon>folder</mat-icon>
+              File Processing Status
+            </h2>
+          </div>
+          @if (fileStateChartOptions.series?.length) {
+            <apx-chart
+              [series]="fileStateChartOptions.series!"
+              [chart]="fileStateChartOptions.chart!"
+              [labels]="fileStateChartOptions.labels!"
+              [colors]="fileStateChartOptions.colors!"
+              [plotOptions]="fileStateChartOptions.plotOptions!"
+              [dataLabels]="fileStateChartOptions.dataLabels!"
+              [legend]="fileStateChartOptions.legend!"
+              [responsive]="fileStateChartOptions.responsive!"
+            ></apx-chart>
+          } @else {
+            <div class="no-data">
+              <mat-icon>info</mat-icon>
+              <span>No file data yet</span>
+            </div>
+          }
+        </div>
+
+        <!-- Sync Status Distribution -->
+        <div class="chart-card" [@fadeInUp]>
+          <div class="chart-header">
+            <h2>
+              <mat-icon>sync_alt</mat-icon>
+              Sync Status
+            </h2>
+          </div>
+          @if (syncStatusChartOptions.series?.length) {
+            <apx-chart
+              [series]="syncStatusChartOptions.series!"
+              [chart]="syncStatusChartOptions.chart!"
+              [labels]="syncStatusChartOptions.labels!"
+              [colors]="syncStatusChartOptions.colors!"
+              [plotOptions]="syncStatusChartOptions.plotOptions!"
+              [dataLabels]="syncStatusChartOptions.dataLabels!"
+              [legend]="syncStatusChartOptions.legend!"
+              [responsive]="syncStatusChartOptions.responsive!"
+            ></apx-chart>
+          } @else {
+            <div class="no-data">
+              <mat-icon>info</mat-icon>
+              <span>No sync data yet</span>
+            </div>
+          }
+        </div>
+
+        <!-- Sync Health -->
+        <div class="chart-card" [@fadeInUp]>
+          <div class="chart-header">
+            <h2>
+              <mat-icon>monitor_heart</mat-icon>
+              Sync Health
+            </h2>
+          </div>
+          <div class="health-stats-container">
+            @if (syncHealthGaugeOptions) {
+              <div class="health-gauge">
+                <apx-chart
+                  [series]="syncHealthGaugeOptions.series!"
+                  [chart]="syncHealthGaugeOptions.chart!"
+                  [labels]="syncHealthGaugeOptions.labels!"
+                  [colors]="syncHealthGaugeOptions.colors!"
+                  [plotOptions]="syncHealthGaugeOptions.plotOptions!"
+                ></apx-chart>
+              </div>
+            }
+            <div class="health-metrics">
+              <div class="health-metric">
+                <mat-icon>folder_copy</mat-icon>
+                <div class="health-metric-info">
+                  <span class="health-metric-value">{{ stats.syncStats.uniqueSeriesSynced }}</span>
+                  <span class="health-metric-label">Series Synced</span>
+                </div>
+              </div>
+              <div class="health-metric">
+                <mat-icon>description</mat-icon>
+                <div class="health-metric-info">
+                  <span class="health-metric-value">{{ stats.syncStats.totalFilesTracked }}</span>
+                  <span class="health-metric-label">Files Tracked</span>
+                </div>
+              </div>
+              <div class="health-metric">
+                <mat-icon>functions</mat-icon>
+                <div class="health-metric-info">
+                  <span class="health-metric-value">{{ stats.syncStats.avgFilesPerSync }}</span>
+                  <span class="health-metric-label">Avg Files/Sync</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Processing Activity by Day -->
+      @if (processingByDayChartOptions.series) {
+        <div class="chart-card full-width" [@fadeInUp]>
+          <div class="chart-header">
+            <h2>
+              <mat-icon>calendar_view_week</mat-icon>
+              Processing Activity by Day
+            </h2>
+          </div>
+          <apx-chart
+            [series]="processingByDayChartOptions.series!"
+            [chart]="processingByDayChartOptions.chart!"
+            [xaxis]="processingByDayChartOptions.xaxis!"
+            [yaxis]="processingByDayChartOptions.yaxis!"
+            [colors]="processingByDayChartOptions.colors!"
+            [plotOptions]="processingByDayChartOptions.plotOptions!"
+            [dataLabels]="processingByDayChartOptions.dataLabels!"
+            [grid]="processingByDayChartOptions.grid!"
+            [tooltip]="processingByDayChartOptions.tooltip!"
+          ></apx-chart>
+        </div>
+      }
     }
+
   }
 
   <!-- Empty State -->

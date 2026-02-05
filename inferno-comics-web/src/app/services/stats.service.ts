@@ -17,6 +17,9 @@ export interface CollectionStats {
   newestSeries: NewestSeriesItem[];
   newestIssues: NewestIssueItem[];
   readStats: ReadStats;
+  processingStats: ProcessingStats;
+  fileStats: FileStats;
+  syncStats: SyncStats;
 }
 
 export interface CollectionOverview {
@@ -105,6 +108,80 @@ export interface ReadStats {
   read: number;
   unread: number;
   readPercentage: number;
+}
+
+// Processing Stats (from ProgressData)
+export interface ProcessingStats {
+  totalSessions: number;
+  stateDistribution: Record<string, number>;
+  startedByDistribution: Record<string, number>;
+  avgDurationSeconds: number;
+  avgDurationFormatted: string;
+  successRate: number;
+  successfulSessions: number;
+  failedSessions: number;
+  totalItemsProcessed: number;
+  avgItemsPerSession: number;
+  processingByDayOfWeek: Record<string, number>;
+  recentSessions: RecentProcessingSession[];
+}
+
+export interface RecentProcessingSession {
+  sessionId: string;
+  seriesName: string;
+  state: string;
+  startedBy: string;
+  duration: string;
+  totalItems: number;
+  processedItems: number;
+  successfulItems: number;
+  failedItems: number;
+  timeStarted: Date;
+  timeFinished: Date;
+}
+
+// File Stats (from ProcessedFile)
+export interface FileStats {
+  totalFiles: number;
+  stateDistribution: Record<string, number>;
+  totalFileSize: number;
+  totalFileSizeFormatted: string;
+  avgFileSize: number;
+  avgFileSizeFormatted: string;
+  filesPerDay: Record<string, number>;
+  fileSuccessRate: number;
+  filesPerSeriesCount: number;
+}
+
+// Sync Stats (from SeriesSyncStatus)
+export interface SyncStats {
+  totalSyncs: number;
+  statusDistribution: Record<string, number>;
+  totalFilesTracked: number;
+  avgFilesPerSync: number;
+  syncHealthRate: number;
+  uniqueSeriesSynced: number;
+  recentSyncs: RecentSync[];
+  syncsNeedingAttention: SyncNeedingAttention[];
+  syncsNeedingAttentionCount: number;
+}
+
+export interface RecentSync {
+  id: number;
+  seriesId: number;
+  folderPath: string;
+  syncStatus: string;
+  totalFilesCount: number;
+  lastSyncTimestamp: Date;
+  errorMessage: string;
+}
+
+export interface SyncNeedingAttention {
+  id: number;
+  seriesId: number;
+  syncStatus: string;
+  errorMessage: string;
+  updatedAt: Date;
 }
 
 @Injectable({
