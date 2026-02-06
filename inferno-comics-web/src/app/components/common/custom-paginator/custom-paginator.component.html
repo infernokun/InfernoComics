@@ -23,16 +23,17 @@
     </button>
     
     <div class="pages-container">
-      <button 
-        *ngFor="let page of displayedPages; let i = index" 
-        mat-button 
-        class="page-button"
-        [class.active]="page === currentPage"
-        [disabled]="page === -1"
-        (click)="goToPage(page)"
-        [title]="page === -1 ? '' : 'Page ' + page">
-        {{ page === -1 ? '...' : page }}
-      </button>
+      @for (page of displayedPages; track displayedPages.length) {
+        <button 
+          mat-button 
+          class="page-button"
+          [class.active]="page === currentPage"
+          [disabled]="page === -1"
+          (click)="goToPage(page)"
+          [title]="page === -1 ? '' : 'Page ' + page">
+          {{ page === -1 ? '...' : page }}
+        </button>
+      }
     </div>
     
     <button 

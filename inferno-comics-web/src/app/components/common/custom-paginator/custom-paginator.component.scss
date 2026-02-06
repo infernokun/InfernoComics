@@ -157,9 +157,11 @@
 
   &.active {
     @include gradient-primary;
-    color: white !important;
+    color: var(--primary-color) !important;
     font-weight: var(--font-weight-semibold) !important;
     box-shadow: var(--shadow-sm);
+    font-size: var(--font-size-xl) !important;
+    z-index: 1;
   }
 
   &:not(.active):hover:not([disabled]) {

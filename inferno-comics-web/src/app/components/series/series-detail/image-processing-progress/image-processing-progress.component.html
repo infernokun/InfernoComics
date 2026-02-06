@@ -36,20 +36,7 @@
         <div class="images-grid">
           <div class="grid-main-image">
             <div class="image-frame">
-              <img 
-                [src]="imagePreviews[currentImageIndex]" 
-                [alt]="'Current processing image: ' + currentImageName"
-                class="uploaded-image main-image"
-              >
-              @if (isProcessing) {
-                <div class="scanning-line"></div>
-                <div class="image-overlay">
-                  <div class="processing-indicator">
-                    <mat-icon>play_circle</mat-icon>
-                    <span>Processing</span>
-                  </div>
-                </div>
-              }
+              <img [src]="imagePreviews[currentImageIndex]" [alt]="'Current processing image: ' + currentImageName"class="uploaded-image main-image">
             </div>
             <div class="main-image-info">
               <span class="current-image-name">{{ currentImageName }}</span>

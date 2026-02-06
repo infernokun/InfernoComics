@@ -104,22 +104,6 @@
                 </mat-card>
               </div>
             </section>
-
-            <section class="operations-section">
-              <div class="section-header">
-                <h3>
-                  <mat-icon>info</mat-icon>
-                  Collection Stats
-                </h3>
-              </div>
-              <div class="stats-row">
-                <div class="stat-item">
-                  <mat-icon>library_books</mat-icon>
-                  <span class="stat-value">{{ allSeries.length }}</span>
-                  <span class="stat-label">Series</span>
-                </div>
-              </div>
-            </section>
           </div>
         </mat-tab>
 
@@ -330,12 +314,17 @@
                 </button>
               </div>
             }
-
             @if (!configForm) {
-              <div class="loading">
-                <mat-spinner diameter="60"></mat-spinner>
-                <p class="loading-text">Loading configuration...</p>
-              </div>
+              @if (loadingConfig) {
+                <div class="loading">
+                  <mat-spinner diameter="60"></mat-spinner>
+                  <p class="loading-text">Loading configuration...</p>
+                </div>
+              } @else {
+                <div class="loading">
+                  <p class="loading-text">Failed to load configuration</p>
+                </div>
+              }
             }
           </div>
         </mat-tab>

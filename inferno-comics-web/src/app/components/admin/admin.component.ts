@@ -30,21 +30,24 @@ interface BulkOperationResult {
   imports: [CommonModule, MaterialModule, FormsModule, RouterModule, ReactiveFormsModule],
 })
 export class AdminComponent implements OnInit, OnDestroy {
+  private sub = new Subscription();
+  private originalFormValue: any;
+
   // Tab state
   selectedTabIndex = 0;
 
   // Recognition Config State
   config?: RecognitionConfig;
   configForm!: FormGroup;
-  private sub = new Subscription();
-  private originalFormValue: any;
-  Object = Object;
+
   selectedPresetIndex = 0;
   hasUnsavedChanges = false;
 
+  loadingSeries = false;
+  loadingConfig = false;
+
   // Global Operations State
   allSeries: Series[] = [];
-  loadingSeries = false;
   reverifyingAllSeries = false;
   reverifyingAllIssues = false;
   reverifySeriesProgress = { current: 0, total: 0 };
@@ -57,6 +60,8 @@ export class AdminComponent implements OnInit, OnDestroy {
     { value: 'minimal', label: 'Minimal', hint: 'Lightweight processing' },
     { value: 'akaze_focused', label: 'AKAZE Focused', hint: 'Specialized AKAZE detection' }
   ];
+
+  Object = Object;
 
   constructor(
     private recognitionService: RecognitionService,
@@ -78,6 +83,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   // ========== Recognition Configuration Methods ==========
 
   private loadConfiguration(): void {
+    this.loadingConfig = true;
     const load$ = this.recognitionService
       .getRecognitionConfig()
       .subscribe({
@@ -88,10 +94,13 @@ export class AdminComponent implements OnInit, OnDestroy {
           this.buildForm(this.config);
           this.originalFormValue = JSON.parse(JSON.stringify(this.configForm.value));
           this.trackFormChanges();
+
+          this.loadingConfig = false;
         },
         error: (err: Error) => {
           console.error('Failed to load configuration:', err);
           this.messageService.error('Failed to load configuration.');
+          this.loadingConfig = false;
         }
       });
     this.sub.add(load$);

@@ -121,9 +121,12 @@ export class StatsComponent implements OnInit, OnDestroy {
   parseDateTimeArray = DateUtils.parseDateTimeArray;
 
   readonly chartColors = [
-    '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
-    '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16',
-    '#6366f1', '#d946ef',
+    '#3b82f6','#10b981',
+    '#f59e0b','#ef4444',
+    '#8b5cf6','#ec4899',
+    '#14b8a6','#f97316', 
+    '#06b6d4','#84cc16',
+    '#6366f1','#d946ef',
   ];
 
   numberStats: NumberStatDesign[] = [];
@@ -409,11 +412,13 @@ export class StatsComponent implements OnInit, OnDestroy {
 
   private initPublisherChart(): void {
     const publishers = this.stats?.publisherBreakdown?.slice(0, 8) ?? [];
+    const shuffledColors = [...this.chartColors].sort(() => Math.random() - 0.5);
+    
     this.publisherChartOptions = {
       ...this.getBaseDonutOptions(),
       series: publishers.map(p => p.seriesCount),
       labels: publishers.map(p => p.name),
-      colors: this.chartColors.slice(0, publishers.length),
+      colors: publishers.map((_, index) => shuffledColors[index % shuffledColors.length]),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -438,12 +443,16 @@ export class StatsComponent implements OnInit, OnDestroy {
     const total = this.stats?.overview.totalIssues ?? 0;
     const variant = this.stats?.overview.variantIssues ?? 0;
     const regular = total - variant;
+    const labels = ['Regular', 'Variants'];
 
     this.issueTypesChartOptions = {
       ...this.getBaseDonutOptions(),
       series: [regular, variant],
-      labels: ['Regular', 'Variants'],
-      colors: ['#3b82f6', '#8b5cf6'],
+      labels: labels,
+      colors: labels.map(() => {
+        const randomIndex = Math.floor(Math.random() * this.chartColors.length);
+        return this.chartColors[randomIndex];
+      }),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -467,12 +476,16 @@ export class StatsComponent implements OnInit, OnDestroy {
   private initReadStatusChart(): void {
     const read = this.stats?.readStats.read ?? 0;
     const unread = this.stats?.readStats.unread ?? 0;
+    const labels = ['Read', 'Unread'];
 
     this.readStatusChartOptions = {
       ...this.getBaseDonutOptions(),
       series: [read, unread],
-      labels: ['Read', 'Unread'],
-      colors: ['#10b981', '#f97316'],
+      labels: labels,
+      colors: labels.map(() => {
+        const randomIndex = Math.floor(Math.random() * this.chartColors.length);
+        return this.chartColors[randomIndex];
+      }),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -548,7 +561,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         background: 'transparent',
         toolbar: { show: false },
       },
-      colors: this.chartColors,
+      colors: [...this.chartColors].sort(() => Math.random() - 0.5),
       plotOptions: {
         bar: {
           distributed: true,
@@ -610,7 +623,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         background: 'transparent',
         toolbar: { show: false },
       },
-      colors: this.chartColors,
+      colors: [...this.chartColors].sort(() => Math.random() - 0.5),
       plotOptions: {
         bar: {
           horizontal: true,
@@ -659,6 +672,7 @@ export class StatsComponent implements OnInit, OnDestroy {
 
   private initGrowthChart(): void {
     const growthData = this.stats?.collectionGrowth ?? [];
+    const shuffledColors = [...this.chartColors].sort(() => Math.random() - 0.5);
 
     this.growthChartOptions = {
       series: [
@@ -678,7 +692,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         toolbar: { show: false },
         zoom: { enabled: false },
       },
-      colors: ['#3b82f6', '#10b981'],
+      colors: [shuffledColors[0], shuffledColors[1]],
       fill: {
         type: 'gradient',
         gradient: {
@@ -716,7 +730,6 @@ export class StatsComponent implements OnInit, OnDestroy {
         },
       },
       legend: {
-        show: false,
         labels: {
           colors: 'var(--text-primary)'
         }
@@ -736,6 +749,7 @@ export class StatsComponent implements OnInit, OnDestroy {
 
   private initTopSeriesChart(): void {
     const series = this.stats?.topSeriesByIssueCount ?? [];
+    const shuffledColors = [...this.chartColors].sort(() => Math.random() - 0.5);
 
     this.topSeriesChartOptions = {
       series: [{
@@ -748,7 +762,13 @@ export class StatsComponent implements OnInit, OnDestroy {
         background: 'transparent',
         toolbar: { show: false },
       },
-      colors: this.chartColors,
+      colors: series.map(s => 
+        s.count < 20 ? shuffledColors[0] : 
+        s.count <= 30 ? shuffledColors[1] : 
+        s.count <= 40 ? shuffledColors[2] : 
+        s.count <= 50 ? shuffledColors[3] : 
+        shuffledColors[4]
+      ),
       plotOptions: {
         bar: {
           horizontal: true,
@@ -807,6 +827,8 @@ export class StatsComponent implements OnInit, OnDestroy {
       percentage: s.percentage,
     }));
 
+    const shuffledColors = [...this.chartColors].sort(() => Math.random() - 0.5);
+
     this.mostIncompleteChartOptions = {
       series: [{
         name: 'Missing',
@@ -818,7 +840,13 @@ export class StatsComponent implements OnInit, OnDestroy {
         background: 'transparent',
         toolbar: { show: false },
       },
-      colors: missingData.map(s => s.percentage <= 25 ? '#ef4444' : s.percentage <= 50 ? '#f59e0b' : '#3b82f6'),
+      colors: missingData.map(s => 
+        s.missing < 5 ? shuffledColors[0] : 
+        s.missing <= 10 ? shuffledColors[1] : 
+        s.missing <= 15 ? shuffledColors[2] : 
+        s.missing <= 20 ? shuffledColors[3] : 
+        shuffledColors[4]
+      ),
       plotOptions: {
         bar: {
           horizontal: true,
@@ -881,20 +909,13 @@ export class StatsComponent implements OnInit, OnDestroy {
     const stateData = this.stats?.processingStats?.stateDistribution ?? {};
     const labels = Object.keys(stateData);
     const series = Object.values(stateData);
-
-    const stateColors: Record<string, string> = {
-      'COMPLETED': '#10b981',
-      'PROCESSING': '#3b82f6',
-      'ERROR': '#ef4444',
-      'PENDING': '#f59e0b',
-      'CANCELLED': '#8b5cf6',
-    };
+    const shuffledColors = [...this.chartColors].sort(() => Math.random() - 0.5);
 
     this.processingStateChartOptions = {
       ...this.getBaseDonutOptions(),
       series: series,
       labels: labels.map(l => this.formatStateLabel(l)),
-      colors: labels.map(l => stateColors[this.extractStateKey(l)] || '#6b7280'),
+      colors: labels.map((_, index) => shuffledColors[index % shuffledColors.length]),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -960,19 +981,13 @@ export class StatsComponent implements OnInit, OnDestroy {
     const startedByData = this.stats?.processingStats?.startedByDistribution ?? {};
     const labels = Object.keys(startedByData);
     const series = Object.values(startedByData);
-
-    const startedByColors: Record<string, string> = {
-      'MANUAL': '#3b82f6',
-      'AUTO': '#8b5cf6',
-      'SCHEDULED': '#10b981',
-      'SYSTEM': '#f59e0b',
-    };
+    const shuffledColors = [...this.chartColors].sort(() => Math.random() - 0.5);
 
     this.startedByChartOptions = {
       ...this.getBaseDonutOptions(),
       series: series,
       labels: labels.map(l => this.formatStateLabel(l)),
-      colors: labels.map(l => startedByColors[this.extractStateKey(l)] || '#6b7280'),
+      colors: labels.map((_, index) => shuffledColors[index % shuffledColors.length]),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -997,20 +1012,14 @@ export class StatsComponent implements OnInit, OnDestroy {
     const stateData = this.stats?.fileStats?.stateDistribution ?? {};
     const labels = Object.keys(stateData);
     const series = Object.values(stateData);
-
-    const stateColors: Record<string, string> = {
-      'COMPLETED': '#10b981',
-      'PROCESSING': '#3b82f6',
-      'ERROR': '#ef4444',
-      'PENDING': '#f59e0b',
-      'FAILED': '#ef4444',
-    };
+    const shuffledColors = [...this.chartColors].sort(() => Math.random() - 0.5);
+    
 
     this.fileStateChartOptions = {
       ...this.getBaseDonutOptions(),
       series: series,
       labels: labels.map(l => this.formatStateLabel(l)),
-      colors: labels.map(l => stateColors[this.extractStateKey(l)] || '#6b7280'),
+      colors: labels.map((_, index) => shuffledColors[index % shuffledColors.length]),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -1076,20 +1085,13 @@ export class StatsComponent implements OnInit, OnDestroy {
     const statusData = this.stats?.syncStats?.statusDistribution ?? {};
     const labels = Object.keys(statusData);
     const series = Object.values(statusData);
-
-    const statusColors: Record<string, string> = {
-      'COMPLETED': '#10b981',
-      'IN_PROGRESS': '#3b82f6',
-      'FAILED': '#ef4444',
-      'PENDING': '#f59e0b',
-      'EMPTY': '#8b5cf6',
-    };
+    const shuffledColors = [...this.chartColors].sort(() => Math.random() - 0.5);
 
     this.syncStatusChartOptions = {
       ...this.getBaseDonutOptions(),
       series: series,
       labels: labels.map(l => this.formatStateLabel(l)),
-      colors: labels.map(l => statusColors[this.extractStateKey(l)] || '#6b7280'),
+      colors: labels.map((_, index) => shuffledColors[index % shuffledColors.length]),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -1238,24 +1240,6 @@ export class StatsComponent implements OnInit, OnDestroy {
         },
       },
     };
-  }
-
-  private extractStateKey(state: string): string {
-    // Extract the raw state key for color lookup
-    // Handle "Completed(Displayname=Completed)" -> "COMPLETED"
-    const displayNameMatch = state.match(/\(Displayname=([^)]+)\)/i);
-    if (displayNameMatch) {
-      return displayNameMatch[1].toUpperCase();
-    }
-
-    // Handle "MyEnum.Enum(Value=COMPLETED)" -> "COMPLETED"
-    const valueMatch = state.match(/\(Value=([^)]+)\)/i);
-    if (valueMatch) {
-      return valueMatch[1].toUpperCase();
-    }
-
-    // Remove parenthetical content and return uppercase
-    return state.replace(/\([^)]*\)/g, '').trim().toUpperCase();
   }
 
   private formatStateLabel(state: string): string {

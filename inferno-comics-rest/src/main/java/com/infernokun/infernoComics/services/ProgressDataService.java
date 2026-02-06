@@ -13,11 +13,11 @@ import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
 import com.infernokun.infernoComics.clients.SocketClient;
-import jakarta.transaction.Transactional;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.annotation.PreDestroy;
@@ -281,21 +281,29 @@ public class ProgressDataService {
 
     public void sendError(String sessionId, String errorMessage) {
         log.error("Sending error event for session {}: {}", sessionId, errorMessage);
-
         try {
+            log.warn("Attempting to find ProgressData for session: {}", sessionId);
             Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
+            log.warn("ProgressData found for session {}: {}", sessionId, progressDataOptional.isPresent());
+
             if (progressDataOptional.isPresent()) {
                 ProgressData progressData = progressDataOptional.get();
+                log.warn("Updating ProgressData for session: {}", sessionId);
                 progressData.setState(State.ERROR);
                 progressData.setErrorMessage(errorMessage);
                 progressData.setTimeFinished(LocalDateTime.now());
 
+                log.warn("About to save ProgressData for session: {}", sessionId);
                 weirdService.saveProgressData(progressData);
+                log.warn("ProgressData saved successfully for session: {}", sessionId);
+
                 sendToWebSocket();
                 log.info("✅ Database updated with error state for session: {}", sessionId);
+            } else {
+                log.warn("No ProgressData found for session ID: {}", sessionId);
             }
         } catch (Exception e) {
-            log.error("Failed to update database with error for session {}: {}", sessionId, e.getMessage());
+            log.warn("Failed to update database with error for session {}: {}", sessionId, e.getMessage());
         }
 
         SSEProgressData errorData = SSEProgressData.builder()
@@ -305,9 +313,13 @@ public class ProgressDataService {
                 .timestamp(Instant.now().toEpochMilli())
                 .build();
 
+        log.warn("Setting errorData in sessionStatus for session: {}", sessionId);
         sessionStatus.put(sessionId, errorData);
+
+        log.warn("Calling sendToEmitter for session: {}", sessionId);
         sendToEmitter(sessionId, errorData);
 
+        log.warn("Scheduling emitter completion for session: {} in 2000ms", sessionId);
         // Complete the emitter after a short delay
         scheduleEmitterCompletion(sessionId, 2000);
     }
