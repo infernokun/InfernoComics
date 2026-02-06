@@ -1,0 +1,122 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
+.chart-card {
+  @include card-base;
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-md);
+
+  @include md {
+    padding: var(--spacing-lg);
+  }
+
+  @include sm {
+    padding: var(--spacing-md);
+  }
+
+  &.full-width {
+    grid-column: 1 / -1;
+    margin-bottom: var(--spacing-xl);
+
+    @include md {
+      margin-bottom: var(--spacing-md);
+    }
+  }
+
+  ::ng-deep {
+    .apexcharts-legend-text {
+      color: var(--text-primary) !important;
+    }
+
+    .apexcharts-datalabel-label {
+      fill: var(--text-muted) !important;
+    }
+
+    .apexcharts-datalabel-value {
+      fill: var(--text-primary) !important;
+    }
+
+    .apexcharts-text {
+      &.apexcharts-datalabel-value {
+        fill: var(--text-primary) !important;
+      }
+
+      &.apexcharts-datalabel-label {
+        fill: var(--text-muted) !important;
+      }
+    }
+  }
+}
+
+.chart-header {
+  @include flex-between;
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+
+  @include md {
+    margin-bottom: var(--spacing-md);
+  }
+
+  h2 {
+    @include flex-start;
+    gap: var(--spacing-sm);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+
+    @include md {
+      font-size: 1rem;
+    }
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: var(--primary-color);
+
+      @include md {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+
+  .chart-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .completion-summary {
+    .completion-badge {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: var(--success-color);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+  }
+}
+
+.no-data {
+  @include flex-center;
+  @include flex-column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl);
+  color: var(--text-muted);
+
+  mat-icon {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+  }
+
+  span {
+    font-size: var(--font-size-sm);
+  }
+}

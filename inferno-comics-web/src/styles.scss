@@ -238,6 +238,30 @@ body {
 }
 
 // ========================================
+// ApexCharts Overrides
+// ========================================
+
+.apexcharts-legend-text {
+  color: var(--text-primary) !important;
+}
+
+.apexcharts-datalabel-label {
+  fill: var(--text-muted) !important;
+}
+
+.apexcharts-datalabel-value {
+  fill: var(--text-primary) !important;
+}
+
+.apexcharts-text.apexcharts-datalabel-value {
+  fill: var(--text-primary) !important;
+}
+
+.apexcharts-text.apexcharts-datalabel-label {
+  fill: var(--text-muted) !important;
+}
+
+// ========================================
 // Custom Component Styles
 // ========================================
 

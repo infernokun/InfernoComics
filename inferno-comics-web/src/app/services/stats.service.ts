@@ -123,6 +123,7 @@ export interface ProcessingStats {
   totalItemsProcessed: number;
   avgItemsPerSession: number;
   processingByDayOfWeek: Record<string, number>;
+  processingByMonth?: Record<string, number>;
   recentSessions: RecentProcessingSession[];
 }
 

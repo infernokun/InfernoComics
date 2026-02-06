@@ -30,6 +30,9 @@ import {
   ApexGrid,
 } from 'ng-apexcharts';
 import { NumberStatComponent, NumberStatDesign } from './stat/number-stat/number-stat.component';
+import { ChartCardComponent } from './stat/chart-card/chart-card.component';
+import { GaugeStatComponent, GaugeMetric } from './stat/gauge-stat/gauge-stat.component';
+import { NewestListComponent, NewestListItem } from './stat/newest-list/newest-list.component';
 
 export type DonutChartOptions = {
   series: ApexNonAxisChartSeries;
@@ -81,7 +84,7 @@ export type AreaChartOptions = {
   selector: 'app-stats',
   templateUrl: './stats.component.html',
   styleUrls: ['./stats.component.scss'],
-  imports: [MaterialModule, RouterModule, NgxSkeletonLoaderModule, NgApexchartsModule, NumberStatComponent],
+  imports: [MaterialModule, RouterModule, NgxSkeletonLoaderModule, NgApexchartsModule, NumberStatComponent, ChartCardComponent, GaugeStatComponent, NewestListComponent],
   animations: [
     trigger('fadeInUp', [
       transition(':enter', [
@@ -110,6 +113,7 @@ export type AreaChartOptions = {
 export class StatsComponent implements OnInit, OnDestroy {
   loading = true;
   stats: CollectionStats | null = null;
+  activeTab: 'collection' | 'processing' = 'collection';
 
   private readonly destroy$ = new Subject<void>();
 
@@ -125,6 +129,15 @@ export class StatsComponent implements OnInit, OnDestroy {
   numberStats: NumberStatDesign[] = [];
   processingStats: NumberStatDesign[] = [];
 
+  // Gauge metrics
+  collectionHealthMetrics: GaugeMetric[] = [];
+  processingSuccessMetrics: GaugeMetric[] = [];
+  syncHealthMetrics: GaugeMetric[] = [];
+
+  // Newest items
+  newestSeriesItems: NewestListItem[] = [];
+  newestIssuesItems: NewestListItem[] = [];
+
   // Collection charts
   publisherChartOptions!: Partial<DonutChartOptions>;
   issueTypesChartOptions!: Partial<DonutChartOptions>;
@@ -134,7 +147,7 @@ export class StatsComponent implements OnInit, OnDestroy {
   issuesByPublisherOptions!: Partial<BarChartOptions>;
   growthChartOptions!: Partial<AreaChartOptions>;
   topSeriesChartOptions!: Partial<BarChartOptions>;
-  completionChartOptions!: Partial<BarChartOptions>;
+  almostCompleteChartOptions!: Partial<BarChartOptions>;
 
   // Processing/Sync stats charts
   processingStateChartOptions!: Partial<DonutChartOptions>;
@@ -144,7 +157,8 @@ export class StatsComponent implements OnInit, OnDestroy {
   fileSuccessGaugeOptions!: Partial<RadialChartOptions>;
   syncStatusChartOptions!: Partial<DonutChartOptions>;
   syncHealthGaugeOptions!: Partial<RadialChartOptions>;
-  processingByDayChartOptions!: Partial<BarChartOptions>;
+  processingByMonthChartOptions!: Partial<AreaChartOptions>;
+  hasProcessingByMonthData = false;
 
   constructor(private readonly statsService: StatsService) {}
 
@@ -247,6 +261,45 @@ export class StatsComponent implements OnInit, OnDestroy {
                 value: this.stats.syncStats.syncsNeedingAttentionCount,
               },
             ];
+
+            // Initialize gauge metrics
+            this.collectionHealthMetrics = [
+              { icon: 'functions', value: this.getAverageIssuesPerSeries(), label: 'Avg Issues/Series' },
+              { icon: 'check_circle', value: this.stats.completionStats.completedSeries, label: 'Complete Series' },
+              { icon: 'track_changes', value: this.stats.completionStats.totalTrackedSeries, label: 'Tracked Series' },
+            ];
+
+            this.processingSuccessMetrics = [
+              { icon: 'check_circle', value: this.stats.processingStats.successfulSessions, label: 'Successful' },
+              { icon: 'error', value: this.stats.processingStats.failedSessions, label: 'Failed' },
+              { icon: 'inventory_2', value: this.stats.processingStats.totalItemsProcessed, label: 'Items Processed' },
+            ];
+
+            this.syncHealthMetrics = [
+              { icon: 'folder_copy', value: this.stats.syncStats.uniqueSeriesSynced, label: 'Series Synced' },
+              { icon: 'description', value: this.stats.syncStats.totalFilesTracked, label: 'Files Tracked' },
+              { icon: 'functions', value: this.stats.syncStats.avgFilesPerSync, label: 'Avg Files/Sync' },
+            ];
+
+            // Initialize newest items
+            this.newestSeriesItems = (this.stats.newestSeries ?? []).map(series => ({
+              id: series.id,
+              imageUrl: series.imageUrl,
+              name: series.name,
+              meta: series.publisher + (series.startYear ? ` \u2022 ${series.startYear}` : ''),
+              stats: `${series.issuesOwnedCount} / ${series.issuesAvailableCount} issues`,
+              link: this.getSeriesLink(series),
+              createdAt: series.createdAt,
+            }));
+
+            this.newestIssuesItems = (this.stats.newestIssues ?? []).map(issue => ({
+              id: issue.id,
+              imageUrl: issue.imageUrl,
+              name: issue.seriesName,
+              meta: issue.title ? issue.title : `#${issue.issueNumber}`,
+              createdAt: issue.createdAt,
+            }));
+
             this.initializeCharts();
           }
         },
@@ -271,7 +324,7 @@ export class StatsComponent implements OnInit, OnDestroy {
     this.initIssuesByPublisherChart();
     this.initGrowthChart();
     this.initTopSeriesChart();
-    this.initCompletionChart();
+    this.initAlmostCompleteChart();
 
     // Processing/Sync stats charts
     this.initProcessingStateChart();
@@ -281,7 +334,7 @@ export class StatsComponent implements OnInit, OnDestroy {
     this.initFileSuccessGauge();
     this.initSyncStatusChart();
     this.initSyncHealthGauge();
-    this.initProcessingByDayChart();
+    this.initProcessingByMonthChart();
   }
 
   private getBaseDonutOptions(): Partial<DonutChartOptions> {
@@ -419,7 +472,7 @@ export class StatsComponent implements OnInit, OnDestroy {
       ...this.getBaseDonutOptions(),
       series: [read, unread],
       labels: ['Read', 'Unread'],
-      colors: ['#10b981', '#6b7280'],
+      colors: ['#10b981', '#f97316'],
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -663,6 +716,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         },
       },
       legend: {
+        show: false,
         labels: {
           colors: 'var(--text-primary)'
         }
@@ -742,13 +796,18 @@ export class StatsComponent implements OnInit, OnDestroy {
     };
   }
 
-  private initCompletionChart(): void {
-    const completion = this.stats?.completionStats?.topSeriesCompletion ?? [];
+  private initAlmostCompleteChart(): void {
+    // Filter to show only series that are NOT 100% complete (almost complete)
+    const allCompletion = this.stats?.completionStats?.topSeriesCompletion ?? [];
+    const almostComplete = allCompletion
+      .filter(s => s.percentage < 100 && s.percentage >= 50)
+      .sort((a, b) => b.percentage - a.percentage)
+      .slice(0, 8);
 
-    this.completionChartOptions = {
+    this.almostCompleteChartOptions = {
       series: [{
         name: 'Completion',
-        data: completion.map(s => s.percentage),
+        data: almostComplete.map(s => s.percentage),
       }],
       chart: {
         type: 'bar',
@@ -756,7 +815,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         background: 'transparent',
         toolbar: { show: false },
       },
-      colors: completion.map(s => s.percentage >= 100 ? '#10b981' : '#3b82f6'),
+      colors: almostComplete.map(s => s.percentage >= 90 ? '#10b981' : s.percentage >= 75 ? '#f59e0b' : '#3b82f6'),
       plotOptions: {
         bar: {
           horizontal: true,
@@ -774,7 +833,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         },
       },
       xaxis: {
-        categories: completion.map(s => s.name),
+        categories: almostComplete.map(s => s.name),
         max: 100,
         labels: {
           style: {
@@ -824,14 +883,14 @@ export class StatsComponent implements OnInit, OnDestroy {
       'PROCESSING': '#3b82f6',
       'ERROR': '#ef4444',
       'PENDING': '#f59e0b',
-      'CANCELLED': '#6b7280',
+      'CANCELLED': '#8b5cf6',
     };
 
     this.processingStateChartOptions = {
       ...this.getBaseDonutOptions(),
       series: series,
       labels: labels.map(l => this.formatStateLabel(l)),
-      colors: labels.map(l => stateColors[l] || '#6b7280'),
+      colors: labels.map(l => stateColors[this.extractStateKey(l)] || '#6b7280'),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -895,14 +954,21 @@ export class StatsComponent implements OnInit, OnDestroy {
 
   private initStartedByChart(): void {
     const startedByData = this.stats?.processingStats?.startedByDistribution ?? {};
-    const labels = Object.keys(startedByData).map(val => val.toUpperCase());
+    const labels = Object.keys(startedByData);
     const series = Object.values(startedByData);
+
+    const startedByColors: Record<string, string> = {
+      'MANUAL': '#3b82f6',
+      'AUTO': '#8b5cf6',
+      'SCHEDULED': '#10b981',
+      'SYSTEM': '#f59e0b',
+    };
 
     this.startedByChartOptions = {
       ...this.getBaseDonutOptions(),
       series: series,
       labels: labels.map(l => this.formatStateLabel(l)),
-      colors: ['#3b82f6', '#8b5cf6'],
+      colors: labels.map(l => startedByColors[this.extractStateKey(l)] || '#6b7280'),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -933,13 +999,14 @@ export class StatsComponent implements OnInit, OnDestroy {
       'PROCESSING': '#3b82f6',
       'ERROR': '#ef4444',
       'PENDING': '#f59e0b',
+      'FAILED': '#ef4444',
     };
 
     this.fileStateChartOptions = {
       ...this.getBaseDonutOptions(),
       series: series,
       labels: labels.map(l => this.formatStateLabel(l)),
-      colors: labels.map(l => stateColors[l] || '#6b7280'),
+      colors: labels.map(l => stateColors[this.extractStateKey(l)] || '#6b7280'),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -1011,14 +1078,14 @@ export class StatsComponent implements OnInit, OnDestroy {
       'IN_PROGRESS': '#3b82f6',
       'FAILED': '#ef4444',
       'PENDING': '#f59e0b',
-      'EMPTY': '#6b7280',
+      'EMPTY': '#8b5cf6',
     };
 
     this.syncStatusChartOptions = {
       ...this.getBaseDonutOptions(),
       series: series,
       labels: labels.map(l => this.formatStateLabel(l)),
-      colors: labels.map(l => statusColors[l] || '#6b7280'),
+      colors: labels.map(l => statusColors[this.extractStateKey(l)] || '#6b7280'),
       plotOptions: {
         ...this.getBaseDonutOptions().plotOptions,
         pie: {
@@ -1080,49 +1147,65 @@ export class StatsComponent implements OnInit, OnDestroy {
     };
   }
 
-  private initProcessingByDayChart(): void {
-    const dayData = this.stats?.processingStats?.processingByDayOfWeek ?? {};
-    const daysOrder = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-    const shortDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  private initProcessingByMonthChart(): void {
+    const monthData = this.stats?.processingStats?.processingByMonth ?? {};
+    const months = Object.keys(monthData).sort();
+    const counts = months.map(m => monthData[m] || 0);
 
-    const sortedData = daysOrder.map((day, i) => ({
-      day: shortDays[i],
-      count: dayData[day] || 0,
-    }));
+    // Check if we have actual data (more than 1 month with data)
+    this.hasProcessingByMonthData = months.length > 1;
 
-    this.processingByDayChartOptions = {
-      series: [{
-        name: 'Sessions',
-        data: sortedData.map(d => d.count),
-      }],
+    // Calculate cumulative totals
+    let cumulative = 0;
+    const cumulativeCounts = counts.map(c => {
+      cumulative += c;
+      return cumulative;
+    });
+
+    this.processingByMonthChartOptions = {
+      series: [
+        {
+          name: 'Total Sessions',
+          data: cumulativeCounts,
+        },
+        {
+          name: 'Sessions',
+          data: counts,
+        },
+      ],
       chart: {
-        type: 'bar',
-        height: 200,
+        type: 'area',
+        height: 300,
         background: 'transparent',
         toolbar: { show: false },
+        zoom: { enabled: false },
       },
-      colors: this.chartColors,
-      plotOptions: {
-        bar: {
-          distributed: true,
-          borderRadius: 4,
-          columnWidth: '60%',
+      colors: ['#8b5cf6', '#10b981'],
+      fill: {
+        type: 'gradient',
+        gradient: {
+          shadeIntensity: 1,
+          opacityFrom: 0.4,
+          opacityTo: 0.1,
+          stops: [0, 100],
         },
+      },
+      stroke: {
+        curve: 'smooth',
+        width: 2,
       },
       dataLabels: {
-        enabled: true,
-        style: {
-          fontSize: '11px',
-          fontWeight: 600,
-        },
+        enabled: false,
       },
       xaxis: {
-        categories: sortedData.map(d => d.day),
+        categories: months.map(m => this.formatMonth(m)),
         labels: {
           style: {
             colors: 'var(--text-secondary)',
             fontSize: '11px',
           },
+          rotate: -45,
+          rotateAlways: months.length > 8,
         },
         axisBorder: { show: false },
         axisTicks: { show: false },
@@ -1135,6 +1218,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         },
       },
       legend: {
+        show: false,
         labels: {
           colors: 'var(--text-primary)'
         }
@@ -1145,11 +1229,54 @@ export class StatsComponent implements OnInit, OnDestroy {
       },
       tooltip: {
         theme: 'dark',
+        x: {
+          show: true,
+        },
       },
     };
   }
 
+  private extractStateKey(state: string): string {
+    // Extract the raw state key for color lookup
+    // Handle "Completed(Displayname=Completed)" -> "COMPLETED"
+    const displayNameMatch = state.match(/\(Displayname=([^)]+)\)/i);
+    if (displayNameMatch) {
+      return displayNameMatch[1].toUpperCase();
+    }
+
+    // Handle "MyEnum.Enum(Value=COMPLETED)" -> "COMPLETED"
+    const valueMatch = state.match(/\(Value=([^)]+)\)/i);
+    if (valueMatch) {
+      return valueMatch[1].toUpperCase();
+    }
+
+    // Remove parenthetical content and return uppercase
+    return state.replace(/\([^)]*\)/g, '').trim().toUpperCase();
+  }
+
   private formatStateLabel(state: string): string {
+    // Handle enum format like "Completed(Displayname=Completed)" -> "Completed"
+    // Extract the displayname value if present
+    const displayNameMatch = state.match(/\(Displayname=([^)]+)\)/i);
+    if (displayNameMatch) {
+      state = displayNameMatch[1];
+    }
+
+    // Handle format like "MyEnum.Enum(Value=COMPLETED)" -> "Completed"
+    const valueMatch = state.match(/\(Value=([^)]+)\)/i);
+    if (valueMatch) {
+      state = valueMatch[1];
+    }
+
+    // Handle format like "EnumName.VALUE" -> "Value"
+    const dotMatch = state.match(/\.([^.]+)$/);
+    if (dotMatch) {
+      state = dotMatch[1];
+    }
+
+    // Remove any remaining parenthetical content
+    state = state.replace(/\([^)]*\)/g, '').trim();
+
     return state
       .replace(/_/g, ' ')
       .toLowerCase()

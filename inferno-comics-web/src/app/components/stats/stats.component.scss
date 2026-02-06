@@ -101,6 +101,87 @@
 }
 
 // ========================================
+// Tab Navigation
+// ========================================
+
+.tab-nav {
+  @include flex-start;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-xs);
+  background: var(--surface-color);
+  border-radius: var(--radius-md);
+  width: fit-content;
+  box-shadow: var(--shadow-sm);
+
+  @include sm {
+    width: 100%;
+    justify-content: center;
+  }
+
+  &.skeleton {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+}
+
+.tab-btn {
+  @include flex-center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+
+  @include sm {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  &:hover:not(.active) {
+    color: var(--text-primary);
+    background: var(--background-color);
+  }
+
+  &.active {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: var(--shadow-md);
+
+    mat-icon {
+      color: white;
+    }
+  }
+}
+
+.tab-content {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ========================================
 // Value Row
 // ========================================
 
@@ -217,6 +298,10 @@
 
   // ApexCharts donut center text visibility fix for dark mode
   ::ng-deep {
+    .apexcharts-legend-text {
+      color: var(--text-primary) !important;
+    }
+
     .apexcharts-datalabel-label {
       fill: var(--text-muted) !important;
     }

@@ -460,6 +460,17 @@ public class StatsService {
                 ));
         result.put("processingByDayOfWeek", processingByDayOfWeek);
 
+        // Processing activity by month
+        DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM");
+        Map<String, Long> processingByMonth = allProgressData.stream()
+                .filter(p -> p.getTimeStarted() != null)
+                .collect(Collectors.groupingBy(
+                        p -> p.getTimeStarted().format(monthFormatter),
+                        TreeMap::new,
+                        Collectors.counting()
+                ));
+        result.put("processingByMonth", processingByMonth);
+
         // Recent sessions (last 10)
         List<Map<String, Object>> recentSessions = allProgressData.stream()
                 .filter(p -> p.getTimeStarted() != null)

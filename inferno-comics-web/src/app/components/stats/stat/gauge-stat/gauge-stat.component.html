@@ -1,0 +1,24 @@
+<div class="health-stats-container">
+  @if (gaugeOptions) {
+    <div class="health-gauge">
+      <apx-chart
+        [series]="gaugeOptions.series!"
+        [chart]="gaugeOptions.chart!"
+        [labels]="gaugeOptions.labels!"
+        [colors]="gaugeOptions.colors!"
+        [plotOptions]="gaugeOptions.plotOptions!"
+      ></apx-chart>
+    </div>
+  }
+  <div class="health-metrics">
+    @for (metric of metrics; track metric.label) {
+      <div class="health-metric">
+        <mat-icon>{{ metric.icon }}</mat-icon>
+        <div class="health-metric-info">
+          <span class="health-metric-value">{{ metric.value }}</span>
+          <span class="health-metric-label">{{ metric.label }}</span>
+        </div>
+      </div>
+    }
+  </div>
+</div>
