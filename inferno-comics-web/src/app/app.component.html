@@ -36,16 +36,15 @@
         <mat-icon>add</mat-icon>
         Add Series
       </button>
+      <button mat-icon-button class="icon-btn" routerLink="/admin" aria-label="Admin">
+        <mat-icon>settings</mat-icon>
+      </button>
     </nav>
 
     <!-- Settings & Theme -->
     <button mat-icon-button class="icon-btn theme-toggle" (click)="toggleTheme()"
             [attr.aria-label]="(isDarkMode$ | async) ? 'Switch to light mode' : 'Switch to dark mode'">
       <mat-icon>{{ (isDarkMode$ | async) ? 'light_mode' : 'dark_mode' }}</mat-icon>
-    </button>
-
-    <button mat-icon-button class="icon-btn" routerLink="/admin" aria-label="Admin">
-      <mat-icon>settings</mat-icon>
     </button>
 
     <!-- Mobile Hamburger Menu (hidden on desktop) -->
@@ -80,8 +79,8 @@
         <span>Add Series</span>
       </a>
       <a mat-menu-item routerLink="/admin" routerLinkActive="active-menu-item">
-        <mat-icon>admin_panel_settings</mat-icon>
-        <span>Admin</span>
+        <mat-icon>settings</mat-icon>
+        <span>Settings</span>
       </a>
     </mat-menu>
 
