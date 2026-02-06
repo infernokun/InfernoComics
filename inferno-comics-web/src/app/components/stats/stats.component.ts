@@ -798,15 +798,10 @@ export class StatsComponent implements OnInit, OnDestroy {
 
   private initMostIncompleteChart(): void {
     // Show series with lowest completion % (most missing relative to available)
-    const allCompletion = this.stats?.completionStats?.topSeriesCompletion ?? [];
-    console.log('All series completion data:', allCompletion);
-    const mostIncomplete = allCompletion
-      .filter(s => s.percentage < 100 && s.available > 0)
-      .sort((a, b) => a.percentage - b.percentage) // Sort ascending (lowest first)
-      .slice(0, 8);
+    const leastComplete = this.stats?.completionStats?.leastCompleteSeriesCompletion ?? [];
 
-    // Calculate missing count for each
-    const missingData = mostIncomplete.map(s => ({
+    // Calculate missing count for each (already sorted by backend)
+    const missingData = leastComplete.slice(0, 8).map(s => ({
       name: s.name,
       missing: s.available - s.owned,
       percentage: s.percentage,

@@ -12,6 +12,7 @@ import { ApiResponse } from '../../../models/api-response.model';
 import { generateSlug, Series } from '../../../models/series.model';
 import { SeriesService } from '../../../services/series.service';
 import { FADE_IN_UP, SLIDE_IN_UP, CARD_ANIMATION } from '../../../utils/animations';
+import { DateUtils } from '../../../utils/date-utils';
 import { CustomPaginatorComponent } from '../../common/custom-paginator/custom-paginator.component';
 import { JsonDialogComponent } from '../../common/dialog/json-dialog/json-dialog.component';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
@@ -92,7 +93,7 @@ export class SeriesListComponent implements OnInit, OnDestroy {
         next: (res: ApiResponse<Series[]>) => {
           if (!res.data) throw new Error('No data received from series service');
 
-          this.series = res.data;
+          this.series = res.data.map(s => new Series(s));
           this.extractPublishers();
           this.applyFiltersAndSorting();
           this.loading = false;
@@ -235,8 +236,8 @@ export class SeriesListComponent implements OnInit, OnDestroy {
           break;
 
         case 'dateAdded':
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          const dateA = a.createdAt ? a.createdAt.getTime() : 0;
+          const dateB = b.createdAt ? b.createdAt.getTime() : 0;
           comparison = dateA - dateB;
           break;
 

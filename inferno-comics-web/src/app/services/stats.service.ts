@@ -56,6 +56,7 @@ export interface CompletionStats {
   totalTrackedSeries: number;
   averageCompletion: number;
   topSeriesCompletion: SeriesCompletionItem[];
+  leastCompleteSeriesCompletion: SeriesCompletionItem[];
 }
 
 export interface SeriesCompletionItem {
