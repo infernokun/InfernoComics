@@ -1,6 +1,6 @@
 {
   "name": "inferno-comics",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Monorepo for Inferno Comics - WEB, REST, and RECOG services",
   "scripts": {
     "start:web": "cd inferno-comics-web && npm run start",

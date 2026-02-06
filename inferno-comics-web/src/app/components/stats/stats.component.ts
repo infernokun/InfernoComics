@@ -147,7 +147,7 @@ export class StatsComponent implements OnInit, OnDestroy {
   issuesByPublisherOptions!: Partial<BarChartOptions>;
   growthChartOptions!: Partial<AreaChartOptions>;
   topSeriesChartOptions!: Partial<BarChartOptions>;
-  almostCompleteChartOptions!: Partial<BarChartOptions>;
+  mostIncompleteChartOptions!: Partial<BarChartOptions>;
 
   // Processing/Sync stats charts
   processingStateChartOptions!: Partial<DonutChartOptions>;
@@ -324,7 +324,7 @@ export class StatsComponent implements OnInit, OnDestroy {
     this.initIssuesByPublisherChart();
     this.initGrowthChart();
     this.initTopSeriesChart();
-    this.initAlmostCompleteChart();
+    this.initMostIncompleteChart();
 
     // Processing/Sync stats charts
     this.initProcessingStateChart();
@@ -796,18 +796,26 @@ export class StatsComponent implements OnInit, OnDestroy {
     };
   }
 
-  private initAlmostCompleteChart(): void {
-    // Filter to show only series that are NOT 100% complete (almost complete)
+  private initMostIncompleteChart(): void {
+    // Show series with lowest completion % (most missing relative to available)
     const allCompletion = this.stats?.completionStats?.topSeriesCompletion ?? [];
-    const almostComplete = allCompletion
-      .filter(s => s.percentage < 100 && s.percentage >= 50)
-      .sort((a, b) => b.percentage - a.percentage)
+    console.log('All series completion data:', allCompletion);
+    const mostIncomplete = allCompletion
+      .filter(s => s.percentage < 100 && s.available > 0)
+      .sort((a, b) => a.percentage - b.percentage) // Sort ascending (lowest first)
       .slice(0, 8);
 
-    this.almostCompleteChartOptions = {
+    // Calculate missing count for each
+    const missingData = mostIncomplete.map(s => ({
+      name: s.name,
+      missing: s.available - s.owned,
+      percentage: s.percentage,
+    }));
+
+    this.mostIncompleteChartOptions = {
       series: [{
-        name: 'Completion',
-        data: almostComplete.map(s => s.percentage),
+        name: 'Missing',
+        data: missingData.map(s => s.missing),
       }],
       chart: {
         type: 'bar',
@@ -815,7 +823,7 @@ export class StatsComponent implements OnInit, OnDestroy {
         background: 'transparent',
         toolbar: { show: false },
       },
-      colors: almostComplete.map(s => s.percentage >= 90 ? '#10b981' : s.percentage >= 75 ? '#f59e0b' : '#3b82f6'),
+      colors: missingData.map(s => s.percentage <= 25 ? '#ef4444' : s.percentage <= 50 ? '#f59e0b' : '#3b82f6'),
       plotOptions: {
         bar: {
           horizontal: true,
@@ -826,20 +834,18 @@ export class StatsComponent implements OnInit, OnDestroy {
       },
       dataLabels: {
         enabled: true,
-        formatter: (val: number) => `${val}%`,
+        formatter: (val: number) => `${val}`,
         style: {
           fontSize: '12px',
           fontWeight: 600,
         },
       },
       xaxis: {
-        categories: almostComplete.map(s => s.name),
-        max: 100,
+        categories: missingData.map(s => s.name),
         labels: {
           style: {
             colors: 'var(--text-secondary)',
           },
-          formatter: (val: string) => `${val}%`,
         },
       },
       yaxis: {
@@ -863,7 +869,10 @@ export class StatsComponent implements OnInit, OnDestroy {
       tooltip: {
         theme: 'dark',
         y: {
-          formatter: (val: number) => `${val}%`,
+          formatter: (val: number, opts: { dataPointIndex: number }) => {
+            const item = missingData[opts.dataPointIndex];
+            return `${val} missing (${item.percentage}% complete)`;
+          },
         },
       },
     };
