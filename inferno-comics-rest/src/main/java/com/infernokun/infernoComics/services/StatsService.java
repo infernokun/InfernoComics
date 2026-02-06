@@ -273,11 +273,31 @@ public class StatsService {
                 })
                 .collect(Collectors.toList());
 
+        // Least complete series (for "Most Incomplete" chart)
+        List<Map<String, Object>> leastCompleteSeriesCompletion = seriesWithAvailable.stream()
+                .filter(s -> s.getIssuesOwnedCount() < s.getIssuesAvailableCount()) // Only incomplete
+                .sorted((a, b) -> {
+                    double pctA = (a.getIssuesOwnedCount() * 100.0) / a.getIssuesAvailableCount();
+                    double pctB = (b.getIssuesOwnedCount() * 100.0) / b.getIssuesAvailableCount();
+                    return Double.compare(pctA, pctB); // Ascending (lowest first)
+                })
+                .limit(10)
+                .map(s -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("name", s.getName());
+                    item.put("owned", s.getIssuesOwnedCount());
+                    item.put("available", s.getIssuesAvailableCount());
+                    item.put("percentage", Math.round((s.getIssuesOwnedCount() * 100.0) / s.getIssuesAvailableCount() * 10.0) / 10.0);
+                    return item;
+                })
+                .collect(Collectors.toList());
+
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("completedSeries", completedSeries);
         result.put("totalTrackedSeries", (long) seriesWithAvailable.size());
         result.put("averageCompletion", Math.round(avgCompletion * 10.0) / 10.0);
         result.put("topSeriesCompletion", seriesCompletion);
+        result.put("leastCompleteSeriesCompletion", leastCompleteSeriesCompletion);
         return result;
     }
 
