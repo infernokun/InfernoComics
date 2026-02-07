@@ -51,7 +51,11 @@ def get_matcher():
 def create_app():
     """Application factory pattern for better testing and deployment"""
     logger.info("Creating Flask application...")
-    app = Flask(__name__)
+    app = Flask(
+        __name__,
+        static_folder="static",
+        static_url_path="/inferno-comics-recognition/static"
+    )
     app.config.from_object(FlaskConfig)
     
     CORS(app)
