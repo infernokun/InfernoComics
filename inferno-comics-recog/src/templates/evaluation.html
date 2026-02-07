@@ -895,12 +895,7 @@
         
         // Helper function to build API URLs
         function getApiUrl(endpoint) {
-            const protocol = window.location.protocol;
-            // Only add port if it's defined and not the default ports
-            const portPart = CONFIG.FLASK_PORT && CONFIG.FLASK_PORT !== '80' && CONFIG.FLASK_PORT !== '443' 
-                ? `:${CONFIG.FLASK_PORT}` 
-                : '';
-            return `${protocol}//${CONFIG.FLASK_HOST}${portPart}/${CONFIG.API_URL_PREFIX}${endpoint}`;
+            return `${window.location.origin}/${CONFIG.API_URL_PREFIX}${endpoint}`;
         }
         
         let eventSource = null;

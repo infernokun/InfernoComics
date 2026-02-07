@@ -1,15 +1,24 @@
-<div class="image-processing-dialog">
-  <div class="dialog-header">
+<div class="image-processing-dialog" [class.has-error]="hasError" [class.is-complete]="!isProcessing && !hasError">
+  <div class="dialog-header" [class.error-header]="hasError">
     <div class="header-content">
       <div class="icon-container">
-        <mat-icon class="processing-icon">photo_library</mat-icon>
-        @if (isProcessing) {
-          <div class="pulse-ring"></div>
+        @if (hasError) {
+          <mat-icon class="processing-icon error">error</mat-icon>
+        } @else {
+          <mat-icon class="processing-icon">photo_library</mat-icon>
+          @if (isProcessing) {
+            <div class="pulse-ring"></div>
+          }
         }
       </div>
       <div class="header-text">
-        <h2 mat-dialog-title>Analyzing Comic Images</h2>
-        <p class="subtitle">Finding the best matches for your comics</p>
+        @if (hasError) {
+          <h2 mat-dialog-title>Processing Failed</h2>
+          <p class="subtitle error">{{ getErrorType() }} - {{ errorTime }}</p>
+        } @else {
+          <h2 mat-dialog-title>Analyzing Comic Images</h2>
+          <p class="subtitle">Finding the best matches for your comics</p>
+        }
       </div>
     </div>
     <button mat-icon-button mat-dialog-close class="close-button" [disabled]="isProcessing">
@@ -20,14 +29,24 @@
   <mat-dialog-content class="dialog-content">
     <div class="image-preview-card">
       <div class="card-header">
-        <div class="upload-badge">
-          <mat-icon>photo_library</mat-icon>
-          <span>{{ totalImages > 1 ? 'Multiple Images' : 'Single Image' }}</span>
+        <div class="upload-badge" [class.error]="hasError">
+          @if (hasError) {
+            <mat-icon>error_outline</mat-icon>
+            <span>Failed</span>
+          } @else {
+            <mat-icon>photo_library</mat-icon>
+            <span>{{ totalImages > 1 ? 'Multiple Images' : 'Single Image' }}</span>
+          }
         </div>
         @if (isProcessing) {
           <div class="processing-status">
             <mat-spinner diameter="20"></mat-spinner>
             <span>{{ getProgressSummary() }}</span>
+          </div>
+        } @else if (hasError) {
+          <div class="processing-status error">
+            <mat-icon>cancel</mat-icon>
+            <span>Processing stopped</span>
           </div>
         }
       </div>
@@ -36,10 +55,10 @@
         <div class="images-grid">
           <div class="grid-main-image">
             <div class="image-frame">
-              <img [src]="imagePreviews[currentImageIndex]" [alt]="'Current processing image: ' + currentImageName"class="uploaded-image main-image">
+              <img [src]="getMainImagePreview()" [alt]="'Current processing image: ' + getCurrentFileName()" class="uploaded-image main-image">
             </div>
             <div class="main-image-info">
-              <span class="current-image-name">{{ currentImageName }}</span>
+              <span class="current-image-name">{{ getCurrentFileName() }}</span>
               <span class="image-counter">{{ currentImageIndex + 1 }} of {{ totalImages }}</span>
             </div>
           </div>
@@ -117,96 +136,101 @@
       </div>
     </div>
 
-    <!-- Progress Section -->
-    <div class="progress-section">
-      <div class="progress-header">
-        <h3>{{ currentStage }}</h3>
-        <div class="progress-info">
-          <span class="progress-percentage">{{ Math.round(progress) }}%</span>
-          <div class="completion-indicator" [class.completed]="progress === 100">
-            <mat-icon>{{ progress === 100 ? 'check_circle' : 'pending' }}</mat-icon>
+    <!-- Error Section - Show prominently at top when error occurs -->
+    @if (hasError) {
+      <div class="error-section compact">
+        <div class="error-header">
+          <mat-icon class="error-icon">error</mat-icon>
+          <div class="error-title">
+            <span class="error-type">{{ getErrorType() }}</span>
+            <span class="error-time">Failed after {{ errorTime }}</span>
           </div>
+          <button mat-raised-button color="primary" (click)="retryProcessing()" [disabled]="!canRetry" class="retry-btn-inline">
+            <mat-icon>refresh</mat-icon>
+            Retry
+          </button>
         </div>
-      </div>
-
-      <div class="progress-bar-container">
-        <mat-progress-bar [value]="progress" mode="determinate" class="progress-bar"></mat-progress-bar>
-        <div class="progress-glow" [style.width.%]="progress"></div>
-      </div>
-
-      <div class="progress-summary">
-        <div class="summary-stats">
-          <div class="stat-item">
-            <span class="stat-number">{{ getCompletedImagesCount() }}</span>
-            <span class="stat-label">Completed</span>
-          </div>
-          @if (getFailedImagesCount() > 0) {
-            <div class="stat-item">
-              <span class="stat-number error">{{ getFailedImagesCount() }}</span>
-              <span class="stat-label">Failed</span>
-            </div>
+        <div class="error-details">
+          <span class="error-summary">{{ getTruncatedError() }}</span>
+          @if (errorMessage.length > 80) {
+            <button mat-button class="show-more-btn" (click)="toggleErrorDetails()">
+              {{ showFullError ? 'Show less' : 'Show more' }}
+            </button>
           }
-          <div class="stat-item">
-            <span class="stat-number">{{ getRemainingImagesCount() }}</span>
-            <span class="stat-label">Remaining</span>
-          </div>
         </div>
-      </div>
-
-      <!-- Stage Timeline -->
-      <div class="stage-timeline">
-        @for (stage of processingStages; track stage.key; let i = $index) {
-          @let isCompleted = i < currentStageIndex || (!isProcessing && progress >= 100);
-          @let isActive = i === currentStageIndex && isProcessing;
-          @let isPending = i > currentStageIndex && isProcessing;
-          
-          <div 
-            class="stage-step"
-            [class.completed]="isCompleted"
-            [class.active]="isActive"
-            [class.pending]="isPending"
-          >
-            @if (i < processingStages.length - 1) {
-              <div class="step-connector"></div>
-            }
-            <div class="step-circle">
-              @if (isCompleted) {
-                <mat-icon>check</mat-icon>
-              } @else {
-                <span class="step-number">{{ i + 1 }}</span>
-              }
-            </div>
-            <div class="step-content">
-              <span class="step-name">{{ stage.name }}</span>
-              <span class="step-status">
-                @if (isActive) {
-                  In Progress
-                } @else if (isCompleted) {
-                  Completed
-                } @else {
-                  Pending
-                }
-              </span>
-            </div>
+        @if (showFullError && errorMessage.length > 80) {
+          <div class="error-full">
+            <code>{{ errorMessage }}</code>
           </div>
         }
+        <div class="error-context">
+          <span class="context-item">
+            <mat-icon>image</mat-icon>
+            {{ processedImages }}/{{ totalImages }} processed
+          </span>
+          <span class="context-item">
+            <mat-icon>schedule</mat-icon>
+            Stage: {{ getDisplayStage() }}
+          </span>
+        </div>
       </div>
-    </div>
+    }
 
-    <!-- Live Status Feed -->
+    <!-- Progress Section - Hidden when error, since error section shows key info -->
+    @if (!hasError) {
+      <div class="progress-section">
+        <div class="progress-header">
+          <h3>{{ currentStage }}</h3>
+          <div class="progress-info">
+            <span class="progress-percentage">{{ Math.round(progress) }}%</span>
+            <div class="completion-indicator" [class.completed]="!isProcessing && progress === 100">
+              <mat-icon>{{ !isProcessing && progress === 100 ? 'check_circle' : 'pending' }}</mat-icon>
+            </div>
+          </div>
+        </div>
+
+        <div class="progress-bar-container">
+          <mat-progress-bar [value]="progress" mode="determinate" class="progress-bar"></mat-progress-bar>
+          <div class="progress-glow" [style.width.%]="progress"></div>
+        </div>
+
+        <div class="progress-summary">
+          <div class="summary-stats">
+            <div class="stat-item">
+              <span class="stat-number">{{ getCompletedImagesCount() }}</span>
+              <span class="stat-label">Completed</span>
+            </div>
+            @if (getFailedImagesCount() > 0) {
+              <div class="stat-item">
+                <span class="stat-number error">{{ getFailedImagesCount() }}</span>
+                <span class="stat-label">Failed</span>
+              </div>
+            }
+            <div class="stat-item">
+              <span class="stat-number">{{ getRemainingImagesCount() }}</span>
+              <span class="stat-label">Remaining</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Live Status Feed - Collapsible when error -->
     @if (statusMessages.length > 0) {
-      <div class="status-feed">
-        <div class="feed-header">
+      <div class="status-feed" [class.collapsed]="hasError && !showProcessingLog">
+        <div class="feed-header" [class.clickable]="hasError" (click)="hasError && toggleProcessingLog()">
           <mat-icon>feed</mat-icon>
           <h4>Processing Log</h4>
           <span class="message-count">{{ statusMessages.length }}</span>
-          @if (hasNewMessages()) {
+          @if (hasError) {
+            <mat-icon class="expand-icon">{{ showProcessingLog ? 'expand_less' : 'expand_more' }}</mat-icon>
+          } @else if (hasNewMessages()) {
             <button mat-icon-button (click)="scrollToLatestMessage()" class="scroll-btn">
               <mat-icon>arrow_downward</mat-icon>
             </button>
           }
         </div>
-        <div class="status-messages">
+        <div class="status-messages" [class.hidden]="hasError && !showProcessingLog">
           @for (message of statusMessages; track $index) {
             <div 
               class="status-message"
@@ -226,24 +250,6 @@
       </div>
     }
 
-    <!-- Error Section -->
-    @if (hasError) {
-      <div class="error-section">
-        <div class="error-icon-container">
-          <mat-icon class="error-icon">error_outline</mat-icon>
-        </div>
-        <div class="error-content">
-          <h3>Processing Failed</h3>
-          <p>{{ errorMessage }}</p>
-          <div class="error-actions">
-            <button mat-raised-button color="primary" (click)="retryProcessing()" [disabled]="!canRetry">
-              <mat-icon>refresh</mat-icon>
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    }
   </mat-dialog-content>
 
   <mat-dialog-actions class="dialog-actions">

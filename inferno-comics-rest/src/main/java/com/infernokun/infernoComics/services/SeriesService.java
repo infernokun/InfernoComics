@@ -1009,6 +1009,9 @@ public class SeriesService {
         } catch (Exception e) {
             log.error("Error in image processing for session {}: {}", sessionId, e.getMessage());
             filesToRecord.forEach(file -> file.setState(State.ERROR));
+            if (!filesToRecord.isEmpty()) {
+                weirdService.saveProcessedFiles(filesToRecord);
+            }
             progressDataService.sendError(sessionId, "Error processing images: " + e.getMessage());
         }
 

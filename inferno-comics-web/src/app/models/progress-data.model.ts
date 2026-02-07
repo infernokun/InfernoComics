@@ -34,15 +34,20 @@ export class ProgressData {
   constructor(data?: any) {
     if (data) {
       this.id = data.id;
-      this.state = data.state as State;
+      // Handle both database format (state) and SSE format (type)
+      this.state = (data.state ?? data.type) as State;
       this.sessionId = data.sessionId;
       this.timeStarted = data.timeStarted ? this.parseDateTime(data.timeStarted) : undefined;
       this.timeFinished = data.timeFinished ? this.parseDateTime(data.timeFinished) : undefined;
-      this.series = new Series(data.series);
-      this.percentageComplete = data.percentageComplete ?? 0;
-      this.currentStage = data.currentStage;
-      this.statusMessage = data.statusMessage;
-      this.errorMessage = data.errorMessage;
+      this.series = data.series ? new Series(data.series) : undefined;
+      // Handle both database format (percentageComplete) and SSE format (progress)
+      this.percentageComplete = data.percentageComplete ?? data.progress ?? 0;
+      // Handle both database format (currentStage) and SSE format (stage)
+      this.currentStage = data.currentStage ?? data.stage;
+      // Handle both database format (statusMessage) and SSE format (message)
+      this.statusMessage = data.statusMessage ?? data.message;
+      // Handle both database format (errorMessage) and SSE format (error)
+      this.errorMessage = data.errorMessage ?? data.error;
       this.totalItems = data.totalItems;
       this.processedItems = data.processedItems;
       this.successfulItems = data.successfulItems;

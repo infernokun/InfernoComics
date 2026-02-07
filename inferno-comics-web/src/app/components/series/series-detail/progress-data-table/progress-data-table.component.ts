@@ -41,768 +41,8 @@ import { ProcessingResult } from '../../../../models/processing-result.model';
 
 @Component({
   selector: 'app-progress-data-table',
-  template: `
-    <div class="grid-container">
-      <div class="grid-header">
-        <h2 class="grid-title">Progress Data</h2>
-        <button class="refresh-button" (click)="refreshData()">
-          <span class="refresh-icon">🔄</span>
-          <span class="refresh-text">Refresh</span>
-        </button>
-      </div>
-
-      <!-- Mobile Card View -->
-      @if (isMobile) {
-        <div class="mobile-cards">
-          @for (item of progressData(); track item.sessionId) {
-            <div class="progress-card"
-                 [class.state-completed]="item.state === 'COMPLETED'"
-                 [class.state-processing]="item.state === 'PROCESSING'"
-                 [class.state-failed]="item.state === 'FAILED'"
-                 [class.state-pending]="item.state === 'PENDING'">
-              
-              <div class="card-header">
-                <div class="state-badge" [class]="'state-' + item.state?.toLowerCase()">
-                  {{ item.state }}
-                </div>
-                <div class="card-actions">
-                  @if (item.state === 'COMPLETED') {
-                    <button class="action-btn replay-btn" 
-                            (click)="replaySession(item)"
-                            title="Replay">
-                            ▶️
-                    </button>
-                    <button class="action-btn add-btn" 
-                            (click)="getSessionJSON(item.sessionId)"
-                            title="Add Results">
-                            ➕
-                    </button>
-                  }
-                  <button class="action-btn delete-btn" 
-                          (click)="deleteProgressData(item.sessionId)"
-                          title="Delete">
-                          🗑️
-                  </button>
-                </div>
-              </div>
-
-              <div class="card-progress">
-                <div class="progress-bar-mobile">
-                  <div class="progress-fill-mobile" 
-                       [style.width.%]="item.percentageComplete || 0"
-                       [class.processing]="item.state === 'PROCESSING'">
-                  </div>
-                  <span class="progress-percent">{{ item.percentageComplete || 0 }}%</span>
-                </div>
-                <div class="progress-counts">
-                  <span class="count-item">
-                    <span class="count-label">Processed</span>
-                    <span class="count-value">{{ item.processedItems || 0 }}</span>
-                  </span>
-                  <span class="count-item">
-                    <span class="count-label">Success</span>
-                    <span class="count-value success">{{ item.successfulItems || 0 }}</span>
-                  </span>
-                  <span class="count-item">
-                    <span class="count-label">Failed</span>
-                    <span class="count-value failed">{{ item.failedItems || 0 }}</span>
-                  </span>
-                </div>
-              </div>
-
-              <div class="card-details">
-                <div class="detail-row">
-                  <span class="detail-label">Session ID</span>
-                  <span class="detail-value session-id">{{ item.sessionId }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">Started</span>
-                  <span class="detail-value">{{ formatTime(item.timeStarted) }}</span>
-                </div>
-                @if (item.timeFinished) {
-                  <div class="detail-row">
-                    <span class="detail-label">Finished</span>
-                    <span class="detail-value">{{ formatTime(item.timeFinished) }}</span>
-                  </div>
-                }
-                @if (item.statusMessage) {
-                  <div class="detail-row">
-                    <span class="detail-label">Status</span>
-                    <span class="detail-value status-msg">{{ item.statusMessage }}</span>
-                  </div>
-                }
-              </div>
-
-              <div class="card-footer">
-                <a class="eval-link" (click)="openEvaluationUrl(item.sessionId)" *ngIf="item.state === 'COMPLETED'" style="cursor: pointer; color: blue; text-decoration: underline;">
-                  View Evaluation →
-                </a>
-              </div>
-            </div>
-          }
-
-          @if (progressData().length === 0) {
-            <div class="empty-state">
-              <p>No progress data available</p>
-            </div>
-          }
-        </div>
-      }
-
-      <!-- Desktop AG-Grid View -->
-      @if (!isMobile) {
-        <div class="grid-wrapper ag-theme-quartz">
-          <ag-grid-angular
-            style="width: 100%; height: 100%;"
-            class="grid-content"
-            [gridOptions]="gridOptions"
-            [rowData]="progressData()"
-            [defaultColDef]="defaultColDef"
-          >
-          </ag-grid-angular>
-        </div>
-      }
-    </div>
-  `,
-  styles: [
-    `
-      .grid-container {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        height: 700px;
-        border: 1px solid #d0d0d0;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        background: #fff;
-      }
-
-      @media (max-width: 768px) {
-        .grid-container {
-          height: auto;
-          min-height: 400px;
-          max-height: 80vh;
-        }
-      }
-
-      .grid-header {
-        padding: 0.5rem 1rem;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-bottom: 1px solid #e0e0e0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      .grid-title {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: #495057;
-      }
-
-      @media (max-width: 480px) {
-        .grid-title {
-          font-size: 1rem;
-        }
-      }
-
-      .refresh-button {
-        background: #007bff;
-        color: white;
-        border: none;
-        padding: 0.25rem 0.75rem;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 0.875rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .refresh-button:hover {
-        background: #0056b3;
-      }
-
-      @media (max-width: 480px) {
-        .refresh-text {
-          display: none;
-        }
-        .refresh-button {
-          padding: 0.25rem 0.5rem;
-        }
-      }
-
-      .grid-wrapper {
-        flex: 1;
-        overflow: hidden;
-      }
-
-      .ag-theme-quartz {
-        height: 100%;
-      }
-
-      /* Custom AG-Grid styles for taller rows */
-      .ag-theme-quartz .ag-header-cell-label {
-        font-weight: 600;
-      }
-
-      .ag-theme-quartz .ag-row {
-        border-bottom: 1px solid #f1f3f4;
-      }
-
-      .ag-theme-quartz .ag-row:hover {
-        background-color: #f8f9fa;
-      }
-
-      /* Center content vertically in taller cells */
-      .ag-theme-quartz .ag-cell {
-        display: flex;
-        align-items: center;
-        padding: 8px 12px;
-      }
-
-      /* Progress bar styles */
-      .progress-bar {
-        width: 100%;
-        height: 20px;
-        background-color: #e9ecef;
-        border-radius: 10px;
-        overflow: hidden;
-        position: relative;
-      }
-
-      .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
-        border-radius: 10px;
-        transition: width 0.3s ease;
-        position: relative;
-      }
-
-      .progress-text {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 11px;
-        font-weight: 600;
-        color: #fff;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-        z-index: 2;
-      }
-
-      .progress-processing .progress-fill {
-        animation: progress-pulse 2s infinite;
-      }
-
-      @keyframes progress-pulse {
-        0% {
-          opacity: 0.6;
-        }
-        50% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 0.6;
-        }
-      }
-
-      .status-message {
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-size: 0.85em;
-        color: #6c757d;
-      }
-
-      .mobile-cards {
-        flex: 1;
-        overflow-y: auto;
-        padding: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .progress-card {
-        background: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 12px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        transition: all 0.2s ease;
-        border-left: 4px solid #ccc;
-      }
-
-      .progress-card.state-completed {
-        border-left-color: #28a745;
-      }
-
-      .progress-card.state-processing {
-        border-left-color: #007bff;
-        animation: pulse-border 2s infinite;
-      }
-
-      .progress-card.state-failed {
-        border-left-color: #dc3545;
-      }
-
-      .progress-card.state-pending {
-        border-left-color: #ffc107;
-      }
-
-      @keyframes pulse-border {
-        0%, 100% { border-left-color: #007bff; }
-        50% { border-left-color: #66b2ff; }
-      }
-
-      /* Card Header */
-      .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 10px;
-      }
-
-      .state-badge {
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      .state-badge.state-completed {
-        background: rgba(40, 167, 69, 0.15);
-        color: #28a745;
-      }
-
-      .state-badge.state-processing {
-        background: rgba(0, 123, 255, 0.15);
-        color: #007bff;
-      }
-
-      .state-badge.state-failed {
-        background: rgba(220, 53, 69, 0.15);
-        color: #dc3545;
-      }
-
-      .state-badge.state-pending {
-        background: rgba(255, 193, 7, 0.15);
-        color: #856404;
-      }
-
-      .card-actions {
-        display: flex;
-        gap: 6px;
-      }
-
-      .action-btn {
-        width: 32px;
-        height: 32px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.2s ease;
-        background: #f0f0f0;
-      }
-
-      .action-btn:hover {
-        transform: scale(1.1);
-      }
-
-      .replay-btn:hover { background: rgba(0, 123, 255, 0.2); }
-      .add-btn:hover { background: rgba(40, 167, 69, 0.2); }
-      .delete-btn:hover { background: rgba(220, 53, 69, 0.2); }
-
-      /* Progress Section */
-      .card-progress {
-        margin-bottom: 12px;
-      }
-
-      .progress-bar-mobile {
-        position: relative;
-        height: 20px;
-        background: #e9ecef;
-        border-radius: 10px;
-        overflow: hidden;
-        margin-bottom: 8px;
-      }
-
-      .progress-fill-mobile {
-        height: 100%;
-        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
-        border-radius: 10px;
-        transition: width 0.3s ease;
-      }
-
-      .progress-fill-mobile.processing {
-        background: linear-gradient(90deg, #007bff 0%, #66b2ff 100%);
-        animation: progress-shimmer 2s infinite;
-      }
-
-      @keyframes progress-shimmer {
-        0% { opacity: 0.7; }
-        50% { opacity: 1; }
-        100% { opacity: 0.7; }
-      }
-
-      .progress-percent {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 11px;
-        font-weight: 600;
-        color: #fff;
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-      }
-
-      .progress-counts {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-      }
-
-      .count-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        flex: 1;
-        background: #f8f9fa;
-        padding: 6px;
-        border-radius: 6px;
-      }
-
-      .count-label {
-        font-size: 0.65rem;
-        color: #6c757d;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-      }
-
-      .count-value {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #333;
-      }
-
-      .count-value.success { color: --success-color }
-      .count-value.failed { color: --error-color }
-
-      /* Card Details */
-      .card-details {
-        border-top: 1px solid #eee;
-        padding-top: 10px;
-        margin-bottom: 10px;
-      }
-
-      .detail-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 4px 0;
-        font-size: 0.8rem;
-      }
-
-      .detail-label {
-        color: #6c757d;
-        font-weight: 500;
-      }
-
-      .detail-value {
-        color: #333;
-        font-weight: 500;
-        text-align: right;
-        max-width: 60%;
-      }
-
-      .detail-value.session-id {
-        font-family: monospace;
-        font-size: 0.75rem;
-        background: #f0f0f0;
-        padding: 2px 6px;
-        border-radius: 4px;
-      }
-
-      .detail-value.status-msg {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      /* Card Footer */
-      .card-footer {
-        border-top: 1px solid #eee;
-        padding-top: 10px;
-        text-align: center;
-      }
-
-      .eval-link {
-        color: #007bff;
-        text-decoration: none;
-        font-size: 0.85rem;
-        font-weight: 500;
-        transition: all 0.2s ease;
-      }
-
-      .eval-link:hover {
-        text-decoration: underline;
-      }
-
-      /* Empty State */
-      .empty-state {
-        text-align: center;
-        padding: 40px 20px;
-        color: #6c757d;
-      }
-
-      :host-context(.dark-theme),
-      :host-context([data-theme="dark"]) {
-        .grid-container {
-          background: #1e1e2e;
-          border-color: #3d3d5c;
-          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .grid-header {
-          background: linear-gradient(135deg, #2a2a40 0%, #1e1e2e 100%);
-          border-bottom-color: #3d3d5c;
-        }
-
-        .grid-title {
-          color: #e0e0e0;
-        }
-
-        .refresh-button {
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-          box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
-        }
-
-        .refresh-button:hover {
-          background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
-          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
-        }
-
-        /* AG-Grid Dark Mode */
-        .ag-theme-quartz {
-          --ag-background-color: #1e1e2e;
-          --ag-header-background-color: #2a2a40;
-          --ag-odd-row-background-color: #252538;
-          --ag-row-hover-color: #3d3d5c;
-          --ag-border-color: #3d3d5c;
-          --ag-header-foreground-color: #e0e0e0;
-          --ag-foreground-color: #c0c0c0;
-          --ag-secondary-foreground-color: #a0a0a0;
-        }
-
-        .ag-theme-quartz .ag-row {
-          border-bottom-color: #3d3d5c;
-        }
-
-        .ag-theme-quartz .ag-row:hover {
-          background-color: #3d3d5c;
-        }
-
-        .ag-theme-quartz .ag-header-cell-label {
-          color: #e0e0e0;
-        }
-
-        /* Mobile Cards Dark Mode */
-        .mobile-cards {
-          background: #1e1e2e;
-        }
-
-        .progress-card {
-          background: #252538;
-          border-color: #3d3d5c;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .progress-card.state-completed {
-          border-left-color: #10b981;
-          background: linear-gradient(135deg, #252538 0%, rgba(16, 185, 129, 0.05) 100%);
-        }
-
-        .progress-card.state-processing {
-          border-left-color: #6366f1;
-          background: linear-gradient(135deg, #252538 0%, rgba(99, 102, 241, 0.05) 100%);
-        }
-
-        .progress-card.state-failed {
-          border-left-color: #ef4444;
-          background: linear-gradient(135deg, #252538 0%, rgba(239, 68, 68, 0.05) 100%);
-        }
-
-        .progress-card.state-pending {
-          border-left-color: #f59e0b;
-          background: linear-gradient(135deg, #252538 0%, rgba(245, 158, 11, 0.05) 100%);
-        }
-
-        /* State Badges Dark Mode */
-        .state-badge.state-completed {
-          background: rgba(16, 185, 129, 0.2);
-          color: #34d399;
-        }
-
-        .state-badge.state-processing {
-          background: rgba(99, 102, 241, 0.2);
-          color: #a5b4fc;
-        }
-
-        .state-badge.state-failed {
-          background: rgba(239, 68, 68, 0.2);
-          color: #fca5a5;
-        }
-
-        .state-badge.state-pending {
-          background: rgba(245, 158, 11, 0.2);
-          color: #fcd34d;
-        }
-
-        /* Action Buttons Dark Mode */
-        .action-btn {
-          background: #3d3d5c;
-          border: 1px solid #4d4d6d;
-        }
-
-        .action-btn:hover {
-          background: #4d4d6d;
-        }
-
-        .replay-btn:hover { 
-          background: rgba(99, 102, 241, 0.3); 
-          border-color: #6366f1;
-        }
-        .add-btn:hover { 
-          background: rgba(16, 185, 129, 0.3); 
-          border-color: #10b981;
-        }
-        .delete-btn:hover { 
-          background: rgba(239, 68, 68, 0.3); 
-          border-color: #ef4444;
-        }
-
-        /* Progress Bar Dark Mode */
-        .progress-bar-mobile {
-          background: #3d3d5c;
-        }
-
-        .progress-fill-mobile {
-          background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
-        }
-
-        .progress-fill-mobile.processing {
-          background: linear-gradient(90deg, #6366f1 0%, #a5b4fc 100%);
-        }
-
-        .progress-percent {
-          color: #fff;
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Progress Counts Dark Mode */
-        .progress-counts {
-          gap: 6px;
-        }
-
-        .count-item {
-          background: #1e1e2e;
-          border: 1px solid #3d3d5c;
-        }
-
-        .count-label {
-          color: #8b8ba3;
-        }
-
-        .count-value {
-          color: #e0e0e0;
-        }
-
-        .count-value.success { color: #34d399; }
-        .count-value.failed { color: #fca5a5; }
-
-        /* Card Details Dark Mode */
-        .card-details {
-          border-top-color: #3d3d5c;
-        }
-
-        .detail-row {
-          border-bottom: 1px solid rgba(61, 61, 92, 0.3);
-        }
-
-        .detail-row:last-child {
-          border-bottom: none;
-        }
-
-        .detail-label {
-          color: #8b8ba3;
-        }
-
-        .detail-value {
-          color: #c0c0c0;
-        }
-
-        .detail-value.session-id {
-          background: #1e1e2e;
-          color: #a5b4fc;
-          border: 1px solid #3d3d5c;
-        }
-
-        .detail-value.status-msg {
-          color: #a0a0a0;
-        }
-
-        /* Card Footer Dark Mode */
-        .card-footer {
-          border-top-color: #3d3d5c;
-        }
-
-        .eval-link {
-          color: #a5b4fc;
-          font-weight: 600;
-        }
-
-        .eval-link:hover {
-          color: #c4b5fd;
-        }
-
-        /* Empty State Dark Mode */
-        .empty-state {
-          color: #8b8ba3;
-        }
-
-        .empty-state p {
-          color: #a0a0a0;
-        }
-
-        /* Scrollbar Dark Mode */
-        .mobile-cards::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .mobile-cards::-webkit-scrollbar-track {
-          background: #1e1e2e;
-        }
-
-        .mobile-cards::-webkit-scrollbar-thumb {
-          background: #4d4d6d;
-          border-radius: 3px;
-        }
-
-        .mobile-cards::-webkit-scrollbar-thumb:hover {
-          background: #6366f1;
-        }
-      }
-    `,
-  ],
+  templateUrl: './progress-data-table.component.html',
+  styleUrls: ['./progress-data-table.component.scss'],
   imports: [MaterialModule, AgGridModule, CommonModule],
 })
 export class ProgressDataTable implements OnInit, OnDestroy {
@@ -829,9 +69,6 @@ export class ProgressDataTable implements OnInit, OnDestroy {
     filterParams: { buttons: ['clear', 'reset'], debounceMs: 200 },
   };
 
-  private refreshSubscription?: Subscription;
-  private readonly REFRESH_INTERVAL_MS = 30000; // 30 seconds
-
   constructor(
     private dialog: MatDialog,
     private messageService: MessageService,
@@ -844,7 +81,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
   ) {
     this.checkMobile();
     this.gridOptions = {
-      animateRows: false,
+      animateRows: true,
       cellFlashDuration: 0,
       suppressColumnVirtualisation: false,
       suppressRowVirtualisation: false,
@@ -854,6 +91,7 @@ export class ProgressDataTable implements OnInit, OnDestroy {
       rowHeight: 80,
       headerHeight: 40,
       columnDefs: this.getColumnDefs(),
+      getRowId: (params) => params.data.sessionId, // Enable row identification for smooth updates
       onGridReady: (params) => this.onGridReady(params),
       onFirstDataRendered: (params) => this.onFirstDataRendered(params),
     };
@@ -863,25 +101,82 @@ export class ProgressDataTable implements OnInit, OnDestroy {
     this.loadProgressData();
 
     this.wsSub = this.websocket.messages$.subscribe((msg: any) => {
-      this.isLoading = true;
       const response: WebSocketResponseList = msg as WebSocketResponseList;
       if (response.name == 'ProgressDataListTable' && response.seriesId == this.id) {
-        const processed: ProgressData[] = response.payload.map((item) => new ProgressData(item));
-        this.progressData.set(processed);
-        
-        if (this.gridApi) {
-          this.gridApi.setGridOption('rowData', this.progressData());
-          this.gridApi.refreshCells();
-          this.gridApi?.sizeColumnsToFit();
-        }
-
-        this.isLoading = false;
+        const newData: ProgressData[] = response.payload.map((item) => new ProgressData(item));
+        this.updateGridWithTransaction(newData);
       }
     });
   }
 
+  private updateGridWithTransaction(newData: ProgressData[]): void {
+    const oldData = this.progressData();
+    this.progressData.set(newData);
+
+    if (!this.gridApi) return;
+
+    // Build maps for comparison
+    const oldMap = new Map(oldData.map(item => [item.sessionId, item]));
+    const newMap = new Map(newData.map(item => [item.sessionId, item]));
+
+    const toAdd: ProgressData[] = [];
+    const toUpdate: ProgressData[] = [];
+    const toRemove: ProgressData[] = [];
+
+    // Find additions and updates
+    for (const item of newData) {
+      const existing = oldMap.get(item.sessionId);
+      if (!existing) {
+        toAdd.push(item);
+      } else if (this.hasChanged(existing, item)) {
+        toUpdate.push(item);
+      }
+    }
+
+    // Find removals
+    for (const item of oldData) {
+      if (!newMap.has(item.sessionId)) {
+        toRemove.push(item);
+      }
+    }
+
+    // Apply transaction if there are changes
+    if (toAdd.length > 0 || toUpdate.length > 0 || toRemove.length > 0) {
+      this.gridApi.applyTransaction({
+        add: toAdd,
+        update: toUpdate,
+        remove: toRemove,
+      });
+
+      // Refresh cells for updated rows to trigger cell renderer updates
+      if (toUpdate.length > 0) {
+        const rowNodes = toUpdate
+          .map(item => this.gridApi!.getRowNode(item.sessionId!))
+          .filter(node => node != null);
+
+        if (rowNodes.length > 0) {
+          this.gridApi.refreshCells({
+            rowNodes: rowNodes as any[],
+            force: true,
+          });
+        }
+      }
+    }
+  }
+
+  private hasChanged(oldItem: ProgressData, newItem: ProgressData): boolean {
+    return (
+      oldItem.state !== newItem.state ||
+      oldItem.percentageComplete !== newItem.percentageComplete ||
+      oldItem.currentStage !== newItem.currentStage ||
+      oldItem.processedItems !== newItem.processedItems ||
+      oldItem.successfulItems !== newItem.successfulItems ||
+      oldItem.failedItems !== newItem.failedItems ||
+      oldItem.errorMessage !== newItem.errorMessage
+    );
+  }
+
   ngOnDestroy(): void {
-    this.stopAutoRefresh();
     if (this.wsSub) {
       this.wsSub.unsubscribe();
     }
@@ -948,43 +243,26 @@ export class ProgressDataTable implements OnInit, OnDestroy {
       next: (res: ApiResponse<ProgressData[]>) => {
         if (!res.data) throw new Error(`Failed to load progress data for ID ${this.id}: no data returned`);
 
-        this.progressData.set(res.data.map(data => new ProgressData(data)));
-        if (this.gridApi) {
-          console.log('Updating grid with progress data:', this.progressData());
-          this.gridApi.setGridOption('rowData', this.progressData());
-          this.gridApi.refreshCells();
+        const newData = res.data.map(data => new ProgressData(data));
 
-          setTimeout(() => {
-            this.gridApi?.sizeColumnsToFit();
-          }, 100);
+        if (this.gridApi && this.progressData().length > 0) {
+          // Use transaction for subsequent loads
+          this.updateGridWithTransaction(newData);
+        } else {
+          // Initial load - set data directly
+          this.progressData.set(newData);
+          if (this.gridApi) {
+            this.gridApi.setGridOption('rowData', newData);
+            setTimeout(() => this.gridApi?.sizeColumnsToFit(), 100);
+          }
         }
+        this.isLoading = false;
       },
       error: (err: Error) => {
         console.error('Failed to load progress data:', err);
+        this.isLoading = false;
       },
     });
-  }
-
-  private startAutoRefresh(): void {
-    this.refreshSubscription = interval(this.REFRESH_INTERVAL_MS).subscribe(
-      () => {
-        // Only refresh if there are processing sessions
-        const hasProcessingSessions = this.progressData().some(
-          (item) => item.state === State.PROCESSING
-        );
-        if (hasProcessingSessions) {
-          console.log('Auto-refreshing progress data...');
-          this.loadProgressData();
-        }
-      }
-    );
-  }
-
-  private stopAutoRefresh(): void {
-    if (this.refreshSubscription) {
-      this.refreshSubscription.unsubscribe();
-      this.refreshSubscription = undefined;
-    }
   }
 
   refreshData(): void {

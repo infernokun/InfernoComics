@@ -217,10 +217,8 @@
             API_URL_PREFIX: '{{ config.api_url_prefix }}'
         };
         
-        // Helper function to build API URLs
         function getApiUrl(endpoint) {
-            const protocol = window.location.protocol;
-            return `${protocol}//${CONFIG.FLASK_HOST}:${CONFIG.FLASK_PORT}/${CONFIG.API_URL_PREFIX}${endpoint}`;
+            return `${window.location.origin}/${CONFIG.API_URL_PREFIX}${endpoint}`;
         }
         
         // Set up navigation URLs when page loads

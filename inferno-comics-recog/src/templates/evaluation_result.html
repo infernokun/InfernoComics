@@ -379,9 +379,9 @@
         </div>
 
         <div class="actions">
-            <a href="#" class="btn" id="newEvaluationBtn"> New Evaluation</a>
-            <a href="#" class="btn btn-secondary" id="viewAllResultsBtn"> View All Results</a>
-            <a href="#" class="btn btn-secondary" id="downloadJsonBtn"> Download JSON</a>
+            <a href="#" class="btn" id="newEvaluationBtn">New Evaluation</a>
+            <a href="#" class="btn btn-secondary" id="viewAllResultsBtn">View All Results</a>
+            <a href="#" class="btn btn-secondary" id="downloadJsonBtn">Download JSON</a>
         </div>
 
         <h2>Detailed Results</h2>
@@ -515,8 +515,7 @@
         
         // Helper function to build API URLs
         function getApiUrl(endpoint) {
-            const protocol = window.location.protocol;
-            return `${protocol}//${CONFIG.FLASK_HOST}:${CONFIG.FLASK_PORT}/${CONFIG.API_URL_PREFIX}${endpoint}`;
+            return `${window.location.origin}/${CONFIG.API_URL_PREFIX}${endpoint}`;
         }
         
         // Set up navigation URLs when page loads

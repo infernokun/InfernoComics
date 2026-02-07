@@ -281,30 +281,16 @@ public class ProgressDataService {
 
     public void sendError(String sessionId, String errorMessage) {
         log.error("Sending error event for session {}: {}", sessionId, errorMessage);
-        try {
-            log.warn("Attempting to find ProgressData for session: {}", sessionId);
-            Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
-            log.warn("ProgressData found for session {}: {}", sessionId, progressDataOptional.isPresent());
 
-            if (progressDataOptional.isPresent()) {
-                ProgressData progressData = progressDataOptional.get();
-                log.warn("Updating ProgressData for session: {}", sessionId);
-                progressData.setState(State.ERROR);
-                progressData.setErrorMessage(errorMessage);
-                progressData.setTimeFinished(LocalDateTime.now());
-
-                log.warn("About to save ProgressData for session: {}", sessionId);
-                weirdService.saveProgressData(progressData);
-                log.warn("ProgressData saved successfully for session: {}", sessionId);
-
+        // Schedule the database update on a separate thread to avoid thread-local transaction/connection locks
+        scheduler.schedule(() -> {
+            try {
+                weirdService.updateProgressDataToError(sessionId, errorMessage);
                 sendToWebSocket();
-                log.info("✅ Database updated with error state for session: {}", sessionId);
-            } else {
-                log.warn("No ProgressData found for session ID: {}", sessionId);
+            } catch (Exception e) {
+                log.warn("Failed to update database with error for session {}: {}", sessionId, e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Failed to update database with error for session {}: {}", sessionId, e.getMessage());
-        }
+        }, 100, TimeUnit.MILLISECONDS);
 
         SSEProgressData errorData = SSEProgressData.builder()
                 .type(State.ERROR.name())
@@ -313,14 +299,8 @@ public class ProgressDataService {
                 .timestamp(Instant.now().toEpochMilli())
                 .build();
 
-        log.warn("Setting errorData in sessionStatus for session: {}", sessionId);
         sessionStatus.put(sessionId, errorData);
-
-        log.warn("Calling sendToEmitter for session: {}", sessionId);
         sendToEmitter(sessionId, errorData);
-
-        log.warn("Scheduling emitter completion for session: {} in 2000ms", sessionId);
-        // Complete the emitter after a short delay
         scheduleEmitterCompletion(sessionId, 2000);
     }
 
@@ -496,6 +476,26 @@ public class ProgressDataService {
         try {
             Objects.requireNonNull(progressData, "progressData must not be null");
             Objects.requireNonNull(latestProgress, "latestProgress must not be null");
+
+            // Update state from Redis if it's ERROR or COMPLETED (takes precedence over DB)
+            if (latestProgress.getType() != null) {
+                try {
+                    State redisState = State.valueOf(latestProgress.getType());
+                    if (redisState == State.ERROR || redisState == State.COMPLETED) {
+                        progressData.setState(redisState);
+                        log.debug("Session {}: state updated from Redis to {}",
+                                progressData.getSessionId(), redisState);
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.debug("Session {}: ignoring non-state type from Redis: {}",
+                            progressData.getSessionId(), latestProgress.getType());
+                }
+            }
+
+            // Update error message if present
+            if (latestProgress.getError() != null) {
+                progressData.setErrorMessage(latestProgress.getError());
+            }
 
             updatePercentageComplete(progressData, latestProgress);
             progressData.setCurrentStage(latestProgress.getStage());

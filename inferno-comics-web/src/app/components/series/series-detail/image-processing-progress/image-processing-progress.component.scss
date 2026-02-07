@@ -16,6 +16,11 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: background 0.3s ease;
+
+  &.error-header {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  }
 
   .header-content {
     display: flex;
@@ -33,6 +38,10 @@
         width: 32px;
         height: 32px;
         z-index: 2;
+
+        &.error {
+          animation: shake 0.5s ease-in-out;
+        }
       }
 
       .pulse-ring {
@@ -58,6 +67,10 @@
         font-size: 14px;
         opacity: 0.8;
         font-weight: var(--font-weight-normal);
+
+        &.error {
+          opacity: 1;
+        }
       }
     }
   }
@@ -120,6 +133,10 @@
         width: 16px;
         height: 16px;
       }
+
+      &.error {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      }
     }
 
     .processing-status {
@@ -129,6 +146,16 @@
       color: var(--primary-color);
       font-size: 12px;
       font-weight: var(--font-weight-medium);
+
+      &.error {
+        color: var(--error-color);
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
     }
   }
 
@@ -458,6 +485,10 @@
       color: var(--text-primary);
       font-size: 18px;
       font-weight: var(--font-weight-semibold);
+
+      &.error {
+        color: var(--error-color);
+      }
     }
 
     .progress-info {
@@ -469,6 +500,10 @@
         font-size: 16px;
         font-weight: var(--font-weight-semibold);
         color: var(--primary-color);
+
+        &.error {
+          color: var(--error-color);
+        }
       }
 
       .completion-indicator {
@@ -481,6 +516,10 @@
 
         &.completed mat-icon {
           color: var(--success-color);
+        }
+
+        &.error mat-icon {
+          color: var(--error-color);
         }
       }
     }
@@ -499,6 +538,10 @@
         background: var(--primary-gradient);
         border-radius: 5px;
       }
+
+      &.error ::ng-deep .mat-mdc-progress-bar-fill::after {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      }
     }
 
     .progress-glow {
@@ -511,6 +554,14 @@
       transition: width var(--transition-normal);
       pointer-events: none;
     }
+
+    &.error {
+      opacity: 0.7;
+    }
+  }
+
+  &.error-state {
+    opacity: 0.8;
   }
 
   .progress-summary {
@@ -647,6 +698,16 @@
   overflow: hidden;
   position: relative;
 
+  &.collapsed {
+    .status-messages {
+      display: none;
+    }
+
+    .feed-header {
+      border-bottom: none;
+    }
+  }
+
   .feed-header {
     background: var(--background-tertiary);
     padding: var(--spacing-lg) var(--spacing-xl);
@@ -654,6 +715,15 @@
     align-items: center;
     gap: var(--spacing-sm);
     border-bottom: 1px solid var(--border-color);
+
+    &.clickable {
+      cursor: pointer;
+      transition: background 0.2s ease;
+
+      &:hover {
+        background: var(--background-secondary);
+      }
+    }
 
     mat-icon {
       color: var(--primary-color);
@@ -682,6 +752,15 @@
     .scroll-btn {
       color: var(--primary-color);
     }
+
+    .expand-icon {
+      color: var(--text-tertiary);
+      transition: transform 0.2s ease;
+    }
+  }
+
+  .status-messages.hidden {
+    display: none;
   }
 
   .new-messages-indicator {
@@ -793,33 +872,115 @@
 
 .error-section {
   @extend %card-base;
-  text-align: center;
-  border: 2px solid var(--error-color);
+  border: 1px solid var(--error-color);
+  border-left: 4px solid var(--error-color);
+  padding: var(--spacing-lg);
 
-  .error-icon-container {
-    margin-bottom: var(--spacing-xl);
+  &.compact {
+    text-align: left;
 
-    .error-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      color: var(--error-color);
-      animation: shake 0.5s ease-in-out;
+    .error-header {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+
+      .error-icon {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+        color: var(--error-color);
+      }
+
+      .error-title {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .error-type {
+          font-size: 14px;
+          font-weight: var(--font-weight-semibold);
+          color: var(--error-color);
+        }
+
+        .error-time {
+          font-size: 12px;
+          color: var(--text-tertiary);
+        }
+      }
+
+      .retry-btn-inline {
+        flex-shrink: 0;
+        font-size: 13px;
+        padding: 4px 12px;
+        min-height: 32px;
+
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          margin-right: 4px;
+        }
+      }
     }
-  }
 
-  .error-content {
-    h3 {
-      margin: 0 0 var(--spacing-md) 0;
-      color: var(--error-color);
-      font-size: 20px;
-      font-weight: var(--font-weight-semibold);
+    .error-details {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
+
+      .error-summary {
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+
+      .show-more-btn {
+        font-size: 12px;
+        padding: 0 8px;
+        min-height: 24px;
+        color: var(--primary-color);
+        flex-shrink: 0;
+      }
     }
 
-    p {
-      margin: 0 0 var(--spacing-xl) 0;
-      color: var(--text-secondary);
-      line-height: 1.5;
+    .error-full {
+      background: var(--background-tertiary);
+      border-radius: var(--radius-sm);
+      padding: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+      overflow-x: auto;
+
+      code {
+        font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+        font-size: 11px;
+        color: var(--text-secondary);
+        word-break: break-all;
+        white-space: pre-wrap;
+      }
+    }
+
+    .error-context {
+      display: flex;
+      gap: var(--spacing-lg);
+      padding-top: var(--spacing-sm);
+      border-top: 1px solid var(--border-color);
+
+      .context-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--text-tertiary);
+
+        mat-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+        }
+      }
     }
   }
 }

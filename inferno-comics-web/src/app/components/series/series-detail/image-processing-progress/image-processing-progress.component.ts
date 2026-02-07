@@ -41,7 +41,11 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   hasError = false;
   errorMessage = '';
   canRetry = false;
+  showFullError = false;
+  showProcessingLog = false;
   startTime = new Date();
+  errorTime = '';
+  errorStage = '';
 
   totalImages = 0;
   currentImageIndex = 0;
@@ -149,8 +153,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   private handleProgressDataUpdate(payload: any[]): void {
     if (!payload?.length) return;
 
-    // Find the progress data for our session (if we have a sessionId)
-    // Or find the most recent PROCESSING session for this series
     let relevantProgress: ProgressData | null = null;
 
     if (this.data.sessionId) {
@@ -197,6 +199,24 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     const stage = progressData.currentStage ?? 'Processing';
     const message = progressData.statusMessage ?? '';
 
+    // Handle state transitions FIRST so isProcessing is set correctly
+    switch (state) {
+      case State.COMPLETED:
+        this.handleCompletion(progressData);
+        return; // handleCompletion handles everything for completed state
+      case State.ERROR:
+        this.handleError(progressData.errorMessage ?? 'Processing failed');
+        return; // handleError handles everything for error state
+      case State.PROCESSING:
+        this.isProcessing = true;
+        break;
+    }
+
+    // Only update progress/thumbnails if we're in PROCESSING state
+    if (state !== State.PROCESSING) {
+      return;
+    }
+
     // Update progress
     if (percentage >= this.progress) {
       this.progress = percentage;
@@ -219,11 +239,12 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     }
 
     if (progressData.processedItems !== undefined) {
-      const prevProcessed = this.processedImages;
-      this.processedImages = progressData.processedItems;
-      
-      // Update thumbnail states based on processed count
-      this.updateThumbnailStatesFromCount(prevProcessed, this.processedImages);
+      this.processedImages = progressData.processedItems ?? 0;
+
+      // Only update thumbnail states if processedItems is reasonable
+      if (this.processedImages < this.totalImages) {
+        this.updateThumbnailStatesFromCount(this.processedImages);
+      }
     }
 
     if (progressData.successfulItems !== undefined) {
@@ -238,65 +259,41 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     if (message) {
       this.parseStatusMessage(message);
     }
-
-    // Handle state transitions
-    switch (state) {
-      case State.COMPLETED:
-        this.handleCompletion(progressData);
-        break;
-      case State.ERROR:
-        this.handleError(progressData.errorMessage ?? 'Processing failed');
-        break;
-      case State.PROCESSING:
-        this.isProcessing = true;
-        break;
-    }
   }
 
-  private updateThumbnailStatesFromCount(prevCount: number, newCount: number): void {
-    // Mark newly processed images as completed
-    for (let i = prevCount; i < newCount && i < this.thumbnailStates.length; i++) {
-      if (this.thumbnailStates[i] === 'processing' || this.thumbnailStates[i] === 'pending') {
+  private updateThumbnailStatesFromCount(newCount: number): void {
+    // newCount = number of fully completed images (0-indexed count)
+    // e.g., newCount=0 means nothing done, newCount=2 means images 0,1 are complete
+
+    // Mark all images before newCount as completed
+    for (let i = 0; i < newCount && i < this.thumbnailStates.length; i++) {
+      if (this.thumbnailStates[i] !== 'failed') {
         this.thumbnailStates[i] = 'completed';
       }
     }
 
-    // Mark current image as processing
-    if (newCount < this.totalImages && newCount < this.thumbnailStates.length) {
+    // Mark current image as processing (if still processing and more images remain)
+    if (this.isProcessing && newCount < this.totalImages && newCount < this.thumbnailStates.length) {
       this.currentImageIndex = newCount;
-      if (this.thumbnailStates[newCount] === 'pending') {
+      if (this.thumbnailStates[newCount] !== 'completed' &&
+          this.thumbnailStates[newCount] !== 'failed') {
         this.thumbnailStates[newCount] = 'processing';
       }
     }
   }
 
   private parseStatusMessage(message: string): void {
-    // Extract image name if present
-    const imageMatch = message.match(/(?:Image|image)\s+(\d+)(?:\/(\d+))?/i);
+    // Extract "Image X/Y" to know which image is currently being processed
+    // This updates the spinner position on thumbnails
+    const imageMatch = message.match(/Image\s+(\d+)\/(\d+)/i);
     if (imageMatch) {
       const currentImageNum = parseInt(imageMatch[1], 10);
-      const newIndex = Math.max(0, Math.min(currentImageNum - 1, this.totalImages - 1));
-      
-      if (newIndex !== this.currentImageIndex) {
-        this.markThumbnailState(this.currentImageIndex, 'completed');
-        this.currentImageIndex = newIndex;
-        this.markThumbnailState(newIndex, 'processing');
+      const newIndex = currentImageNum - 1; // Convert to 0-indexed
+
+      if (newIndex >= 0 && newIndex < this.totalImages && newIndex !== this.currentImageIndex) {
+        // Update current image index and thumbnail states
+        this.updateCurrentProcessingImage(newIndex);
       }
-    }
-
-    // Extract filename if present
-    const filenameMatch = message.match(/:\s*([^:]+\.(jpg|jpeg|png|gif|bmp|webp))/i) ||
-                          message.match(/\(([^)]+\.(jpg|jpeg|png|gif|bmp|webp))\)/i);
-    if (filenameMatch) {
-      this.currentImageName = filenameMatch[1].trim();
-    }
-
-    // Check for completion/failure indicators
-    if (message.toLowerCase().includes('completed') || message.toLowerCase().includes('matches found')) {
-      this.markThumbnailState(this.currentImageIndex, 'completed');
-    } else if (message.toLowerCase().includes('failed') || message.toLowerCase().includes('error')) {
-      this.markThumbnailState(this.currentImageIndex, 'failed');
-      this.failedImages++;
     }
 
     // Add to status messages (avoid duplicates)
@@ -304,6 +301,35 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     if (!lastMessage || lastMessage.text !== message) {
       this.addStatusMessage(message, this.getMessageTypeFromContent(message));
     }
+  }
+
+  private updateCurrentProcessingImage(newIndex: number): void {
+    // Mark all images before newIndex as completed (they must be done if we moved past them)
+    for (let i = 0; i < newIndex && i < this.thumbnailStates.length; i++) {
+      if (this.thumbnailStates[i] === 'processing' || this.thumbnailStates[i] === 'pending') {
+        this.thumbnailStates[i] = 'completed';
+      }
+    }
+
+    // Mark old processing image as completed (if different from new)
+    if (this.currentImageIndex !== newIndex &&
+        this.currentImageIndex < this.thumbnailStates.length &&
+        this.thumbnailStates[this.currentImageIndex] === 'processing') {
+      this.thumbnailStates[this.currentImageIndex] = 'completed';
+    }
+
+    // Update current index
+    this.currentImageIndex = newIndex;
+
+    // Mark new current image as processing
+    if (newIndex < this.thumbnailStates.length &&
+        this.thumbnailStates[newIndex] !== 'completed' &&
+        this.thumbnailStates[newIndex] !== 'failed') {
+      this.thumbnailStates[newIndex] = 'processing';
+    }
+
+    // Update processedImages count to match
+    this.processedImages = Math.max(this.processedImages, newIndex);
   }
 
   private getMessageTypeFromContent(message: string): MessageType {
@@ -331,7 +357,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
       state === 'processing' || state === 'pending' ? 'completed' : state
     );
 
-    this.processedImages = this.totalImages;
+    this.processedImages = this.totalImages ?? 0;
     this.successfulImages = this.thumbnailStates.filter(s => s === 'completed').length;
     this.failedImages = this.thumbnailStates.filter(s => s === 'failed').length;
 
@@ -365,8 +391,20 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     this.errorMessage = errorMessage;
     this.isProcessing = false;
     this.canRetry = true;
+    this.errorTime = this.getElapsedTime(); // Capture elapsed time at moment of failure
+    this.errorStage = this.currentStage; // Capture stage at moment of failure
 
-    this.markThumbnailState(this.currentImageIndex, 'failed');
+    // Mark current image as failed, and stop any other processing states
+    this.thumbnailStates = this.thumbnailStates.map((state, index) => {
+      if (index === this.currentImageIndex) {
+        return 'failed';
+      }
+      if (state === 'processing') {
+        return 'pending'; // Stop spinning for any other processing thumbnails
+      }
+      return state;
+    });
+
     this.addStatusMessage(`Error: ${errorMessage}`, 'error');
 
     this.data.onError?.(errorMessage);
@@ -444,12 +482,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     }
   }
 
-  private markThumbnailState(index: number, state: ThumbnailState): void {
-    if (index >= 0 && index < this.thumbnailStates.length) {
-      this.thumbnailStates[index] = state;
-    }
-  }
-
   getThumbnailStatus(index: number): ThumbnailState {
     return this.thumbnailStates[index] ?? 'pending';
   }
@@ -484,7 +516,7 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
       state === 'processing' || state === 'pending' ? 'completed' : state
     );
 
-    this.processedImages = this.totalImages;
+    this.processedImages = this.totalImages ?? 0;
     this.successfulImages = this.thumbnailStates.filter(s => s === 'completed').length;
     this.failedImages = this.thumbnailStates.filter(s => s === 'failed').length;
 
@@ -553,6 +585,8 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   retryProcessing(): void {
     this.hasError = false;
     this.errorMessage = '';
+    this.errorTime = '';
+    this.errorStage = '';
     this.isProcessing = true;
     this.progress = 0;
     this.currentStageIndex = 0;
@@ -599,8 +633,12 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     return `${minutes}m ${remainingSeconds}s`;
   }
 
-  getMainImagePreview(): string | null {
-    return this.imagePreviews[this.currentImageIndex] ?? this.imagePreviews[0] ?? null;
+  getMainImagePreview(): string {
+    return this.imagePreviews[this.currentImageIndex] ?? this.imagePreviews[0] ?? '';
+  }
+
+  getDisplayStage(): string {
+    return this.hasError ? (this.errorStage || 'Processing') : this.currentStage;
   }
 
   getTotalFileSize(): number {
@@ -610,14 +648,23 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     return this.data.file?.size ?? 0;
   }
 
+  getCurrentFileName(): string {
+    const files = this.data.files;
+    if (files && files.length > this.currentImageIndex) {
+      return files[this.currentImageIndex].name;
+    }
+    return this.data.file?.name ?? '';
+  }
+
   getDisplayFilename(): string {
-    if (this.currentImageName) {
-      return `${this.currentImageName} (${Math.min(this.processedImages + 1, this.totalImages)}/${this.totalImages})`;
+    const fileName = this.getCurrentFileName();
+    if (fileName && this.totalImages > 1) {
+      return `${fileName} (${this.currentImageIndex + 1}/${this.totalImages})`;
     }
     if (this.totalImages > 1) {
       return `${this.totalImages} images selected`;
     }
-    return this.data.file?.name ?? 'Unknown file';
+    return fileName || 'Unknown file';
   }
 
   getCurrentImageProgress(): string {
@@ -626,9 +673,10 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
 
   getProgressSummary(): string {
     if (this.isProcessing) {
-      const imageNum = Math.min(this.processedImages + 1, this.totalImages);
-      return this.currentImageName
-        ? `Processing ${this.currentImageName} (${imageNum}/${this.totalImages})`
+      const fileName = this.getCurrentFileName();
+      const imageNum = this.currentImageIndex + 1;
+      return fileName
+        ? `Processing ${fileName} (${imageNum}/${this.totalImages})`
         : `Processing image ${imageNum}/${this.totalImages}`;
     }
 
@@ -681,5 +729,49 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
     return this.thumbnailStates.filter(state =>
       state === 'pending' || state === 'processing'
     ).length;
+  }
+
+  getErrorType(): string {
+    if (!this.errorMessage) return 'Processing Error';
+
+    const msg = this.errorMessage.toLowerCase();
+    if (msg.includes('connection refused') || msg.includes('connect')) {
+      return 'Connection Error';
+    }
+    if (msg.includes('timeout')) {
+      return 'Timeout Error';
+    }
+    if (msg.includes('not found') || msg.includes('404')) {
+      return 'Not Found';
+    }
+    if (msg.includes('unauthorized') || msg.includes('403') || msg.includes('401')) {
+      return 'Auth Error';
+    }
+    return 'Processing Error';
+  }
+
+  getTruncatedError(): string {
+    if (!this.errorMessage) return 'An unknown error occurred';
+
+    // Extract the most meaningful part of the error
+    let msg = this.errorMessage;
+
+    // Remove common prefixes
+    msg = msg.replace(/^Error processing images:\s*/i, '');
+    msg = msg.replace(/^Error:\s*/i, '');
+
+    // Truncate if too long
+    if (msg.length > 80) {
+      return msg.substring(0, 77) + '...';
+    }
+    return msg;
+  }
+
+  toggleErrorDetails(): void {
+    this.showFullError = !this.showFullError;
+  }
+
+  toggleProcessingLog(): void {
+    this.showProcessingLog = !this.showProcessingLog;
   }
 }

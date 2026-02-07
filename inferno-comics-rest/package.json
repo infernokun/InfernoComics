@@ -1,6 +1,6 @@
 {
   "name": "inferno-comics-rest",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Java backend for the inferno-comics-web",
   "port": 8080,
   "scripts": {
