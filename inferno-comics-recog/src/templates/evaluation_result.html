@@ -75,14 +75,12 @@
             <!-- Image Preview -->
             {% if item.image_url %}
             <img src="{{ item.image_url }}" alt="{{ item.image_name }}" class="result-image mb-md"
-                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
-                 style="width: 100%; height: 200px; object-fit: cover; border-radius: var(--radius-sm);">
-            <div class="empty-state" style="display: none; height: 200px;">Image not available</div>
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="empty-state" style="display: none; height: 300px;">Image not available</div>
             {% elif item.image_base64 %}
-            <img src="{{ item.image_base64 }}" alt="{{ item.image_name }}" class="result-image mb-md"
-                 style="width: 100%; height: 200px; object-fit: cover; border-radius: var(--radius-sm);">
+            <img src="{{ item.image_base64 }}" alt="{{ item.image_name }}" class="result-image mb-md">
             {% else %}
-            <div class="empty-state" style="height: 200px;">No image available</div>
+            <div class="empty-state" style="height: 300px;">No image available</div>
             {% endif %}
 
             <!-- Image Name -->
