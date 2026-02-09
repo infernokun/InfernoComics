@@ -5,6 +5,7 @@
   "port": 8080,
   "scripts": {
     "start": "./gradlew bootRun",
+    "deps:update": "./gradlew dependencyUpdates -Drevision=release --no-parallel",
     "build": "./gradlew build --no-daemon -x test",
     "test" : "./gradlew test",
     "lint": "./gradlew check",
