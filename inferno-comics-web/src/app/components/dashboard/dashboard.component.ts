@@ -3,14 +3,14 @@ import { trigger, transition, style, animate } from '@angular/animations';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Series, SeriesWithIssues } from '../../models/series.model';
-import { SeriesListComponent } from '../series-list/series-list.component';
+import { SeriesListComponent } from '../series/series-list/series-list.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { MaterialModule } from '../../material.module';
 import { ApiResponse } from '../../models/api-response.model';
-import { IssueService } from '../../services/issue.service';
 import { SeriesService } from '../../services/series.service';
+import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 
 interface PublisherStat {
   name: string;
@@ -63,6 +63,7 @@ interface PublisherStat {
     FormsModule,
     RouterModule,
     SeriesListComponent,
+    NgxSkeletonLoaderModule,
   ],
 })
 export class DashboardComponent implements OnInit, OnDestroy {
@@ -85,8 +86,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   constructor(
-    private seriesService: SeriesService,
-    private issueService: IssueService
+    private seriesService: SeriesService
   ) {
     this.loadUserPreferences();
   }

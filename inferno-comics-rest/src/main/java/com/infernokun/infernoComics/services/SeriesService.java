@@ -3,7 +3,7 @@ package com.infernokun.infernoComics.services;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.dto.SeriesRequest;
@@ -20,6 +20,7 @@ import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
@@ -47,7 +48,7 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Transactional
 @RequiredArgsConstructor
 public class SeriesService {
-    private final WebClient webClient;
+    private final InfernoComicsWebClient webClient;
 
     private final WeirdService weirdService;
     private final ProgressDataService progressDataService;
@@ -61,6 +62,8 @@ public class SeriesService {
     private final ProcessedFileRepository processedFileRepository;
 
     private final CacheManager cacheManager;
+
+    private final SearxngImageSearchService imageSearchService;
 
     @CacheEvict(value = "series", key = "#seriesId")
     @Transactional
@@ -78,6 +81,8 @@ public class SeriesService {
 
         AtomicInteger totalComics = new AtomicInteger(0);
         List<String> newGcdIds = new ArrayList<>();
+        List<Integer> endYearsFromApi = new ArrayList<>();
+        List<Integer> startYearsFromApi = new ArrayList<>();
 
         // Process each Comic Vine ID
         if (series.getComicVineIds() != null && !series.getComicVineIds().isEmpty()) {
@@ -88,6 +93,14 @@ public class SeriesService {
                     if (dto != null) {
                         totalComics.addAndGet(dto.getIssueCount() != null ? dto.getIssueCount() : 0);
 
+                        // Collect start and end years from ComicVine API
+                        if (dto.getStartYear() != null && dto.getStartYear() > 0) {
+                            startYearsFromApi.add(dto.getStartYear());
+                        }
+                        if (dto.getEndYear() != null && dto.getEndYear() > 0) {
+                            endYearsFromApi.add(dto.getEndYear());
+                        }
+
                         // Try to find GCD mapping
                         try {
                             Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
@@ -96,20 +109,58 @@ public class SeriesService {
                             if (gcdSeriesOptional.isPresent()) {
                                 String gcdId = String.valueOf(gcdSeriesOptional.get().getId());
                                 newGcdIds.add(gcdId);
-                                log.debug("✅ Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
+                                log.debug("Reverify: mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
                             } else {
-                                log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                                log.warn("Reverify: no GCD mapping found for Comic Vine ID {}", comicVineId);
                             }
                         } catch (Exception e) {
-                            log.error("Error finding GCD mapping for Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                            log.error("Reverify: failed to find GCD mapping for Comic Vine ID {}: {}", comicVineId, e.getMessage());
                         }
                     } else {
-                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("Reverify: no Comic Vine data returned for ID {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Reverify: failed to process Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
+        }
+
+        // Update start year from ComicVine if available (use earliest)
+        if (!startYearsFromApi.isEmpty()) {
+            Integer earliestStart = Collections.min(startYearsFromApi);
+            if (!earliestStart.equals(series.getStartYear())) {
+                log.info("Updating start year from {} to {} for series '{}'",
+                        series.getStartYear(), earliestStart, series.getName());
+                series.setStartYear(earliestStart);
+            }
+        }
+
+        // Determine end year: use API value if available, otherwise derive from issues
+        Integer newEndYear = null;
+        if (!endYearsFromApi.isEmpty()) {
+            // Use the latest end year from all ComicVine series
+            newEndYear = Collections.max(endYearsFromApi);
+            log.debug("Using end year {} from ComicVine API for series '{}'", newEndYear, series.getName());
+        } else if (series.getComicVineIds() != null && !series.getComicVineIds().isEmpty()) {
+            // Try to derive end year from issues
+            try {
+                List<ComicVineService.ComicVineIssueDto> issues = comicVineService.searchIssues(series);
+                newEndYear = comicVineService.deriveEndYearFromIssues(issues);
+
+                if (newEndYear != null) {
+                    log.info("Derived end year {} from last issue cover date for series '{}'",
+                            newEndYear, series.getName());
+                }
+            } catch (Exception e) {
+                log.warn("Could not derive end year from issues for series '{}': {}", series.getName(), e.getMessage());
+            }
+        }
+
+        // Update end year if we found one
+        if (newEndYear != null && !newEndYear.equals(series.getEndYear())) {
+            log.info("Updating end year from {} to {} for series '{}'",
+                    series.getEndYear(), newEndYear, series.getName());
+            series.setEndYear(newEndYear);
         }
 
         // Update series with new metadata
@@ -144,7 +195,7 @@ public class SeriesService {
             log.warn("Error during cache eviction for series {}: {}", seriesId, e.getMessage());
         }
 
-        log.info("✅ Reverification complete for '{}': {} issues from {} Comic Vine IDs → {} GCD mappings",
+        log.info("Reverification complete for '{}': {} issues from {} Comic Vine IDs → {} GCD mappings",
                 updatedSeries.getName(), totalComics.get(), originalComicVineIds.size(), newGcdIds.size());
 
 
@@ -241,27 +292,67 @@ public class SeriesService {
 
         // Process Comic Vine IDs
         List<String> gcdIds = new ArrayList<>();
+        int totalIssuesAvailable = 0;
+        Integer derivedEndYear = null;
+        List<Integer> endYearsFromApi = new ArrayList<>();
+
         if (request.getComicVineIds() != null) {
             for (String comicVineId : request.getComicVineIds()) {
                 try {
                     ComicVineService.ComicVineSeriesDto dto = comicVineService.getComicVineSeriesById(Long.valueOf(comicVineId));
                     if (dto != null) {
+                        if (dto.getIssueCount() != null) {
+                            totalIssuesAvailable += dto.getIssueCount();
+                        }
+
+                        // Collect end years from ComicVine API if available
+                        if (dto.getEndYear() != null && dto.getEndYear() > 0) {
+                            endYearsFromApi.add(dto.getEndYear());
+                        }
+
                         Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
-                                .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), dto.getIssueCount());
+                                .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), totalIssuesAvailable);
                         if (gcdSeriesOptional.isPresent()) {
                             gcdIds.add(String.valueOf(gcdSeriesOptional.get().getId()));
-                            log.debug("Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdSeriesOptional.get().getId());
+                            log.debug("Create: mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdSeriesOptional.get().getId());
                         } else {
-                            log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                            log.warn("Create: no GCD mapping found for Comic Vine ID {}", comicVineId);
                         }
                     }
                 } catch (Exception e) {
-                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Create: failed to process Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
         }
 
+        // Determine end year: use API value if available, otherwise derive from issues
+        if (!endYearsFromApi.isEmpty()) {
+            derivedEndYear = Collections.max(endYearsFromApi);
+            log.debug("Create: using end year {} from ComicVine API for '{}'", derivedEndYear, request.getName());
+        } else if (series.getEndYear() == null && request.getComicVineIds() != null && !request.getComicVineIds().isEmpty()) {
+            try {
+                Series tempSeries = new Series();
+                tempSeries.setComicVineIds(request.getComicVineIds());
+                tempSeries.setComicVineId(request.getComicVineId() != null ? request.getComicVineId() : request.getComicVineIds().get(0));
+
+                List<ComicVineService.ComicVineIssueDto> issues = comicVineService.searchIssues(tempSeries);
+                derivedEndYear = comicVineService.deriveEndYearFromIssues(issues);
+
+                if (derivedEndYear != null) {
+                    log.debug("Create: derived end year {} from issues for '{}'", derivedEndYear, request.getName());
+                }
+            } catch (Exception e) {
+                log.warn("Create: could not derive end year from issues for '{}': {}", request.getName(), e.getMessage());
+            }
+        }
+
+        // Set end year if we derived one and it wasn't explicitly provided in the request
+        if (derivedEndYear != null && series.getEndYear() == null) {
+            series.setEndYear(derivedEndYear);
+        }
+
         series.setGcdIds(gcdIds);
+        series.setIssuesAvailableCount(totalIssuesAvailable);
         Series savedSeries = seriesRepository.save(series);
 
         evictListCaches();
@@ -330,7 +421,7 @@ public class SeriesService {
             // FIX 1: Add explicit flush to ensure data is persisted before cache operations
             seriesRepository.flush();
 
-            log.info("✅ Series saved and flushed to database");
+            log.debug("Series {} saved and flushed to database", id);
 
             // FIX 2: Wrap cache evictions in try-catch to prevent them from blocking the response
             try {
@@ -367,8 +458,8 @@ public class SeriesService {
                     ComicVineService.ComicVineSeriesDto dto = comicVineService.getComicVineSeriesById(Long.valueOf(comicVineId));
 
                     if (dto != null) {
-                        log.debug("Found Comic Vine data: name='{}', startYear={}, issueCount={}",
-                                dto.getName(), dto.getStartYear(), dto.getIssueCount());
+                        log.debug("Update GCD: Comic Vine ID {} → name='{}', startYear={}, issueCount={}",
+                                comicVineId, dto.getName(), dto.getStartYear(), dto.getIssueCount());
 
                         Optional<GCDSeries> gcdSeriesOptional = gcDatabaseService
                                 .findGCDSeriesWithComicVineSeries(dto.getName(), dto.getStartYear(), dto.getIssueCount());
@@ -376,16 +467,15 @@ public class SeriesService {
                         if (gcdSeriesOptional.isPresent()) {
                             String gcdId = String.valueOf(gcdSeriesOptional.get().getId());
                             newGcdIds.add(gcdId);
-                            log.debug("✅ Mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
+                            log.debug("Update GCD: mapped Comic Vine ID {} to GCD ID {}", comicVineId, gcdId);
                         } else {
-                            log.warn("No GCD mapping found for Comic Vine ID: {}", comicVineId);
+                            log.warn("Update GCD: no mapping found for Comic Vine ID {}", comicVineId);
                         }
                     } else {
-                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("Update GCD: no Comic Vine data returned for ID {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
-                    // Continue with other IDs even if one fails
+                    log.error("Update GCD: failed to process Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
 
@@ -406,22 +496,22 @@ public class SeriesService {
 
                     if (dto != null) {
                         comicVineData.add(dto);
-                        log.debug("✅ Got metadata: name='{}', startYear={}, endYear={}, issueCount={}",
-                                dto.getName(), dto.getStartYear(), dto.getEndYear(), dto.getIssueCount());
+                        log.debug("Recalculate: Comic Vine ID {} → name='{}', startYear={}, endYear={}, issueCount={}",
+                                comicVineId, dto.getName(), dto.getStartYear(), dto.getEndYear(), dto.getIssueCount());
                     } else {
-                        log.warn("No Comic Vine data found for ID: {}", comicVineId);
+                        log.warn("Recalculate: no Comic Vine data returned for ID {}", comicVineId);
                     }
                 } catch (Exception e) {
-                    log.error("Error processing Comic Vine ID {}: {}", comicVineId, e.getMessage());
+                    log.error("Recalculate: failed to fetch Comic Vine ID {}: {}", comicVineId, e.getMessage());
                 }
             }
 
             if (comicVineData.isEmpty()) {
-                log.warn("No valid Comic Vine data found for metadata recalculation for series {}", series.getId());
+                log.warn("Recalculate: no valid Comic Vine data for series {}", series.getId());
                 return;
             }
 
-            log.debug("Successfully fetched {} Comic Vine series data objects", comicVineData.size());
+            log.debug("Recalculate: fetched {} Comic Vine entries for series {}", comicVineData.size(), series.getId());
 
             // Recalculate date range
             List<Integer> startYears = comicVineData.stream()
@@ -549,7 +639,6 @@ public class SeriesService {
                 .collect(Collectors.toList());
     }
 
-    // Create series from Comic Vine data
     public Series createSeriesFromComicVine(String comicVineId, ComicVineService.ComicVineSeriesDto comicVineData) {
         Series series = new Series();
         series.setName(comicVineData.getName());
@@ -558,8 +647,29 @@ public class SeriesService {
         series.setStartYear(comicVineData.getStartYear());
         series.setImageUrl(comicVineData.getImageUrl());
         series.setComicVineId(comicVineId);
+        series.setComicVineIds(List.of(comicVineId));
+        if (comicVineData.getIssueCount() != null) {
+            series.setIssuesAvailableCount(comicVineData.getIssueCount());
+        }
 
-        // Generate description if Comic Vine description is empty
+        // Set end year from ComicVine API if available
+        if (comicVineData.getEndYear() != null && comicVineData.getEndYear() > 0) {
+            series.setEndYear(comicVineData.getEndYear());
+            log.debug("Using end year {} from ComicVine API for series '{}'", comicVineData.getEndYear(), series.getName());
+        } else {
+            // Try to derive end year from issues
+            try {
+                List<ComicVineService.ComicVineIssueDto> issues = comicVineService.searchIssues(series);
+                Integer derivedEndYear = comicVineService.deriveEndYearFromIssues(issues);
+                if (derivedEndYear != null) {
+                    series.setEndYear(derivedEndYear);
+                    log.info("Derived end year {} from last issue cover date for series '{}'", derivedEndYear, series.getName());
+                }
+            } catch (Exception e) {
+                log.warn("Could not derive end year from issues for series '{}': {}", series.getName(), e.getMessage());
+            }
+        }
+
         if (series.getDescription() == null || series.getDescription().trim().isEmpty()) {
             DescriptionGenerated generatedDescription = descriptionGeneratorService.generateDescription(
                     series.getName(),
@@ -580,14 +690,12 @@ public class SeriesService {
         return savedSeries;
     }
 
-    // Batch import series with cache management
     @Transactional
     public List<Series> createMultipleSeriesFromComicVine(List<ComicVineService.ComicVineSeriesDto> comicVineSeriesList) {
         log.info("Batch creating {} series from Comic Vine data", comicVineSeriesList.size());
 
         List<Series> createdSeries = comicVineSeriesList.stream()
                 .map(comicVineData -> {
-                    // Don't call createSeriesFromComicVine to avoid multiple cache evictions
                     Series series = new Series();
                     series.setName(comicVineData.getName());
                     series.setDescription(comicVineData.getDescription());
@@ -595,12 +703,22 @@ public class SeriesService {
                     series.setStartYear(comicVineData.getStartYear());
                     series.setImageUrl(comicVineData.getImageUrl());
                     series.setComicVineId(comicVineData.getId());
+                    series.setComicVineIds(List.of(comicVineData.getId()));
+                    if (comicVineData.getIssueCount() != null) {
+                        series.setIssuesAvailableCount(comicVineData.getIssueCount());
+                    }
+
+                    // Set end year from ComicVine API if available
+                    if (comicVineData.getEndYear() != null && comicVineData.getEndYear() > 0) {
+                        series.setEndYear(comicVineData.getEndYear());
+                    }
+                    // Note: For batch creation, we skip deriving end year from issues
+                    // to avoid excessive API calls. Use reverifyMetadata to populate end years later.
 
                     return seriesRepository.save(series);
                 })
                 .collect(Collectors.toList());
 
-        // Single cache eviction after all series are created
         evictListCaches();
 
         return createdSeries;
@@ -729,7 +847,7 @@ public class SeriesService {
             List<GCDCover> candidateCovers;
 
             if (seriesEntity.getCachedCoverUrls() != null && !seriesEntity.getCachedCoverUrls().isEmpty() && seriesEntity.getLastCachedCovers() != null) {
-                log.info("Using cached covers for session: {}", sessionId);
+                log.debug("Using cached covers for session: {}", sessionId);
                 progressDataService.updateProgress(new ProgressUpdateRequest(
                         sessionId, "preparing", 8, "Using cached cover data..."));
                 candidateCovers = seriesEntity.getCachedCoverUrls();
@@ -753,8 +871,8 @@ public class SeriesService {
                         .map(Long::parseLong)
                         .collect(Collectors.toSet());
 
-                log.info("Found {} existing Comic Vine IDs in collection: {}", existingComicVineIds.size(), existingComicVineIds);
-                log.info("Processing {} Comic Vine issues for filtering", results.size());
+                log.debug("Found {} existing Comic Vine IDs in collection, filtering {} Comic Vine issues",
+                        existingComicVineIds.size(), results.size());
 
                 candidateCovers = results.stream()
                         .flatMap(issue -> {
@@ -789,12 +907,10 @@ public class SeriesService {
                         })
                         .collect(Collectors.toList());
 
-                log.info("Filtered to {} candidate covers from {} original issues", candidateCovers.size(), results.size());
-                log.info("Breakdown: {} main covers + {} variant covers",
-                        candidateCovers.stream().mapToLong(c -> c.getParentComicVineId() == null ? 1 : 0).sum(),
-                        candidateCovers.stream().mapToLong(c -> c.getParentComicVineId() != null ? 1 : 0).sum());
-
-                log.info("Generated {} candidate covers for session: {}", candidateCovers.size(), sessionId);
+                long mainCovers = candidateCovers.stream().filter(c -> c.getParentComicVineId() == null).count();
+                long variantCovers = candidateCovers.size() - mainCovers;
+                log.info("Filtered {} issues → {} candidate covers ({} main + {} variants) for session: {}",
+                        results.size(), candidateCovers.size(), mainCovers, variantCovers, sessionId);
 
                 if (candidateCovers.isEmpty()) {
                     progressDataService.sendError(sessionId, "No valid candidate cover urls found!");
@@ -884,17 +1000,18 @@ public class SeriesService {
             JsonNode results = root.get("results");
 
             if (results != null && results.isArray()) {
-                log.info("Matcher found results for {} images (session: {})", results.size(), sessionId);
+                log.info("Image processing completed for session: {} — matched {} images in {}s",
+                        sessionId, results.size(), duration / 1000);
             } else {
-                log.warn("No results found in matcher response (session: {})", sessionId);
+                log.warn("Image processing completed for session: {} — no results in matcher response", sessionId);
             }
-
-
-            log.info("Image processing completed for session: {}", sessionId);
 
         } catch (Exception e) {
             log.error("Error in image processing for session {}: {}", sessionId, e.getMessage());
             filesToRecord.forEach(file -> file.setState(State.ERROR));
+            if (!filesToRecord.isEmpty()) {
+                weirdService.saveProcessedFiles(filesToRecord);
+            }
             progressDataService.sendError(sessionId, "Error processing images: " + e.getMessage());
         }
 
@@ -978,7 +1095,40 @@ public class SeriesService {
         }
     }
 
+    public VariantsResponse getVariantsBySearch(Series series) {
+
+        VariantsResponse response = new VariantsResponse();
+
+        searchComicVineIssues(series.getId()).forEach(issue -> {
+            String issueNumber = issue.getIssueNumber();
+
+            List<String> urls = imageSearchService
+                    .findVariantImages(
+                            series.getName(),
+                            Integer.parseInt(issueNumber),
+                            series.getPublisher()
+                    );
+
+            response.addIssue(issueNumber, urls);
+        });
+
+        return response;
+    }
+
     public List<MissingIssue> getMissingIssues() {
         return missingIssueRepository.findUnresolvedMissingIssues();
+    }
+
+    @Getter
+    public static class VariantsResponse {
+        private final Map<String, List<String>> issues = new HashMap<>();
+
+        public VariantsResponse() { }
+
+        public void addIssue(String issueNumber, List<String> imageUrls) {
+            if (!imageUrls.isEmpty()) {
+                issues.put(issueNumber, imageUrls);
+            }
+        }
     }
 }

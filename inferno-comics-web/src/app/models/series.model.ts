@@ -29,6 +29,30 @@ export interface SeriesWithIssues {
   issues: Issue[];
 }
 
+export function generateSlug(name: string | undefined): string {
+  if (!name || !name.trim()) {
+    return 'unknown';
+  }
+
+  let slug = name.trim().toLowerCase();
+
+  slug = slug.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  slug = slug.replace(/[\s_]+/g, '-');
+  slug = slug.replace(/[^a-z0-9-]/g, '');
+  slug = slug.replace(/-+/g, '-');
+  slug = slug.replace(/^-+|-+$/g, '');
+
+  if (!slug) {
+    return 'unknown';
+  }
+
+  if (slug.length > 100) {
+    slug = slug.substring(0, 100).replace(/-+$/, '');
+  }
+
+  return slug;
+}
+
 export class Series {
   id?: number;
   name?: string;
@@ -72,5 +96,9 @@ export class Series {
       this.cachedCoverUrls = data.cachedCoverUrls || [];
       this.lastReverification = data.lastReverification ? DateUtils.parseDateTimeArray(data.lastReverification) : undefined;
     }
+  }
+
+  get slug(): string {
+    return generateSlug(this.name);
   }
 }

@@ -1,6 +1,8 @@
 services:
   inferno-comics-web:
     image: infernokun/inferno-comics-web:latest
+    container_name: inferno-comics-web
+    hostname: inferno-comics-web
     restart: always
     environment:
       - BASE_URL=http://inferno-comics-web
@@ -12,26 +14,10 @@ services:
     networks:
       - inferno-comics-network
 
-  inferno-comics-db:
-    image: postgres:17.4
-    restart: always
-    environment:
-      POSTGRES_USER: "${POSTGRES_USER:-inferno-comics}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-inferno-comics}"
-      POSTGRES_DB: "${POSTGRES_DB:-inferno-comics}"
-    volumes:
-      - inferno-comics-db:/var/lib/postgresql/data
-    networks:
-      - inferno-comics-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inferno-comics}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   inferno-comics-rest:
     image: infernokun/inferno-comics-rest:latest
-    #build: ./inferno-comics-rest
+    container_name: inferno-comics-rest
+    hostname: inferno-comics-rest
     restart: always
     ports:
       - "8785:8080"
@@ -68,6 +54,8 @@ services:
 
   inferno-comics-recog:
     image: infernokun/inferno-comics-recog:latest
+    container_name: inferno-comics-recog
+    hostname: inferno-comics-recog
     restart: always
     ports:
       - "8786:5000"
@@ -86,8 +74,29 @@ services:
     networks:
       - inferno-comics-network
 
+  inferno-comics-db:
+    image: postgres:17.4
+    container_name: inferno-comics-db
+    hostname: inferno-comics-db
+    restart: always
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER:-inferno-comics}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-inferno-comics}"
+      POSTGRES_DB: "${POSTGRES_DB:-inferno-comics}"
+    volumes:
+      - inferno-comics-db:/var/lib/postgresql/data
+    networks:
+      - inferno-comics-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-inferno-comics}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   inferno-comics-redis:
     image: redis:latest
+    container_name: inferno-comics-redis
+    hostname: inferno-comics-redis
     restart: unless-stopped
     volumes:
       - inferno-comics-redis:/data
@@ -106,11 +115,13 @@ networks:
     name: inferno-comics-network
 
 volumes:
+  inferno-comics-web:
+    driver: local
+  inferno-comics-rest:
+    driver: local
+  inferno-comics-recog:
+    driver: local
   inferno-comics-db:
     driver: local
   inferno-comics-redis:
-    driver: local
-  inferno-comics-web:
-    driver: local
-  inferno-comics-recog:
     driver: local

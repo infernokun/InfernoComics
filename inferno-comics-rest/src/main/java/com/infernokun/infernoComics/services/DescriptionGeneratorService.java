@@ -1,6 +1,6 @@
 package com.infernokun.infernoComics.services;
 
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
@@ -29,7 +29,7 @@ public class DescriptionGeneratorService {
     private final ObjectMapper objectMapper;
     private final InfernoComicsConfig infernoComicsConfig;
     private final StringRedisTemplate stringRedisTemplate;
-    private final WebClient webClient;
+    private final InfernoComicsWebClient webClient;
 
     private static final String MANUAL_CACHE_KEY_PREFIX = "issue_description_manual:";
     private static final long CACHE_TTL_HOURS = 24 * 7; // Cache for 7 days

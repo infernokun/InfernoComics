@@ -1,7 +1,7 @@
 package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.RecognitionConfig;
 import com.infernokun.infernoComics.models.enums.StartedBy;
@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -22,27 +24,35 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class RecognitionService {
-    private final WebClient webClient;
+    private final InfernoComicsWebClient webClient;
     private final SeriesService seriesService;
 
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
 
     public RecognitionConfig getRecognitionConfig() {
-        return webClient.recognitionClient().get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/config")
-                        .build())
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> clientResponse.bodyToMono(String.class)
-                        .flatMap(errorBody -> Mono.error(
-                                new RuntimeException("Client error: " + clientResponse.statusCode() + " - " + errorBody))))
-                .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> clientResponse.bodyToMono(String.class)
-                        .flatMap(errorBody -> Mono.error(
-                                new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody))))
-                .bodyToMono(RecognitionConfig.class)
-                .timeout(Duration.ofSeconds(30))
-                .block();
+        try {
+            return webClient.recognitionClient().get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/config")
+                            .build())
+                    .retrieve()
+                    .onStatus(HttpStatusCode::is4xxClientError, clientResponse -> clientResponse.bodyToMono(String.class)
+                            .flatMap(errorBody -> Mono.error(
+                                    new RuntimeException("Client error: " + clientResponse.statusCode() + " - " + errorBody))))
+                    .onStatus(HttpStatusCode::is5xxServerError, clientResponse -> clientResponse.bodyToMono(String.class)
+                            .flatMap(errorBody -> Mono.error(
+                                    new RuntimeException("Server error: " + clientResponse.statusCode() + " - " + errorBody))))
+                    .bodyToMono(RecognitionConfig.class)
+                    .timeout(Duration.ofSeconds(30))
+                    .block();
+        } catch (WebClientRequestException e) {
+            log.error("Web client request failed: {}", e.getMessage());
+            throw new RuntimeException("Failed to fetch recognition config due to network error");
+        } catch (WebClientResponseException e) {
+            log.error("HTTP error response: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("Failed to fetch recognition config: " + e.getStatusCode());
+        }
     }
 
     public Boolean saveRecognitionConfig(RecognitionConfig config) {

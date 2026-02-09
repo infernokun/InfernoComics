@@ -55,7 +55,6 @@ export class DateUtils {
     }
 
     const [year, month, day] = dateArray;
-    // Note: JavaScript Date months are 0-indexed, so subtract 1 from month
     return new Date(
       year,
       month - 1,

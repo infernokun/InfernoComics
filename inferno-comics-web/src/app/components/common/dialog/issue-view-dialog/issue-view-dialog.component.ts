@@ -1,9 +1,9 @@
 import { Component, Inject } from "@angular/core";
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from "@angular/material/dialog";
-import { IssueFormComponent } from "../../../issue-form/issue-form.component";
 import { MaterialModule } from "../../../../material.module";
 import { RecognitionService } from "../../../../services/recognition.service";
 import { DateUtils } from "../../../../utils/date-utils";
+import { IssueFormComponent } from "../../../issues/issue-form/issue-form.component";
 
 @Component({
   selector: 'issue-view-dialog',

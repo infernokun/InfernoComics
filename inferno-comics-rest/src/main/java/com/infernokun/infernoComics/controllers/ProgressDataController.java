@@ -74,7 +74,7 @@ public class ProgressDataController extends BaseController {
 
     @GetMapping("/data/rel")
     public ResponseEntity<ApiResponse<List<ProgressData>>> getSessionsByRelevance() {
-        return createSuccessResponse(progressDataService.getSessionsByRelevance());
+        return createSuccessResponse(progressDataService.getRecentSessions());
     }
 
     // receive progress updates from Python

@@ -1,0 +1,344 @@
+<div class="series-list-container">
+
+  <div class="header">
+    <h1>Comic Book Series</h1>
+    <div class="header-actions">
+      <div class="stats-summary">
+        <span class="stat-chip">
+          <mat-icon>library_books</mat-icon>
+          {{ getTotalSeriesCount() }} Total
+        </span>
+        @if (getCompletionStats().total > 0) {
+          <span class="stat-chip completion">
+            <mat-icon>check_circle</mat-icon>
+            {{ getCompletionStats().completed }}/{{ getCompletionStats().total }} Complete
+          </span>
+        }
+      </div>
+      <button mat-raised-button color="primary" routerLink="/series/new">
+        <mat-icon>add</mat-icon>
+        Add New Series
+      </button>
+      <button mat-raised-button color="primary" (click)="getFolderStructure()">
+        Folder Structure
+      </button>
+
+      <button mat-stroked-button color="warn" (click)="syncAllSeries()">
+        <mat-icon>key</mat-icon>
+        Sync Series
+      </button>
+    </div>
+  </div>
+
+  <!-- Unified Toolbar -->
+  <div class="toolbar-container" [@slideInUp]>
+    <!-- Row 1: Search + View Toggle + Count -->
+    <div class="toolbar-row toolbar-main">
+      <div class="search-section">
+        <mat-form-field appearance="outline" class="search-field">
+          <input matInput [(ngModel)]="searchTerm" (input)="onSearch()" placeholder="Search series...">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+      </div>
+
+      <div class="toolbar-actions">
+        <mat-button-toggle-group [value]="viewMode" (change)="onViewModeChange($event.value)" class="view-toggle">
+          <mat-button-toggle value="grid" matTooltip="Grid View">
+            <mat-icon>grid_view</mat-icon>
+          </mat-button-toggle>
+          <mat-button-toggle value="list" matTooltip="List View">
+            <mat-icon>list</mat-icon>
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+
+        <span class="series-count">{{ getFilteredSeriesCount() }}/{{ getTotalSeriesCount() }}</span>
+      </div>
+    </div>
+
+    <!-- Row 2: Filters + Sort (collapsible on mobile) -->
+    <div class="toolbar-row toolbar-filters">
+      <!-- Publisher Filter -->
+      <mat-form-field appearance="outline" class="filter-field publisher-filter">
+        <mat-label>Publisher</mat-label>
+        <mat-select [(value)]="selectedPublisher" (selectionChange)="onPublisherFilterChange()">
+          <mat-option value="">All</mat-option>
+          @for (pub of publishers; track pub) {
+            <mat-option [value]="pub">{{ pub }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Sort Options (Desktop) -->
+      <div class="sort-chips">
+        @for (option of sortOptions; track option) {
+          <button mat-button class="sort-chip"
+            [class.active]="currentSortOption === option.value"
+            (click)="onSortChange(option.value)"
+            [matTooltip]="'Sort by ' + option.label">
+            <mat-icon>{{ option.icon }}</mat-icon>
+            <span class="chip-label">{{ option.label }}</span>
+            @if (currentSortOption === option.value) {
+              <mat-icon class="sort-direction">{{ currentSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+            }
+          </button>
+        }
+      </div>
+
+      <!-- Mobile Sort Controls -->
+      <div class="mobile-sort-controls">
+        <mat-form-field appearance="outline" class="sort-select">
+          <mat-label>Sort by</mat-label>
+          <mat-select [(value)]="currentSortOption" (selectionChange)="applyFiltersAndSorting()">
+            @for (option of sortOptions; track option) {
+              <mat-option [value]="option.value">
+                <mat-icon>{{ option.icon }}</mat-icon>
+                {{ option.label }}
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-icon-button
+          class="sort-direction-toggle"
+          [class.ascending]="currentSortDirection === 'asc'"
+          [class.descending]="currentSortDirection === 'desc'"
+          (click)="toggleSortDirection()"
+          [matTooltip]="currentSortDirection === 'asc' ? 'Ascending' : 'Descending'">
+          <mat-icon>arrow_upward</mat-icon>
+        </button>
+      </div>
+
+      <!-- Completion Toggle -->
+      <mat-slide-toggle
+        [(ngModel)]="showCompletedOnly"
+        (change)="onCompletionFilterChange()"
+        class="completion-toggle"
+        matTooltip="Show only completed series">
+        <span class="toggle-label">Completed</span>
+      </mat-slide-toggle>
+
+      <!-- Clear Filters -->
+      @if (searchTerm || selectedPublisher || showCompletedOnly) {
+        <button class="clear-btn" (click)="clearFilters()" matTooltip="Clear all filters">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Series Display -->
+  @if (!loading) {
+    <app-custom-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageIndex]="pageIndex"
+      (page)="onPageChange($event)">
+    </app-custom-paginator>
+    <div class="series-container" [class.grid]="viewMode === 'grid'" [class.list]="viewMode === 'list'" [@fadeInUp]>
+      @for (series of displaySeries; track trackBySeries($index, series)) {
+        <div class="series-card" [@cardAnimation]>
+          <!-- Series Image -->
+          <div class="series-image-container" (click)="viewSeries(series)">
+            <img [src]="series.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="series.name" loading="lazy"
+              onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+              <div class="series-overlay">
+                <div class="series-badges">
+                  @if (series.publisher) {
+                    <span class="badge publisher">
+                      {{series.publisher}}
+                    </span>
+                  }
+                  @if (series.startYear) {
+                    <span class="badge year">
+                      {{series.startYear}}{{series.endYear ? ' - ' + series.endYear : ' - Present'}}
+                    </span>
+                  }
+                  @if (isSeriesComplete(series)) {
+                    <span class="badge complete">
+                      <mat-icon>check_circle</mat-icon>
+                      Complete
+                    </span>
+                  }
+                </div>
+                <div class="series-actions">
+                  <button mat-icon-button (click)="toggleFavorite(series, $event)"
+                    [attr.aria-label]="isFavorited(series.id) ? 'Remove from favorites' : 'Add to favorites'">
+                  <mat-icon [class.favorited]="isFavorited(series.id)">
+                    {{isFavorited(series.id) ? 'favorite' : 'favorite_border'}}
+                  </mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+          <!-- Series Content -->
+          <div class="series-content" (click)="viewSeries(series)">
+            <div class="series-title-section">
+              <h3>{{ series.name }}</h3>
+              @if (isSeriesComplete(series)) {
+                <div class="completion-badge">
+                  <mat-icon>check_circle</mat-icon>
+                  Complete
+                </div>
+              }
+            </div>
+            @if (series.publisher) {
+              <p class="series-publisher">{{ series.publisher }}</p>
+            }
+            @if (series.description) {
+              <p class="description">
+                {{ series.description | slice:0:150 }}{{ series.description && series.description.length > 150 ? '...' : '' }}
+              </p>
+            }
+            <div class="series-meta">
+              @if (series.issuesAvailableCount) {
+                <div class="issue-count">
+                  <mat-icon>library_books</mat-icon>
+                  {{ series.issuesOwnedCount || 0 }} / {{ series.issuesAvailableCount }} issues
+                </div>
+              }
+              @if (series.issuesAvailableCount) {
+                <div class="completion-progress">
+                  <div class="progress-bar-wrapper">
+                    <div class="progress-bar-fill" [class.complete]="isSeriesComplete(series)"
+                      [style.width.%]="getCompletionPercentage(series)">
+                    </div>
+                  </div>
+                  <span class="progress-text" [class.complete]="isSeriesComplete(series)">
+                    {{ getCompletionPercentage(series) }}%
+                  </span>
+                </div>
+              }
+              @if (series.startYear) {
+                <div class="year-info">
+                  <mat-icon>calendar_today</mat-icon>
+                  {{ series.startYear }}{{ series.endYear ? ' - ' + series.endYear : ' - Present' }}
+                </div>
+              }
+            </div>
+          </div>
+          <!-- Action Buttons -->
+          <div class="series-card-actions">
+            <button mat-button color="primary" (click)="viewSeries(series)">
+              <mat-icon>visibility</mat-icon>
+              View Details
+            </button>
+            <button mat-button color="warn" (click)="deleteSeries($event, series.id)">
+              <mat-icon>delete</mat-icon>
+              Delete
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+    <app-custom-paginator class="paginator" [length]="totalSeries" [pageSize]="pageSize" [pageIndex]="pageIndex"
+      (page)="onPageChange($event)">
+    </app-custom-paginator>
+  }
+
+  <!-- No Results State -->
+  @if (!loading && filteredSeries.length === 0 && (searchTerm || selectedPublisher || showCompletedOnly)) {
+    <div class="no-results">
+      <mat-icon>search_off</mat-icon>
+      <h3>No series found</h3>
+      <p>Try adjusting your search terms or filters</p>
+      <button mat-button (click)="clearFilters()" class="clear-filters-btn">
+        Clear All Filters
+      </button>
+    </div>
+  }
+
+  @if (!loading && series.length === 0) {
+    <div class="empty-state">
+      <mat-icon>library_add</mat-icon>
+      <h3>No series yet</h3>
+      <p>Start building your collection by adding your first series</p>
+      <button mat-raised-button color="primary" routerLink="/series/new">
+        Add First Series
+      </button>
+    </div>
+  }
+
+  @if (loading) {
+    <div class="series-container skeleton-loading"
+        [class.grid]="viewMode === 'grid'"
+        [class.list]="viewMode === 'list'">
+
+      @for (i of [1,2,3,4,5,6,7,8,9,10,11,12]; track i) {
+        <div class="series-card skeleton-card">
+          <!-- Image -->
+          <div class="series-image-container">
+            <ngx-skeleton-loader
+              [theme]="{
+                width: '100%',
+                height: '260px',
+                borderRadius: '8px'
+              }">
+            </ngx-skeleton-loader>
+          </div>
+
+          <!-- Content -->
+          <div class="series-content">
+            <!-- Title -->
+            <ngx-skeleton-loader
+              [theme]="{
+                width: '70%',
+                height: '20px',
+                marginBottom: '8px'
+              }">
+            </ngx-skeleton-loader>
+
+            <!-- Publisher -->
+            <ngx-skeleton-loader
+              [theme]="{
+                width: '40%',
+                height: '14px',
+                marginBottom: '12px'
+              }">
+            </ngx-skeleton-loader>
+
+            <!-- Description -->
+            <ngx-skeleton-loader
+              [theme]="{
+                width: '100%',
+                height: '12px',
+                marginBottom: '6px'
+              }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{
+                width: '90%',
+                height: '12px',
+                marginBottom: '6px'
+              }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{
+                width: '80%',
+                height: '12px'
+              }">
+            </ngx-skeleton-loader>
+
+            <!-- Meta row -->
+            <div class="series-meta" style="margin-top: 12px;">
+              <ngx-skeleton-loader
+                [theme]="{
+                  width: '60%',
+                  height: '14px'
+                }">
+              </ngx-skeleton-loader>
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="series-card-actions">
+            <ngx-skeleton-loader
+              [theme]="{
+                width: '100%',
+                height: '36px',
+                borderRadius: '6px'
+              }">
+            </ngx-skeleton-loader>
+          </div>
+        </div>
+      }
+    </div>
+  }
+  
+</div>

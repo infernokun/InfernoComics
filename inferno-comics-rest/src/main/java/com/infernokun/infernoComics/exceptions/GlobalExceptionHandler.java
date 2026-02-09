@@ -9,6 +9,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 @Slf4j
@@ -18,6 +19,11 @@ public class GlobalExceptionHandler extends BaseController {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<String>> handleResourceNotFoundException(
             ResourceNotFoundException ex) {
+        return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
+    }
+
+    @ExceptionHandler(WebClientRequestException.class)
+    public ResponseEntity<ApiResponse<String>> handleWebClientRequestException(WebClientRequestException ex) {
         return createErrorResponse(ex.getClass().getName() + ": " + ex.getMessage());
     }
 

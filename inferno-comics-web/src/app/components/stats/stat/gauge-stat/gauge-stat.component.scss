@@ -1,0 +1,55 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
+.health-stats-container {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+
+  @include sm {
+    flex-direction: column;
+  }
+}
+
+.health-gauge {
+  flex-shrink: 0;
+}
+
+.health-metrics {
+  @include flex-column;
+  gap: var(--spacing-md);
+  flex: 1;
+}
+
+.health-metric {
+  @include flex-start;
+  gap: var(--spacing-sm);
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: var(--primary-color);
+  }
+
+  .health-metric-info {
+    @include flex-column;
+
+    .health-metric-value {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.2;
+
+      @include md {
+        font-size: 1.1rem;
+      }
+    }
+
+    .health-metric-label {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+  }
+}

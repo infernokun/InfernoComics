@@ -1,9 +1,12 @@
 {
   "name": "inferno-comics-recog",
-  "version": "0.3.3",
+  "version": "0.3.6",
   "scripts": {
     "start": "venv/bin/python3 src/recog.py",
     "start:debug": "/usr/bin/python3 src/recog.py --debug",
+    "lint": "venv/bin/python3 -m flake8 src/ --max-line-length=100",
+    "format": "venv/bin/python3 -m black src/",
+    "test": "venv/bin/python3 -m pytest tests/ -v",
     
     "dev:setup": "pyenv install 3.9.21 && pyenv global 3.9.21 && npm run venv:init && echo 'Now activate the venv and run: npm run deps:install'",
     "dev:sql": "sudo apt install libsqlite3-dev libssl-dev libffi-dev libbz2-dev libreadline-dev libncurses5-dev libncursesw5-dev libgdbm-dev libc6-dev zlib1g-dev",
@@ -20,10 +23,6 @@
     "deps:freeze": "venv/bin/python3 -m pip freeze > requirements.txt && echo 'Requirements exported to requirements.txt'",
     "deps:upgrade": "venv/bin/python3 -m pip install --upgrade -r requirements.txt",
     "deps:check": "venv/bin/python3 -m pip list --outdated",
-
-    "lint": "venv/bin/python3 -m flake8 src/ --max-line-length=100",
-    "format": "venv/bin/python3 -m black src/",
-    "test": "venv/bin/python3 -m pytest tests/ -v",
     
     "docker:build": "npm run docker:build-compile && npm run docker:build-runtime && npm run docker:push",
     "docker:build-compile": "export PROJECT=$(jq -r .name package.json) && docker buildx build --target build-stage --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg PROJECT=$PROJECT -t infernokun/${npm_package_name}:compile .",

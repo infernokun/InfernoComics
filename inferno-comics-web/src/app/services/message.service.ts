@@ -4,35 +4,84 @@ import {
   MatSnackBar,
   MatSnackBarConfig,
   MatSnackBarRef,
-  SimpleSnackBar,
+  TextOnlySnackBar,
 } from '@angular/material/snack-bar';
 import { Observable } from 'rxjs';
 import { CommonDialogComponent } from '../components/common/dialog/common-dialog/common-dialog.component';
+
+export type SnackbarType = 'success' | 'error' | 'warning' | 'info' | 'loading';
+
+export interface MessageOptions {
+  duration?: number;
+  action?: string;
+  verticalPosition?: 'top' | 'bottom';
+  horizontalPosition?: 'start' | 'center' | 'end' | 'left' | 'right';
+}
+
+const DEFAULT_DURATION: Record<SnackbarType, number> = {
+  success: 3000,
+  error: 5000,
+  warning: 4000,
+  info: 3000,
+  loading: 0,
+};
 
 @Injectable({
   providedIn: 'root',
 })
 export class MessageService {
-  private snackBarIsDisplayed: boolean = false;
+  private snackBarIsDisplayed = false;
 
   constructor(private snackBar: MatSnackBar, private matDialog: MatDialog) {}
 
-  add(message: string, duration = 2000): MatSnackBarRef<SimpleSnackBar> {
-    return this.snackBar.open(message, undefined, {
-      duration,
-      verticalPosition: 'top',
-    });
+  success(message: string, options?: MessageOptions): MatSnackBarRef<TextOnlySnackBar> {
+    return this.show(message, 'success', options);
   }
 
-  snackbar(message: string) {
-    this.snackBarIsDisplayed = true;
+  error(message: string, options?: MessageOptions): MatSnackBarRef<TextOnlySnackBar> {
+    return this.show(message, 'error', options);
+  }
 
-    this.snackBar
-    .open(message, undefined, { panelClass: ['custom-snackbar'], duration: 5000, verticalPosition: 'bottom', horizontalPosition: 'end' } as MatSnackBarConfig)
-      .afterDismissed()
-      .subscribe(() => {
-        this.snackBarIsDisplayed = false;
-      });
+  warning(message: string, options?: MessageOptions): MatSnackBarRef<TextOnlySnackBar> {
+    return this.show(message, 'warning', options);
+  }
+
+  info(message: string, options?: MessageOptions): MatSnackBarRef<TextOnlySnackBar> {
+    return this.show(message, 'info', options);
+  }
+
+  loading(message: string, options?: MessageOptions): MatSnackBarRef<TextOnlySnackBar> {
+    return this.show(message, 'loading', { duration: 0, ...options });
+  }
+
+  dismiss(): void {
+    this.snackBar.dismiss();
+  }
+
+  private show(
+    message: string,
+    type: SnackbarType,
+    options?: MessageOptions
+  ): MatSnackBarRef<TextOnlySnackBar> {
+    const config: MatSnackBarConfig = {
+      duration: options?.duration ?? DEFAULT_DURATION[type],
+      panelClass: [`snackbar-${type}`],
+      verticalPosition: options?.verticalPosition ?? 'bottom',
+      horizontalPosition: options?.horizontalPosition ?? 'end',
+    };
+
+    const ref = this.snackBar.open(
+      message,
+      options?.action ?? (type === 'loading' ? '' : 'Close'),
+      config
+    );
+
+    this.snackBarIsDisplayed = true;
+    ref.afterDismissed().subscribe(() => {
+      this.snackBarIsDisplayed = false;
+    });
+
+    return ref;
   }
 
   dialog(title?: string, message?: string): void {

@@ -13,7 +13,7 @@ RUN chmod +x gradlew
 RUN gradle build --no-daemon -x test
 
 # Stage 2: Runtime
-FROM eclipse-temurin:25-jdk-alpine AS runtime-stage
+FROM eclipse-temurin:25-jre-alpine AS runtime-stage
 LABEL maintainer="infernokun@infernokun.com" \
       description="Java service Docker image" \
       source="https://github.com/infernokun/InfernoComics" \
@@ -21,19 +21,18 @@ LABEL maintainer="infernokun@infernokun.com" \
 
 VOLUME ["/data/certs"]
 
-# Install dependencies using apk (Alpine's package manager)
+# Install minimal dependencies using apk (Alpine's package manager)
 RUN apk add --no-cache \
     tini \
     curl \
-    bash \
-    shadow
+    bash
 
-# Create user and group (Alpine uses addgroup/adduser)
+# Create non-root user with minimal permissions
 RUN set -eux; \
-    addgroup -g 1000 java; \
-    adduser -D -u 1000 -G java java; \
+    addgroup -g 1000 -S java; \
+    adduser -D -u 1000 -S -G java java; \
     mkdir -p /app; \
-    chown java:java -R /app /home/java
+    chown java:java -R /app
 
 ARG PROJECT
 ENV PROJECT=${PROJECT}

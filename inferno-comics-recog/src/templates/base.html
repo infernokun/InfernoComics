@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Inferno Comics{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Base Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <!-- Theme Toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="themeIcon" class="theme-toggle-icon"></span>
+        <span id="themeText">Light</span>
+    </button>
+
+    <div class="page-container">
+        {% block header %}{% endblock %}
+
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        {% block footer %}{% endblock %}
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+
+    <!-- API Configuration -->
+    <script>
+        API.init({
+            flask_host: '{{ config.flask_host }}',
+            flask_port: '{{ config.flask_port }}',
+            api_url_prefix: '{{ config.api_url_prefix }}'
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

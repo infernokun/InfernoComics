@@ -16,17 +16,26 @@ public class InfernoComicsConfig {
     private String defaultAdminUsername;
     private String defaultAdminPassword;
     private String encryptionKey;
+
     private String comicVineAPIKey;
+
     private String groqAPIKey;
     private String groqModel;
+
     private boolean descriptionGeneration;
+
     private String recognitionServerHost;
     private int recognitionServerPort;
+
     private boolean skipScrape;
+
     private String gcdUsername;
     private String gcdPassword;
+
     private String nextcloudUrl;
     private String nextcloudUsername;
     private String nextcloudPassword;
     private String nextcloudFolderLocation;
+
+    private String searxngHost;
 }

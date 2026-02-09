@@ -1,0 +1,585 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
+// Main wrapper
+.admin-wrapper {
+  @include flex-center;
+  padding: var(--spacing-2xl);
+  min-height: 100vh;
+
+  @include md {
+    padding: var(--spacing-md) var(--spacing-sm);
+    background: var(--background-color);
+  }
+}
+
+.admin-card {
+  width: 100%;
+  max-width: 1400px;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-2xl);
+  @include card-base;
+  animation: slideIn 0.4s ease-out;
+
+  @include md {
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+  }
+
+  mat-card-header {
+    margin-bottom: var(--spacing-2xl);
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: var(--spacing-lg);
+
+    @include md {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .header-content {
+      @include flex-between;
+      width: 100%;
+
+      mat-card-title {
+        font-size: 1.75rem;
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-primary);
+        margin-bottom: 4px;
+
+        @include md {
+          font-size: 1.375rem;
+        }
+      }
+
+      mat-card-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+
+        @include md {
+          font-size: 0.8125rem;
+        }
+      }
+    }
+  }
+}
+
+// Tab styling
+.tab-content {
+  padding: var(--spacing-2xl) 0;
+
+  @include md {
+    padding: var(--spacing-lg) 0;
+  }
+}
+
+.tab-icon {
+  margin-right: var(--spacing-sm);
+}
+
+// Operations section
+.operations-section {
+  margin-bottom: var(--spacing-3xl);
+
+  .section-header {
+    @include flex-between;
+    margin-bottom: var(--spacing-2xl);
+
+    h3 {
+      @include flex-start;
+      gap: var(--spacing-md);
+      font-size: 1.25rem;
+      font-weight: var(--font-weight-semibold);
+      color: var(--text-primary);
+      margin: 0;
+
+      mat-icon {
+        color: var(--primary-color);
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+    }
+  }
+}
+
+.operations-grid {
+  @include responsive-grid(350px);
+}
+
+.operation-card {
+  border-radius: var(--radius-md);
+  @include card-hover;
+
+  .operation-icon {
+    @include gradient-primary;
+    color: white;
+    border-radius: 50%;
+    padding: var(--spacing-sm);
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .operation-description {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    margin: var(--spacing-lg) 0;
+  }
+
+  .progress-container {
+    @include flex-column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-lg);
+
+    mat-progress-bar {
+      height: 8px;
+      border-radius: var(--radius-xs);
+    }
+
+    .progress-text {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+  }
+
+  mat-card-actions {
+    padding: var(--spacing-lg);
+
+    button {
+      mat-spinner {
+        display: inline-block;
+        margin-right: var(--spacing-sm);
+      }
+
+      mat-icon {
+        margin-right: var(--spacing-sm);
+      }
+    }
+  }
+
+  @include md {
+    .operation-description {
+      font-size: 0.8125rem;
+    }
+  }
+}
+
+.stats-row {
+  display: flex;
+  gap: var(--spacing-2xl);
+  flex-wrap: wrap;
+
+  @include md {
+    flex-direction: column;
+  }
+
+  .stat-item {
+    @include flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg) var(--spacing-2xl);
+    background: var(--background-color);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+
+    @include md {
+      padding: var(--spacing-md) var(--spacing-lg);
+    }
+
+    mat-icon {
+      color: var(--primary-color);
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: var(--font-weight-semibold);
+      color: var(--text-primary);
+
+      @include md {
+        font-size: 1.5rem;
+      }
+    }
+
+    .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+  }
+}
+
+// Config section
+.config-header {
+  @include flex-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-2xl);
+
+  @include md {
+    flex-direction: column;
+    gap: var(--spacing-lg);
+  }
+
+  .config-title {
+    h3 {
+      font-size: 1.25rem;
+      font-weight: var(--font-weight-semibold);
+      color: var(--text-primary);
+      margin: 0 0 4px 0;
+    }
+
+    p {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      margin: 0;
+    }
+  }
+
+  .config-actions {
+    @include flex-start;
+    gap: var(--spacing-sm);
+
+    @include md {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+}
+
+// Section headers
+.section-header {
+  @include flex-between;
+  margin-bottom: var(--spacing-2xl);
+
+  h3 {
+    @include flex-start;
+    gap: var(--spacing-md);
+    font-size: 1.25rem;
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    margin: 0;
+
+    mat-icon {
+      color: var(--primary-color);
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  mat-chip {
+    &.unsaved {
+      background-color: var(--warn-color);
+      color: white;
+    }
+  }
+}
+
+// Global settings section
+.section-global {
+  margin-bottom: var(--spacing-3xl);
+  padding: var(--spacing-2xl);
+  background: var(--background-color);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+
+  @include md {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .settings-grid {
+    @include responsive-grid(250px);
+    margin-top: var(--spacing-lg);
+
+    @include md {
+      grid-template-columns: 1fr;
+      gap: var(--spacing-md);
+    }
+
+    mat-form-field {
+      width: 100%;
+
+      @include md {
+        input {
+          font-size: 16px !important;
+        }
+      }
+    }
+  }
+}
+
+// Presets section
+.section-presets {
+  margin-bottom: var(--spacing-3xl);
+
+  ::ng-deep .mat-mdc-tab-group {
+    .mat-mdc-tab-labels {
+      background: var(--background-color);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+      border: 1px solid var(--border-color);
+      border-bottom: none;
+
+      @include md {
+        border-radius: 10px 10px 0 0;
+      }
+    }
+
+    .mat-mdc-tab {
+      min-width: 140px;
+      color: var(--text-primary) !important;
+      opacity: 0.7;
+
+      @include md {
+        min-width: auto;
+        padding: 0 var(--spacing-md);
+      }
+
+      &.mdc-tab--active {
+        opacity: 1;
+        color: var(--primary-color) !important;
+      }
+
+      .mdc-tab__text-label {
+        color: inherit;
+      }
+
+      .tab-icon {
+        margin-right: var(--spacing-sm);
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: inherit;
+
+        @include md {
+          margin-right: 4px;
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+    }
+
+    .mat-mdc-tab-body-wrapper {
+      padding: var(--spacing-2xl);
+      border: 1px solid var(--border-color);
+      border-radius: 0 0 var(--radius-md) var(--radius-md);
+      background: var(--surface-color);
+
+      @include md {
+        padding: 14px;
+        border-radius: 0 0 10px 10px;
+      }
+    }
+  }
+
+  .preset-content {
+    @include flex-column;
+    gap: var(--spacing-lg);
+  }
+
+  .sub-section-panel {
+    margin-bottom: var(--spacing-lg);
+    @include card-base;
+
+    ::ng-deep {
+      .mat-expansion-panel-header {
+        padding: var(--spacing-lg) var(--spacing-2xl);
+        background: var(--surface-color);
+
+        @include md {
+          padding: 14px var(--spacing-lg) !important;
+        }
+
+        mat-panel-title {
+          @include flex-start;
+          gap: var(--spacing-md);
+          font-weight: var(--font-weight-semibold);
+          color: var(--text-primary);
+
+          @include md {
+            font-size: 0.9375rem;
+            gap: 10px;
+          }
+
+          mat-icon {
+            color: var(--primary-color);
+
+            @include md {
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+            }
+          }
+        }
+      }
+
+      .mat-expansion-panel-body {
+        padding: var(--spacing-2xl);
+        background: var(--background-color);
+
+        @include md {
+          padding: var(--spacing-lg) !important;
+        }
+      }
+    }
+  }
+
+  .param-grid {
+    @include responsive-grid(200px);
+
+    @include md {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    @include between(0px, 400px) {
+      grid-template-columns: 1fr;
+    }
+
+    .compact-field {
+      ::ng-deep {
+        .mat-mdc-form-field-infix {
+          padding: var(--spacing-sm) 0;
+
+          @include md {
+            padding: 10px 0;
+          }
+        }
+
+        .small-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          opacity: 0.6;
+        }
+      }
+    }
+  }
+
+  .settings-row {
+    @include responsive-grid(250px);
+
+    @include md {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .options-panel {
+    .options-container {
+      @include responsive-grid(280px);
+
+      @include md {
+        grid-template-columns: 1fr !important;
+      }
+
+      .option-card {
+        padding: var(--spacing-lg);
+        border: 2px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        @include card-hover;
+        background: var(--surface-color);
+
+        @include md {
+          padding: 14px;
+          border-radius: 10px;
+
+          &:active {
+            transform: scale(0.99);
+          }
+        }
+
+        mat-slide-toggle {
+          width: 100%;
+
+          .toggle-content {
+            @include flex-column;
+            gap: 4px;
+            margin-left: var(--spacing-md);
+
+            @include md {
+              margin-left: 10px;
+            }
+
+            strong {
+              font-size: 0.9375rem;
+              color: var(--text-primary);
+
+              @include md {
+                font-size: 0.875rem;
+              }
+            }
+
+            .toggle-hint {
+              font-size: 0.75rem;
+              color: var(--text-secondary);
+              line-height: 1.4;
+
+              @include md {
+                font-size: 0.6875rem;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Action bar
+.action-bar {
+  margin-top: var(--spacing-3xl);
+  padding-top: var(--spacing-2xl);
+  border-top: 2px solid var(--border-color);
+  @include flex-between;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+
+  @include md {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: var(--spacing-2xl);
+    padding-top: var(--spacing-xl);
+  }
+
+  button {
+    min-width: 120px;
+
+    @include md {
+      width: 100%;
+      min-width: auto;
+      min-height: 48px;
+    }
+
+    mat-icon {
+      margin-right: var(--spacing-sm);
+    }
+  }
+}
+
+// Loading state
+.loading {
+  @include flex-column;
+  @include flex-center;
+  min-height: 400px;
+  gap: var(--spacing-2xl);
+
+  .loading-text {
+    color: var(--text-secondary);
+    font-size: 1rem;
+    margin: 0;
+  }
+}
+
+// Animations
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

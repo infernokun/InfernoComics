@@ -1,0 +1,694 @@
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { MaterialModule } from '../../../material.module';
+import { ApiResponse } from '../../../models/api-response.model';
+import { ComicVineSeries, ComicVineSeriesDto } from '../../../models/comic-vine.model';
+import { generateSlug, Series } from '../../../models/series.model';
+import { ComicVineService } from '../../../services/comic-vine.service';
+import { SeriesService } from '../../../services/series.service';
+import { MessageService } from '../../../services/message.service';
+
+@Component({
+  selector: 'app-series-form',
+  templateUrl: './series-form.component.html',
+  styleUrls: ['./series-form.component.scss'],
+  imports: [CommonModule, MaterialModule, FormsModule, ReactiveFormsModule]
+})
+export class SeriesFormComponent implements OnInit, OnDestroy {
+  seriesForm: FormGroup;
+  isEditMode = false;
+  isComicVineManagementMode = false;
+  seriesId: number | null = null;
+  loading = false;
+  comicVineResults: ComicVineSeries[] = [];
+  searchingComicVine = false;
+  searchByComicVineId = false;
+
+  customSearchTerm = '';
+  hasSearched = false;
+
+  // Multi-selection properties
+  selectedSeries: ComicVineSeries[] = [];
+  showCombinationConfig = false;
+  selectedCover: string = '';
+
+  existingComicVineData: ComicVineSeries[] = [];
+  allAvailableSeries: ComicVineSeries[] = [];
+
+  private destroy$ = new Subject<void>();
+
+  get selectedPrimarySeries(): ComicVineSeries | null {
+    return this.seriesForm.get('selectedPrimarySeries')?.value;
+  }
+
+  set selectedPrimarySeries(value: ComicVineSeries | null) {
+    this.seriesForm.patchValue({ selectedPrimarySeries: value });
+  }
+
+  get updateMetadataOnAdd(): boolean {
+    return this.seriesForm.get('updateMetadataOnAdd')?.value || false;
+  }
+
+  set updateMetadataOnAdd(value: boolean) {
+    this.seriesForm.patchValue({ updateMetadataOnAdd: value });
+  }
+
+  constructor(
+    private fb: FormBuilder,
+    private seriesService: SeriesService,
+    private comicVineService: ComicVineService,
+    private router: Router,
+    private route: ActivatedRoute,
+    private messageService: MessageService
+  ) {
+    this.seriesForm = this.createForm();
+  }
+
+  ngOnInit(): void {
+    this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      if (params['id']) {
+        this.isEditMode = true;
+        this.seriesId = +params['id'];
+
+        this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(queryParams => {
+          if (queryParams['mode'] === 'comic-vine-management') {
+            this.isComicVineManagementMode = true;
+          }
+        });
+
+        this.loadSeries();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  createForm(): FormGroup {
+    return this.fb.group({
+      name: ['', [Validators.required, Validators.maxLength(255)]],
+      description: ['', Validators.maxLength(10000)],
+      publisher: ['', Validators.maxLength(255)],
+      startYear: [''],
+      endYear: [''],
+      imageUrl: [''],
+      issuesAvailableCount: [{ value: 0, disabled: true }],
+      issuesOwnedCount: [{ value: 0, disabled: true }],
+      comicVineId: [''],
+      comicVineIds: [[]],
+      selectedPrimarySeries: [null],
+      updateMetadataOnAdd: [false],
+      appendMode: [true]
+    });
+  }
+
+  loadSeries(): void {
+    if (this.seriesId) {
+      this.loading = true;
+      this.seriesService.getSeriesById(this.seriesId).subscribe({
+        next: (res: ApiResponse<Series>) => {
+          if (!res.data) throw new Error('issue getting series by id');
+
+          this.seriesForm.patchValue(res.data);
+          this.customSearchTerm = res.data.name || '';
+
+          if (this.isComicVineManagementMode || this.isEditMode) {
+            this.loadExistingComicVineData(res.data.comicVineIds || []);
+          }
+
+          this.loading = false;
+        },
+        error: (err: Error) => {
+          console.error('Error loading series:', err);
+          this.messageService.error('Error loading series');
+          this.loading = false;
+        }
+      });
+    }
+  }
+
+  loadExistingComicVineData(comicVineIds: string[]): void {
+    if (!comicVineIds || comicVineIds.length === 0) {
+      this.existingComicVineData = [];
+      this.updateFormFromCurrentData();
+      return;
+    }
+
+    this.loading = true;
+    const loadPromises = comicVineIds.map(id =>
+      this.comicVineService.getSeriesById(id).toPromise()
+    );
+
+    Promise.allSettled(loadPromises).then(results => {
+      this.existingComicVineData = results
+        .filter(result => result.status === 'fulfilled')
+        .map(result => (result as PromiseFulfilledResult<ApiResponse<ComicVineSeriesDto>>).value)
+        .filter(data => data !== null)
+        .map(apiResponse => {
+          if (!apiResponse.data) throw new Error('issue getting comic vine series by id');
+
+          return apiResponse.data;
+        });
+
+      this.updateFormFromCurrentData();
+      this.loading = false;
+    }).catch((err: Error) => {
+      console.error('Error loading existing Comic Vine data:', err);
+      this.loading = false;
+    });
+  }
+
+  updateFormFromCurrentData(): void {
+    if (this.existingComicVineData.length === 0) {
+      this.seriesForm.patchValue({
+        comicVineIds: [],
+        comicVineId: null,
+        issuesAvailableCount: 0
+      });
+      return;
+    }
+
+    const currentIds = this.existingComicVineData.map(s => s.id);
+
+    // Set primary ID (keep current if valid, otherwise use first)
+    const currentPrimary = this.seriesForm.get('comicVineId')?.value;
+    const primaryId = currentIds.includes(currentPrimary) ? currentPrimary : currentIds[0];
+
+    // Calculate metadata
+    const startYears = this.existingComicVineData
+      .map(s => s.startYear)
+      .filter(year => year !== null && year !== undefined);
+    const endYears = this.existingComicVineData
+      .map(s => s.endYear)
+      .filter(year => year !== null && year !== undefined);
+
+    const earliestStart = startYears.length > 0 ? Math.min(...startYears) : null;
+    const latestEnd = endYears.length > 0 ? Math.max(...endYears) : null;
+    const totalAvailableCount = this.existingComicVineData
+      .map(s => s.issueCount || 0)
+      .reduce((sum, count) => sum + count, 0);
+
+    // Update form with current state
+    this.seriesForm.patchValue({
+      comicVineIds: currentIds,
+      comicVineId: primaryId,
+      startYear: earliestStart,
+      endYear: latestEnd,
+      issuesAvailableCount: totalAvailableCount
+    });
+  }
+
+  searchComicVine(): void {
+    const searchTerm = this.customSearchTerm || this.seriesForm.get('name')?.value;
+    if (!searchTerm || searchTerm.length < 3) {
+      this.messageService.warning('Please enter at least 3 characters to search');
+      return;
+    }
+
+    this.searchingComicVine = true;
+    this.hasSearched = true;
+
+    // Search by ID if checkbox is checked
+    if (this.searchByComicVineId) {
+      this.comicVineService.getSeriesById(searchTerm).subscribe({
+        next: (res: ApiResponse<ComicVineSeriesDto>) => {
+          if (res.data) {
+            // Filter out if already associated
+            const currentIds = this.existingComicVineData.map(s => s.id);
+            if (currentIds.includes(res.data.id)) {
+              this.comicVineResults = [];
+              this.messageService.info('This series is already associated');
+            } else {
+              this.comicVineResults = [res.data];
+            }
+          } else {
+            this.comicVineResults = [];
+            this.messageService.info('No series found with that ID');
+          }
+          this.searchingComicVine = false;
+        },
+        error: (err: Error) => {
+          console.error('Error fetching Comic Vine series by ID:', err);
+          this.messageService.error('Error fetching series by ID');
+          this.comicVineResults = [];
+          this.searchingComicVine = false;
+        }
+      });
+    } else {
+      // Original text search logic
+      this.seriesService.searchComicVineSeries(searchTerm).subscribe({
+        next: (res: ApiResponse<ComicVineSeriesDto[]>) => {
+          if (!res.data) throw new Error('no data from series comic vine search');
+
+          res.data = res.data.sort((a, b) => {
+            if (a.startYear && b.startYear) {
+              return b.startYear - a.startYear;
+            } else if (a.startYear) {
+              return -1;
+            } else if (b.startYear) {
+              return 1;
+            }
+            return 0;
+          });
+
+          const currentIds = this.existingComicVineData.map(s => s.id);
+          res.data = res.data.filter(r => !currentIds.includes(r.id));
+
+          this.comicVineResults = res.data;
+          this.searchingComicVine = false;
+        },
+        error: (err: Error) => {
+          console.error('Error searching Comic Vine:', err);
+          this.searchingComicVine = false;
+        }
+      });
+    }
+  }
+
+  removeExistingComicVineSeries(comicVineId: string): void {
+    const seriesIndex = this.existingComicVineData.findIndex(s => s.id === comicVineId);
+    if (seriesIndex > -1) {
+      const removedSeries = this.existingComicVineData[seriesIndex];
+      this.existingComicVineData.splice(seriesIndex, 1);
+
+      this.updateFormFromCurrentData();
+      this.seriesForm.markAsDirty();
+
+      this.messageService.info(`Removed "${removedSeries.name}" from series`);
+    }
+  }
+
+  addToExistingSeries(): void {
+    if (this.selectedSeries.length === 0) {
+      this.messageService.warning('Please select at least one series to add');
+      return;
+    }
+
+    const addedCount = this.selectedSeries.length;
+    const addedNames = this.selectedSeries.map(s => s.name).join(', ');
+    const beforeCount = this.existingComicVineData.length;
+
+    this.existingComicVineData.push(...this.selectedSeries);
+    this.updateFormFromCurrentData();
+
+    // Mark form as dirty to enable save
+    this.seriesForm.markAsDirty();
+
+    this.clearSelection();
+    this.comicVineResults = [];
+
+    const afterCount = this.existingComicVineData.length;
+    this.messageService.success(
+      `Added ${addedCount} series (${beforeCount} → ${afterCount} total): ${addedNames}`,
+      { duration: 5000 }
+    );
+  }
+
+  isSeriesSelected(series: ComicVineSeries): boolean {
+    return this.selectedSeries.some(s => s.id === series.id);
+  }
+
+  toggleSeriesSelection(series: ComicVineSeries): void {
+    const index = this.selectedSeries.findIndex(s => s.id === series.id);
+    if (index > -1) {
+      this.selectedSeries.splice(index, 1);
+    } else {
+      this.selectedSeries.push(series);
+    }
+  }
+
+  removeFromSelection(series: ComicVineSeries): void {
+    const index = this.selectedSeries.findIndex(s => s.id === series.id);
+    if (index > -1) {
+      this.selectedSeries.splice(index, 1);
+    }
+  }
+
+  clearSelection(): void {
+    this.selectedSeries = [];
+    this.showCombinationConfig = false;
+    this.selectedCover = '';
+    this.selectedPrimarySeries = null;
+    this.updateMetadataOnAdd = false;
+    this.allAvailableSeries = [];
+  }
+
+  combineSelectedSeries(): void {
+    if (this.selectedSeries.length === 0) {
+      this.messageService.warning('Please select at least one series');
+      return;
+    }
+
+    // Check if we're in append mode for existing series
+    const hasExistingSeries = this.existingComicVineData.length > 0;
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+
+    if (this.isComicVineManagementMode || (this.isEditMode && hasExistingSeries && isAppendMode)) {
+      const totalSeriesAfterAdd = this.existingComicVineData.length + this.selectedSeries.length;
+
+      if (totalSeriesAfterAdd >= 2) {
+        this.allAvailableSeries = [...this.existingComicVineData, ...this.selectedSeries];
+        this.showCombinationConfig = true;
+        this.selectedPrimarySeries = this.selectedSeries[0];
+        this.selectedCover = this.selectedSeries[0].imageUrl || '';
+        return;
+      } else {
+        this.addToExistingSeries();
+        return;
+      }
+    }
+
+    // Regular mode or replace mode
+    if (this.selectedSeries.length === 1 && !hasExistingSeries) {
+      this.selectSingleSeries(this.selectedSeries[0], false); // false = don't append
+      return;
+    }
+
+    this.allAvailableSeries = [...this.selectedSeries];
+    this.showCombinationConfig = true;
+    this.selectedPrimarySeries = this.selectedSeries[0];
+    this.selectedCover = this.selectedSeries[0].imageUrl || '';
+  }
+
+  selectCover(imageUrl: string): void {
+    this.selectedCover = imageUrl;
+  }
+
+  applyCombinedConfiguration(): void {
+    if (!this.selectedPrimarySeries || !this.selectedCover) {
+      this.messageService.warning('Please select primary series and cover image');
+      return;
+    }
+
+    const hasExistingSeries = this.existingComicVineData.length > 0;
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+
+    if (this.isComicVineManagementMode || (this.isEditMode && hasExistingSeries && isAppendMode)) {
+      this.addToExistingSeriesWithConfig();
+    } else {
+      this.applyRegularCombinedConfiguration();
+    }
+  }
+
+  private addToExistingSeriesWithConfig(): void {
+    const addedCount = this.selectedSeries.length;
+    const addedNames = this.selectedSeries.map(s => s.name).join(', ');
+    const beforeCount = this.existingComicVineData.length;
+
+    this.existingComicVineData.push(...this.selectedSeries);
+
+    // Always update cover if selected
+    if (this.selectedCover) {
+      this.seriesForm.patchValue({ imageUrl: this.selectedCover });
+    }
+
+    // Update metadata if requested
+    if (this.updateMetadataOnAdd && this.selectedPrimarySeries) {
+      this.seriesForm.patchValue({
+        name: this.selectedPrimarySeries.name,
+        description: this.selectedPrimarySeries.description,
+        publisher: this.selectedPrimarySeries.publisher
+      });
+    }
+
+    this.updateFormFromCurrentData();
+
+    // Mark form as dirty to enable save
+    this.seriesForm.markAsDirty();
+
+    this.clearSelection();
+    this.comicVineResults = [];
+    this.showCombinationConfig = false;
+
+    const afterCount = this.existingComicVineData.length;
+    this.messageService.success(
+      `Added ${addedCount} series (${beforeCount} → ${afterCount} total): ${addedNames}`,
+      { duration: 5000 }
+    );
+  }
+
+  private applyRegularCombinedConfiguration(): void {
+    const startYears = this.selectedSeries
+      .map(s => s.startYear)
+      .filter(year => year !== null && year !== undefined);
+    const endYears = this.selectedSeries
+      .map(s => s.endYear)
+      .filter(year => year !== null && year !== undefined);
+
+    const earliestStart = startYears.length > 0 ? Math.min(...startYears) : null;
+    const latestEnd = endYears.length > 0 ? Math.max(...endYears) : null;
+    const totalAvailableCount = this.selectedSeries
+      .map(s => s.issueCount || 0)
+      .reduce((sum, count) => sum + count, 0);
+
+    this.seriesForm.patchValue({
+      name: this.selectedPrimarySeries!.name,
+      description: this.selectedPrimarySeries!.description,
+      publisher: this.selectedPrimarySeries!.publisher,
+      startYear: earliestStart,
+      endYear: latestEnd,
+      imageUrl: this.selectedCover,
+      issuesAvailableCount: totalAvailableCount,
+      comicVineId: this.selectedPrimarySeries!.id,
+      comicVineIds: this.selectedSeries.map(s => s.id)
+    });
+
+    this.comicVineResults = [];
+    this.showCombinationConfig = false;
+
+    const seriesNames = this.selectedSeries.map(s => s.name).join(', ');
+    this.messageService.success(`Combined ${this.selectedSeries.length} series: ${seriesNames}`, { duration: 5000 });
+  }
+
+  cancelCombination(): void {
+    this.showCombinationConfig = false;
+    this.selectedCover = '';
+    this.selectedPrimarySeries = null;
+    this.updateMetadataOnAdd = false;
+    this.allAvailableSeries = [];
+  }
+
+  selectSingleSeries(comicVineSeries: ComicVineSeries, appendToExisting: boolean = true): void {
+    const hasExistingSeries = this.existingComicVineData.length > 0;
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+
+    if (this.isComicVineManagementMode || (this.isEditMode && hasExistingSeries && appendToExisting && isAppendMode)) {
+      this.selectedSeries = [comicVineSeries];
+      this.addToExistingSeries();
+      return;
+    }
+
+    // Replace mode or new series
+    this.seriesForm.patchValue({
+      name: comicVineSeries.name,
+      description: comicVineSeries.description,
+      publisher: comicVineSeries.publisher,
+      startYear: comicVineSeries.startYear,
+      endYear: comicVineSeries.endYear,
+      imageUrl: comicVineSeries.imageUrl,
+      issuesAvailableCount: comicVineSeries.issueCount || 0,
+      comicVineId: comicVineSeries.id,
+      comicVineIds: [comicVineSeries.id]
+    });
+
+    // Clear existing data since we're replacing
+    this.existingComicVineData = [comicVineSeries];
+
+    this.comicVineResults = [];
+    this.clearSelection();
+
+    if (hasExistingSeries && !isAppendMode) {
+      this.messageService.success(`Replaced series data with "${comicVineSeries.name}"`);
+    } else {
+      this.messageService.success(`Selected "${comicVineSeries.name}"`);
+    }
+  }
+
+  toggleAppendMode(): void {
+    const currentMode = this.seriesForm.get('appendMode')?.value;
+    this.seriesForm.patchValue({ appendMode: !currentMode });
+  }
+
+  getAppendModeLabel(): string {
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+    return isAppendMode ? 'Append to existing' : 'Replace existing';
+  }
+
+  // Form validation: prevent submission if no Comic Vine data in management mode
+  canSubmitForm(): boolean {
+    if (!this.seriesForm.valid) {
+      return false;
+    }
+
+    // In Comic Vine management mode, require at least one Comic Vine series
+    if (this.isComicVineManagementMode && this.existingComicVineData.length === 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  onSubmit(): void {
+    if (!this.canSubmitForm()) {
+      if (this.isComicVineManagementMode && this.existingComicVineData.length === 0) {
+        this.messageService.warning('Please add at least one Comic Vine series before saving');
+      } else {
+        this.messageService.warning('Please fix form errors before submitting');
+      }
+      return;
+    }
+
+    this.loading = true;
+
+    // Enable fields temporarily to get their values
+    this.seriesForm.get('issuesAvailableCount')?.enable();
+    this.seriesForm.get('issuesOwnedCount')?.enable();
+    const formData = this.seriesForm.value;
+    this.seriesForm.get('issuesAvailableCount')?.disable();
+    this.seriesForm.get('issuesOwnedCount')?.disable();
+
+    // Build clean series object with only the data we need
+    const seriesData = new Series({
+      name: formData.name,
+      description: formData.description,
+      publisher: formData.publisher,
+      startYear: formData.startYear,
+      endYear: formData.endYear,
+      imageUrl: formData.imageUrl,
+      issuesAvailableCount: formData.issuesAvailableCount,
+      issuesOwnedCount: formData.issuesOwnedCount,
+      generatedDescription: false,
+      comicVineId: formData.comicVineId,
+      comicVineIds: formData.comicVineIds || []
+    });
+
+    // Add ID for updates
+    if (this.isEditMode && this.seriesId) {
+      seriesData.id = this.seriesId;
+    }
+
+    const operation: Observable<ApiResponse<Series>>  = this.isEditMode && this.seriesId
+      ? this.seriesService.updateSeries(this.seriesId, seriesData)
+      : this.seriesService.createSeries(seriesData);
+
+    operation.subscribe({
+      next: (res: ApiResponse<Series>) => {
+        if (!res.data) throw new Error('Create/update operation provided no data');
+
+        const message = this.isEditMode ? 'Series updated successfully' : 'Series created successfully';
+        this.messageService.success(message);
+        this.router.navigate(['/series', res.data.id, generateSlug(res.data.name)]);
+      },
+      error: (err: Error) => {
+        console.error('Error saving series:', err);
+        this.messageService.error('Error saving series');
+        this.loading = false;
+      }
+    });
+  }
+
+  cancel(): void {
+    if (this.isEditMode && this.seriesId) {
+      const currentName = this.seriesForm.get('name')?.value;
+      this.router.navigate(['/series', this.seriesId, generateSlug(currentName)]);
+    } else {
+      this.router.navigate(['/series']);
+    }
+  }
+
+  hasChanges(): boolean {
+    if (!this.isEditMode) return false;
+    return this.seriesForm.dirty;
+  }
+
+  getFormTitle(): string {
+    if (this.isComicVineManagementMode) {
+      return 'Manage Comic Vine Series';
+    }
+    return this.isEditMode ? 'Edit Series' : 'Add New Series';
+  }
+
+  getCurrentAvailableCount(): number {
+    return this.existingComicVineData
+      .map(s => s.issueCount || 0)
+      .reduce((sum, count) => sum + count, 0);
+  }
+
+  getCurrentOwnedCount(): number {
+    return this.seriesForm.get('issuesOwnedCount')?.value || 0;
+  }
+
+  getPreviewDateRange(): string {
+    if (!this.allAvailableSeries.length) return '';
+
+    const startYears = this.allAvailableSeries
+      .map(s => s.startYear)
+      .filter(year => year !== null && year !== undefined);
+    const endYears = this.allAvailableSeries
+      .map(s => s.endYear)
+      .filter(year => year !== null && year !== undefined);
+
+    const earliestStart = startYears.length > 0 ? Math.min(...startYears) : null;
+    const latestEnd = endYears.length > 0 ? Math.max(...endYears) : null;
+
+    if (earliestStart && latestEnd && earliestStart !== latestEnd) {
+      return `${earliestStart} - ${latestEnd}`;
+    } else if (earliestStart) {
+      return earliestStart.toString();
+    }
+    return '';
+  }
+
+  getPreviewDescription(): string {
+    if (this.isComicVineManagementMode && !this.updateMetadataOnAdd) {
+      return this.seriesForm.get('description')?.value || '';
+    }
+    return this.selectedPrimarySeries?.description || '';
+  }
+
+  getPreviewAvailableCount(): number {
+    if (!this.allAvailableSeries.length) return 0;
+
+    return this.allAvailableSeries
+      .map(s => s.issueCount || 0)
+      .reduce((sum, count) => sum + count, 0);
+  }
+
+  getPreviewSeriesCount(): number {
+    return this.allAvailableSeries.length;
+  }
+
+  isExistingSeries(seriesId: string): boolean {
+    return this.existingComicVineData.some(s => s.id === seriesId);
+  }
+
+  getComicVineValidationMessage(): string {
+    if (this.isComicVineManagementMode && this.existingComicVineData.length === 0) {
+      return 'At least one Comic Vine series is required';
+    }
+    return '';
+  }
+
+  getOperationModeMessage(): string {
+    const existingCount = this.existingComicVineData.length;
+    const isAppendMode = this.seriesForm.get('appendMode')?.value !== false;
+
+    if (existingCount === 0) {
+      return 'No existing Comic Vine series - new selections will be added';
+    }
+
+    if (this.isComicVineManagementMode) {
+      return `Managing ${existingCount} existing series - new selections will be added`;
+    }
+
+    return isAppendMode
+      ? `Append mode: New selections will be added to ${existingCount} existing series`
+      : `Replace mode: New selections will replace ${existingCount} existing series`;
+  }
+}

@@ -1,0 +1,346 @@
+<div class="issues-list">
+  @if (loading) {
+    <div class="dashboard-header">
+      <div class="stats-row">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <div class="stat-card skeleton-card">
+            <ngx-skeleton-loader
+              [theme]="{ width: '40px', height: '40px', borderRadius: '50%', marginBottom: '12px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '50px', height: '28px', marginBottom: '6px' }">
+            </ngx-skeleton-loader>
+            <ngx-skeleton-loader
+              [theme]="{ width: '70px', height: '12px' }">
+            </ngx-skeleton-loader>
+          </div>
+        }
+      </div>
+
+      <div class="activity-section">
+        <div class="latest-issue-card skeleton-card">
+          <div class="card-header">
+            <ngx-skeleton-loader
+              [theme]="{ width: '120px', height: '20px' }">
+            </ngx-skeleton-loader>
+          </div>
+          <div class="latest-issue-content">
+            <ngx-skeleton-loader
+              [theme]="{ width: '80px', height: '120px', borderRadius: '4px' }">
+            </ngx-skeleton-loader>
+            <div class="latest-issue-info">
+              <ngx-skeleton-loader
+                [theme]="{ width: '100%', height: '16px', marginBottom: '8px' }">
+              </ngx-skeleton-loader>
+              <ngx-skeleton-loader
+                [theme]="{ width: '60%', height: '14px', marginBottom: '6px' }">
+              </ngx-skeleton-loader>
+              <ngx-skeleton-loader
+                [theme]="{ width: '80px', height: '12px' }">
+              </ngx-skeleton-loader>
+            </div>
+          </div>
+        </div>
+
+        <div class="recent-activity-card skeleton-card">
+          <div class="card-header">
+            <ngx-skeleton-loader
+              [theme]="{ width: '120px', height: '20px' }">
+            </ngx-skeleton-loader>
+          </div>
+          <div class="activity-list">
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <div class="activity-item">
+                <ngx-skeleton-loader
+                  [theme]="{ width: '40px', height: '56px', borderRadius: '4px' }">
+                </ngx-skeleton-loader>
+                <div class="activity-details" style="flex: 1;">
+                  <ngx-skeleton-loader
+                    [theme]="{ width: '80%', height: '14px', marginBottom: '4px' }">
+                  </ngx-skeleton-loader>
+                  <ngx-skeleton-loader
+                    [theme]="{ width: '50%', height: '12px' }">
+                  </ngx-skeleton-loader>
+                </div>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '40px', height: '12px' }">
+                </ngx-skeleton-loader>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls-section">
+      <div class="control-group">
+        <ngx-skeleton-loader
+          [theme]="{ width: '110px', height: '36px', borderRadius: '4px' }">
+        </ngx-skeleton-loader>
+        <ngx-skeleton-loader
+          [theme]="{ width: '120px', height: '36px', borderRadius: '4px' }">
+        </ngx-skeleton-loader>
+      </div>
+      <ngx-skeleton-loader
+        [theme]="{ width: '180px', height: '24px', borderRadius: '12px' }">
+      </ngx-skeleton-loader>
+    </div>
+
+    <div class="series-list">
+      @for (i of [1, 2, 3]; track i) {
+        <div class="series-block skeleton-block">
+          <ngx-skeleton-loader
+            [theme]="{ width: '250px', height: '28px', marginBottom: '16px' }">
+          </ngx-skeleton-loader>
+          <div class="issues-grid skeleton-grid">
+            @for (j of [1, 2, 3, 4, 5, 6]; track j) {
+              <div class="issue-item-skeleton">
+                <ngx-skeleton-loader
+                  [theme]="{ width: '100%', height: '180px', borderRadius: '8px', marginBottom: '8px' }">
+                </ngx-skeleton-loader>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '40px', height: '14px', marginBottom: '4px' }">
+                </ngx-skeleton-loader>
+                <ngx-skeleton-loader
+                  [theme]="{ width: '60px', height: '12px' }">
+                </ngx-skeleton-loader>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (!loading) {
+    <!-- Dashboard Header -->
+    <div class="dashboard-header" [@slideInUp]>
+      <!-- Stats Row -->
+      <div class="stats-row">
+        <div class="stat-card stat-primary">
+          <div class="stat-icon">
+            <mat-icon>library_books</mat-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ getTotalIssues() }}</span>
+            <span class="stat-label">Total Issues</span>
+          </div>
+        </div>
+
+        <div class="stat-card stat-secondary">
+          <div class="stat-icon">
+            <mat-icon>collections_bookmark</mat-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ seriesWithIssues.length }}</span>
+            <span class="stat-label">Active Series</span>
+          </div>
+        </div>
+
+        <div class="stat-card stat-accent">
+          <div class="stat-icon">
+            <mat-icon>trending_up</mat-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ getAverageIssuesPerSeries() }}</span>
+            <span class="stat-label">Avg Issues/Series</span>
+          </div>
+        </div>
+
+        <div class="stat-card stat-info">
+          <div class="stat-icon">
+            <mat-icon>schedule</mat-icon>
+          </div>
+          <div class="stat-content">
+            <span class="stat-value">{{ getRecentIssuesCount() }}</span>
+            <span class="stat-label">Added This Week</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Latest Issue & Recent Activity -->
+      <div class="activity-section">
+        @if (latestIssue && latestIssue.series) {
+          <div class="latest-issue-card">
+            <div class="card-header">
+              <mat-icon>auto_awesome</mat-icon>
+              <span>Latest Addition</span>
+            </div>
+            <div class="latest-issue-content">
+              <div class="latest-issue-image">
+                <img
+                  [src]="getImageUrl(latestIssue)"
+                  [alt]="latestIssue.series.name + ' cover'"
+                  (error)="onImageError($event)"
+                  loading="lazy" />
+              </div>
+              <div class="latest-issue-info">
+                <span class="latest-series-name">{{ latestIssue.series.name }}</span>
+                <span class="latest-issue-number">{{ latestIssue.title ? latestIssue.title : '#' + latestIssue.issueNumber }}</span>
+                <span class="latest-issue-date">{{ formatDateTime(latestIssue.createdAt) }}</span>
+              </div>
+            </div>
+          </div>
+        }
+
+        <div class="recent-activity-card">
+          <div class="card-header">
+            <mat-icon>history</mat-icon>
+            <span>Recent Activity</span>
+          </div>
+          <div class="activity-list">
+            @for (issue of recentIssues; track issue.id) {
+              <div class="activity-item">
+                <div class="activity-thumbnail">
+                  <img
+                    [src]="getImageUrl(issue)"
+                    [alt]="issue.series?.name + ' cover'"
+                    (error)="onImageError($event)"
+                    loading="lazy" />
+                </div>
+                <div class="activity-details">
+                  <span class="activity-series">{{ issue.series?.name }}</span>
+                  <span class="activity-issue">{{ issue.title ? issue.title : '#' + issue.issueNumber }}</span>
+                </div>
+                <span class="activity-time">{{ getRelativeTime(issue.createdAt) }}</span>
+              </div>
+            }
+            @if (recentIssues.length === 0) {
+              <div class="no-activity">
+                <mat-icon>inbox</mat-icon>
+                <span>No recent activity</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls Section -->
+    <div class="controls-section">
+      <div class="control-group">
+        <button
+          mat-stroked-button
+          (click)="expandAllSeries()"
+          class="control-button"
+          aria-label="Expand all series">
+          <mat-icon>unfold_more</mat-icon>
+          Expand All
+        </button>
+        <button
+          mat-stroked-button
+          (click)="collapseAllSeries()"
+          class="control-button"
+          aria-label="Collapse all series">
+          <mat-icon>unfold_less</mat-icon>
+          Collapse All
+        </button>
+      </div>
+      <mat-slide-toggle
+        [(ngModel)]="uploadedPhotos"
+        (change)="onToggleChange()"
+        color="primary"
+        aria-label="Toggle between original and uploaded photos">
+        <mat-icon class="toggle-icon">photo_library</mat-icon>
+        Show Uploaded Photos
+      </mat-slide-toggle>
+    </div>
+
+    @if (seriesWithIssues.length === 0) {
+      <div class="empty-state" role="status">
+        <mat-icon class="empty-icon">library_books</mat-icon>
+        <h3>No Series Found</h3>
+        <p>There are currently no comic series available.</p>
+      </div>
+    }
+
+    @if (seriesWithoutIssues.length > 0) {
+      <div class="no-issues-series">
+        <span class="no-issues-label">No Issues Available For:</span>
+        <div class="no-issues-buttons">
+          @for (seriesItem of seriesWithoutIssues; track trackBySeriesId($index, seriesItem)) {
+            <button mat-stroked-button class="no-issues-btn" (click)="navigateToSeries(seriesItem, $event)">
+              {{ seriesItem.series.name }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Series Grid -->
+    <div class="series-list">
+      @for (seriesItem of seriesWithIssues; track trackBySeriesId($index, seriesItem)) {
+        <div
+          class="series-block"
+          [class.collapsed]="isSeriesCollapsed(seriesItem.series.id!)"
+          role="region"
+          [attr.aria-label]="seriesItem.series.name + ' series'">
+          <h2
+            class="series-title"
+            (click)="toggleSeriesCollapsed(seriesItem.series.id!)"
+            [attr.aria-expanded]="!isSeriesCollapsed(seriesItem.series.id!)">
+            <mat-icon class="collapse-icon">
+              {{ isSeriesCollapsed(seriesItem.series.id!) ? 'chevron_right' : 'expand_more' }}
+            </mat-icon>
+            <mat-icon class="series-icon">collections_bookmark</mat-icon>
+            {{ seriesItem.series.name }}
+            @if (hasIssues(seriesItem)) {
+              <span class="issue-count">
+                ({{ seriesItem.issues.length }} {{ seriesItem.issues.length === 1 ? 'issue' : 'issues' }})
+              </span>
+            }
+          </h2>
+          @if (hasIssues(seriesItem) && !isSeriesCollapsed(seriesItem.series.id!)) {
+            <div class="issues-container" [@expandCollapse]>
+              <div class="issues-grid">
+                @for (issue of getDisplayedIssues(seriesItem); track trackByIssueId($index, issue)) {
+                  <div
+                    class="issue-item"
+                    role="article"
+                    tabindex="0"
+                    [attr.aria-label]="'Issue ' + issue.issueNumber + ' of ' + seriesItem.series.name">
+                    <div class="issue-image-wrapper">
+                      <img
+                        [src]="getImageUrl(issue)"
+                        [alt]="seriesItem.series.name + ' Issue ' + issue.issueNumber + ' cover'"
+                        (error)="onImageError($event)"
+                        class="issue-img"
+                        loading="lazy" />
+                    </div>
+                    <div class="issue-info">
+                      <span class="issue-number" [title]="'Issue Number: ' + issue.issueNumber">
+                        #{{ issue.issueNumber }}
+                      </span>
+                      <span class="issue-id" [title]="'Comic Vine ID: ' + issue.comicVineId">
+                        ID: {{ issue.comicVineId }}
+                      </span>
+                    </div>
+                  </div>
+                }
+              </div>
+              @if (hasMoreIssues(seriesItem)) {
+                <div class="show-more-container">
+                  <button
+                    mat-button
+                    color="primary"
+                    (click)="toggleShowMore(seriesItem.series.id!)"
+                    class="show-more-button"
+                    [attr.aria-expanded]="isShowingAllIssues(seriesItem.series.id!)"
+                    [attr.aria-label]="isShowingAllIssues(seriesItem.series.id!) ? 'Show fewer issues' : 'Show ' + getHiddenIssuesCount(seriesItem) + ' more issues'">
+                    <mat-icon>{{ isShowingAllIssues(seriesItem.series.id!) ? 'expand_less' : 'expand_more' }}</mat-icon>
+                    {{ isShowingAllIssues(seriesItem.series.id!) ? 'Show Less' : 'Show ' + getHiddenIssuesCount(seriesItem) + ' More' }}
+                  </button>
+                </div>
+              }
+            </div>
+          } @else if (!hasIssues(seriesItem)) {
+            <div class="no-issues-msg" role="status">
+              <mat-icon>info</mat-icon>
+              <span>No issues available for this series.</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

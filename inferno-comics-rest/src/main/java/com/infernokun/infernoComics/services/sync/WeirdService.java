@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -29,6 +30,11 @@ public class WeirdService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void saveProgressData(ProgressData data) {
-        progressDataRepository.save(data);
+        progressDataRepository.saveAndFlush(data);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void updateProgressDataToError(String sessionId, String errorMessage) {
+        progressDataRepository.updateStateToError(sessionId, errorMessage, LocalDateTime.now());
     }
 }

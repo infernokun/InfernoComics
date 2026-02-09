@@ -12,6 +12,13 @@ export interface ComicVineSeries {
   generatedDescription?: boolean;
 }
 
+export interface VariantCover {
+  id: string;
+  originalUrl: string;
+  caption?: string;
+  imageTags?: string;
+}
+
 export interface ComicVineIssue {
   id: string;
   issueNumber: string;
@@ -22,6 +29,7 @@ export interface ComicVineIssue {
   generatedDescription: boolean;
   keyIssue?: boolean;
   variant?: boolean;
+  variants?: VariantCover[];
 }
 
 export interface ComicVineSeriesDto {

@@ -1,3 +1,6 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
 .spacer {
   flex: 1 1 auto;
 }
@@ -6,13 +9,13 @@
   color: inherit;
   text-decoration: none;
   cursor: pointer;
-  
+
   span {
     font-weight: 700;
     font-size: 1.2rem;
     letter-spacing: -0.5px;
 
-    @media (max-width: 480px) {
+    @include sm {
       font-size: 1rem;
     }
   }
@@ -22,69 +25,50 @@
   opacity: 0.85;
 }
 
-.main-content {
-  padding: 20px;
-  min-height: calc(100vh - 56px);
-  background-color: var(--background-color);
-  transition: background-color 0.3s ease;
-
-  @media (max-width: 768px) {
-    padding: 12px 8px;
-    min-height: calc(100vh - 52px);
-  }
-
-  @media (max-width: 480px) {
-    padding: 8px 6px;
-  }
-}
-
 mat-toolbar {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
+  @include gradient-primary;
   color: white !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
   min-height: 56px;
-  padding: 0 16px;
+  padding: 0 var(--spacing-lg);
 
-  @media (max-width: 768px) {
+  @include md {
     min-height: 52px;
-    padding: 0 12px;
+    padding: 0 var(--spacing-md);
   }
 
-  @media (max-width: 480px) {
+  @include sm {
     min-height: 48px;
-    padding: 0 8px;
+    padding: 0 var(--spacing-sm);
   }
 
   .mat-toolbar-row {
     gap: 4px;
-    display: flex;
-    align-items: center;
+    @include flex-start;
     min-height: inherit;
     padding: 0;
   }
 }
 
 .desktop-nav {
-  display: flex;
-  align-items: center;
+  @include flex-start;
   gap: 4px;
 
-  // Hide on mobile
-  @media (max-width: 900px) {
+  @include between(0px, 900px) {
     display: none;
   }
 
   button {
     color: white !important;
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     font-size: 0.9rem;
-    padding: 0 12px;
+    padding: 0 var(--spacing-md);
     height: 40px;
-    border-radius: 8px;
-    transition: all 0.2s ease;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
     background: transparent !important;
     border: 1px solid transparent !important;
 
@@ -113,22 +97,20 @@ mat-toolbar {
   height: 40px !important;
   min-width: 40px !important;
   padding: 0 !important;
-  border-radius: 8px !important;
-  transition: all 0.2s ease !important;
+  border-radius: var(--radius-sm) !important;
+  transition: all var(--transition-fast) !important;
   background: rgba(255, 255, 255, 0.1) !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   margin-left: 4px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  @include flex-center;
 
-  @media (max-width: 768px) {
+  @include md {
     width: 38px !important;
     height: 38px !important;
     min-width: 38px !important;
   }
 
-  @media (max-width: 480px) {
+  @include sm {
     width: 36px !important;
     height: 36px !important;
     min-width: 36px !important;
@@ -139,7 +121,6 @@ mat-toolbar {
     border-color: rgba(255, 255, 255, 0.3) !important;
   }
 
-  // Fix icon centering inside mat-icon-button
   .mat-mdc-button-touch-target {
     width: 100% !important;
     height: 100% !important;
@@ -154,13 +135,11 @@ mat-toolbar {
     width: 22px !important;
     height: 22px !important;
     line-height: 22px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    @include flex-center;
     margin: 0 !important;
     padding: 0 !important;
 
-    @media (max-width: 480px) {
+    @include sm {
       font-size: 20px !important;
       width: 20px !important;
       height: 20px !important;
@@ -168,9 +147,8 @@ mat-toolbar {
     }
   }
 
-  // Hide settings icon button on mobile (it's in the menu)
   &[routerLink="/config"] {
-    @media (max-width: 900px) {
+    @include between(0px, 900px) {
       display: none !important;
     }
   }
@@ -178,7 +156,7 @@ mat-toolbar {
 
 .theme-toggle {
   mat-icon {
-    transition: transform 0.3s ease;
+    transition: transform var(--transition-normal);
   }
 
   &:hover mat-icon {
@@ -193,20 +171,18 @@ mat-toolbar {
   height: 42px !important;
   min-width: 42px !important;
   padding: 0 !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-sm) !important;
   background: rgba(255, 255, 255, 0.15) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  margin-left: 8px !important;
-  transition: all 0.2s ease !important;
-  align-items: center !important;
-  justify-content: center !important;
+  margin-left: var(--spacing-sm) !important;
+  transition: all var(--transition-fast) !important;
+  @include flex-center;
 
-  // Show only on mobile
-  @media (max-width: 900px) {
+  @include between(0px, 900px) {
     display: flex !important;
   }
 
-  @media (max-width: 480px) {
+  @include sm {
     width: 38px !important;
     height: 38px !important;
     min-width: 38px !important;
@@ -218,7 +194,6 @@ mat-toolbar {
     border-color: rgba(255, 255, 255, 0.35) !important;
   }
 
-  // Fix icon centering inside mat-icon-button
   .mat-mdc-button-touch-target {
     width: 100% !important;
     height: 100% !important;
@@ -233,13 +208,11 @@ mat-toolbar {
     width: 26px !important;
     height: 26px !important;
     line-height: 26px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    @include flex-center;
     margin: 0 !important;
     padding: 0 !important;
 
-    @media (max-width: 480px) {
+    @include sm {
       font-size: 24px !important;
       width: 24px !important;
       height: 24px !important;
@@ -250,26 +223,25 @@ mat-toolbar {
 
 ::ng-deep .mobile-nav-menu {
   min-width: 200px !important;
-  margin-top: 8px;
-  border-radius: 12px !important;
+  margin-top: var(--spacing-sm);
+  border-radius: var(--radius-md) !important;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: var(--shadow-xl) !important;
 
   .mat-mdc-menu-content {
-    padding: 8px 0 !important;
+    padding: var(--spacing-sm) 0 !important;
     background: var(--surface-color, #ffffff);
   }
 
   .mat-mdc-menu-item {
     height: 48px;
-    padding: 0 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-weight: 500;
+    padding: 0 var(--spacing-lg);
+    @include flex-start;
+    gap: var(--spacing-md);
+    font-weight: var(--font-weight-medium);
     font-size: 0.95rem;
     color: var(--text-primary, #333);
-    transition: all 0.2s ease;
+    transition: all var(--transition-fast);
 
     mat-icon {
       color: var(--primary-color, #1976d2);
@@ -284,7 +256,7 @@ mat-toolbar {
     }
 
     &.active-menu-item {
-      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      @include gradient-primary;
       color: white;
 
       mat-icon {
@@ -294,7 +266,7 @@ mat-toolbar {
   }
 
   mat-divider {
-    margin: 8px 0;
+    margin: var(--spacing-sm) 0;
     border-color: var(--border-color, #e0e0e0);
   }
 }
@@ -322,14 +294,151 @@ mat-toolbar {
 
 app-version-info,
 app-processing-status-icon {
-  margin-left: 8px;
+  margin-left: var(--spacing-sm);
 
-  @media (max-width: 600px) {
+  @include between(0px, 600px) {
     margin-left: 4px;
-    
-    // Optionally hide version info on very small screens
+
     &[class*="version"] {
       display: none;
     }
+  }
+}
+
+// Mobile Bottom Navigation
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--surface-color);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  padding: var(--spacing-sm) 0;
+  @include safe-area-inset(padding, bottom, var(--spacing-sm));
+
+  @include md {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+  }
+
+  .nav-item {
+    @include flex-column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--text-muted);
+    padding: 6px var(--spacing-md);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    min-width: 60px;
+    position: relative;
+    @include touch-feedback;
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      margin-bottom: 4px;
+      transition: transform var(--transition-fast);
+    }
+
+    span {
+      font-size: 11px;
+      font-weight: var(--font-weight-medium);
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    &.active {
+      color: var(--primary-color);
+
+      mat-icon {
+        transform: scale(1.1);
+      }
+
+      span {
+        font-weight: var(--font-weight-semibold);
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 24px;
+        height: 3px;
+        background: var(--primary-color);
+        border-radius: 0 0 4px 4px;
+      }
+    }
+
+    &.nav-item-fab {
+      .fab-button {
+        width: 52px;
+        height: 52px;
+        @include gradient-primary;
+        border-radius: 50%;
+        @include flex-center;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        margin-bottom: 4px;
+        margin-top: -20px;
+        transition: all var(--transition-fast);
+
+        mat-icon {
+          font-size: 28px;
+          width: 28px;
+          height: 28px;
+          color: white;
+          margin-bottom: 0;
+        }
+      }
+
+      span {
+        color: var(--text-muted);
+      }
+
+      &:active .fab-button {
+        transform: scale(0.95);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      }
+
+      &.active {
+        .fab-button {
+          box-shadow: 0 6px 16px rgba(59, 130, 246, 0.5);
+        }
+
+        span {
+          color: var(--primary-color);
+          font-weight: var(--font-weight-semibold);
+        }
+
+        &::after {
+          display: none;
+        }
+      }
+    }
+  }
+}
+
+.main-content {
+  padding: var(--spacing-xl);
+  min-height: calc(100vh - 56px);
+  background-color: var(--background-color);
+  transition: background-color var(--transition-normal);
+
+  @include md {
+    padding: var(--spacing-md) var(--spacing-sm);
+    min-height: calc(100vh - 52px);
+    @include safe-area-inset(padding, bottom, calc(80px + env(safe-area-inset-bottom)));
+  }
+
+  @include sm {
+    padding: var(--spacing-sm) 6px;
+    @include safe-area-inset(padding, bottom, calc(80px + env(safe-area-inset-bottom)));
   }
 }

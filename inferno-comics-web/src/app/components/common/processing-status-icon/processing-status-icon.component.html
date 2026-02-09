@@ -17,29 +17,78 @@
     <div
       class="processing-overlay"
       [@slideIn]>
+
+      <!-- Header with tabs -->
       <div class="overlay-header">
-        <div class="header-title">
-          <mat-icon class="header-icon">{{ getIconName() }}</mat-icon>
-          <span>Processing Status</span>
+        <div class="header-top">
+          <div class="header-title">
+            <mat-icon class="header-icon">{{ getIconName() }}</mat-icon>
+            <span>Processing Status</span>
+          </div>
+          <button mat-icon-button class="refresh-btn" (click)="refreshStatus()" [disabled]="isLoading">
+            <mat-icon [class.spinning]="isLoading">refresh</mat-icon>
+          </button>
         </div>
-        <div class="header-summary">
+
+        <!-- Status summary chips -->
+        <div class="status-chips">
           @if (processingStatus().totalProcessing > 0) {
-            <span class="processing-count">
-              {{ processingStatus().totalProcessing }} Processing
-            </span>
+            <div class="status-chip processing" (click)="filterByState('PROCESSING')">
+              <mat-icon>autorenew</mat-icon>
+              <span>{{ processingStatus().totalProcessing }} Processing</span>
+            </div>
           }
-          @if (processingStatus().totalQueued > 0) {
-            <span class="queued-count">
-              {{ processingStatus().totalQueued }} Queued
-            </span>
+          @if (getCompletedCount() > 0) {
+            <div class="status-chip completed" (click)="filterByState('COMPLETED')">
+              <mat-icon>check_circle</mat-icon>
+              <span>{{ getCompletedCount() }} Completed</span>
+            </div>
           }
-          @if (processingStatus().totalActive === 0) {
-            <span class="idle-text">
-              No active tasks
-            </span>
+          @if (getErrorCount() > 0) {
+            <div class="status-chip error" (click)="filterByState('ERROR')">
+              <mat-icon>error</mat-icon>
+              <span>{{ getErrorCount() }} Failed</span>
+            </div>
+          }
+          @if (processingStatus().items.length === 0) {
+            <div class="status-chip idle">
+              <mat-icon>hourglass_empty</mat-icon>
+              <span>No active tasks</span>
+            </div>
           }
         </div>
+
+        <!-- Filter tabs -->
+        @if (processingStatus().items.length > 0) {
+          <div class="filter-tabs">
+            <button
+              class="filter-tab"
+              [class.active]="activeFilter === 'all'"
+              (click)="setFilter('all')">
+              All ({{ processingStatus().items.length }})
+            </button>
+            <button
+              class="filter-tab"
+              [class.active]="activeFilter === 'processing'"
+              (click)="setFilter('processing')">
+              Active ({{ processingStatus().totalProcessing }})
+            </button>
+            <button
+              class="filter-tab"
+              [class.active]="activeFilter === 'completed'"
+              (click)="setFilter('completed')">
+              Done ({{ getCompletedCount() }})
+            </button>
+            <button
+              class="filter-tab"
+              [class.active]="activeFilter === 'error'"
+              (click)="setFilter('error')">
+              Failed ({{ getErrorCount() }})
+            </button>
+          </div>
+        }
       </div>
+
       <div class="overlay-content">
         @if (isLoading) {
           <div class="skeleton-container">
@@ -67,87 +116,214 @@
         }
         @if (!isLoading) {
           <div>
-            @if (processingStatus().items.length === 0) {
+            @if (getFilteredItems().length === 0) {
               <div class="no-activity">
                 <mat-icon class="no-activity-icon">hourglass_empty</mat-icon>
-                <div class="no-activity-text">No recent processing activity</div>
+                <div class="no-activity-text">
+                  @if (activeFilter === 'all') {
+                    No recent processing activity
+                  } @else {
+                    No {{ activeFilter }} tasks
+                  }
+                </div>
               </div>
             }
-            @if (getSortedItems().length > 0) {
+            @if (getFilteredItems().length > 0) {
               <div class="items-container">
-                @for (item of getSortedItems(); track item; let i = $index) {
-                  <div class="processing-item" [class]="getItemClass(item)">
-                    <button class="dismiss-btn" mat-button (click)="dismissProgressData(item.id!)" [disabled]="pendingDismissIds.has(item.id!)">
-                      @if (pendingDismissIds.has(item.id!)) {
-                        <mat-spinner diameter="20"></mat-spinner>
-                      }
-                      @if (!pendingDismissIds.has(item.id!)) {
-                        <span>Dismiss</span>
-                      }
-                    </button>
-                    <div class="item-header">
-                      <div class="item-status">
-                        <span class="item-index">{{i + 1}}.</span>
-                        <mat-icon class="status-icon" [class]="getStatusIconClass(item)">
-                          {{ getStatusIcon(item) }}
-                        </mat-icon>
-                        <span class="status-text">{{ getStatusText(item) }}</span>
-                        <div class="item-name" [title]="item.getDisplayName()">
-                          {{ item.getDisplayName() }}
+                @for (item of getFilteredItems(); track item.id; let i = $index) {
+                  <div
+                    class="processing-item"
+                    [class]="getItemClass(item)"
+                    [class.expanded]="expandedItemId === item.id"
+                    [@fadeOut]>
+
+                    <!-- Compact view header -->
+                    <div class="item-main" (click)="toggleItemExpand(item.id!)">
+                      <div class="item-left">
+                        <div class="status-indicator" [class]="getStatusIconClass(item)">
+                          <mat-icon class="status-icon">{{ getStatusIcon(item) }}</mat-icon>
+                        </div>
+                        <div class="item-info">
+                          <div class="item-name-row">
+                            <span class="item-name" [title]="item.series?.name || 'Unknown Series'">
+                              {{ item.series?.name || 'Unknown Series' }}
+                            </span>
+                            @if (item.state === state.PROCESSING && item.isStale()) {
+                              <span class="stale-badge" title="No updates in 5+ minutes">Stale</span>
+                            }
+                          </div>
+                          <div class="item-subtitle">
+                            @if (item.currentStage) {
+                              <span class="current-stage">{{ item.currentStage }}</span>
+                            } @else if (item.statusMessage) {
+                              <span class="status-message">{{ item.statusMessage }}</span>
+                            } @else {
+                              <span class="status-text-inline">{{ getStatusText(item) }}</span>
+                            }
+                          </div>
                         </div>
                       </div>
-                      <div class="item-meta">
-                        <div class="item-series" [title]="getSeriesInfo(item)" style="cursor: pointer;" (click)="navigateToSeries(item)">
-                          {{ getSeriesDisplay(item) }} <span class="series-id">({{ getSeriesId(item) }})</span>
-                        </div>
-                        <div class="item-user" [title]="'Started by: ' + getUserDisplay(item)">
-                          {{ getUserDisplay(item) }}
-                        </div>
-                        @if (item.percentageComplete !== undefined) {
-                          <div class="item-progress">
-                            {{ item.percentageComplete }}%
+
+                      <div class="item-right">
+                        @if (item.state === state.PROCESSING && item.percentageComplete !== undefined) {
+                          <div class="progress-ring-container">
+                            <svg class="progress-ring" viewBox="0 0 36 36">
+                              <path class="progress-ring-bg"
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                              <path class="progress-ring-fill"
+                                [attr.stroke-dasharray]="item.percentageComplete + ', 100'"
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <span class="progress-text">{{ item.percentageComplete }}%</span>
                           </div>
                         }
+                        @if (item.state === state.COMPLETED) {
+                          <span class="duration-badge completed">{{ item.getDuration() }}</span>
+                        }
+                        @if (item.state === state.ERROR) {
+                          <span class="duration-badge error">Failed</span>
+                        }
+                        <mat-icon class="expand-icon">{{ expandedItemId === item.id ? 'expand_less' : 'expand_more' }}</mat-icon>
                       </div>
                     </div>
+
+                    <!-- Progress bar for processing items -->
                     @if (item.state === state.PROCESSING && item.percentageComplete !== undefined) {
-                      <div
-                        class="progress-container">
-                        <mat-progress-bar mode="determinate"
-                          [value]="item.percentageComplete"
-                          class="progress-bar">
-                        </mat-progress-bar>
+                      <div class="progress-bar-container">
+                        <div class="progress-bar-track">
+                          <div
+                            class="progress-bar-fill"
+                            [style.width.%]="item.percentageComplete"
+                            [class.animated]="item.state === state.PROCESSING">
+                          </div>
+                        </div>
                       </div>
                     }
-                    <div class="item-details">
-                      <span class="duration">{{ getItemTimeInfo(item) }}</span>
-                      @if (item.state === state.PROCESSING && getEstimatedTime(item)) {
-                        <span
-                          class="estimated-time">
-                          • ETA: {{ getEstimatedTime(item) }}
-                        </span>
-                      }
-                      @if (getItemAdditionalInfo(item)) {
-                        <span class="additional-info">
-                          • {{ getItemAdditionalInfo(item) }}
-                        </span>
-                      }
-                      @if (item.errorMessage && item.state === state.ERROR) {
-                        <div
-                          class="error-message">
-                          {{ item.errorMessage }}
+
+                    <!-- Expanded details -->
+                    @if (expandedItemId === item.id) {
+                      <div class="item-expanded" [@slideIn]>
+
+                        <!-- Stats row -->
+                        <div class="stats-row">
+                          @if (item.totalItems) {
+                            <div class="stat-item">
+                              <span class="stat-label">Progress</span>
+                              <span class="stat-value">{{ item.processedItems || 0 }} / {{ item.totalItems }}</span>
+                            </div>
+                          }
+                          @if (item.successfulItems !== undefined && item.successfulItems > 0) {
+                            <div class="stat-item success">
+                              <span class="stat-label">Successful</span>
+                              <span class="stat-value">{{ item.successfulItems }}</span>
+                            </div>
+                          }
+                          @if (item.failedItems !== undefined && item.failedItems > 0) {
+                            <div class="stat-item error">
+                              <span class="stat-label">Failed</span>
+                              <span class="stat-value">{{ item.failedItems }}</span>
+                            </div>
+                          }
+                          @if (item.state === state.PROCESSING && getEstimatedTime(item)) {
+                            <div class="stat-item eta">
+                              <span class="stat-label">ETA</span>
+                              <span class="stat-value">{{ getEstimatedTime(item) }}</span>
+                            </div>
+                          }
                         </div>
-                      }
-                    </div>
+
+                        <!-- Timeline -->
+                        <div class="timeline">
+                          <div class="timeline-item">
+                            <mat-icon class="timeline-icon">play_arrow</mat-icon>
+                            <div class="timeline-content">
+                              <span class="timeline-label">Started</span>
+                              <span class="timeline-value">{{ formatRelativeTime(item.timeStarted) }}</span>
+                            </div>
+                          </div>
+                          @if (item.lastUpdated && item.state === state.PROCESSING) {
+                            <div class="timeline-item">
+                              <mat-icon class="timeline-icon">update</mat-icon>
+                              <div class="timeline-content">
+                                <span class="timeline-label">Last Update</span>
+                                <span class="timeline-value">{{ formatRelativeTime(item.lastUpdated) }}</span>
+                              </div>
+                            </div>
+                          }
+                          @if (item.timeFinished) {
+                            <div class="timeline-item">
+                              <mat-icon class="timeline-icon">{{ item.state === state.ERROR ? 'error' : 'check' }}</mat-icon>
+                              <div class="timeline-content">
+                                <span class="timeline-label">{{ item.state === state.ERROR ? 'Failed' : 'Completed' }}</span>
+                                <span class="timeline-value">{{ formatRelativeTime(item.timeFinished) }}</span>
+                              </div>
+                            </div>
+                          }
+                        </div>
+
+                        <!-- Error message -->
+                        @if (item.errorMessage && item.state === state.ERROR) {
+                          <div class="error-box">
+                            <mat-icon>warning</mat-icon>
+                            <span>{{ item.errorMessage }}</span>
+                          </div>
+                        }
+
+                        <!-- Action buttons -->
+                        <div class="action-buttons">
+                          <button
+                            mat-stroked-button
+                            class="action-btn view-btn"
+                            (click)="navigateToSeries(item, $event)">
+                            <mat-icon>visibility</mat-icon>
+                            View Series
+                          </button>
+                          @if (item.state === state.ERROR) {
+                            <button
+                              mat-stroked-button
+                              class="action-btn retry-btn"
+                              (click)="retryProcessing(item, $event)">
+                              <mat-icon>refresh</mat-icon>
+                              Retry
+                            </button>
+                          }
+                          <button
+                            mat-stroked-button
+                            class="action-btn dismiss-btn"
+                            (click)="dismissProgressData(item.id!)"
+                            [disabled]="pendingDismissIds.has(item.id!)">
+                            @if (pendingDismissIds.has(item.id!)) {
+                              <mat-spinner diameter="16"></mat-spinner>
+                            } @else {
+                              <mat-icon>close</mat-icon>
+                            }
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    }
                   </div>
                 }
               </div>
             }
-            @if (processingStatus().items.length > maxDisplayItems) {
-              <div class="show-more">
-                <button mat-button class="show-more-btn">
-                  View all {{ processingStatus().items.length }} items
-                </button>
+
+            <!-- Footer with bulk actions -->
+            @if (processingStatus().items.length > 0) {
+              <div class="overlay-footer">
+                <div class="footer-info">
+                  Showing {{ getFilteredItems().length }} of {{ processingStatus().items.length }} tasks
+                </div>
+                <div class="footer-actions">
+                  @if (getCompletedCount() > 0 || getErrorCount() > 0) {
+                    <button
+                      mat-button
+                      class="clear-btn"
+                      (click)="clearCompleted()">
+                      <mat-icon>clear_all</mat-icon>
+                      Clear Finished
+                    </button>
+                  }
+                </div>
               </div>
             }
           </div>

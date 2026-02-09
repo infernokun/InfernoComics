@@ -1,0 +1,261 @@
+<div class="dialog-container dark-theme">
+  <div class="dialog-header">
+    <div class="header-content">
+      <mat-icon class="header-icon">{{ hasMultipleImages ? 'photo_library' : 'image_search' }}</mat-icon>
+      <div class="header-text">
+        <h2 mat-dialog-title>{{ getHeaderTitle() }}</h2>
+        <p class="session-info">{{ getHeaderSubtitle() }}</p>
+      </div>
+    </div>
+    <div class="results-summary">
+      <div class="summary-item">
+        <span class="summary-number">{{ sortedMatches.length }}</span>
+        <span class="summary-label">Matches</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-number">{{ getBestMatchPercentage() }}%</span>
+        <span class="summary-label">Best</span>
+      </div>
+    </div>
+  </div>
+
+  <div mat-dialog-content class="content">
+    <!-- Compact Navigation for Multiple Images -->
+    @if (hasMultipleImages && imageGroups.length > 1) {
+      <div class="image-navigation">
+        <div class="navigation-tabs">
+          <button mat-button
+            class="nav-tab"
+            [class.active]="showAllMatches"
+            (click)="showAllMatchesView()">
+            <mat-icon>view_module</mat-icon>
+            All ({{ totalMatchesFound }})
+          </button>
+          @for (group of imageGroups; track group; let i = $index) {
+            <button
+              mat-button
+              class="nav-tab image-tab"
+              [class.active]="!showAllMatches && selectedImageGroup === i"
+              (click)="selectImageGroup(i)">
+              @if (group.previewUrl) {
+                <div class="tab-image">
+                  <img [src]="group.previewUrl" [alt]="group.name" class="tab-thumbnail">
+                </div>
+              }
+              <div class="tab-info">
+                <span class="tab-name">{{ group.name }}</span>
+                <span class="tab-stats">{{ group.matches.length }} matches</span>
+              </div>
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Side-by-side Layout: Original + Matches -->
+    <div class="main-layout">
+      <div class="original-sidebar">
+        <div class="sidebar-header">
+          <mat-icon>upload</mat-icon>
+          <span>Original Image</span>
+        </div>
+
+        <div class="original-preview" (click)="currentImagePreview && openZoom(currentImagePreview, 'Original: ' + getDisplayFileName())">
+          @if (currentImagePreview) {
+            <img
+              [src]="currentImagePreview"
+              [alt]="getDisplayFileName()"
+              class="original-image"
+              (error)="onImageError($event)" />
+            <div class="tap-to-zoom">
+              <mat-icon>zoom_in</mat-icon>
+              <span>Tap to zoom</span>
+            </div>
+          } @else {
+            <div class="no-image-placeholder">
+              <mat-icon>image</mat-icon>
+              <span>No preview available</span>
+            </div>
+          }
+
+        </div>
+
+        <div class="original-info">
+          <p class="filename">{{ getDisplayFileName() }}</p>
+          @if (hasMultipleImages && !showAllMatches) {
+            <div class="match-context">
+              <mat-icon>info</mat-icon>
+              <span>Viewing matches for this image</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Matches Section -->
+      <div class="matches-section">
+        <!-- Instructions -->
+        @if (sortedMatches.length > 0) {
+          <div class="instructions">
+            <mat-icon>info</mat-icon>
+            <span>Select the comic that best matches your image. Higher percentages indicate better matches.</span>
+          </div>
+        }
+
+        <!-- No Matches Message -->
+        @if (sortedMatches.length === 0) {
+          <div class="no-matches">
+            <mat-icon>search_off</mat-icon>
+            <h3>No Matches Found</h3>
+            <p>No matches were found for this image.</p>
+          </div>
+        }
+
+        <!-- Compact Matches Grid -->
+        @if (sortedMatches.length > 0) {
+          <div class="matches-grid">
+            @for (match of sortedMatches; track match; let i = $index) {
+              <div
+                class="match-card"
+                [class.best]="i === 0"
+                (click)="selectMatch(match)">
+                <div class="match-rank" [class.gold]="i === 0">#{{ i + 1 }}</div>
+                <!-- Source Image Indicator for Multiple Images -->
+                @if (getSourceImageIndicator(match)) {
+                  <div class="source-indicator">
+                    <mat-icon>image</mat-icon>
+                    <span>{{ getSourceImageIndicator(match) }}</span>
+                  </div>
+                }
+                <div class="image-container" (click)="openZoom(match.url, match.comic_name + ' #' + match.issue_number, match); $event.stopPropagation()">
+                  <img [src]="match.url"
+                    [alt]="match.comic_name"
+                    (error)="onImageError($event)"
+                    loading="lazy" />
+                  <div class="similarity-overlay">{{ (match.similarity * 100).toFixed(1) }}%</div>
+                  <div class="tap-to-zoom">
+                    <mat-icon>zoom_in</mat-icon>
+                    <span>Tap to zoom</span>
+                  </div>
+                </div>
+                <div class="match-info">
+                  <h3 class="comic-title">{{ match.comic_name }}</h3>
+                  <p class="issue-number">Issue #{{ match.issue_number }}</p>
+                  <!-- Compact Feature Bars -->
+                  <div class="features-compact">
+                    @if (match.match_details.orb) {
+                      <div class="feature">
+                        <span class="label">ORB</span>
+                        <div class="bar">
+                          <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.orb)"></div>
+                        </div>
+                        <span class="value">{{ match.match_details.orb.good_matches }}/{{ match.match_details.orb.total_matches }}</span>
+                      </div>
+                    }
+                    @if (match.match_details.sift) {
+                      <div class="feature">
+                        <span class="label">SIFT</span>
+                        <div class="bar">
+                          <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.sift)"></div>
+                        </div>
+                        <span class="value">{{ match.match_details.sift.good_matches }}/{{ match.match_details.sift.total_matches }}</span>
+                      </div>
+                    }
+                    @if (match.match_details.akaze) {
+                      <div class="feature">
+                        <span class="label">AKAZE</span>
+                        <div class="bar">
+                          <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.akaze)"></div>
+                        </div>
+                        <span class="value">{{ match.match_details.akaze.good_matches }}/{{ match.match_details.akaze.total_matches }}</span>
+                      </div>
+                    }
+                    @if (match.match_details.kaze) {
+                      <div class="feature">
+                        <span class="label">KAZE</span>
+                        <div class="bar">
+                          <div class="fill" [style.width.%]="getFeaturePercent(match.match_details.kaze)"></div>
+                        </div>
+                        <span class="value">{{ match.match_details.kaze.good_matches }}/{{ match.match_details.kaze.total_matches }}</span>
+                      </div>
+                    }
+                  </div>
+                  <!-- Confidence -->
+                  <div class="confidence">
+                    <div class="confidence-bar">
+                      <div class="confidence-fill"
+                        [style.width.%]="match.similarity * 100"
+                        [class.high]="match.similarity >= 0.25"
+                        [class.medium]="match.similarity >= 0.15 && match.similarity < 0.25"
+                        [class.low]="match.similarity < 0.15">
+                      </div>
+                    </div>
+                    <span class="confidence-text">{{ getConfidenceText(match.similarity) }}</span>
+                  </div>
+                </div>
+                <button mat-raised-button
+                  [color]="i === 0 ? 'primary' : 'accent'"
+                  class="select-btn"
+                  (click)="selectMatch(match); $event.stopPropagation()">
+                  <mat-icon>check</mat-icon>
+                  {{ i === 0 ? 'Select Best' : 'Select' }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Compact Actions -->
+  <div mat-dialog-actions class="actions">
+    <button mat-button (click)="onCancel()">
+      <mat-icon>close</mat-icon>
+      Cancel
+    </button>
+    <button mat-button (click)="onReject()">
+      <mat-icon>block</mat-icon>
+      Reject
+    </button>
+    @if (sortedMatches.length > 0) {
+      <button mat-raised-button color="primary"
+        (click)="selectMatch(sortedMatches[0])">
+        <mat-icon>star</mat-icon>
+        Select Best
+      </button>
+    }
+  </div>
+
+
+  <!-- Image Zoom Overlay -->
+  @if (zoomVisible) {
+    <div class="image-zoom-overlay" (click)="onZoomBackdropClick($event)">
+      <button mat-icon-button class="zoom-close-btn" (click)="closeZoom()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <div class="zoom-images-container">
+        <div class="zoom-image-wrapper">
+          <span class="zoom-label">Original</span>
+          <img [src]="zoomOriginalSrc" alt="Original image" />
+        </div>
+        @if (selectedZoomMatch) {
+          <div class="zoom-image-wrapper">
+            <span class="zoom-label">Match</span>
+            <img [src]="zoomMatchSrc" alt="Matched comic" />
+            <button mat-raised-button
+                color="accent"
+                class="select-btn"
+                (click)="selectMatch(selectedZoomMatch); $event.stopPropagation()">
+                <mat-icon>check</mat-icon>
+                Select
+            </button>
+          </div>
+        }
+      </div>
+      <div class="zoom-info">
+        <div class="zoom-title">{{ zoomTitle }}</div>
+        <div class="zoom-hint">Tap anywhere to close</div>
+      </div>
+    </div>
+  }
+</div>

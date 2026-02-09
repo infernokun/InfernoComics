@@ -1,0 +1,24 @@
+<div class="chart-card" [class.full-width]="fullWidth" [@fadeInUp]>
+  <div class="chart-header">
+    <h2>
+      <mat-icon>{{ icon }}</mat-icon>
+      {{ title }}
+    </h2>
+    @if (subtitle) {
+      <span class="chart-subtitle">{{ subtitle }}</span>
+    }
+    @if (badge) {
+      <div class="completion-summary">
+        <span class="completion-badge">{{ badge }}</span>
+      </div>
+    }
+  </div>
+  @if (hasData) {
+    <ng-content></ng-content>
+  } @else {
+    <div class="no-data">
+      <mat-icon>info</mat-icon>
+      <span>{{ noDataMessage }}</span>
+    </div>
+  }
+</div>

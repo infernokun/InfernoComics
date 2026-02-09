@@ -13,11 +13,11 @@ import com.infernokun.infernoComics.models.enums.State;
 import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
 import com.infernokun.infernoComics.clients.SocketClient;
-import jakarta.transaction.Transactional;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import javax.annotation.PreDestroy;
@@ -30,7 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.toList;
 
 @Slf4j
 @Service
@@ -44,6 +45,7 @@ public class ProgressDataService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisJsonService redisJsonService;
 
     private static final long SSE_TIMEOUT = Duration.ofMinutes(90).toMillis();
     private static final Duration PROGRESS_TTL = Duration.ofHours(2);
@@ -280,21 +282,15 @@ public class ProgressDataService {
     public void sendError(String sessionId, String errorMessage) {
         log.error("Sending error event for session {}: {}", sessionId, errorMessage);
 
-        try {
-            Optional<ProgressData> progressDataOptional = progressDataRepository.findBySessionId(sessionId);
-            if (progressDataOptional.isPresent()) {
-                ProgressData progressData = progressDataOptional.get();
-                progressData.setState(State.ERROR);
-                progressData.setErrorMessage(errorMessage);
-                progressData.setTimeFinished(LocalDateTime.now());
-
-                weirdService.saveProgressData(progressData);
+        // Schedule the database update on a separate thread to avoid thread-local transaction/connection locks
+        scheduler.schedule(() -> {
+            try {
+                weirdService.updateProgressDataToError(sessionId, errorMessage);
                 sendToWebSocket();
-                log.info("✅ Database updated with error state for session: {}", sessionId);
+            } catch (Exception e) {
+                log.warn("Failed to update database with error for session {}: {}", sessionId, e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("Failed to update database with error for session {}: {}", sessionId, e.getMessage());
-        }
+        }, 100, TimeUnit.MILLISECONDS);
 
         SSEProgressData errorData = SSEProgressData.builder()
                 .type(State.ERROR.name())
@@ -305,8 +301,6 @@ public class ProgressDataService {
 
         sessionStatus.put(sessionId, errorData);
         sendToEmitter(sessionId, errorData);
-
-        // Complete the emitter after a short delay
         scheduleEmitterCompletion(sessionId, 2000);
     }
 
@@ -397,14 +391,14 @@ public class ProgressDataService {
         try {
             String redisKey = "sse:progress:" + sessionId;
 
-            // Store as JSON string
-            String jsonData = objectMapper.writeValueAsString(data);
-            redisTemplate.opsForValue().set(redisKey, jsonData, PROGRESS_TTL);
+            // Store as Redis JSON datatype
+            redisJsonService.jsonSet(redisKey, data, PROGRESS_TTL);
 
-            log.info("Progress data stored in Redis for session: {}", sessionId);
+            log.debug("Progress data stored in Redis for session: {}", sessionId);
 
-            // Also maintain a list of recent progress updates
+            // Also maintain a list of recent progress updates (Redis List, not JSON)
             String listKey = "sse:progress:list:" + sessionId;
+            String jsonData = objectMapper.writeValueAsString(data);
             redisTemplate.opsForList().leftPush(listKey, jsonData);
             redisTemplate.opsForList().trim(listKey, 0, 99);
             redisTemplate.expire(listKey, PROGRESS_TTL);
@@ -428,11 +422,9 @@ public class ProgressDataService {
     public SSEProgressData getLatestProgressFromRedis(String sessionId) {
         try {
             String redisKey = "sse:progress:" + sessionId;
-            String jsonData = (String) redisTemplate.opsForValue().get(redisKey);
+            SSEProgressData progressData = redisJsonService.jsonGet(redisKey, SSEProgressData.class);
 
-            if (jsonData != null) {
-                SSEProgressData progressData = objectMapper.readValue(jsonData, SSEProgressData.class);
-
+            if (progressData != null) {
                 // Check if the progress data is recent (e.g., within last 5 minutes)
                 if (isProgressDataRecent(progressData)) {
                     return progressData;
@@ -442,7 +434,7 @@ public class ProgressDataService {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to retrieve progress data from Redis for session {}: {}", sessionId, e.getMessage());
+            log.error("Failed to retrieve progress data from Redis for session {}: {}", sessionId, e.getMessage(), e);
         }
         return null;
     }
@@ -472,7 +464,7 @@ public class ProgressDataService {
                             }
                         })
                         .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
+                        .collect(toList());
             }
         } catch (Exception e) {
             log.error("Failed to retrieve progress history from Redis for session {}: {}", sessionId, e.getMessage(), e);
@@ -484,6 +476,26 @@ public class ProgressDataService {
         try {
             Objects.requireNonNull(progressData, "progressData must not be null");
             Objects.requireNonNull(latestProgress, "latestProgress must not be null");
+
+            // Update state from Redis if it's ERROR or COMPLETED (takes precedence over DB)
+            if (latestProgress.getType() != null) {
+                try {
+                    State redisState = State.valueOf(latestProgress.getType());
+                    if (redisState == State.ERROR || redisState == State.COMPLETED) {
+                        progressData.setState(redisState);
+                        log.debug("Session {}: state updated from Redis to {}",
+                                progressData.getSessionId(), redisState);
+                    }
+                } catch (IllegalArgumentException e) {
+                    log.debug("Session {}: ignoring non-state type from Redis: {}",
+                            progressData.getSessionId(), latestProgress.getType());
+                }
+            }
+
+            // Update error message if present
+            if (latestProgress.getError() != null) {
+                progressData.setErrorMessage(latestProgress.getError());
+            }
 
             updatePercentageComplete(progressData, latestProgress);
             progressData.setCurrentStage(latestProgress.getStage());
@@ -606,17 +618,17 @@ public class ProgressDataService {
         });
     }
 
-    public List<ProgressData> getSessionsByRelevance() {
-        List<ProgressData> sessions = progressDataRepository.findByStartedOrFinishedWithinLast24Hours(LocalDateTime.now().minusDays(7));
+    public List<ProgressData> getRecentSessions() {
+        List<ProgressData> sessions = progressDataRepository.findWithinLast14Days(LocalDateTime.now().minusDays(14));
         getLatestDataFromRedis(sessions);
 
-        sessions = sessions.stream().filter(s -> !s.dismissed).toList();
-
-        return sessions;
+        return sessions.stream()
+                .filter(s -> !s.dismissed)
+                .toList();
     }
 
     public void sendToWebSocket() {
-        List<ProgressData> progressDataList = getSessionsByRelevance();
+        List<ProgressData> progressDataList = getRecentSessions();
         Long id = progressDataList.getLast().getSeries().getId();
         websocket.broadcastObjUpdate(progressDataList, ProgressData.class.getSimpleName() + "ListRelevance", id);
     }
@@ -632,7 +644,7 @@ public class ProgressDataService {
         weirdService.saveProgressData(progressData);
         sendToWebSocket();
 
-        return getSessionsByRelevance();
+        return getRecentSessions();
     }
 
     public Optional<ProgressData> getProgressDataBySessionId(String sessionId) {

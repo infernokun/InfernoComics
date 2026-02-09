@@ -1,0 +1,395 @@
+<div class="stats-page">
+
+  <!-- Loading State -->
+  @if (loading) {
+    <div class="page-header">
+      <ngx-skeleton-loader [theme]="{ width: '200px', height: '32px' }"></ngx-skeleton-loader>
+    </div>
+    <div class="tab-nav skeleton">
+      <ngx-skeleton-loader [theme]="{ width: '120px', height: '40px' }"></ngx-skeleton-loader>
+      <ngx-skeleton-loader [theme]="{ width: '120px', height: '40px' }"></ngx-skeleton-loader>
+    </div>
+    <div class="charts-grid">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="chart-card skeleton-card">
+          <ngx-skeleton-loader [theme]="{ width: '150px', height: '20px', marginBottom: '16px' }"></ngx-skeleton-loader>
+          <ngx-skeleton-loader [theme]="{ width: '100%', height: '200px', borderRadius: '8px' }"></ngx-skeleton-loader>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Loaded State -->
+  @if (!loading && stats) {
+    <!-- Page Header -->
+    <div class="page-header" [@fadeInUp]>
+      <div class="header-content">
+        <h1>
+          <mat-icon>insights</mat-icon>
+          Statistics
+        </h1>
+        <button mat-icon-button (click)="refresh()" class="refresh-btn" aria-label="Refresh stats">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav" [@fadeInUp]>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'collection'"
+        (click)="activeTab = 'collection'">
+        <mat-icon>library_books</mat-icon>
+        <span>Collection</span>
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'processing'"
+        (click)="activeTab = 'processing'">
+        <mat-icon>memory</mat-icon>
+        <span>Processing</span>
+      </button>
+    </div>
+
+    <!-- Collection Stats Tab -->
+    @if (activeTab === 'collection') {
+      <div class="tab-content" [@fadeInUp]>
+        <!-- Overview Cards -->
+        <app-number-stat [stats]="numberStats"></app-number-stat>
+
+        <!-- Charts Grid Row 1 -->
+        <div class="charts-grid">
+          <!-- Publisher Distribution -->
+          <app-chart-card
+            icon="pie_chart"
+            title="Publisher Distribution"
+            [hasData]="!!publisherChartOptions">
+            <apx-chart
+              [series]="publisherChartOptions.series!"
+              [chart]="publisherChartOptions.chart!"
+              [labels]="publisherChartOptions.labels!"
+              [colors]="publisherChartOptions.colors!"
+              [plotOptions]="publisherChartOptions.plotOptions!"
+              [dataLabels]="publisherChartOptions.dataLabels!"
+              [legend]="publisherChartOptions.legend!"
+              [responsive]="publisherChartOptions.responsive!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- Collection Health -->
+          <app-chart-card
+            icon="health_and_safety"
+            title="Collection Health"
+            [hasData]="!!healthGaugeOptions">
+            <app-gauge-stat
+              [gaugeOptions]="healthGaugeOptions"
+              [metrics]="collectionHealthMetrics">
+            </app-gauge-stat>
+          </app-chart-card>
+
+          <!-- Series by Era -->
+          <app-chart-card
+            icon="calendar_month"
+            title="Series by Era"
+            [hasData]="!!eraChartOptions">
+            <apx-chart
+              [series]="eraChartOptions.series!"
+              [chart]="eraChartOptions.chart!"
+              [xaxis]="eraChartOptions.xaxis!"
+              [yaxis]="eraChartOptions.yaxis!"
+              [colors]="eraChartOptions.colors!"
+              [legend]="eraChartOptions.legend!"
+              [plotOptions]="eraChartOptions.plotOptions!"
+              [dataLabels]="eraChartOptions.dataLabels!"
+              [grid]="eraChartOptions.grid!"
+              [tooltip]="eraChartOptions.tooltip!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- Read Status -->
+          <app-chart-card
+            icon="menu_book"
+            title="Read Status"
+            [hasData]="!!readStatusChartOptions">
+            <apx-chart
+              [series]="readStatusChartOptions.series!"
+              [chart]="readStatusChartOptions.chart!"
+              [labels]="readStatusChartOptions.labels!"
+              [colors]="readStatusChartOptions.colors!"
+              [plotOptions]="readStatusChartOptions.plotOptions!"
+              [dataLabels]="readStatusChartOptions.dataLabels!"
+              [legend]="readStatusChartOptions.legend!"
+              [responsive]="readStatusChartOptions.responsive!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- Issue Types -->
+          <app-chart-card
+            icon="category"
+            title="Issue Types"
+            [hasData]="!!issueTypesChartOptions">
+            <apx-chart
+              [series]="issueTypesChartOptions.series!"
+              [chart]="issueTypesChartOptions.chart!"
+              [labels]="issueTypesChartOptions.labels!"
+              [colors]="issueTypesChartOptions.colors!"
+              [plotOptions]="issueTypesChartOptions.plotOptions!"
+              [dataLabels]="issueTypesChartOptions.dataLabels!"
+              [legend]="issueTypesChartOptions.legend!"
+              [responsive]="issueTypesChartOptions.responsive!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- Issues by Publisher -->
+          <app-chart-card
+            icon="bar_chart"
+            title="Issues by Publisher"
+            [hasData]="!!issuesByPublisherOptions">
+            <apx-chart
+              [series]="issuesByPublisherOptions.series!"
+              [chart]="issuesByPublisherOptions.chart!"
+              [xaxis]="issuesByPublisherOptions.xaxis!"
+              [yaxis]="issuesByPublisherOptions.yaxis!"
+              [legend]="issuesByPublisherOptions.legend!"
+              [colors]="issuesByPublisherOptions.colors!"
+              [plotOptions]="issuesByPublisherOptions.plotOptions!"
+              [dataLabels]="issuesByPublisherOptions.dataLabels!"
+              [grid]="issuesByPublisherOptions.grid!"
+              [tooltip]="issuesByPublisherOptions.tooltip!"
+            ></apx-chart>
+          </app-chart-card>
+        </div>
+
+        <!-- Collection Growth -->
+        @if (growthChartOptions && (stats.collectionGrowth.length) > 1) {
+          <app-chart-card
+            icon="show_chart"
+            title="Collection Growth"
+            subtitle="Issues added per month"
+            [fullWidth]="true"
+            [hasData]="true">
+            <apx-chart
+              [series]="growthChartOptions.series!"
+              [chart]="growthChartOptions.chart!"
+              [xaxis]="growthChartOptions.xaxis!"
+              [yaxis]="growthChartOptions.yaxis!"
+              [legend]="growthChartOptions.legend!"
+              [colors]="growthChartOptions.colors!"
+              [fill]="growthChartOptions.fill!"
+              [stroke]="growthChartOptions.stroke!"
+              [dataLabels]="growthChartOptions.dataLabels!"
+              [grid]="growthChartOptions.grid!"
+              [tooltip]="growthChartOptions.tooltip!"
+            ></apx-chart>
+          </app-chart-card>
+        }
+
+        <!-- Top Series + Almost Complete -->
+        <div class="charts-grid two-col">
+          <!-- Top Series by Issue Count -->
+          <app-chart-card
+            icon="leaderboard"
+            title="Top Series by Issues"
+            [hasData]="!!topSeriesChartOptions">
+            <apx-chart
+              [series]="topSeriesChartOptions.series!"
+              [chart]="topSeriesChartOptions.chart!"
+              [xaxis]="topSeriesChartOptions.xaxis!"
+              [yaxis]="topSeriesChartOptions.yaxis!"
+              [legend]="topSeriesChartOptions.legend!"
+              [colors]="topSeriesChartOptions.colors!"
+              [plotOptions]="topSeriesChartOptions.plotOptions!"
+              [dataLabels]="topSeriesChartOptions.dataLabels!"
+              [grid]="topSeriesChartOptions.grid!"
+              [tooltip]="topSeriesChartOptions.tooltip!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- Almost Complete Series -->
+          <app-chart-card
+            icon="pending_actions"
+            title="Almost Complete"
+            subtitle="Series closest to completion"
+            [hasData]="!!mostIncompleteChartOptions">
+            <apx-chart
+              [series]="mostIncompleteChartOptions.series!"
+              [chart]="mostIncompleteChartOptions.chart!"
+              [xaxis]="mostIncompleteChartOptions.xaxis!"
+              [yaxis]="mostIncompleteChartOptions.yaxis!"
+              [legend]="mostIncompleteChartOptions.legend!"
+              [colors]="mostIncompleteChartOptions.colors!"
+              [plotOptions]="mostIncompleteChartOptions.plotOptions!"
+              [dataLabels]="mostIncompleteChartOptions.dataLabels!"
+              [grid]="mostIncompleteChartOptions.grid!"
+              [tooltip]="mostIncompleteChartOptions.tooltip!"
+            ></apx-chart>
+          </app-chart-card>
+        </div>
+
+        <!-- Newest Series & Issues -->
+        <div class="charts-grid two-col">
+          <!-- Newest Series -->
+          <app-chart-card
+            icon="new_releases"
+            title="Newest Series"
+            [hasData]="newestSeriesItems.length > 0">
+            <app-newest-list
+              [items]="newestSeriesItems"
+              placeholderIcon="library_books">
+            </app-newest-list>
+          </app-chart-card>
+
+          <!-- Newest Issues -->
+          <app-chart-card
+            icon="fiber_new"
+            title="Newest Issues"
+            [hasData]="newestIssuesItems.length > 0">
+            <app-newest-list
+              [items]="newestIssuesItems"
+              placeholderIcon="auto_stories">
+            </app-newest-list>
+          </app-chart-card>
+        </div>
+      </div>
+    }
+
+    <!-- Processing Stats Tab -->
+    @if (activeTab === 'processing') {
+      <div class="tab-content" [@fadeInUp]>
+        <!-- Processing Overview Cards -->
+        <app-number-stat [stats]="processingStats"></app-number-stat>
+
+        <!-- Processing Charts -->
+        <div class="charts-grid">
+          <!-- Processing Session States -->
+          <app-chart-card
+            icon="donut_large"
+            title="Session States"
+            [hasData]="!!processingStateChartOptions.series?.length"
+            noDataMessage="No processing data yet">
+            <apx-chart
+              [series]="processingStateChartOptions.series!"
+              [chart]="processingStateChartOptions.chart!"
+              [labels]="processingStateChartOptions.labels!"
+              [colors]="processingStateChartOptions.colors!"
+              [plotOptions]="processingStateChartOptions.plotOptions!"
+              [dataLabels]="processingStateChartOptions.dataLabels!"
+              [legend]="processingStateChartOptions.legend!"
+              [responsive]="processingStateChartOptions.responsive!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- Processing Success Rate -->
+          <app-chart-card
+            icon="speed"
+            title="Processing Success"
+            [hasData]="!!processingSuccessGaugeOptions">
+            <app-gauge-stat
+              [gaugeOptions]="processingSuccessGaugeOptions"
+              [metrics]="processingSuccessMetrics">
+            </app-gauge-stat>
+          </app-chart-card>
+
+          <!-- Manual vs Auto -->
+          <app-chart-card
+            icon="touch_app"
+            title="Started By"
+            [hasData]="!!startedByChartOptions.series?.length"
+            noDataMessage="No data available">
+            <apx-chart
+              [series]="startedByChartOptions.series!"
+              [chart]="startedByChartOptions.chart!"
+              [labels]="startedByChartOptions.labels!"
+              [colors]="startedByChartOptions.colors!"
+              [plotOptions]="startedByChartOptions.plotOptions!"
+              [dataLabels]="startedByChartOptions.dataLabels!"
+              [legend]="startedByChartOptions.legend!"
+              [responsive]="startedByChartOptions.responsive!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- File States -->
+          <app-chart-card
+            icon="folder"
+            title="File Processing Status"
+            [hasData]="!!fileStateChartOptions.series?.length"
+            noDataMessage="No file data yet">
+            <apx-chart
+              [series]="fileStateChartOptions.series!"
+              [chart]="fileStateChartOptions.chart!"
+              [labels]="fileStateChartOptions.labels!"
+              [colors]="fileStateChartOptions.colors!"
+              [plotOptions]="fileStateChartOptions.plotOptions!"
+              [dataLabels]="fileStateChartOptions.dataLabels!"
+              [legend]="fileStateChartOptions.legend!"
+              [responsive]="fileStateChartOptions.responsive!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- Sync Status Distribution -->
+          <app-chart-card
+            icon="sync_alt"
+            title="Sync Status"
+            [hasData]="!!syncStatusChartOptions.series?.length"
+            noDataMessage="No sync data yet">
+            <apx-chart
+              [series]="syncStatusChartOptions.series!"
+              [chart]="syncStatusChartOptions.chart!"
+              [labels]="syncStatusChartOptions.labels!"
+              [colors]="syncStatusChartOptions.colors!"
+              [plotOptions]="syncStatusChartOptions.plotOptions!"
+              [dataLabels]="syncStatusChartOptions.dataLabels!"
+              [legend]="syncStatusChartOptions.legend!"
+              [responsive]="syncStatusChartOptions.responsive!"
+            ></apx-chart>
+          </app-chart-card>
+
+          <!-- Sync Health -->
+          <app-chart-card
+            icon="monitor_heart"
+            title="Sync Health"
+            [hasData]="!!syncHealthGaugeOptions">
+            <app-gauge-stat
+              [gaugeOptions]="syncHealthGaugeOptions"
+              [metrics]="syncHealthMetrics">
+            </app-gauge-stat>
+          </app-chart-card>
+        </div>
+
+        <!-- Processing Activity by Month -->
+        @if (hasProcessingByMonthData) {
+          <app-chart-card
+            icon="calendar_month"
+            title="Processing Activity"
+            subtitle="Sessions per month"
+            [fullWidth]="true"
+            [hasData]="true">
+            <apx-chart
+              [series]="processingByMonthChartOptions.series!"
+              [chart]="processingByMonthChartOptions.chart!"
+              [xaxis]="processingByMonthChartOptions.xaxis!"
+              [yaxis]="processingByMonthChartOptions.yaxis!"
+              [legend]="processingByMonthChartOptions.legend!"
+              [colors]="processingByMonthChartOptions.colors!"
+              [fill]="processingByMonthChartOptions.fill!"
+              [stroke]="processingByMonthChartOptions.stroke!"
+              [dataLabels]="processingByMonthChartOptions.dataLabels!"
+              [grid]="processingByMonthChartOptions.grid!"
+              [tooltip]="processingByMonthChartOptions.tooltip!"
+            ></apx-chart>
+          </app-chart-card>
+        }
+      </div>
+    }
+  }
+
+  <!-- Empty State -->
+  @if (!loading && !stats) {
+    <div class="empty-state">
+      <mat-icon>analytics</mat-icon>
+      <h3>No Stats Available</h3>
+      <p>Add some series and issues to see collection statistics.</p>
+    </div>
+  }
+</div>

@@ -83,6 +83,7 @@ inferno-comics:
   nextcloudUsername: "${NEXTCLOUD_USERNAME:none}"
   nextcloudPassword: "${NEXTCLOUD_PASSWORD:none}"
   nextcloudFolderLocation: "${NEXTCLOUD_FOLDER_LOCATION:none}"
+  searxngHost: "${SEARXNG_HOST}"
 
 logging:
   level:

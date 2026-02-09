@@ -1,15 +1,17 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
 .dialog-container {
   padding: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   background-color: var(--surface-color);
   border: 2px solid var(--border-color);
 }
 
 .dialog-header {
-  display: flex;
-  align-items: center;
-  padding: 16px 24px;
+  @include flex-start;
+  padding: var(--spacing-lg) var(--spacing-2xl);
   background-color: var(--background-color);
   border-bottom: 1px solid var(--border-color);
 }
@@ -20,7 +22,7 @@
 }
 
 .header-icon {
-  margin-right: 12px;
+  margin-right: var(--spacing-md);
   color: var(--primary-color);
   font-size: 24px;
   height: 24px;
@@ -33,76 +35,75 @@
 
 .dialog-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-semibold);
   color: var(--text-primary);
   line-height: 1.3;
 }
 
 .dialog-content {
   min-width: 320px;
-  padding: 20px 24px;
+  padding: var(--spacing-xl) var(--spacing-2xl);
   background-color: var(--surface-color);
 }
 
 .dialog-message {
-  margin: 0 0 16px 0;
-  font-size: 16px;
+  margin: 0 0 var(--spacing-lg) 0;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--text-primary);
 }
 
-// Add support for details list
 .details-list {
-  margin: 16px 0 0 0;
+  margin: var(--spacing-lg) 0 0 0;
   padding: 0;
   list-style: none;
-  
+
   li {
-    margin: 8px 0;
-    padding: 8px 12px;
+    margin: var(--spacing-sm) 0;
+    padding: var(--spacing-sm) var(--spacing-md);
     background-color: var(--background-color);
     border-left: 3px solid var(--error-color);
-    border-radius: 4px;
+    border-radius: var(--radius-xs);
     color: var(--text-secondary);
-    font-size: 14px;
-    
+    font-size: 0.875rem;
+
     &::before {
       content: '• ';
       color: var(--error-color);
       font-weight: bold;
-      margin-right: 8px;
+      margin-right: var(--spacing-sm);
     }
   }
 }
 
 .destructive-warning {
-  margin: 16px 0;
-  padding: 12px 16px;
+  margin: var(--spacing-lg) 0;
+  padding: var(--spacing-md) var(--spacing-lg);
   background-color: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--error-color);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-medium);
 }
 
 .dialog-actions {
-  display: flex;
+  @include flex-between;
   justify-content: flex-end;
-  padding: 12px 24px 24px;
+  padding: var(--spacing-md) var(--spacing-2xl) var(--spacing-2xl);
   margin-bottom: 0;
-  gap: 12px;
+  gap: var(--spacing-md);
   background-color: var(--surface-color);
   border-top: 1px solid var(--border-color);
 }
 
 .cancel-button {
   color: var(--text-secondary) !important;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   border: 1px solid var(--border-color) !important;
-  border-radius: 8px !important;
-  
+  border-radius: var(--radius-sm) !important;
+
   &:hover {
     background-color: var(--background-color) !important;
     color: var(--text-primary) !important;
@@ -110,16 +111,15 @@
 }
 
 .confirm-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 500;
-  padding: 0 16px;
+  @include flex-start;
+  gap: var(--spacing-sm);
+  font-weight: var(--font-weight-medium);
+  padding: 0 var(--spacing-lg);
   min-width: 100px;
-  border-radius: 8px !important;
-  
+  border-radius: var(--radius-sm) !important;
+
   &:not(.warn-button) {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+    @include gradient-primary;
     color: white !important;
   }
 }
@@ -127,7 +127,7 @@
 .warn-button {
   background-color: var(--error-color) !important;
   color: white !important;
-  
+
   &:hover {
     background-color: #dc2626 !important;
   }
@@ -136,19 +136,18 @@
 .mat-dialog-container {
   padding: 0;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background-color: var(--surface-color) !important;
   color: var(--text-primary) !important;
   box-shadow: var(--shadow-lg);
   border: 2px solid var(--border-color);
 }
 
-// Override Material Dialog defaults
 ::ng-deep .mat-mdc-dialog-container {
   --mdc-dialog-container-color: var(--surface-color);
   --mdc-dialog-supporting-text-color: var(--text-primary);
   --mdc-dialog-subhead-color: var(--text-primary);
-  
+
   .mdc-dialog__surface {
     background-color: var(--surface-color) !important;
   }

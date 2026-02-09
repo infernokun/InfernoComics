@@ -80,6 +80,23 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    public static <T> ApiResponse<T> error(T data, String message) {
+        return ApiResponse.<T>builder()
+                .code(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+                .message(message)
+                .data(data)
+                .type(TYPE.ERROR)
+                .build();
+    }
+
+    public static <T> ApiResponse<T> error(T data) {
+        return ApiResponse.<T>builder()
+                .code(HttpStatus.SC_INTERNAL_SERVER_ERROR)
+                .data(data)
+                .type(TYPE.ERROR)
+                .build();
+    }
+
     public static <T> ApiResponse<T> error(String message) {
         return ApiResponse.<T>builder()
                 .code(HttpStatus.SC_INTERNAL_SERVER_ERROR)

@@ -1,0 +1,35 @@
+<div class="newest-list">
+  @for (item of items; track item.id) {
+    @if (item.link) {
+      <a class="newest-item" [routerLink]="item.link">
+        <ng-container *ngTemplateOutlet="itemContent; context: { item: item }"></ng-container>
+      </a>
+    } @else {
+      <div class="newest-item">
+        <ng-container *ngTemplateOutlet="itemContent; context: { item: item }"></ng-container>
+      </div>
+    }
+  }
+</div>
+
+<ng-template #itemContent let-item="item">
+  <div class="newest-image">
+    @if (item.imageUrl) {
+      <img [src]="item.imageUrl" [alt]="item.name" loading="lazy" />
+    } @else {
+      <div class="newest-placeholder">
+        <mat-icon>{{ placeholderIcon }}</mat-icon>
+      </div>
+    }
+  </div>
+  <div class="newest-info">
+    <span class="newest-name">{{ item.name }}</span>
+    @if (item.meta) {
+      <span class="newest-meta">{{ item.meta }}</span>
+    }
+    @if (item.stats) {
+      <span class="newest-stats">{{ item.stats }}</span>
+    }
+  </div>
+  <span class="newest-time">{{ getRelativeTime(item.createdAt) }}</span>
+</ng-template>

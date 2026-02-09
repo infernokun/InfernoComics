@@ -1,12 +1,14 @@
 import { Component, OnInit, OnDestroy, HostListener, ElementRef, signal, WritableSignal } from '@angular/core';
 import { finalize, interval, Subscription } from 'rxjs';
 import { ProgressData, State } from '../../../models/progress-data.model';
+import { generateSlug } from '../../../models/series.model';
 import { trigger, transition, style, animate } from '@angular/animations';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiResponse } from '../../../models/api-response.model';
+import { MessageService } from '../../../services/message.service';
 import { ProgressDataService } from '../../../services/progress-data.service';
 import { WebsocketService, WebSocketResponseList } from '../../../services/websocket.service';
 import { Router } from '@angular/router';
+import { DateUtils } from '../../../utils/date-utils';
 
 export interface ProcessingStatus {
   items: ProgressData[];
@@ -51,14 +53,16 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   });
 
   isLoading = true;
-  maxDisplayItems = 5;
+  maxDisplayItems = 25;
   showOverlay = false;
   state = State;
   pendingDismissIds = new Set<number>();
+  activeFilter: 'all' | 'processing' | 'completed' | 'error' = 'all';
+  expandedItemId: number | null = null;
 
   constructor(
     private router: Router,
-    private snackBar: MatSnackBar,
+    private messageService: MessageService,
     private elementRef: ElementRef,
     private websocket: WebsocketService,
     private progressDataService: ProgressDataService
@@ -225,8 +229,7 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
   
         // 4️⃣  Compare timestamps
         return timeB.getTime() - timeA.getTime();
-      })
-      .slice(0, this.maxDisplayItems);
+      });
   }
 
   getItemClass(item: ProgressData): string {
@@ -326,11 +329,11 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     }
 
     if (item.timeStarted) {
-      info.push(`Started: ${this.formatDateTime(item.timeStarted)}`);
+      info.push(`Started: ${DateUtils.formatDateTime(item.timeStarted)}`);
     }
 
     if (item.timeFinished) {
-      info.push(`Finished: ${this.formatDateTime(item.timeFinished)}`);
+      info.push(`Finished: ${DateUtils.formatDateTime(item.timeFinished)}`);
     }
 
     return info.join(' • ');
@@ -354,27 +357,20 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
     return `${item.series.name} (ID: ${item.series.id})`;
   }
 
-  private formatDateTime(date: Date): string {
-    return date.toLocaleString('en-US', {
-      month: 'numeric',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
-  }
-
   toggleOverlay(event: Event) {
     event.stopPropagation();
     this.showOverlay = !this.showOverlay;
   }
 
-  navigateToSeries(item: ProgressData): void {
-    if (item.series && item.series.id) {
-      this.router.navigate(['/series', item.series.id]);
+  navigateToSeries(item: ProgressData, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
+    if (item.series && item.series.name) {
       this.showOverlay = false;
+      this.router.navigate(['/series', item.series.id, generateSlug(item.series.name)]);
     }
   }
 
@@ -389,24 +385,132 @@ export class ProcessingStatusIconComponent implements OnInit, OnDestroy {
       next: (res: ApiResponse<ProgressData[]>) => {
         if (!res.data) throw new Error('issue dismissProgressData');
 
-        // 4️⃣  Push the new status
         this.processingStatus.set(this.convertToProcessingStatus(res.data.map(item => new ProgressData(item))));
 
-        // 5️⃣  Show a success snackbar
-        this.snackBar.open(
-          `Progress for series "${itemId}" dismissed`,
-          'Close',
-          { duration: 3000, panelClass: ['snackbar-success'] }
-        );
+        this.messageService.success('Progress dismissed');
       },
       error: (err: Error) => {
         console.error('Error dismissing progress:', err);
-        this.snackBar.open(
-          'Failed to dismiss progress',
-          'Close',
-          { duration: 3000, panelClass: ['snackbar-error'] }
-        );
+        this.messageService.error('Failed to dismiss progress');
       }
+    });
+  }
+
+  // Filter and count methods
+  getCompletedCount(): number {
+    return this.processingStatus().items.filter(item => item.state === State.COMPLETED).length;
+  }
+
+  getErrorCount(): number {
+    return this.processingStatus().items.filter(item => item.state === State.ERROR).length;
+  }
+
+  setFilter(filter: 'all' | 'processing' | 'completed' | 'error'): void {
+    this.activeFilter = filter;
+  }
+
+  filterByState(state: string): void {
+    switch (state) {
+      case 'PROCESSING':
+        this.activeFilter = 'processing';
+        break;
+      case 'COMPLETED':
+        this.activeFilter = 'completed';
+        break;
+      case 'ERROR':
+        this.activeFilter = 'error';
+        break;
+      default:
+        this.activeFilter = 'all';
+    }
+  }
+
+  getFilteredItems(): ProgressData[] {
+    const items = this.getSortedItems();
+
+    switch (this.activeFilter) {
+      case 'processing':
+        return items.filter(item => item.state === State.PROCESSING);
+      case 'completed':
+        return items.filter(item => item.state === State.COMPLETED);
+      case 'error':
+        return items.filter(item => item.state === State.ERROR);
+      default:
+        return items;
+    }
+  }
+
+  // Expand/collapse functionality
+  toggleItemExpand(itemId: number): void {
+    this.expandedItemId = this.expandedItemId === itemId ? null : itemId;
+  }
+
+  // Refresh functionality
+  refreshStatus(): void {
+    this.fetchStatus();
+  }
+
+  // Relative time formatting
+  formatRelativeTime(date: Date | undefined): string {
+    if (!date) return 'Unknown';
+
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSeconds = Math.floor(diffMs / 1000);
+    const diffMinutes = Math.floor(diffSeconds / 60);
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSeconds < 10) return 'Just now';
+    if (diffSeconds < 60) return `${diffSeconds}s ago`;
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  // Retry failed processing
+  retryProcessing(item: ProgressData, event: Event): void {
+    event.stopPropagation();
+
+    if (!item.series?.id) {
+      this.messageService.warning('Cannot retry: Series information missing');
+      return;
+    }
+
+    this.messageService.info('Retry functionality coming soon');
+  }
+
+  // Clear all completed/failed items
+  clearCompleted(): void {
+    const itemsToClear = this.processingStatus().items
+      .filter(item => item.state === State.COMPLETED || item.state === State.ERROR)
+      .map(item => item.id!)
+      .filter(id => id !== undefined);
+
+    if (itemsToClear.length === 0) return;
+
+    let cleared = 0;
+    itemsToClear.forEach(id => {
+      this.progressDataService.dismissProgressData(id).subscribe({
+        next: (res: ApiResponse<ProgressData[]>) => {
+          cleared++;
+          if (cleared === itemsToClear.length && res.data) {
+            this.processingStatus.set(this.convertToProcessingStatus(res.data.map(item => new ProgressData(item))));
+            this.messageService.success(`Cleared ${cleared} finished tasks`);
+          }
+        },
+        error: (err: Error) => {
+          console.error('Error clearing item:', err);
+        }
+      });
     });
   }
 }

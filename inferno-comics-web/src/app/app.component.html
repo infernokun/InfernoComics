@@ -28,16 +28,20 @@
         <mat-icon>check_box_outline_blank</mat-icon>
         Missing
       </button>
+      <button mat-button routerLink="/stats" routerLinkActive="active-link">
+        <mat-icon>insights</mat-icon>
+        Stats
+      </button>
       <button mat-button routerLink="/series/new" routerLinkActive="active-link">
         <mat-icon>add</mat-icon>
         Add Series
       </button>
+      <button mat-icon-button class="icon-btn" routerLink="/admin" aria-label="Admin">
+        <mat-icon>settings</mat-icon>
+      </button>
     </nav>
 
-    <!-- Settings & Theme (always visible) -->
-    <button mat-icon-button class="icon-btn" routerLink="/config" aria-label="Settings">
-      <mat-icon>settings</mat-icon>
-    </button>
+    <!-- Settings & Theme -->
     <button mat-icon-button class="icon-btn theme-toggle" (click)="toggleTheme()"
             [attr.aria-label]="(isDarkMode$ | async) ? 'Switch to light mode' : 'Switch to dark mode'">
       <mat-icon>{{ (isDarkMode$ | async) ? 'light_mode' : 'dark_mode' }}</mat-icon>
@@ -65,12 +69,16 @@
         <mat-icon>check_box_outline_blank</mat-icon>
         <span>Missing</span>
       </a>
+      <a mat-menu-item routerLink="/stats" routerLinkActive="active-menu-item">
+        <mat-icon>insights</mat-icon>
+        <span>Stats</span>
+      </a>
       <mat-divider></mat-divider>
       <a mat-menu-item routerLink="/series/new" routerLinkActive="active-menu-item">
         <mat-icon>add</mat-icon>
         <span>Add Series</span>
       </a>
-      <a mat-menu-item routerLink="/config" routerLinkActive="active-menu-item">
+      <a mat-menu-item routerLink="/admin" routerLinkActive="active-menu-item">
         <mat-icon>settings</mat-icon>
         <span>Settings</span>
       </a>
@@ -78,6 +86,33 @@
 
   </mat-toolbar-row>
 </mat-toolbar>
+
 <div class="main-content">
   <router-outlet></router-outlet>
 </div>
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav">
+  <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">
+    <mat-icon>dashboard</mat-icon>
+    <span>Home</span>
+  </a>
+  <a routerLink="/series" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">
+    <mat-icon>library_books</mat-icon>
+    <span>Series</span>
+  </a>
+  <a routerLink="/series/new" routerLinkActive="active" class="nav-item nav-item-fab">
+    <div class="fab-button">
+      <mat-icon>add</mat-icon>
+    </div>
+    <span>Add</span>
+  </a>
+  <a routerLink="/issues" routerLinkActive="active" class="nav-item">
+    <mat-icon>collections_bookmark</mat-icon>
+    <span>Issues</span>
+  </a>
+  <a routerLink="/missing" routerLinkActive="active" class="nav-item">
+    <mat-icon>check_box_outline_blank</mat-icon>
+    <span>Missing</span>
+  </a>
+</nav>

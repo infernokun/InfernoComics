@@ -1,8 +1,35 @@
 {
   "name": "inferno-comics",
-  "version": "0.0.0",
+  "version": "0.1.1",
+  "description": "Monorepo for Inferno Comics - WEB, REST, and RECOG services",
   "scripts": {
     "start:web": "cd inferno-comics-web && npm run start",
+    "start:rest": "cd inferno-comics-rest && npm run start",
+    "start:recog": "cd inferno-comics-recog && npm run start",
+
+    "build:web": "cd inferno-comics-web && npm run build:prod",
+    "build:rest": "cd inferno-comics-rest && npm run build",
+    "build:recog": "cd inferno-comics-recog && npm run build",
+
+    "test:web": "cd inferno-comics-web && npm run test",
+    "test:rest": "cd inferno-comics-rest && npm run test",
+    "test:recog": "cd inferno-comics-recog && npm run test",
+    
+    "docker:build-web": "cd inferno-comics-web && npm run docker:build",
+    "docker:build-rest": "cd inferno-comics-rest && npm run docker:build",
+    "docker:build-recog": "cd inferno-comics-recog && npm run docker:build",
+
     "push:git": "git push gitlab main && git push github main"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/infernokun/InfernoComics.git"
+  },
+  "author": "InfernoKun",
+  "email": "infernokun@infernokun.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/infernokun/InfernoComics/issues"
+  },
+  "homepage": "https://github.com/infernokun/InfernoComics#readme"
 }

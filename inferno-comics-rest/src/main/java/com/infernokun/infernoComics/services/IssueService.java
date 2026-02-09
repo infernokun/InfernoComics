@@ -2,7 +2,7 @@ package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
@@ -56,7 +56,7 @@ public class IssueService {
     private final DescriptionGeneratorService descriptionGeneratorService;
 
     private final CacheManager cacheManager;
-    private final WebClient webClient;
+    private final InfernoComicsWebClient webClient;
 
     public List<Issue> getAllIssues() {
         List<Issue> cachedIssues = getCachedValue();
@@ -481,10 +481,9 @@ public class IssueService {
                 } else {
                     log.warn("Image URL format unexpected. Existing: {}, New: {}", existingUrl, newUrl);
                 }
+            } else {
+                issue.setId(existingIssueOpt.get().getId());
             }
-
-            // This line seems redundant - you're setting ID twice
-            issue.setId(existingIssueOpt.get().getId());
         }
 
         // Generate description if not provided
@@ -781,5 +780,157 @@ public class IssueService {
         log.info("Bulk delete completed: {} successful, {} failed", successful, failed);
 
         return new Issue.BulkDeleteResult(successful, failed);
+    }
+
+    /**
+     * Reverify all issues for a series by fetching the latest data from Comic Vine.
+     * This updates cover dates, descriptions, and other metadata for issues that have
+     * a Comic Vine ID.
+     *
+     * @param seriesId The series ID to reverify issues for
+     * @return Result containing counts of updated and failed issues
+     */
+    @Transactional
+    public Issue.BulkUpdateResult reverifyIssues(Long seriesId) {
+        log.info("Reverifying issues for series ID: {}", seriesId);
+
+        Optional<Series> seriesOpt = seriesRepository.findById(seriesId);
+        if (seriesOpt.isEmpty()) {
+            throw new IllegalArgumentException("Series with ID " + seriesId + " not found");
+        }
+
+        Series series = seriesOpt.get();
+        List<Issue> issues = issueRepository.findBySeriesIdOrderByIssueNumberAsc(seriesId);
+
+        if (issues.isEmpty()) {
+            log.info("No issues found for series {}", seriesId);
+            return new Issue.BulkUpdateResult(0, 0, 0);
+        }
+
+        // Fetch all Comic Vine issues for this series to have the latest data
+        List<ComicVineService.ComicVineIssueDto> comicVineIssues = new ArrayList<>();
+        try {
+            comicVineIssues = comicVineService.searchIssues(series);
+            log.info("Fetched {} issues from Comic Vine for series '{}'", comicVineIssues.size(), series.getName());
+        } catch (Exception e) {
+            log.error("Failed to fetch Comic Vine issues for series {}: {}", seriesId, e.getMessage());
+        }
+
+        // Create a map of Comic Vine ID to issue data for quick lookup
+        Map<String, ComicVineService.ComicVineIssueDto> comicVineMap = comicVineIssues.stream()
+                .collect(Collectors.toMap(
+                        ComicVineService.ComicVineIssueDto::getId,
+                        dto -> dto,
+                        (existing, replacement) -> existing
+                ));
+
+        int updated = 0;
+        int skipped = 0;
+        int failed = 0;
+
+        for (Issue issue : issues) {
+            try {
+                if (issue.getComicVineId() == null || issue.getComicVineId().isEmpty()) {
+                    log.debug("Skipping issue #{} - no Comic Vine ID", issue.getIssueNumber());
+                    skipped++;
+                    continue;
+                }
+
+                ComicVineService.ComicVineIssueDto comicVineData = comicVineMap.get(issue.getComicVineId());
+
+                if (comicVineData == null) {
+                    // Try fetching individually if not in the list
+                    try {
+                        comicVineData = comicVineService.getComicVineIssueById(Long.parseLong(issue.getComicVineId()));
+                    } catch (Exception e) {
+                        log.warn("Could not fetch Comic Vine data for issue #{} (CV ID: {}): {}",
+                                issue.getIssueNumber(), issue.getComicVineId(), e.getMessage());
+                    }
+                }
+
+                if (comicVineData == null) {
+                    log.debug("No Comic Vine data found for issue #{}", issue.getIssueNumber());
+                    skipped++;
+                    continue;
+                }
+
+                boolean wasUpdated = false;
+
+                // Update cover date if available from Comic Vine
+                if (comicVineData.getCoverDate() != null && !comicVineData.getCoverDate().isEmpty()) {
+                    try {
+                        LocalDate newCoverDate = LocalDate.parse(comicVineData.getCoverDate());
+                        if (!newCoverDate.equals(issue.getCoverDate())) {
+                            log.info("Updating cover date for issue #{} from {} to {}",
+                                    issue.getIssueNumber(), issue.getCoverDate(), newCoverDate);
+                            issue.setCoverDate(newCoverDate);
+                            wasUpdated = true;
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not parse cover date '{}' for issue #{}",
+                                comicVineData.getCoverDate(), issue.getIssueNumber());
+                    }
+                }
+
+                // Update image URL if missing
+                if ((issue.getImageUrl() == null || issue.getImageUrl().isEmpty())
+                        && comicVineData.getImageUrl() != null) {
+                    issue.setImageUrl(comicVineData.getImageUrl());
+                    wasUpdated = true;
+                }
+
+                // Update title/name if missing
+                if ((issue.getTitle() == null || issue.getTitle().isEmpty())
+                        && comicVineData.getName() != null) {
+                    issue.setTitle(comicVineData.getName());
+                    wasUpdated = true;
+                }
+
+                // Update description if missing or was generated
+                if ((issue.getDescription() == null || issue.getDescription().isEmpty() || issue.isGeneratedDescription())
+                        && comicVineData.getDescription() != null && !comicVineData.getDescription().isEmpty()) {
+                    issue.setDescription(comicVineData.getDescription());
+                    issue.setGeneratedDescription(false);
+                    wasUpdated = true;
+                }
+
+                // Update variant covers if available
+                if (comicVineData.getVariants() != null && !comicVineData.getVariants().isEmpty()) {
+                    List<Issue.VariantCover> variants = comicVineData.getVariants().stream()
+                            .map(v -> new Issue.VariantCover(
+                                    v.getId(),
+                                    v.getOriginalUrl(),
+                                    v.getCaption(),
+                                    v.getImageTags()
+                            ))
+                            .collect(Collectors.toList());
+
+                    if (issue.getVariantCovers() == null || issue.getVariantCovers().size() != variants.size()) {
+                        issue.setVariantCovers(variants);
+                        wasUpdated = true;
+                    }
+                }
+
+                if (wasUpdated) {
+                    issueRepository.save(issue);
+                    updated++;
+                } else {
+                    skipped++;
+                }
+
+            } catch (Exception e) {
+                log.error("Failed to reverify issue #{}: {}", issue.getIssueNumber(), e.getMessage());
+                failed++;
+            }
+        }
+
+        // Clear caches after bulk update
+        evictIssueCaches();
+        evictSeriesRelatedCaches(seriesId);
+
+        log.info("Reverify completed for series {}: {} updated, {} skipped, {} failed",
+                series.getName(), updated, skipped, failed);
+
+        return new Issue.BulkUpdateResult(updated, skipped, failed);
     }
 }

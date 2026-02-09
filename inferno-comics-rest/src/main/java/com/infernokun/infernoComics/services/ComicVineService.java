@@ -2,7 +2,7 @@ package com.infernokun.infernoComics.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.infernokun.infernoComics.clients.WebClient;
+import com.infernokun.infernoComics.clients.InfernoComicsWebClient;
 import com.infernokun.infernoComics.config.InfernoComicsConfig;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.utils.GenericTextCleaner;
@@ -14,11 +14,13 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -28,7 +30,8 @@ public class ComicVineService {
     private final ObjectMapper objectMapper;
     private final InfernoComicsConfig infernoComicsConfig;
     private final StringRedisTemplate stringRedisTemplate;
-    private final WebClient webClient;
+    private final RedisJsonService redisJsonService;
+    private final InfernoComicsWebClient webClient;
 
     private static final String SERIES_CACHE_PREFIX = "comic_vine_series:";
     private static final String ISSUES_CACHE_PREFIX = "comic_vine_issues:";
@@ -103,7 +106,7 @@ public class ComicVineService {
             stringRedisTemplate.delete(stringRedisTemplate.keys(SERIES_CACHE_PREFIX + "*"));
             stringRedisTemplate.delete(stringRedisTemplate.keys(ISSUES_CACHE_PREFIX + "*"));
         } catch (Exception e) {
-            log.warn("Error clearing manual Comic Vine caches: {}", e.getMessage());
+            log.warn("Failed to clear manual Comic Vine caches (prefixes: {}, {}): {}", SERIES_CACHE_PREFIX, ISSUES_CACHE_PREFIX, e.getMessage());
         }
     }
 
@@ -112,18 +115,19 @@ public class ComicVineService {
         String cacheKey = SERIES_CACHE_PREFIX + sanitizeKey(query);
 
         // Try to get from cache first
-        String cachedResult = getCachedResult(cacheKey);
-        if (cachedResult != null) {
-            try {
-                return deserializeSeriesList(cachedResult);
-            } catch (Exception e) {
-                log.warn("Error deserializing cached series result: {}", e.getMessage());
+        try {
+            List<ComicVineSeriesDto> cached = redisJsonService.jsonGet(cacheKey,
+                    new TypeReference<List<ComicVineSeriesDto>>() {});
+            if (cached != null) {
+                return cached;
             }
+        } catch (Exception e) {
+            log.warn("Failed to retrieve cached series for key {}: {}", cacheKey, e.getMessage());
         }
 
         // Fetch from API and cache
         List<ComicVineSeriesDto> series = searchSeriesFromAPI(query);
-        cacheResult(cacheKey, serializeSeriesList(series));
+        redisJsonService.jsonSet(cacheKey, series, Duration.ofHours(CACHE_TTL_HOURS));
         return series;
     }
 
@@ -265,50 +269,12 @@ public class ComicVineService {
         return allIssues;
     }
 
-    // Cache utility methods
-    private String getCachedResult(String cacheKey) {
-        try {
-            return stringRedisTemplate.opsForValue().get(cacheKey);
-        } catch (Exception e) {
-            log.warn("Error retrieving from cache with key {}: {}", cacheKey, e.getMessage());
-            return null;
-        }
-    }
-
-    private void cacheResult(String cacheKey, String result) {
-        try {
-            stringRedisTemplate.opsForValue().set(cacheKey, result, CACHE_TTL_HOURS, TimeUnit.HOURS);
-        } catch (Exception e) {
-            log.warn("Error caching result with key {}: {}", cacheKey, e.getMessage());
-        }
-    }
-
     private String sanitizeKey(String input) {
         if (input == null) return "null";
         return input.toLowerCase()
                 .replaceAll("[^a-z0-9_-]", "_")
                 .replaceAll("_{2,}", "_")
                 .replaceAll("^_|_$", "");
-    }
-
-    // Serialization methods for manual caching
-    private String serializeSeriesList(List<ComicVineSeriesDto> series) {
-        try {
-            return objectMapper.writeValueAsString(series);
-        } catch (Exception e) {
-            log.error("Error serializing series list: {}", e.getMessage());
-            return "[]";
-        }
-    }
-
-    private List<ComicVineSeriesDto> deserializeSeriesList(String json) {
-        try {
-            return objectMapper.readValue(json,
-                    objectMapper.getTypeFactory().constructCollectionType(List.class, ComicVineSeriesDto.class));
-        } catch (Exception e) {
-            log.error("Error deserializing series list: {}", e.getMessage());
-            return new ArrayList<>();
-        }
     }
 
     // Get cache statistics
@@ -354,6 +320,15 @@ public class ComicVineService {
 
                 dto.setStartYear(result.path("start_year").asInt(0));
 
+                // Parse end_year if available
+                JsonNode endYearNode = result.path("end_year");
+                if (!endYearNode.isMissingNode() && !endYearNode.isNull()) {
+                    int endYear = endYearNode.asInt(0);
+                    if (endYear > 0) {
+                        dto.setEndYear(endYear);
+                    }
+                }
+
                 JsonNode image = result.path("image");
                 if (!image.isMissingNode()) {
                     dto.setImageUrl(image.path("medium_url").asText());
@@ -380,6 +355,15 @@ public class ComicVineService {
                 dto.setDescription(result.path("description").asText());
                 dto.setPublisher(result.path("publisher").path("name").asText());
                 dto.setStartYear(result.path("start_year").asInt(0));
+
+                // Parse end_year if available
+                JsonNode endYearNode = result.path("end_year");
+                if (!endYearNode.isMissingNode() && !endYearNode.isNull()) {
+                    int endYear = endYearNode.asInt(0);
+                    if (endYear > 0) {
+                        dto.setEndYear(endYear);
+                    }
+                }
 
                 JsonNode image = result.path("image");
                 if (!image.isMissingNode()) {
@@ -411,6 +395,15 @@ public class ComicVineService {
             }
 
             dto.setStartYear(result.path("start_year").asInt(0));
+
+            // Parse end_year if available from ComicVine (field name varies - try common variations)
+            JsonNode endYearNode = result.path("end_year");
+            if (!endYearNode.isMissingNode() && !endYearNode.isNull()) {
+                int endYear = endYearNode.asInt(0);
+                if (endYear > 0) {
+                    dto.setEndYear(endYear);
+                }
+            }
 
             JsonNode image = result.path("image");
             if (!image.isMissingNode()) {
@@ -590,6 +583,55 @@ public class ComicVineService {
 
         // If no numeric part found, use a hash for consistent ordering
         return (double) issueNumber.hashCode();
+    }
+
+    /**
+     * Derives the end year from a list of issues by finding the most recent cover date.
+     * Only returns a value if the most recent issue is at least 2 years old (to avoid
+     * marking ongoing series as ended).
+     *
+     * @param issues List of issues to analyze
+     * @return The year of the most recent issue, or null if the series appears to be ongoing
+     */
+    public Integer deriveEndYearFromIssues(List<ComicVineIssueDto> issues) {
+        if (issues == null || issues.isEmpty()) {
+            return null;
+        }
+
+        int currentYear = LocalDate.now().getYear();
+
+        // Find the most recent cover date year
+        Optional<Integer> latestYear = issues.stream()
+                .map(ComicVineIssueDto::getCoverDate)
+                .filter(date -> date != null && !date.isEmpty())
+                .map(date -> {
+                    try {
+                        return LocalDate.parse(date).getYear();
+                    } catch (Exception e) {
+                        // Try to extract just the year if full date parsing fails
+                        try {
+                            return Integer.parseInt(date.substring(0, 4));
+                        } catch (Exception ex) {
+                            return null;
+                        }
+                    }
+                })
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo);
+
+        if (latestYear.isEmpty()) {
+            return null;
+        }
+
+        int lastIssueYear = latestYear.get();
+
+        // Only consider the series ended if the last issue is at least 2 years old
+        // This avoids marking ongoing series as ended
+        if (currentYear - lastIssueYear >= 2) {
+            return lastIssueYear;
+        }
+
+        return null;
     }
 
     @Setter

@@ -1,0 +1,377 @@
+<div class="bulk-selection-container">
+  <div class="dialog-header">
+    <div class="header-content">
+      <mat-icon class="header-icon">auto_awesome</mat-icon>
+      <div class="header-text">
+        <h2 mat-dialog-title>Bulk Comic Selection</h2>
+        <p class="session-info">
+          {{ processedResults.length }} images •
+          {{ getAutoAcceptedCount() }} auto-accepted •
+          {{ getManuallyAcceptedCount() }} manually accepted •
+          {{ getPendingCount() }} pending review
+        </p>
+      </div>
+    </div>
+    <div class="results-summary">
+      <div class="summary-item auto">
+        <span class="number">{{ getAutoAcceptedCount() }}</span>
+        <span class="label">Auto</span>
+      </div>
+      <div class="summary-item manual">
+        <span class="number">{{ getManuallyAcceptedCount() }}</span>
+        <span class="label">Manual</span>
+      </div>
+      <div class="summary-item review">
+        <span class="number">{{ getPendingCount() }}</span>
+        <span class="label">Pending</span>
+      </div>
+      <div class="summary-item rejected">
+        <span class="number">{{ getRejectedCount() }}</span>
+        <span class="label">Rejected</span>
+      </div>
+      @if (getNoMatchCount() > 0) {
+        <div class="summary-item none">
+          <span class="number">{{ getNoMatchCount() }}</span>
+          <span class="label">No Match</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div mat-dialog-content class="content">
+    <!-- Actions Bar -->
+    <div class="actions-bar">
+      <div class="bulk-actions">
+        <button mat-raised-button color="primary"
+          (click)="acceptAll()"
+          [disabled]="getAcceptableCount() === 0"
+          class="accept-all-btn">
+          <mat-icon>check_circle</mat-icon>
+          Accept All ({{ getAcceptableCount() }})
+        </button>
+        <button mat-button
+          (click)="acceptAllHighConfidence()"
+          [disabled]="getPendingHighConfidenceCount() === 0"
+          class="accept-high-btn">
+          <mat-icon>star</mat-icon>
+          Accept High Confidence ({{ getPendingHighConfidenceCount() }})
+        </button>
+        <button mat-button (click)="autoReviewAll()" [disabled]="getPendingCount() === 0">
+          <mat-icon>rate_review</mat-icon>
+          Review All ({{ getPendingCount() }})
+        </button>
+        <button mat-button (click)="restoreRejectedToReview()" [disabled]="getRestorableRejectedCount() === 0">
+          <mat-icon>restore</mat-icon>
+          Restore Rejected ({{ getRestorableRejectedCount() }})
+        </button>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="filter-container">
+        <!-- Status Filters -->
+        <div class="filter-section">
+          <label class="filter-section-label">Status:</label>
+          <div class="filter-tabs status-filters">
+            <button class="filter-tab"
+              [class.active]="currentStatusFilter === 'all'"
+              (click)="onStatusFilterChange('all')">
+              All <span class="count">{{ processedResults.length }}</span>
+            </button>
+            <button class="filter-tab auto"
+              [class.active]="currentStatusFilter === 'auto_selected'"
+              (click)="onStatusFilterChange('auto_selected')">
+              Auto-Accepted <span class="count">{{ getAutoAcceptedCount() }}</span>
+            </button>
+            <button class="filter-tab manual"
+              [class.active]="currentStatusFilter === 'manually_selected'"
+              (click)="onStatusFilterChange('manually_selected')">
+              Manually Accepted <span class="count">{{ getManuallyAcceptedCount() }}</span>
+            </button>
+            <button class="filter-tab review"
+              [class.active]="currentStatusFilter === 'needs_review'"
+              (click)="onStatusFilterChange('needs_review')">
+              Pending Review <span class="count">{{ getPendingCount() }}</span>
+            </button>
+            <button class="filter-tab rejected"
+              [class.active]="currentStatusFilter === 'rejected'"
+              (click)="onStatusFilterChange('rejected')">
+              Rejected <span class="count">{{ getRejectedCount() }}</span>
+            </button>
+            <button class="filter-tab none"
+              [class.active]="currentStatusFilter === 'no_match'"
+              (click)="onStatusFilterChange('no_match')">
+              No Match <span class="count">{{ getNoMatchCount() }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Confidence Filters -->
+        <div class="filter-section">
+          <label class="filter-section-label">Confidence:</label>
+          <div class="filter-tabs confidence-filters">
+            <button class="filter-tab"
+              [class.active]="currentConfidenceFilter === 'all'"
+              (click)="onConfidenceFilterChange('all')">
+              All <span class="count">{{ getFilteredByStatusCount() }}</span>
+            </button>
+            <button class="filter-tab high-confidence"
+              [class.active]="currentConfidenceFilter === 'high'"
+              (click)="onConfidenceFilterChange('high')">
+              <mat-icon>star</mat-icon>
+              High <span class="count">{{ getHighConfidenceCount() }}</span>
+            </button>
+            <button class="filter-tab medium-confidence"
+              [class.active]="currentConfidenceFilter === 'medium'"
+              (click)="onConfidenceFilterChange('medium')">
+              <mat-icon>star_half</mat-icon>
+              Medium <span class="count">{{ getMediumConfidenceCount() }}</span>
+            </button>
+            <button class="filter-tab low-confidence"
+              [class.active]="currentConfidenceFilter === 'low'"
+              (click)="onConfidenceFilterChange('low')">
+              <mat-icon>star_border</mat-icon>
+              Low <span class="count">{{ getLowConfidenceCount() }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table View -->
+    <div class="results-table">
+      <div class="table-header">
+        <div class="col-image">Original</div>
+        <div class="col-match">Best Match</div>
+        <div class="col-confidence">Confidence</div>
+        <div class="col-status">Status</div>
+        <div class="col-actions">Actions</div>
+      </div>
+
+      <div class="table-body">
+        @for (result of filteredResults; track result; let i = $index) {
+          <div
+            class="table-row"
+            [class.auto-accepted]="result.status === 'auto_accepted'"
+            [class.manually-accepted]="result.status === 'manually_accepted'"
+            [class.rejected]="result.status === 'rejected'"
+            [class.pending]="result.status === 'pending'"
+            [class.no-match]="result.status === 'no_match'"
+            [class.skipped]="result.status === 'skipped'">
+            <!-- Original Image Column -->
+            <div class="col-image">
+              <div class="image-preview" (click)="openZoom(result)">
+                <image-hover-preview [src]="result.imagePreview" [alt]="result.imageName" [matchSrc]="result.bestMatch?.url!" [matchAlt]="result.bestMatch?.comic_name!">
+                  <img [src]="result.imagePreview"
+                    [alt]="result.imageName"
+                    (error)="onImageError($event)" />
+                </image-hover-preview>
+                <div class="tap-hint">
+                  <mat-icon>zoom_in</mat-icon>
+                </div>
+              </div>
+              <div class="image-details">
+                <div class="image-name" [title]="result.imageName">{{ result.imageName }}</div>
+                <div class="image-index">Image {{ result.imageIndex + 1 }}</div>
+              </div>
+            </div>
+            <!-- Match Column -->
+            <div class="col-match">
+              @if (result.selectedMatch && result.selectedMatch !== result.bestMatch) {
+                <!-- Show selected match (different from best match) -->
+                <div class="match-content selected-match">
+                  <div class="match-image" (click)="openZoom(result)">
+                    <image-hover-preview [src]="result.imagePreview" [alt]="result.imageName" [matchSrc]="result.selectedMatch.url" [matchAlt]="result.selectedMatch.comic_name">
+                      <img [src]="result.selectedMatch.url"
+                        [alt]="result.selectedMatch.comic_name"
+                        (error)="onImageError($event)" />
+                    </image-hover-preview>
+                    <div class="tap-hint">
+                      <mat-icon>zoom_in</mat-icon>
+                    </div>
+                    <div class="selected-badge">
+                      <mat-icon>check</mat-icon>
+                    </div>
+                  </div>
+                  <div class="match-details">
+                    <div class="match-type-label selected">Selected Match</div>
+                    <div class="comic-title" [title]="result.selectedMatch.comic_name">{{ result.selectedMatch.comic_name }}</div>
+                    <div class="issue-number">Issue #{{ result.selectedMatch.issue_number }}</div>
+                    <div class="similarity">{{ (result.selectedMatch.similarity * 100).toFixed(1) }}% match</div>
+                    <div class="best-match-note">
+                      <mat-icon>info_outline</mat-icon>
+                      Best was: {{ result.bestMatch?.comic_name }} #{{ result.bestMatch?.issue_number }}
+                    </div>
+                  </div>
+                </div>
+              } @else if (result.bestMatch) {
+                <!-- Show best match (default) -->
+                <div class="match-content">
+                  <div class="match-image" (click)="openZoom(result)">
+                    <image-hover-preview [src]="result.imagePreview" [alt]="result.imageName" [matchSrc]="result.bestMatch.url" [matchAlt]="result.bestMatch.comic_name">
+                      <img [src]="result.bestMatch.url"
+                        [alt]="result.bestMatch.comic_name"
+                        (error)="onImageError($event)" />
+                    </image-hover-preview>
+                    <div class="tap-hint">
+                      <mat-icon>zoom_in</mat-icon>
+                    </div>
+                  </div>
+                  <div class="match-details">
+                    <div class="match-type-label best">Best Match</div>
+                    <div class="comic-title" [title]="result.bestMatch.comic_name">{{ result.bestMatch.comic_name }}</div>
+                    <div class="issue-number">Issue #{{ result.bestMatch.issue_number }}</div>
+                    <div class="similarity">{{ (result.bestMatch.similarity * 100).toFixed(1) }}% match</div>
+                    @if (result.allMatches.length > 1) {
+                      <div class="match-count">
+                        +{{ result.allMatches.length - 1 }} more matches
+                      </div>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <div class="no-match-content">
+                  <mat-icon>search_off</mat-icon>
+                  <span>No matches</span>
+                </div>
+              }
+            </div>
+            <!-- Confidence Column -->
+            <div class="col-confidence">
+              @if (result.bestMatch) {
+                <div class="confidence-badge" [class]="result.confidence">
+                  <mat-icon>{{ getConfidenceIcon(result.confidence) }}</mat-icon>
+                  <span>{{ result.confidence | titlecase }}</span>
+                </div>
+              }
+              @if (!result.bestMatch) {
+                <span class="no-confidence">-</span>
+              }
+            </div>
+            <!-- Status Column -->
+            <div class="col-status">
+              <div class="status-indicator">
+                <div class="status-badge" [class]="getStatusClass(result)">
+                  <mat-icon>{{ getStatusIcon(result.status) }}</mat-icon>
+                  <span>{{ getStatusText(result.status) }}</span>
+                </div>
+              </div>
+            </div>
+            <!-- Actions Column -->
+            <div class="col-actions">
+              <div class="action-buttons">
+                <!-- Primary Accept Button -->
+                @if (result.bestMatch && result.status === 'pending') {
+                  <button mat-raised-button
+                    color="primary"
+                    size="small"
+                    (click)="acceptMatch(result)"
+                    class="accept-btn">
+                    <mat-icon>check</mat-icon>
+                    Accept
+                  </button>
+                }
+                <!-- Secondary Actions -->
+                <div class="secondary-actions">
+                  @if (canShowAllMatches(result)) {
+                    <button mat-icon-button
+                      (click)="showAllMatches(result)"
+                      matTooltip="Review all matches"
+                      class="icon-btn review-btn">
+                      <mat-icon>visibility</mat-icon>
+                    </button>
+                  }
+                  @if (!result.bestMatch && result.status !== 'skipped') {
+                    <button mat-icon-button
+                      (click)="manualAdd(result)"
+                      matTooltip="Add manually"
+                      class="icon-btn manual-btn">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  }
+                  @if (result.status !== 'rejected') {
+                    <button mat-icon-button
+                      (click)="rejectMatch(result)"
+                      matTooltip="Reject"
+                      class="icon-btn reject-btn">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                  @if (result.status !== 'pending' && result.status !== 'no_match') {
+                    <button mat-icon-button
+                      (click)="resetUserAction(result)"
+                      matTooltip="Reset to pending"
+                      class="icon-btn reset-btn">
+                      <mat-icon>refresh</mat-icon>
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    @if (filteredResults.length === 0) {
+      <div class="empty-state">
+        <mat-icon>inbox</mat-icon>
+        <h3>No items match the current filter</h3>
+        <p>Try selecting a different filter to see more results.</p>
+      </div>
+    }
+  </div>
+
+  <!-- Footer -->
+  <div mat-dialog-actions class="footer">
+    <div class="progress-info">
+      <span class="stat auto-accepted">{{ getAutoAcceptedCount() }} auto-accepted</span>
+      <span class="stat manually-accepted">{{ getManuallyAcceptedCount() }} manually accepted</span>
+      <span class="stat rejected">{{ getRejectedCount() }} rejected</span>
+      <span class="stat pending">{{ getPendingCount() }} pending</span>
+    </div>
+
+    <div class="main-actions">
+      <button mat-button (click)="onCancel()">
+        Cancel
+      </button>
+      <button mat-button
+        (click)="saveSelections()"
+        [disabled]="!hasAnyChanges()">
+        Save Progress
+      </button>
+      <button mat-raised-button
+        color="primary"
+        (click)="addAllAccepted()"
+        [disabled]="!hasAcceptedMatches()">
+        <mat-icon>add_box</mat-icon>
+        Add {{ getAcceptedCount() }} Comics
+      </button>
+    </div>
+  </div>
+
+  <!-- Image Zoom Overlay -->
+  @if (zoomVisible) {
+    <div class="image-zoom-overlay" (click)="onZoomBackdropClick($event)">
+      <button mat-icon-button class="zoom-close-btn" (click)="closeZoom()">
+        <mat-icon>close</mat-icon>
+      </button>
+      <div class="zoom-images-container">
+        <div class="zoom-image-wrapper">
+          <span class="zoom-label">Original</span>
+          <img [src]="zoomOriginalSrc" alt="Original image" />
+        </div>
+        @if (zoomMatchSrc) {
+          <div class="zoom-image-wrapper">
+            <span class="zoom-label">Match</span>
+            <img [src]="zoomMatchSrc" alt="Matched comic" />
+          </div>
+        }
+      </div>
+      <div class="zoom-info">
+        <div class="zoom-title">{{ zoomTitle }}</div>
+        <div class="zoom-hint">Tap anywhere to close</div>
+      </div>
+    </div>
+  }
+</div>

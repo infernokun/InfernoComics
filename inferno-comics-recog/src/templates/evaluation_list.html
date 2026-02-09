@@ -1,235 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evaluation Results</title>
-    <style>
-        :root {
-            /* Dark mode colors (default) */
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #2d2d2d;
-            --bg-tertiary: #3a3a3a;
-            --text-primary: #ffffff;
-            --text-secondary: #b0b0b0;
-            --text-muted: #888888;
-            --border-color: #404040;
-            --accent-primary: #667eea;
-            --accent-secondary: #764ba2;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --error-color: #dc3545;
-            --card-bg: #252525;
-            --shadow: rgba(0, 0, 0, 0.3);
-            --hover-bg: #2d2d2d;
-        }
+{% extends "base.html" %}
 
-        [data-theme="light"] {
-            /* Light mode colors */
-            --bg-primary: #f5f5f5;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f8f9fa;
-            --text-primary: #333333;
-            --text-secondary: #555555;
-            --text-muted: #666666;
-            --border-color: #ddd;
-            --accent-primary: #007bff;
-            --accent-secondary: #0056b3;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --error-color: #dc3545;
-            --card-bg: #ffffff;
-            --shadow: rgba(0, 0, 0, 0.1);
-            --hover-bg: #f8f9fa;
-        }
+{% block title %}Evaluation Results - Inferno Comics{% endblock %}
 
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-        }
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/evaluation.css') }}">
+{% endblock %}
 
-        .theme-toggle {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: var(--card-bg);
-            border: 2px solid var(--border-color);
-            border-radius: 50px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 18px;
-            transition: all 0.3s ease;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--text-primary);
-        }
+{% block header %}
+<header class="page-header animate-fade-in-down">
+    <h1>Evaluation Results</h1>
+    <p>Browse all your comic series evaluation results</p>
+    <nav class="nav-buttons">
+        <a href="#" class="btn btn-primary" id="newEvaluationBtn">New Evaluation</a>
+    </nav>
+</header>
+{% endblock %}
 
-        .theme-toggle:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 15px var(--shadow);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px var(--shadow);
-            border: 1px solid var(--border-color);
-        }
-
-        .header {
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .title {
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background: var(--accent-primary);
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-
-        .btn:hover {
-            background: var(--accent-secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px var(--shadow);
-        }
-
-        .evaluations-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        .evaluations-table th,
-        .evaluations-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .evaluations-table th {
-            background-color: var(--bg-tertiary);
-            font-weight: bold;
-            color: var(--text-primary);
-        }
-
-        .evaluations-table tr:hover {
-            background-color: var(--hover-bg);
-        }
-
-        .evaluations-table td {
-            color: var(--text-primary);
-        }
-
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .status-completed {
-            background-color: rgba(40, 167, 69, 0.2);
-            color: var(--success-color);
-            border: 1px solid var(--success-color);
-        }
-
-        .status-error {
-            background-color: rgba(220, 53, 69, 0.2);
-            color: var(--error-color);
-            border: 1px solid var(--error-color);
-        }
-
-        .status-stopped {
-            background-color: rgba(255, 193, 7, 0.2);
-            color: var(--warning-color);
-            border: 1px solid var(--warning-color);
-        }
-
-        .success-indicator {
-            color: var(--success-color);
-            font-weight: bold;
-        }
-
-        .failure-indicator {
-            color: var(--error-color);
-            font-weight: bold;
-        }
-
-        .no-results {
-            text-align: center;
-            color: var(--text-muted);
-            padding: 40px;
-            font-style: italic;
-        }
-
-        .series-name {
-            font-weight: bold;
-            color: var(--text-primary);
-        }
-
-        .year {
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        .stats {
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        .view-link {
-            color: var(--accent-primary);
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .view-link:hover {
-            text-decoration: underline;
-        }
-
-        .timestamp {
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-    </style>
-</head>
-<body>
-    <div class="theme-toggle" onclick="toggleTheme()">
-        <span id="themeIcon">☀️</span>
-        <span id="themeText">Light</span>
-    </div>
-
-    <div class="container">
-        <div class="header">
-            <h1 class="title">📊 Evaluation Results</h1>
-            <a href="#" class="btn" id="newEvaluationBtn">🔄 New Evaluation</a>
-        </div>
-
-        {% if evaluations %}
-        <table class="evaluations-table">
+{% block content %}
+<div class="card animate-fade-in-up">
+    {% if evaluations %}
+    <div style="overflow-x: auto;">
+        <table class="table results-table">
             <thead>
                 <tr>
                     <th>Series</th>
@@ -245,114 +36,75 @@
                 <tr>
                     <td>
                         <div class="series-name">{{ eval.series_name or 'Unknown Series' }}</div>
-                        {% if eval.year %}<div class="year">({{ eval.year }})</div>{% endif %}
+                        {% if eval.year %}
+                        <div class="series-year">({{ eval.year }})</div>
+                        {% endif %}
+                    </td>
+                    <td class="timestamp-cell">
+                        {% if eval.timestamp %}
+                            {{ eval.timestamp.split('T')[0] }}<br>
+                            <span class="text-muted">{{ eval.timestamp.split('T')[1].split('.')[0] if 'T' in eval.timestamp else '' }}</span>
+                        {% else %}
+                            Unknown
+                        {% endif %}
                     </td>
                     <td>
-                        <div class="timestamp">
-                            {% if eval.timestamp %}
-                                {{ eval.timestamp.split('T')[0] }}<br>
-                                {{ eval.timestamp.split('T')[1].split('.')[0] if 'T' in eval.timestamp else eval.timestamp }}
-                            {% else %}
-                                Unknown
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <span class="status-badge status-{{ eval.status }}">
+                        <span class="badge badge-{% if eval.status == 'completed' %}success{% elif eval.status == 'error' %}error{% else %}warning{% endif %}">
                             {{ eval.status }}
                         </span>
                     </td>
                     <td>
-                        <div class="stats">
-                            <div>{{ eval.total_images }} images</div>
-                            <div class="success-indicator">{{ eval.successful_matches }} matches</div>
+                        <div class="stats-cell">
+                            <span>{{ eval.total_images }} images</span>
+                            <span class="text-success font-bold">{{ eval.successful_matches }} matches</span>
                         </div>
                     </td>
                     <td>
                         {% if eval.total_images > 0 %}
                             {% set success_rate = (eval.successful_matches / eval.total_images * 100) %}
-                            <div class="{% if success_rate > 50 %}success-indicator{% else %}failure-indicator{% endif %}">
+                            <span class="font-bold {% if success_rate > 50 %}text-success{% else %}text-error{% endif %}">
                                 {{ "%.1f"|format(success_rate) }}%
-                            </div>
+                            </span>
                         {% else %}
-                            <div class="failure-indicator">0%</div>
+                            <span class="text-error font-bold">0%</span>
                         {% endif %}
                     </td>
                     <td>
-                        <a href="#" class="view-link" data-session-id="{{ eval.session_id }}">📊 View Details</a>
+                        <a href="#" class="btn btn-sm btn-secondary view-link" data-session-id="{{ eval.session_id }}">
+                            View Details
+                        </a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% else %}
-        <div class="no-results">
-            <p>📝 No evaluation results found.</p>
-            <p>Run your first evaluation to see results here.</p>
-        </div>
-        {% endif %}
     </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">Empty</div>
+        <div class="empty-state-title">No evaluation results found</div>
+        <p class="text-muted mt-md">Run your first evaluation to see results here.</p>
+        <a href="#" class="btn btn-primary mt-lg" id="emptyStateBtn">Start Evaluation</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
 
-    <script>
-        // Theme management
-        function toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            updateThemeToggle(newTheme);
-        }
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Set navigation URLs
+        const newEvalBtn = document.getElementById('newEvaluationBtn');
+        if (newEvalBtn) newEvalBtn.href = API.url('/evaluation');
 
-        function updateThemeToggle(theme) {
-            const themeIcon = document.getElementById('themeIcon');
-            const themeText = document.getElementById('themeText');
-            
-            if (theme === 'light') {
-                themeIcon.textContent = '🌙';
-                themeText.textContent = 'Dark';
-            } else {
-                themeIcon.textContent = '☀️';
-                themeText.textContent = 'Light';
-            }
-        }
+        const emptyBtn = document.getElementById('emptyStateBtn');
+        if (emptyBtn) emptyBtn.href = API.url('/evaluation');
 
-        // Initialize theme
-        function initializeTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            updateThemeToggle(savedTheme);
-        }
-
-        // Configuration passed from Flask backend
-        const CONFIG = {
-            FLASK_HOST: '{{ config.flask_host }}',
-            FLASK_PORT: '{{ config.flask_port }}',
-            API_URL_PREFIX: '{{ config.api_url_prefix }}'
-        };
-        
-        // Helper function to build API URLs
-        function getApiUrl(endpoint) {
-            const protocol = window.location.protocol;
-            return `${protocol}//${CONFIG.FLASK_HOST}:${CONFIG.FLASK_PORT}/${CONFIG.API_URL_PREFIX}${endpoint}`;
-        }
-        
-        // Set up navigation URLs when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize theme
-            initializeTheme();
-            
-            // Set new evaluation button URL
-            document.getElementById('newEvaluationBtn').href = getApiUrl('/evaluation');
-            
-            // Set all view details links
-            const viewLinks = document.querySelectorAll('a.view-link[data-session-id]');
-            viewLinks.forEach(link => {
-                const sessionId = link.getAttribute('data-session-id');
-                link.href = getApiUrl(`/evaluation/${sessionId}`);
-            });
+        // Set view detail links
+        document.querySelectorAll('.view-link').forEach(link => {
+            const sessionId = link.dataset.sessionId;
+            link.href = API.url(`/evaluation/${sessionId}`);
         });
-    </script>
-</body>
-</html>
+    });
+</script>
+{% endblock %}

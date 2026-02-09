@@ -1,0 +1,1819 @@
+@use 'styles/breakpoints' as *;
+@use 'styles/mixins' as *;
+
+.series-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-xl);
+
+  @include md {
+    padding: var(--spacing-md);
+  }
+
+  @include sm {
+    padding: var(--spacing-sm);
+  }
+}
+
+.series-header {
+  display: flex;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+  background: var(--surface-color);
+  padding: var(--spacing-xl);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  position: relative;
+
+  @include md {
+    flex-direction: column;
+    text-align: center;
+    padding: var(--spacing-lg);
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .series-image {
+    flex-shrink: 0;
+
+    @include md {
+      @include flex-center;
+    }
+
+    img {
+      width: 180px;
+      height: 270px;
+      object-fit: cover;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-lg);
+      border: 3px solid var(--border-color);
+      transition: transform var(--transition-normal);
+
+      @include md {
+        width: 140px;
+        height: 210px;
+      }
+
+      @include sm {
+        width: 120px;
+        height: 180px;
+      }
+
+      &:hover {
+        transform: scale(1.02);
+      }
+    }
+  }
+
+  .series-info {
+    flex: 1;
+    min-width: 0;
+
+    .series-menu-btn {
+      position: absolute;
+      top: var(--spacing-md);
+      right: var(--spacing-md);
+      z-index: 1;
+    }
+
+    .series-title-header {
+      margin-bottom: var(--spacing-md);
+
+      @include md {
+        text-align: center;
+      }
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: var(--line-height-tight);
+      @include gradient-primary;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+
+      @include md {
+        font-size: 1.6rem;
+      }
+
+      @include sm {
+        font-size: 1.4rem;
+      }
+    }
+
+    h2 {
+      margin: 0 0 var(--spacing-lg);
+      font-size: 1.2rem;
+      color: var(--text-secondary);
+      font-weight: var(--font-weight-medium);
+
+      @include md {
+        font-size: 1rem;
+        margin-bottom: var(--spacing-md);
+      }
+    }
+
+    .series-meta {
+      @include flex-column;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
+
+      @include md {
+        align-items: center;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+      }
+
+      .meta-item {
+        @include flex-start;
+        gap: var(--spacing-md);
+        color: var(--text-secondary);
+        font-weight: var(--font-weight-medium);
+
+        @include md {
+          font-size: 0.9rem;
+          gap: var(--spacing-sm);
+        }
+
+        mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+          color: var(--primary-color);
+
+          @include md {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+        }
+      }
+    }
+
+    .description {
+      margin-bottom: var(--spacing-lg);
+      line-height: var(--line-height-relaxed);
+      font-size: 0.95rem;
+      background: var(--background-color);
+      padding: var(--spacing-lg);
+      border-radius: var(--radius-sm);
+      border-left: 4px solid var(--primary-color);
+      position: relative;
+
+      @include md {
+        font-size: 0.9rem;
+        padding: var(--spacing-md);
+        text-align: left;
+      }
+
+      .generated-description {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--primary-color);
+        background: rgba(59, 130, 246, 0.1);
+        padding: 3px 8px;
+        border-radius: 4px;
+        margin-bottom: 8px;
+      }
+
+      .show-more-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--spacing-xs);
+        background: transparent;
+        border: none;
+        color: var(--primary-color);
+        font-weight: var(--font-weight-semibold);
+        font-size: 0.85rem;
+        padding: 6px var(--spacing-md);
+        margin-left: var(--spacing-xs);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        position: relative;
+
+        &::before {
+          content: '';
+          position: absolute;
+          bottom: 4px;
+          left: var(--spacing-md);
+          right: var(--spacing-md);
+          height: 1px;
+          background: var(--primary-color);
+          opacity: 0;
+          transition: opacity var(--transition-fast);
+        }
+
+        &:hover {
+          background: rgba(59, 130, 246, 0.1);
+
+          &::before {
+            opacity: 0.5;
+          }
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
+
+        @include md {
+          font-size: 0.8rem;
+          padding: 5px var(--spacing-md);
+        }
+      }
+    }
+
+    .value-info {
+      display: flex;
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+      flex-wrap: wrap;
+
+      @include md {
+        justify-content: center;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+      }
+
+      .value-card {
+        @include gradient-primary;
+        padding: 14px 18px;
+        border-radius: var(--radius-md);
+        color: white;
+        text-align: center;
+        min-width: 130px;
+        box-shadow: var(--shadow-md);
+        transition: transform var(--transition-fast);
+
+        @include md {
+          padding: var(--spacing-md) 14px;
+          min-width: 100px;
+          flex: 1;
+          max-width: 140px;
+        }
+
+        &:hover {
+          transform: translateY(-2px);
+        }
+
+        .value-label {
+          font-size: 0.8rem;
+          margin-bottom: 6px;
+          opacity: 0.9;
+
+          @include md {
+            font-size: 0.75rem;
+          }
+        }
+
+        .value-amount {
+          font-size: 1.4rem;
+          font-weight: var(--font-weight-bold);
+
+          @include md {
+            font-size: 1.2rem;
+          }
+        }
+      }
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: var(--spacing-md);
+      flex-wrap: wrap;
+
+      @include md {
+        justify-content: center;
+        gap: var(--spacing-sm);
+      }
+
+      button {
+        @include flex-start;
+        gap: 6px;
+        padding: var(--spacing-md) 18px;
+        font-weight: var(--font-weight-semibold);
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        white-space: nowrap;
+
+        @include md {
+          padding: var(--spacing-sm) 14px;
+          font-size: 0.8rem;
+          flex: 1;
+          min-width: 0;
+          max-width: 160px;
+          justify-content: center;
+        }
+
+        @include sm {
+          padding: var(--spacing-sm) var(--spacing-md);
+          font-size: 0.75rem;
+        }
+
+        &.mat-mdc-raised-button {
+          @include gradient-primary;
+          color: white;
+        }
+
+        &.mat-mdc-stroked-button {
+          border: 2px solid var(--primary-color);
+          color: var(--primary-color);
+
+          &:hover {
+            background: var(--primary-color);
+            color: white;
+          }
+        }
+      }
+    }
+  }
+}
+
+.content-tabs {
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+
+  @include md {
+    border-radius: var(--radius-md);
+  }
+
+  .tab-content {
+    padding: var(--spacing-xl);
+
+    @include md {
+      padding: 14px;
+    }
+
+    @include sm {
+      padding: var(--spacing-md);
+    }
+  }
+}
+
+.collection-controls,
+.selection-toolbar {
+  @include flex-between;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--background-color);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  margin-bottom: var(--spacing-lg);
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+
+  @include md {
+    padding: var(--spacing-md);
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .view-controls {
+    @include flex-start;
+    gap: 6px;
+
+    @include md {
+      justify-content: center;
+      width: 100%;
+      padding-bottom: var(--spacing-md);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .view-label {
+      color: var(--text-secondary);
+      font-weight: var(--font-weight-medium);
+      font-size: 0.85rem;
+
+      @include md {
+        display: block;
+        font-size: 0.8rem;
+      }
+    }
+
+    button[mat-icon-button] {
+      @include md {
+        width: 44px !important;
+        height: 44px !important;
+      }
+    }
+  }
+
+  .collection-actions,
+  .selection-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+
+    @include md {
+      width: 100%;
+      justify-content: stretch;
+      gap: var(--spacing-sm);
+    }
+
+    button {
+      @include flex-center;
+      gap: 6px;
+      padding: var(--spacing-md) var(--spacing-lg);
+      font-weight: var(--font-weight-medium);
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
+      font-size: 0.85rem;
+      min-height: 44px;
+
+      @include md {
+        flex: 1;
+        min-width: 0;
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 0.75rem;
+        gap: 4px;
+
+        // Hide icons on mobile to prevent overflow
+        mat-icon {
+          display: none;
+        }
+
+        // Make text-only buttons more compact
+        span {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        padding: var(--spacing-md) var(--spacing-md);
+        font-size: 0.8rem;
+      }
+
+      @media (max-width: 400px) {
+        min-width: 100%;
+        max-width: 100%;
+      }
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      &:not(:disabled):active {
+        transform: scale(0.98);
+      }
+
+      &.mat-mdc-raised-button {
+        @include gradient-primary;
+        color: white;
+
+        &:hover {
+          box-shadow: var(--shadow-lg);
+        }
+      }
+    }
+  }
+
+  .selection-info {
+    @include md {
+      text-align: center;
+      width: 100%;
+      padding-bottom: var(--spacing-sm);
+    }
+
+    .selection-count {
+      font-weight: var(--font-weight-semibold);
+      color: var(--primary-color);
+      font-size: 1rem;
+
+      @include md {
+        font-size: 0.95rem;
+      }
+    }
+
+    .selection-hint {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+
+      @include md {
+        font-size: 0.75rem;
+        display: block;
+        margin-top: var(--spacing-xs);
+      }
+    }
+  }
+}
+
+.collection-grid,
+.browse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--spacing-lg);
+
+  @include md {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  @include sm {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+  }
+
+  @include xs {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+}
+
+// Collection and Browse cards enhanced for mobile
+.comic-card,
+.browse-card {
+  @include md {
+    -webkit-tap-highlight-color: transparent;
+
+    &:active {
+      transform: scale(0.98);
+      opacity: 0.95;
+    }
+
+    mat-card-header {
+      padding: var(--spacing-sm) var(--spacing-md) !important;
+
+      .mat-mdc-card-title {
+        font-size: 0.85rem !important;
+        line-height: var(--line-height-tight);
+      }
+
+      .mat-mdc-card-subtitle {
+        font-size: 0.7rem !important;
+        margin-top: 2px;
+        @include line-clamp(1);
+      }
+    }
+
+    mat-card-content {
+      padding: 6px var(--spacing-md) !important;
+    }
+
+    mat-card-actions {
+      padding: 6px var(--spacing-sm) !important;
+
+      button {
+        min-height: 36px !important;
+        padding: 6px var(--spacing-md) !important;
+        font-size: 0.75rem !important;
+
+        mat-icon {
+          font-size: 16px !important;
+          width: 16px !important;
+          height: 16px !important;
+          margin-right: var(--spacing-xs) !important;
+        }
+      }
+    }
+  }
+}
+
+.collection-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: var(--spacing-md);
+
+  @include lg {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-card {
+    @include card-hover;
+    border: 2px solid var(--border-color);
+    background: var(--surface-color);
+    overflow: hidden;
+    border-radius: var(--radius-md);
+
+    @include md {
+      border-width: 1px;
+
+      &:active {
+        transform: scale(0.99);
+      }
+    }
+
+    .compact-content {
+      display: grid;
+      grid-template-columns: 80px 1fr auto;
+      align-items: center;
+      padding: var(--spacing-md);
+      gap: 14px;
+      min-height: 100px;
+
+      @include md {
+        grid-template-columns: 60px 1fr;
+        padding: var(--spacing-md);
+        gap: var(--spacing-md);
+        min-height: auto;
+      }
+
+      .compact-image {
+        position: relative;
+        width: 80px;
+        height: 100px;
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+
+        @include md {
+          width: 60px;
+          height: 80px;
+        }
+
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform var(--transition-normal);
+        }
+
+        &:hover img {
+          transform: scale(1.05);
+        }
+
+        .badge {
+          position: absolute;
+          top: 3px;
+          right: 3px;
+          background: var(--accent-color);
+          color: white;
+          border-radius: 50%;
+          width: 22px;
+          height: 22px;
+          @include flex-center;
+          box-shadow: var(--shadow-md);
+
+          @include md {
+            width: 18px;
+            height: 18px;
+          }
+
+          mat-icon {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+
+            @include md {
+              font-size: 12px;
+              width: 12px;
+              height: 12px;
+            }
+          }
+        }
+      }
+
+      .compact-info {
+        flex: 1;
+        min-width: 0;
+        @include flex-column;
+        gap: var(--spacing-sm);
+
+        @include md {
+          gap: 6px;
+        }
+
+        .compact-header {
+          .header-top {
+            @include flex-start;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-xs);
+            flex-wrap: wrap;
+
+            .issue-number {
+              font-size: 1rem;
+              font-weight: var(--font-weight-bold);
+              margin: 0;
+              color: var(--text-primary);
+
+              @include md {
+                font-size: 0.9rem;
+              }
+            }
+
+            .condition-badge {
+              padding: 2px var(--spacing-sm);
+              border-radius: var(--radius-md);
+              font-size: 0.7rem;
+              font-weight: var(--font-weight-semibold);
+              background: var(--primary-color);
+              color: white;
+
+              @include md {
+                padding: 1px 6px;
+                font-size: 0.65rem;
+              }
+
+              &.condition-nm { background: var(--success-color); }
+              &.condition-vf { background: var(--primary-color); }
+              &.condition-fn { background: var(--accent-color); }
+              &.condition-gd { background: var(--error-color); }
+            }
+          }
+
+          .issue-title {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: var(--font-weight-medium);
+            @include text-truncate;
+
+            @include md {
+              font-size: 0.8rem;
+            }
+          }
+        }
+
+        .compact-details {
+          @include flex-column;
+          gap: 6px;
+
+          .detail-group {
+            display: flex;
+            gap: var(--spacing-md);
+            flex-wrap: wrap;
+
+            @include md {
+              gap: var(--spacing-sm);
+            }
+          }
+
+          .detail-item {
+            @include flex-start;
+            gap: var(--spacing-xs);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+
+            @include md {
+              font-size: 0.75rem;
+            }
+
+            mat-icon {
+              font-size: 16px;
+              width: 16px;
+              height: 16px;
+              color: var(--primary-color);
+
+              @include md {
+                font-size: 14px;
+                width: 14px;
+                height: 14px;
+              }
+            }
+
+            .detail-label {
+              font-weight: var(--font-weight-medium);
+            }
+
+            .detail-value {
+              font-weight: var(--font-weight-bold);
+              color: var(--text-primary);
+
+              &.value-highlight {
+                color: var(--primary-color);
+              }
+            }
+
+            &.date-item {
+              font-weight: var(--font-weight-medium);
+              color: var(--text-muted);
+            }
+          }
+        }
+      }
+
+      .compact-actions {
+        @include flex-column;
+        gap: 6px;
+
+        @include md {
+          grid-column: 1 / -1;
+          flex-direction: row;
+          justify-content: center;
+          padding-top: var(--spacing-md);
+          border-top: 1px solid var(--border-color);
+        }
+
+        button {
+          width: 36px;
+          height: 36px;
+
+          @include md {
+            width: 32px;
+            height: 32px;
+          }
+
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+
+            @include md {
+              font-size: 16px;
+              width: 16px;
+              height: 16px;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.comic-card,
+.browse-card {
+  @include card-hover;
+  border: 2px solid var(--border-color);
+  overflow: hidden;
+  border-radius: var(--radius-md);
+
+  @include md {
+    border-width: 1px;
+    border-radius: var(--radius-sm);
+
+    &:hover {
+      transform: translateY(-3px);
+    }
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+
+    .action-button {
+      flex: 1;
+      @include flex-center;
+      gap: var(--spacing-xs);
+      padding: 6px 0;
+      font-weight: var(--font-weight-semibold);
+      border-radius: var(--radius-sm);
+      font-size: 0.8rem;
+
+      @include md {
+        padding: 5px 0;
+        font-size: 0.75rem;
+      }
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+
+        @include md {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+        }
+      }
+
+      &:hover {
+        background: var(--border-color);
+      }
+    }
+  }
+
+  .comic-image,
+  .browse-image {
+    position: relative;
+    height: 180px;
+    overflow: hidden;
+
+    @include md {
+      height: 150px;
+    }
+
+    @include sm {
+      height: 130px;
+    }
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform var(--transition-normal);
+    }
+
+    &:hover img {
+      transform: scale(1.05);
+    }
+
+    .key-issue-badge,
+    .selection-indicator {
+      position: absolute;
+      top: var(--spacing-sm);
+      background: var(--accent-color);
+      color: white;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      @include flex-center;
+      box-shadow: var(--shadow-md);
+
+      @include md {
+        width: 26px;
+        height: 26px;
+        top: 6px;
+      }
+
+      mat-icon {
+        font-size: 16px;
+
+        @include md {
+          font-size: 14px;
+        }
+      }
+    }
+
+    .key-issue-badge {
+      right: var(--spacing-sm);
+
+      @include md {
+        right: 6px;
+      }
+    }
+
+    .selection-indicator {
+      left: var(--spacing-sm);
+      background: var(--primary-color);
+
+      @include md {
+        left: 6px;
+      }
+    }
+  }
+
+  mat-card-header {
+    padding: var(--spacing-md);
+
+    @include md {
+      padding: var(--spacing-sm);
+    }
+
+    .mat-mdc-card-title {
+      font-weight: var(--font-weight-semibold);
+      font-size: 1rem;
+
+      @include md {
+        font-size: 0.85rem;
+      }
+    }
+
+    .mat-mdc-card-subtitle {
+      margin-top: 2px;
+      font-size: 0.85rem;
+
+      @include md {
+        font-size: 0.75rem;
+      }
+    }
+  }
+
+  mat-card-content {
+    padding: var(--spacing-md);
+
+    @include md {
+      padding: var(--spacing-sm);
+    }
+
+    .comic-details .detail-row {
+      @include flex-between;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+
+      @include md {
+        font-size: 0.75rem;
+        margin-bottom: var(--spacing-xs);
+      }
+
+      .label {
+        color: var(--text-secondary);
+        font-weight: var(--font-weight-medium);
+      }
+
+      .value {
+        font-weight: var(--font-weight-semibold);
+      }
+    }
+  }
+
+  mat-card-actions {
+    padding: var(--spacing-md) var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 6px;
+
+    @include md {
+      padding: var(--spacing-sm);
+    }
+  }
+}
+
+// New browse card wrapper styles
+.browse-card-wrapper {
+  @include flex-column;
+  background: var(--surface-color);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-color);
+  }
+
+  &.selected {
+    border-color: var(--primary-color);
+    background: rgba(59, 130, 246, 0.05);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.2);
+  }
+
+  .browse-cover-section {
+    position: relative;
+    width: 100%;
+    background: var(--background-color);
+
+    .browse-cover-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 2/3;
+      object-fit: contain;
+      background: #1a1a2e;
+    }
+
+    // Selection checkbox in top-right corner
+    .selection-checkbox {
+      position: absolute;
+      top: var(--spacing-sm);
+      right: var(--spacing-sm);
+      width: 36px;
+      height: 36px;
+      background: rgba(0, 0, 0, 0.6);
+      border-radius: 50%;
+      @include flex-center;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      z-index: 10;
+
+      mat-icon {
+        color: white;
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+
+      &:hover {
+        background: rgba(59, 130, 246, 0.8);
+        transform: scale(1.1);
+      }
+    }
+
+    // Variant navigation at bottom of cover
+    .variant-nav-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      @include flex-between;
+      padding: var(--spacing-sm);
+      background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+      z-index: 5;
+
+      .variant-btn {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+        cursor: pointer;
+        @include flex-center;
+        transition: all var(--transition-fast);
+        flex-shrink: 0;
+
+        mat-icon {
+          font-size: 24px;
+          width: 24px;
+          height: 24px;
+        }
+
+        &:hover {
+          background: white;
+          transform: scale(1.1);
+        }
+
+        &:active {
+          transform: scale(0.95);
+        }
+
+        @include md {
+          width: 32px;
+          height: 32px;
+
+          mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+          }
+        }
+      }
+
+      .variant-info {
+        @include flex-column;
+        align-items: center;
+        gap: 2px;
+        flex: 1;
+        min-width: 0;
+
+        .variant-count {
+          color: white;
+          font-size: 0.85rem;
+          font-weight: var(--font-weight-bold);
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .variant-label {
+          color: rgba(255, 255, 255, 0.9);
+          font-size: 0.75rem;
+          font-weight: var(--font-weight-medium);
+          text-align: center;
+          @include text-truncate;
+          max-width: 100%;
+          padding: 0 var(--spacing-sm);
+        }
+
+        @include md {
+          .variant-count {
+            font-size: 0.8rem;
+          }
+          .variant-label {
+            font-size: 0.7rem;
+          }
+        }
+      }
+    }
+  }
+
+  .browse-info-section {
+    padding: var(--spacing-md);
+    @include flex-column;
+    gap: var(--spacing-sm);
+
+    .issue-header {
+      @include flex-between;
+      gap: var(--spacing-sm);
+
+      .issue-number {
+        font-size: 1rem;
+        font-weight: var(--font-weight-bold);
+        color: var(--text-primary);
+      }
+
+      .issue-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+    }
+
+    .issue-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0;
+      @include line-clamp(2);
+    }
+
+    .issue-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+      line-height: 1.4;
+      @include line-clamp(2);
+    }
+
+    .add-btn {
+      margin-top: var(--spacing-sm);
+      width: 100%;
+      @include flex-center;
+      gap: 6px;
+      font-weight: var(--font-weight-semibold);
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    @include md {
+      padding: var(--spacing-md);
+      gap: 6px;
+
+      .issue-header .issue-number {
+        font-size: 0.9rem;
+      }
+
+      .issue-title {
+        font-size: 0.8rem;
+      }
+
+      .issue-desc {
+        font-size: 0.75rem;
+      }
+
+      .add-btn {
+        font-size: 0.85rem;
+        padding: var(--spacing-sm) var(--spacing-md);
+      }
+    }
+  }
+}
+
+.empty-collection,
+.loading-container,
+.no-issues-actions {
+  text-align: center;
+  padding: 50px var(--spacing-lg);
+  background: var(--surface-color);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-color);
+
+  @include md {
+    padding: 40px var(--spacing-md);
+  }
+
+  mat-icon {
+    font-size: var(--icon-size-xl);
+    width: var(--icon-size-xl);
+    height: var(--icon-size-xl);
+    color: var(--text-muted);
+
+    @include md {
+      font-size: var(--icon-size-lg);
+      width: var(--icon-size-lg);
+      height: var(--icon-size-lg);
+    }
+  }
+
+  h3 {
+    margin: var(--spacing-lg) 0 var(--spacing-md);
+    font-size: 1.3rem;
+    font-weight: var(--font-weight-semibold);
+
+    @include md {
+      font-size: 1.1rem;
+    }
+  }
+
+  p {
+    margin-bottom: var(--spacing-xl);
+    color: var(--text-secondary);
+
+    @include md {
+      font-size: 0.9rem;
+    }
+  }
+}
+
+.skeleton-loading {
+  ngx-skeleton-loader {
+    display: block;
+
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
+      margin-bottom: 0 !important;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        ) !important;
+      }
+    }
+  }
+
+  .series-image {
+    width: 180px;
+    height: 270px;
+
+    @include md {
+      width: 150px;
+      height: 225px;
+      margin: 0 auto;
+    }
+  }
+}
+
+.skeleton-issues-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--spacing-md);
+
+  @include md {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+  }
+
+  @include sm {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.skeleton-issue-card {
+  ngx-skeleton-loader {
+    display: block;
+
+    ::ng-deep .skeleton-loader {
+      background-color: var(--border-color) !important;
+      margin-bottom: 0 !important;
+
+      &::after {
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.1),
+          transparent
+        ) !important;
+      }
+    }
+  }
+}
+
+.meta-item.collection-item {
+  .collection-details {
+    .collection-count {
+      @include flex-start;
+      gap: var(--spacing-md);
+      margin-bottom: 6px;
+
+      .completion-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        @include gradient-success;
+        color: white;
+        padding: 2px 6px;
+        border-radius: var(--radius-md);
+        font-size: 0.7rem;
+        font-weight: var(--font-weight-semibold);
+
+        mat-icon {
+          font-size: 12px;
+        }
+      }
+    }
+
+    .collection-progress {
+      @include flex-start;
+      gap: var(--spacing-md);
+
+      .progress-bar-wrapper {
+        flex: 1;
+        height: 5px;
+        background: var(--border-color);
+        border-radius: 3px;
+        overflow: hidden;
+
+        .progress-bar-fill {
+          height: 100%;
+          @include gradient-primary;
+          transition: all var(--transition-normal);
+
+          &.complete {
+            @include gradient-success;
+            background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #10b981 100%);
+            animation: shimmer 2s infinite;
+          }
+        }
+      }
+
+      .progress-text {
+        font-size: 0.75rem;
+        font-weight: var(--font-weight-semibold);
+        min-width: 36px;
+        text-align: right;
+
+        &.complete {
+          color: #10b981;
+        }
+      }
+    }
+  }
+}
+
+// Issue description styles for comic cards
+.issue-description-container {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-color);
+
+  @include md {
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+
+  .issue-description {
+    font-size: 0.8rem;
+    line-height: var(--line-height-normal);
+    color: var(--text-secondary);
+    margin: 0;
+
+    @include md {
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+  }
+
+  .show-more-btn.issue-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--primary-color);
+    font-weight: var(--font-weight-semibold);
+    font-size: 0.75rem;
+    padding: var(--spacing-xs) var(--spacing-md);
+    margin-top: 6px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+
+    &:hover {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    &:active {
+      transform: scale(0.96);
+    }
+
+    @include md {
+      font-size: 0.7rem;
+      padding: 3px var(--spacing-sm);
+      border-radius: var(--radius-md);
+    }
+  }
+}
+
+.cover-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: var(--spacing-sm);
+  @include flex-start;
+  gap: var(--spacing-xs);
+
+  @include md {
+    font-size: 0.75rem;
+    margin-top: 6px;
+  }
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+// Collection card wrapper styles (My Collection grid)
+.collection-card-wrapper {
+  @include flex-column;
+  background: var(--surface-color);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-color);
+  overflow: hidden;
+  transition: all var(--transition-normal);
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-color);
+  }
+
+  .collection-cover-section {
+    position: relative;
+    width: 100%;
+    background: var(--background-color);
+
+    .collection-cover-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 2/3;
+      object-fit: contain;
+      background: #1a1a2e;
+    }
+
+    // Key issue badge in top-left corner
+    .key-issue-badge {
+      position: absolute;
+      top: var(--spacing-sm);
+      left: var(--spacing-sm);
+      @include flex-start;
+      gap: var(--spacing-xs);
+      @include gradient-accent;
+      color: white;
+      padding: var(--spacing-xs) var(--spacing-md);
+      border-radius: var(--spacing-lg);
+      font-size: 0.75rem;
+      font-weight: var(--font-weight-bold);
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+      z-index: 10;
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      @include md {
+        padding: 3px var(--spacing-sm);
+        font-size: 0.7rem;
+
+        mat-icon {
+          font-size: 12px;
+          width: 12px;
+          height: 12px;
+        }
+      }
+    }
+
+    // Condition badge in top-right corner
+    .condition-overlay {
+      position: absolute;
+      top: var(--spacing-sm);
+      right: var(--spacing-sm);
+      padding: var(--spacing-xs) var(--spacing-md);
+      border-radius: var(--radius-md);
+      font-size: 0.75rem;
+      font-weight: var(--font-weight-bold);
+      text-transform: uppercase;
+      z-index: 10;
+
+      // Condition color variations
+      &.condition-mint,
+      &.condition-nm {
+        @include gradient-success;
+        color: white;
+      }
+
+      &.condition-vf {
+        @include gradient-primary;
+        color: white;
+      }
+
+      &.condition-fn,
+      &.condition-fine {
+        background: linear-gradient(135deg, var(--accent-color), #d97706);
+        color: white;
+      }
+
+      &.condition-vg {
+        @include gradient-accent;
+        color: white;
+      }
+
+      &.condition-good,
+      &.condition-g {
+        background: linear-gradient(135deg, var(--error-color), #dc2626);
+        color: white;
+      }
+
+      &.condition-fair,
+      &.condition-poor {
+        background: var(--surface-color);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+      }
+
+      @include md {
+        padding: 3px var(--spacing-sm);
+        font-size: 0.65rem;
+      }
+    }
+  }
+
+  .collection-info-section {
+    padding: var(--spacing-md);
+    @include flex-column;
+    gap: var(--spacing-sm);
+    flex: 1;
+
+    .issue-header {
+      @include flex-between;
+      gap: var(--spacing-sm);
+
+      .issue-number {
+        font-size: 1rem;
+        font-weight: var(--font-weight-bold);
+        color: var(--text-primary);
+      }
+
+      .issue-date {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+    }
+
+    .issue-title {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin: 0;
+      @include line-clamp(2);
+    }
+
+    .card-actions {
+      display: flex;
+      gap: var(--spacing-xs);
+      padding-top: var(--spacing-sm);
+      border-top: 1px solid var(--border-color);
+
+      .action-btn {
+        flex: 1;
+        @include flex-center;
+        gap: var(--spacing-xs);
+        padding: 6px var(--spacing-sm);
+        font-size: 0.8rem;
+        font-weight: var(--font-weight-semibold);
+        border-radius: var(--radius-sm);
+        min-width: unset;
+
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+
+        &.view {
+          color: var(--primary-color);
+
+          &:hover {
+            background: rgba(59, 130, 246, 0.1);
+          }
+        }
+
+        &.edit {
+          color: var(--secondary-color);
+
+          &:hover {
+            background: rgba(16, 185, 129, 0.1);
+          }
+        }
+
+        &.delete {
+          color: var(--error-color);
+          flex: 0;
+          padding: 6px;
+
+          &:hover {
+            background: rgba(239, 68, 68, 0.1);
+          }
+        }
+      }
+
+      @include md {
+        .action-btn {
+          font-size: 0.75rem;
+          padding: 5px 6px;
+
+          mat-icon {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+          }
+        }
+      }
+    }
+
+    @include md {
+      padding: var(--spacing-md);
+      gap: 6px;
+
+      .issue-header .issue-number {
+        font-size: 0.9rem;
+      }
+
+      .issue-title {
+        font-size: 0.8rem;
+      }
+
+      .price-info {
+        gap: var(--spacing-md);
+        padding: 6px 0;
+
+        .price-item {
+          .price-label {
+            font-size: 0.65rem;
+          }
+
+          .price-value {
+            font-size: 0.85rem;
+          }
+        }
+      }
+    }
+  }
+}
+
+.variant-issue-section {
+  margin-bottom: var(--spacing-2xl);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.variant-issue-title {
+  @include flex-start;
+  gap: var(--spacing-sm);
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-lg) 0;
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--primary-color);
+
+  @include md {
+    font-size: 1.1rem;
+    margin-bottom: var(--spacing-md);
+  }
+}
+
+.variant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--spacing-lg);
+
+  @include lg {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--spacing-md);
+  }
+
+  @include md {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  @include sm {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+  }
+}
+
+.variant-card {
+  background: var(--surface-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  transition: all var(--transition-normal);
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary-color);
+
+    img {
+      transform: scale(1.05);
+    }
+  }
+
+  @include md {
+    border-radius: var(--radius-sm);
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  img {
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    display: block;
+    transition: transform var(--transition-normal);
+    background: var(--background-color);
+  }
+}
