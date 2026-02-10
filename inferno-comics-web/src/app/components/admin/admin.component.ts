@@ -50,6 +50,7 @@ export class AdminComponent implements OnInit, OnDestroy {
   allSeries: Series[] = [];
   reverifyingAllSeries = false;
   reverifyingAllIssues = false;
+  backfillingMetadata = false;
   reverifySeriesProgress = { current: 0, total: 0 };
   reverifyIssuesProgress = { current: 0, total: 0 };
 
@@ -336,5 +337,29 @@ export class AdminComponent implements OnInit, OnDestroy {
     };
 
     processNext(0);
+  }
+
+  backfillMetadata(): void {
+    this.backfillingMetadata = true;
+
+    const backfill$ = this.seriesService.backfillRecognitionMetadata().subscribe({
+      next: (res) => {
+        this.backfillingMetadata = false;
+        if (res.data) {
+          this.messageService.success(
+            `Backfill complete: ${res.data.updated} updated, ${res.data.skipped} skipped, ${res.data.failed} failed`,
+            { duration: 5000 }
+          );
+        } else {
+          this.messageService.success('Backfill complete');
+        }
+      },
+      error: (err: Error) => {
+        console.error('Backfill error:', err);
+        this.backfillingMetadata = false;
+        this.messageService.error('Failed to backfill recognition metadata');
+      }
+    });
+    this.sub.add(backfill$);
   }
 }

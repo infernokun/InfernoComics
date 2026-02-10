@@ -381,6 +381,11 @@ public class SeriesController extends BaseController {
         }
     }
 
+    @PostMapping("/backfill-recognition-metadata")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> backfillRecognitionMetadata() {
+        return createSuccessResponse(seriesService.backfillRecognitionMetadata());
+    }
+
     @DeleteMapping("/cache")
     public ResponseEntity<ApiResponse<Void>> clearSeriesCaches() {
         seriesService.clearAllSeriesCaches();

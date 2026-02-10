@@ -17,7 +17,10 @@ import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.MissingIssueRepository;
 import com.infernokun.infernoComics.services.sync.WeirdService;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
+import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.repositories.sync.ProcessedFileRepository;
+import com.infernokun.infernoComics.repositories.sync.SeriesSyncStatusRepository;
+import com.infernokun.infernoComics.models.sync.SeriesSyncStatus;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
 import lombok.Getter;
@@ -60,6 +63,8 @@ public class SeriesService {
     private final SeriesRepository seriesRepository;
     private final MissingIssueRepository missingIssueRepository;
     private final ProcessedFileRepository processedFileRepository;
+    private final SeriesSyncStatusRepository seriesSyncStatusRepository;
+    private final ProgressDataRepository progressDataRepository;
 
     private final CacheManager cacheManager;
 
@@ -1130,5 +1135,52 @@ public class SeriesService {
                 issues.put(issueNumber, imageUrls);
             }
         }
+    }
+
+    public Map<String, Object> backfillRecognitionMetadata() {
+        List<ProgressData> allProgressData = progressDataRepository.findAll();
+
+        int updated = 0;
+        int skipped = 0;
+        int failed = 0;
+
+        for (ProgressData progressData : allProgressData) {
+            String sessionId = progressData.getSessionId();
+            if (sessionId == null || sessionId.isBlank()) {
+                skipped++;
+                continue;
+            }
+
+            Series series = progressData.getSeries();
+            if (series == null) {
+                log.warn("No series linked to ProgressData session {}", sessionId);
+                skipped++;
+                continue;
+            }
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("series_name", series.getName());
+            if (series.getStartYear() != null) {
+                body.put("year", series.getStartYear().toString());
+            }
+
+            try {
+                webClient.recognitionClient().patch()
+                        .uri("/image-matcher/" + sessionId + "/metadata")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+                updated++;
+                log.debug("Backfilled metadata for session {} -> {}", sessionId, series.getName());
+            } catch (Exception e) {
+                log.warn("Failed to backfill session {}: {}", sessionId, e.getMessage());
+                failed++;
+            }
+        }
+
+        log.info("Backfill complete: {} updated, {} skipped, {} failed", updated, skipped, failed);
+        return Map.of("updated", updated, "skipped", skipped, "failed", failed);
     }
 }

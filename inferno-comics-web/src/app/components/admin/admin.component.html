@@ -102,6 +102,38 @@
                     </button>
                   </mat-card-actions>
                 </mat-card>
+
+                <!-- Backfill Recognition Metadata -->
+                <mat-card class="operation-card">
+                  <mat-card-header>
+                    <mat-icon mat-card-avatar class="operation-icon">auto_fix_high</mat-icon>
+                    <mat-card-title>Backfill Recognition Metadata</mat-card-title>
+                    <mat-card-subtitle>Add series name &amp; year to existing recognition results</mat-card-subtitle>
+                  </mat-card-header>
+                  <mat-card-content>
+                    <p class="operation-description">
+                      Updates existing recognition result files with the correct series name and start year
+                      from synced session records.
+                    </p>
+                    @if (backfillingMetadata) {
+                      <div class="progress-container">
+                        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+                      </div>
+                    }
+                  </mat-card-content>
+                  <mat-card-actions>
+                    <button mat-raised-button color="primary"
+                            (click)="backfillMetadata()"
+                            [disabled]="backfillingMetadata || reverifyingAllSeries || reverifyingAllIssues">
+                      @if (backfillingMetadata) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon>auto_fix_high</mat-icon>
+                      }
+                      Backfill Metadata
+                    </button>
+                  </mat-card-actions>
+                </mat-card>
               </div>
             </section>
           </div>

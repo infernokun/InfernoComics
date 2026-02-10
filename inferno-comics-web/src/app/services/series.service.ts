@@ -148,6 +148,12 @@ export class SeriesService extends BaseService {
     return this.post<ApiResponse<MissingIssue[]>>(`${this.apiUrl}/missing-issues/refresh`, {});
   }
 
+  backfillRecognitionMetadata(): Observable<ApiResponse<{updated: number, skipped: number, failed: number}>> {
+    return this.post<ApiResponse<{updated: number, skipped: number, failed: number}>>(
+      `${this.apiUrl}/backfill-recognition-metadata`, {}
+    );
+  }
+
   addComicsByImagesWithSSE(
     seriesId: number,
     imageFiles: File[]

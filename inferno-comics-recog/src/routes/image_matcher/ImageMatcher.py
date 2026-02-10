@@ -422,17 +422,57 @@ def get_image_matcher_data(session_id):
     logger.debug(f"✅ Successfully returned API data for session: {session_id}")
     return jsonify(result_data)
 
+@image_matcher_bp.route('/image-matcher/<session_id>/metadata', methods=['PATCH'])
+def patch_image_matcher_metadata(session_id):
+    """Patch series_name and/or year on an existing result JSON file."""
+    from util.FileOperations import ensure_results_directory
+
+    data = request.get_json(silent=True) or {}
+    series_name = data.get('series_name')
+    year = data.get('year')
+
+    if not series_name and year is None:
+        return jsonify({'error': 'Provide at least series_name or year'}), 400
+
+    results_dir = ensure_results_directory()
+    result_file = os.path.join(results_dir, f"{session_id}.json")
+
+    if not os.path.exists(result_file):
+        return jsonify({'error': 'Result not found'}), 404
+
+    try:
+        with open(result_file, 'r', encoding='utf-8') as f:
+            result_data = json.load(f)
+
+        if series_name:
+            result_data['series_name'] = series_name
+        if year is not None:
+            result_data['year'] = year
+
+        with open(result_file, 'w', encoding='utf-8') as f:
+            json.dump(result_data, f, indent=2, ensure_ascii=False)
+
+        logger.info(f"Patched metadata for session {session_id}: series_name={series_name}, year={year}")
+        return jsonify({'status': 'updated', 'session_id': session_id, 'series_name': result_data.get('series_name'), 'year': result_data.get('year')})
+
+    except Exception as e:
+        logger.error(f"Failed to patch metadata for session {session_id}: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @image_matcher_bp.route('/image-matcher-multiple', methods=['POST'])
 def image_matcher_multiple_operation():
     """Enhanced multiple images matching API that handles batch processing with centralized progress reporting"""
     
     logger.debug("Received multiple images matcher request")
     
-    # 1. FIRST: Get session_id and validate
+    # 1. FIRST: Get session_id and metadata
     session_id = request.form.get('session_id')
     if not session_id:
         logger.warning("Missing session_id in multiple images request")
         return jsonify({'error': 'session_id is required for multiple images processing'}), 400
+
+    series_name = request.form.get('series_name')
+    series_start_year = request.form.get('series_start_year')
     
     # 2. SECOND: Process uploaded files (all the fast operations)
     uploaded_files = []
@@ -528,7 +568,8 @@ def image_matcher_multiple_operation():
         try:
             service = get_service()
             result = service.process_multiple_images_with_centralized_progress(
-                session_id, query_images_data, candidate_covers
+                session_id, query_images_data, candidate_covers,
+                series_name=series_name, series_start_year=series_start_year
             )
             
             return jsonify(result)

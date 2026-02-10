@@ -29,7 +29,8 @@ class ImageMatcherService:
                 logger.warning(f"Progress callback error: {e}")
                 pass  # Continue execution even if progress fails
 
-    def process_multiple_images_with_centralized_progress(self, session_id, query_images_data, candidate_covers):
+    def process_multiple_images_with_centralized_progress(self, session_id, query_images_data, candidate_covers,
+                                                             series_name=None, series_start_year=None):
         """Process multiple images matching with CENTRALIZED progress reporting to Java"""
         
         # Create Java progress reporter - this is the SINGLE source of truth
@@ -84,7 +85,10 @@ class ImageMatcherService:
             total_matches_all_images = final_result.get('summary', {}).get('total_matches_all_images', 0)
 
             # Save result to JSON file
-            sanitized_result = self.save_multiple_images_matcher_result(session_id, final_result, query_images_data, all_results)
+            sanitized_result = self.save_multiple_images_matcher_result(
+                session_id, final_result, query_images_data, all_results,
+                series_name=series_name, series_start_year=series_start_year
+            )
             
             # Print cache stats
             matcher.print_cache_stats()
@@ -389,7 +393,8 @@ class ImageMatcherService:
         
         return final_result
 
-    def save_multiple_images_matcher_result(self, session_id, result_data, query_images_data, all_results_with_images):
+    def save_multiple_images_matcher_result(self, session_id, result_data, query_images_data, all_results_with_images,
+                                               series_name=None, series_start_year=None):
         """Save multiple images matcher result to JSON file with file-based image storage"""
         try:
             results_dir = ensure_results_directory()
@@ -403,8 +408,8 @@ class ImageMatcherService:
                 'session_id': session_id,
                 'timestamp': datetime.now().isoformat(),
                 'status': State.COMPLETED.value,
-                'series_name': 'Multiple Images Search',
-                'year': None,
+                'series_name': series_name or 'Multiple Images Search',
+                'year': series_start_year,
                 'total_images': len(query_images_data),
                 'processed': len(query_images_data),
                 'successful_matches': successful_images,
