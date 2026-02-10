@@ -918,10 +918,8 @@ class FeatureMatcher:
         geometric_scores = []
         
         params = {
-            'similarity_boost': 1.3,
-            'geometric_weight': 0.15,
+            'geometric_weight': 0.20,
             'multi_detector_bonus': 0.08,
-            'quality_threshold': 0.15
         }
         
         for detector_name in ['sift', 'orb', 'akaze', 'kaze']:
@@ -945,11 +943,9 @@ class FeatureMatcher:
         total_weight = sum(w for _, _, w in similarities)
         base_similarity = weighted_sum / total_weight if total_weight > 0 else 0.0
         
-        # Apply boosts
+        # Apply boosts - smooth scaling instead of hard threshold
         boosted = base_similarity
-        if base_similarity > params['quality_threshold']:
-            boosted *= params['similarity_boost']
-        
+
         if geometric_scores:
             avg_geo = sum(geometric_scores) / len(geometric_scores)
             boosted += avg_geo * params['geometric_weight']
@@ -996,18 +992,18 @@ class FeatureMatcher:
             for match_pair in matches:
                 if len(match_pair) >= 2:
                     m, n = match_pair[0], match_pair[1]
-                    if m.distance < 0.75 * n.distance:
+                    if m.distance < 0.80 * n.distance:
                         good_matches.append(m)
                         distances.append(m.distance)
             
             # Geometric verification
             geometric_score = 0.0
-            if len(good_matches) >= 8 and detector_name in ['sift', 'orb', 'kaze']:
+            if len(good_matches) >= 8:
                 geometric_score = self._compute_geometric_score(
                     query['keypoints'], candidate['keypoints'], good_matches
                 )
-            elif detector_name == 'akaze':
-                geometric_score = min(1.0, len(good_matches) / 20.0) if good_matches else 0.0
+            elif len(good_matches) > 0:
+                geometric_score = min(1.0, len(good_matches) / 20.0)
             
             # Calculate similarity
             total = min(query['count'], candidate['count'])
@@ -1021,13 +1017,8 @@ class FeatureMatcher:
                     threshold = 200 if detector_name == 'sift' else 150
                     quality_bonus = max(0, (threshold - avg_dist) / threshold) * 0.2
                 
-                # Combine scores
-                if detector_name in ['sift', 'kaze']:
-                    similarity = match_ratio + quality_bonus + (geometric_score * 0.1)
-                elif detector_name == 'orb':
-                    similarity = match_ratio + (geometric_score * 0.15)
-                else:
-                    similarity = match_ratio
+                # Combine scores - all detectors benefit from geometric verification
+                similarity = match_ratio + quality_bonus + (geometric_score * 0.15)
             else:
                 similarity = 0.0
             
@@ -1064,7 +1055,7 @@ class FeatureMatcher:
             query_pts = np.float32([query_kpts[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
             candidate_pts = np.float32([candidate_kpts[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
             
-            M, mask = cv2.findHomography(query_pts, candidate_pts, cv2.RANSAC, 5.0)
+            M, mask = cv2.findHomography(query_pts, candidate_pts, cv2.RANSAC, 10.0)
             
             if M is not None and mask is not None:
                 inliers = int(np.sum(mask))
@@ -1308,11 +1299,11 @@ class FeatureMatchingComicMatcher:
             # Enhanced preprocessing
             clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(12, 12))
             enhanced = clahe.apply(gray)
-            denoised = cv2.bilateralFilter(enhanced, 5, 50, 50)
-            
-            kernel = np.array([[-0.5]*3, [-0.5, 5.0, -0.5], [-0.5]*3])
+            denoised = cv2.bilateralFilter(enhanced, 9, 75, 75)
+
+            kernel = np.array([[-0.25]*3, [-0.25, 3.0, -0.25], [-0.25]*3])
             sharpened = cv2.filter2D(denoised, -1, kernel)
-            processed = cv2.addWeighted(sharpened, 0.7, denoised, 0.3, 0)
+            processed = cv2.addWeighted(sharpened, 0.5, denoised, 0.5, 0)
             logger.debug("Applied advanced preprocessing")
         else:
             processed = cv2.equalizeHist(gray)

@@ -262,9 +262,6 @@ export class ImageProcessingDialogComponent implements OnInit, OnDestroy {
   }
 
   private updateThumbnailStatesFromCount(newCount: number): void {
-    // newCount = number of fully completed images (0-indexed count)
-    // e.g., newCount=0 means nothing done, newCount=2 means images 0,1 are complete
-
     // Mark all images before newCount as completed
     for (let i = 0; i < newCount && i < this.thumbnailStates.length; i++) {
       if (this.thumbnailStates[i] !== 'failed') {
