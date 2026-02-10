@@ -649,7 +649,62 @@ class FastCacheManager:
 
 class ComicDetector:
     """Handles comic area detection using multiple strategies."""
-    
+
+    @staticmethod
+    def _order_points(pts: np.ndarray) -> np.ndarray:
+        """Order points as: top-left, top-right, bottom-right, bottom-left."""
+        rect = np.zeros((4, 2), dtype=np.float32)
+        s = pts.sum(axis=1)
+        rect[0] = pts[np.argmin(s)]
+        rect[2] = pts[np.argmax(s)]
+        d = np.diff(pts, axis=1)
+        rect[1] = pts[np.argmin(d)]
+        rect[3] = pts[np.argmax(d)]
+        return rect
+
+    @staticmethod
+    def _try_perspective_correct(image: np.ndarray, contour: np.ndarray) -> Optional[np.ndarray]:
+        """Try to perspective-correct the image using the contour's corners."""
+        peri = cv2.arcLength(contour, True)
+
+        # Try tight then loose polygon approximation to find 4 corners
+        for eps in [0.02, 0.04, 0.06]:
+            approx = cv2.approxPolyDP(contour, eps * peri, True)
+            if len(approx) == 4:
+                break
+        else:
+            return None
+
+        pts = approx.reshape(4, 2).astype(np.float32)
+        ordered = ComicDetector._order_points(pts)
+        tl, tr, br, bl = ordered
+
+        width_top = np.linalg.norm(tr - tl)
+        width_bottom = np.linalg.norm(br - bl)
+        max_width = int(max(width_top, width_bottom))
+
+        height_left = np.linalg.norm(bl - tl)
+        height_right = np.linalg.norm(br - tr)
+        max_height = int(max(height_left, height_right))
+
+        if max_width < 100 or max_height < 100:
+            return None
+
+        # Check that the quadrilateral has a reasonable comic aspect ratio
+        aspect = max_height / max_width if max_width > 0 else 0
+        if not (0.8 <= aspect <= 2.5):
+            return None
+
+        dst = np.array([
+            [0, 0], [max_width - 1, 0],
+            [max_width - 1, max_height - 1], [0, max_height - 1]
+        ], dtype=np.float32)
+
+        M = cv2.getPerspectiveTransform(ordered, dst)
+        warped = cv2.warpPerspective(image, M, (max_width, max_height))
+        logger.debug(f"Perspective corrected: {image.shape[:2]} -> {warped.shape[:2]}")
+        return warped
+
     @staticmethod
     def detect_simple(image: np.ndarray) -> Tuple[np.ndarray, bool]:
         """Simple and fast comic detection using edge detection."""
@@ -752,12 +807,18 @@ class ComicDetector:
                     best_contour = contour
         
         if best_contour is not None:
+            # Try perspective correction first (helps with phone camera angles)
+            corrected = ComicDetector._try_perspective_correct(image, best_contour)
+            if corrected is not None:
+                return corrected, best_score
+
+            # Fall back to bounding rect crop
             x, y, cw, ch = cv2.boundingRect(best_contour)
             pad = 20
             x, y = max(0, x - pad), max(0, y - pad)
             cw, ch = min(w - x, cw + 2 * pad), min(h - y, ch + 2 * pad)
             return image[y:y+ch, x:x+cw], best_score
-        
+
         return image, 0.0
     
     @staticmethod
@@ -918,41 +979,45 @@ class FeatureMatcher:
         geometric_scores = []
         
         params = {
-            'geometric_weight': 0.20,
+            'geometric_weight': 0.30,
             'multi_detector_bonus': 0.08,
         }
-        
+
         for detector_name in ['sift', 'orb', 'akaze', 'kaze']:
             if detector_name not in self.detectors:
                 continue
-            
+
             similarity, geometric = self._match_detector_enhanced(
                 detector_name, query_features, candidate_features, match_results
             )
-            
+
             if similarity > 0:
                 weight = self.weights.get(detector_name, 0.25)
                 similarities.append((detector_name, similarity, weight))
                 geometric_scores.append(geometric)
-        
+
         if not similarities:
             return 0.0, match_results
-        
+
         # Calculate weighted base similarity
         weighted_sum = sum(s * w for _, s, w in similarities)
         total_weight = sum(w for _, _, w in similarities)
         base_similarity = weighted_sum / total_weight if total_weight > 0 else 0.0
-        
+
         # Apply boosts - smooth scaling instead of hard threshold
         boosted = base_similarity
 
         if geometric_scores:
             avg_geo = sum(geometric_scores) / len(geometric_scores)
             boosted += avg_geo * params['geometric_weight']
-        
+
         if len(similarities) > 1:
-            boosted += params['multi_detector_bonus'] * (len(similarities) - 1)
-        
+            # Scale multi-detector bonus by base similarity so that strong
+            # matches across multiple detectors get amplified while weak/noisy
+            # matches across multiple detectors don't get an undeserved boost
+            n_bonus = len(similarities) - 1
+            boosted += params['multi_detector_bonus'] * n_bonus * (0.3 + 0.7 * base_similarity)
+
         overall = min(0.95, boosted)
         logger.debug(f"Advanced matching: {overall:.3f} (base: {base_similarity:.3f}, {len(similarities)} detectors)")
         
@@ -1018,7 +1083,9 @@ class FeatureMatcher:
                     quality_bonus = max(0, (threshold - avg_dist) / threshold) * 0.2
                 
                 # Combine scores - all detectors benefit from geometric verification
-                similarity = match_ratio + quality_bonus + (geometric_score * 0.15)
+                # Strong geometric consistency (high RANSAC inlier ratio) is the best
+                # signal for same-scene-different-viewpoint (e.g. phone photo vs digital)
+                similarity = match_ratio + quality_bonus + (geometric_score * 0.30)
             else:
                 similarity = 0.0
             
