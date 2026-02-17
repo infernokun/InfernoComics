@@ -140,6 +140,11 @@ public class IssueController extends BaseController {
         return createSuccessResponse(issueService.updateIssue(id, request));
     }
 
+    @PatchMapping("/{id}/read")
+    public ResponseEntity<ApiResponse<Issue>> toggleReadStatus(@PathVariable Long id) {
+        return createSuccessResponse(issueService.toggleReadStatus(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteIssue(@PathVariable Long id) {
         issueService.deleteIssue(id);

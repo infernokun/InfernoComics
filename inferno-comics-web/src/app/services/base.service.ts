@@ -53,6 +53,16 @@ export class BaseService {
     return this.makeRequest('PUT', url, body, options);
   }
 
+  protected patch<T>(
+    url: string,
+    body: any | null,
+    options?: {
+      headers?: HttpHeaders | { [header: string]: string | string[] };
+    }
+  ): Observable<T> {
+    return this.makeRequest('PATCH', url, body, options);
+  }
+
   protected delete<T>(
     url: string,
     options?: {

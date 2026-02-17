@@ -1321,6 +1321,44 @@ export class SeriesDetailComponent implements OnInit {
     })
   }
 
+  toggleReadStatus(issue: Issue): void {
+    if (!issue.id) return;
+
+    this.issueService.toggleReadStatus(issue.id).subscribe({
+      next: (res: ApiResponse<Issue>) => {
+        if (!res.data) return;
+        const updated = new Issue(res.data);
+        const index = this.issues.findIndex(i => i.id === issue.id);
+        if (index !== -1) {
+          this.issues[index] = updated;
+        }
+        this.messageService.success(
+          updated.read ? `Marked Issue #${updated.issueNumber} as read` : `Marked Issue #${updated.issueNumber} as unread`
+        );
+      },
+      error: (err: Error) => {
+        console.error('Error toggling read status:', err);
+        this.messageService.error('Error updating read status');
+      },
+    });
+  }
+
+  getNextToRead(): Issue | null {
+    if (!this.issues || this.issues.length === 0) return null;
+
+    const sorted = [...this.issues].sort((a, b) => this.parseIssueNumber(a.issueNumber || '') - this.parseIssueNumber(b.issueNumber || ''));
+    return sorted.find(issue => !issue.read) || null;
+  }
+
+  getReadCount(): number {
+    return this.issues.filter(i => i.read).length;
+  }
+
+  getReadPercentage(): number {
+    if (this.issues.length === 0) return 0;
+    return Math.round((this.getReadCount() / this.issues.length) * 100);
+  }
+
   get issueEntries() {
     return Object.entries(this.seriesVariants?.issues ?? []);
   }

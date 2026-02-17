@@ -114,6 +114,10 @@ export class IssueService extends BaseService {
     );
   }
 
+  toggleReadStatus(id: number): Observable<ApiResponse<Issue>> {
+    return this.patch<ApiResponse<Issue>>(`${this.apiUrl}/${id}/read`, {});
+  }
+
   reverifyIssues(seriesId: number): Observable<ApiResponse<{ updated: number; skipped: number; failed: number }>> {
     return this.post<ApiResponse<{ updated: number; skipped: number; failed: number }>>(
       `${this.apiUrl}/reverify/${seriesId}`,

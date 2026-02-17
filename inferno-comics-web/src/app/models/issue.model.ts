@@ -57,6 +57,7 @@ export class Issue {
   updatedAt?: Date;
   series?: Series;
   generatedDescription?: boolean;
+  read?: boolean;
   uploadedImageUrl?: string;
   gcdIds?: string[];
   variantCovers?: VariantCover[];
@@ -81,6 +82,7 @@ export class Issue {
       this.updatedAt = data.updatedAt ? DateUtils.parseDateTimeArray(data.updatedAt) : undefined;
       this.series = data.series ? new Series(data.series) : undefined;
       this.generatedDescription = data.generatedDescription || false;
+      this.read = data.read || false;
       this.uploadedImageUrl = data.uploadedImageUrl;
       this.gcdIds = data.gcdIds || [];
       this.variantCovers = data.variantCovers || [];

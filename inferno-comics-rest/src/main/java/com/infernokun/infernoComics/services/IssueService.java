@@ -279,6 +279,24 @@ public class IssueService {
         return updatedIssue;
     }
 
+    @CachePut(value = "issue", key = "#id", condition = "#result != null")
+    @Transactional
+    public Issue toggleReadStatus(Long id) {
+        log.info("Toggling read status for issue with ID: {}", id);
+
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Issue with ID " + id + " not found"));
+
+        issue.setRead(!issue.isRead());
+        Issue updatedIssue = issueRepository.save(issue);
+
+        evictIssueCaches();
+        evictSeriesRelatedCaches(issue.getSeries().getId());
+
+        log.info("Issue {} #{} read status set to {}", issue.getSeries().getName(), issue.getIssueNumber(), updatedIssue.isRead());
+        return updatedIssue;
+    }
+
     public JsonNode placeImageUpload(MultipartFile file) {
         try {
             ObjectMapper mapper = new ObjectMapper();

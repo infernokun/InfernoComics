@@ -64,6 +64,41 @@
                 }
               </div>
             </div>
+            <!-- Reading Progress -->
+            @if (issues.length > 0) {
+              <div class="meta-item reading-progress-item">
+                <mat-icon>auto_stories</mat-icon>
+                <div class="reading-details">
+                  <div class="reading-count">
+                    <span>{{ getReadCount() }} / {{ issues.length }} issues read</span>
+                    @if (getReadPercentage() === 100) {
+                      <span class="completion-badge read-complete">
+                        <mat-icon>check_circle</mat-icon>
+                        All Read!
+                      </span>
+                    }
+                  </div>
+                  <div class="reading-progress-bar">
+                    <div class="progress-bar-wrapper">
+                      <div class="progress-bar-fill read-fill" [style.width.%]="getReadPercentage()" [class.complete]="getReadPercentage() === 100">
+                      </div>
+                    </div>
+                    <span class="progress-text" [class.complete]="getReadPercentage() === 100">
+                      {{ getReadPercentage() }}%
+                    </span>
+                  </div>
+                  @if (getNextToRead(); as nextIssue) {
+                    <div class="next-to-read" (click)="viewIssue(nextIssue.id!)">
+                      <mat-icon>bookmark</mat-icon>
+                      <span>Next to read: <strong>Issue #{{ nextIssue.issueNumber }}</strong></span>
+                      @if (nextIssue.title) {
+                        <span class="next-title">- {{ nextIssue.title }}</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
             <div class="meta-item">
               <mat-icon>description</mat-icon>
               Comic Vine ID:
@@ -182,12 +217,28 @@
             @if (issues.length > 0 && !isCompactView) {
               <div class="collection-grid">
                 @for (comic of issues; track comic) {
-                  <div class="collection-card-wrapper">
+                  <div class="collection-card-wrapper" [class.is-read]="comic.read" [class.is-next-to-read]="!comic.read && getNextToRead()?.id === comic.id">
                     <!-- Cover Image Section -->
                     <div class="collection-cover-section">
                       <img [src]="comic.imageUrl || 'assets/placeholder-comic.jpg'" [alt]="'Issue #' + comic.issueNumber"
                         class="collection-cover-img"
                         onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}">
+
+                      <!-- Read Status Badge -->
+                      @if (comic.read) {
+                        <div class="read-badge">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>Read</span>
+                        </div>
+                      }
+
+                      <!-- Next to Read Badge -->
+                      @if (!comic.read && getNextToRead()?.id === comic.id) {
+                        <div class="next-to-read-badge">
+                          <mat-icon>bookmark</mat-icon>
+                          <span>Next</span>
+                        </div>
+                      }
 
                       <!-- Key Issue Badge -->
                       @if (comic.keyIssue) {
@@ -220,13 +271,15 @@
 
                       <!-- Action Buttons -->
                       <div class="card-actions">
+                        <button mat-button class="action-btn read-toggle" [class.is-read]="comic.read"
+                          (click)="toggleReadStatus(comic)" [matTooltip]="comic.read ? 'Mark as unread' : 'Mark as read'">
+                          <mat-icon>{{ comic.read ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                        </button>
                         <button mat-button class="action-btn view" (click)="viewIssue(comic.id!)">
                           <mat-icon>visibility</mat-icon>
-                          View
                         </button>
                         <button mat-button class="action-btn edit" (click)="editIssue(comic)">
                           <mat-icon>edit</mat-icon>
-                          Edit
                         </button>
                         <button mat-button class="action-btn delete" (click)="deleteIssue(comic.id!)">
                           <mat-icon>delete</mat-icon>
@@ -294,6 +347,10 @@
 
                       <!-- Action Buttons -->
                       <div class="compact-actions">
+                        <button mat-icon-button [matTooltip]="issue.read ? 'Mark as unread' : 'Mark as read'"
+                          (click)="toggleReadStatus(issue)" [class.read-active]="issue.read">
+                          <mat-icon>{{ issue.read ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+                        </button>
                         <button mat-icon-button color="accent" matTooltip="View Details" (click)="viewIssue(issue.id!)">
                           <mat-icon>visibility</mat-icon>
                         </button>
