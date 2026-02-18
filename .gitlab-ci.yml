@@ -23,7 +23,7 @@ build-rest:
 
       # Get current service version from latest app tag message
       git fetch --tags origin 2>/dev/null || true
-      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1)
+      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1 || true)
 
       if [ -n "$LATEST_TAG" ]; then
         TAG_MSG=$(git tag -l --format='%(contents)' "$LATEST_TAG")
@@ -109,7 +109,7 @@ build-recog:
       FALLBACK_VERSION=$(jq -r .version ${SERVICE_DIR}/package.json)
 
       git fetch --tags origin 2>/dev/null || true
-      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1)
+      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1 || true)
 
       if [ -n "$LATEST_TAG" ]; then
         TAG_MSG=$(git tag -l --format='%(contents)' "$LATEST_TAG")
@@ -192,7 +192,7 @@ build-web:
       FALLBACK_VERSION=$(jq -r .version ${SERVICE_DIR}/package.json)
 
       git fetch --tags origin 2>/dev/null || true
-      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1)
+      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1 || true)
 
       if [ -n "$LATEST_TAG" ]; then
         TAG_MSG=$(git tag -l --format='%(contents)' "$LATEST_TAG")
@@ -337,7 +337,7 @@ create-tag:
       git fetch --tags origin 2>/dev/null || true
       git checkout "$CI_COMMIT_BRANCH"
       git pull origin "$CI_COMMIT_BRANCH"
-      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1)
+      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1 || true)
 
       # Get current app version
       if [ -n "$LATEST_TAG" ]; then
