@@ -327,6 +327,13 @@ create-tag:
   script:
     - |
       set -euo pipefail
+
+      # Only create a tag if at least one service was built
+      if [ -z "${BUILT_REST:-}" ] && [ -z "${BUILT_RECOG:-}" ] && [ -z "${BUILT_WEB:-}" ]; then
+        echo "No services were built, skipping version bump and tag"
+        exit 0
+      fi
+
       git fetch --tags origin 2>/dev/null || true
       git checkout "$CI_COMMIT_BRANCH"
       git pull origin "$CI_COMMIT_BRANCH"
