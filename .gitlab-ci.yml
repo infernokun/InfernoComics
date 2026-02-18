@@ -60,7 +60,9 @@ build-rest:
       echo "Bump type resolved to: $RESOLVED_BUMP"
 
       # Calculate new version
-      IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+      MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
+      MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+      PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
       case "$RESOLVED_BUMP" in
         major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
         minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
@@ -141,7 +143,9 @@ build-recog:
       RESOLVED_BUMP="${RESOLVED_BUMP:-patch}"
       echo "Bump type resolved to: $RESOLVED_BUMP"
 
-      IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+      MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
+      MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+      PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
       case "$RESOLVED_BUMP" in
         major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
         minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
@@ -222,7 +226,9 @@ build-web:
       RESOLVED_BUMP="${RESOLVED_BUMP:-patch}"
       echo "Bump type resolved to: $RESOLVED_BUMP"
 
-      IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+      MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
+      MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
+      PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
       case "$RESOLVED_BUMP" in
         major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
         minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
@@ -335,7 +341,9 @@ create-tag:
       fi
 
       # Bump app version (always patch)
-      IFS='.' read -r MAJOR MINOR PATCH <<< "$APP_VERSION"
+      MAJOR=$(echo "$APP_VERSION" | cut -d. -f1)
+      MINOR=$(echo "$APP_VERSION" | cut -d. -f2)
+      PATCH=$(echo "$APP_VERSION" | cut -d. -f3)
       PATCH=$((PATCH + 1))
       NEW_APP_VERSION="${MAJOR}.${MINOR}.${PATCH}"
 
