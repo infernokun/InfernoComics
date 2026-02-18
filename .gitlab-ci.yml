@@ -1,3 +1,11 @@
+spec:
+  inputs:
+    force_run:
+      type: boolean
+      default: false
+      description: "Force all stages to run regardless of file changes"
+---
+
 stages:
   - build
   - release
@@ -8,6 +16,7 @@ variables:
   GIT_DEPTH: 0
   GIT_STRATEGY: clone
   BUMP_TYPE: ""
+  FORCE_RUN: "$[[ inputs.force_run ]]"
 
 build-rest:
   stage: build
@@ -91,6 +100,7 @@ build-rest:
   tags:
     - docker
   rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $FORCE_RUN == "true"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         - inferno-comics-rest/**/*
@@ -171,6 +181,7 @@ build-recog:
   tags:
     - docker
   rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $FORCE_RUN == "true"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         - inferno-comics-recog/**/*
@@ -254,6 +265,7 @@ build-web:
   tags:
     - docker
   rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $FORCE_RUN == "true"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         - inferno-comics-web/**/*
