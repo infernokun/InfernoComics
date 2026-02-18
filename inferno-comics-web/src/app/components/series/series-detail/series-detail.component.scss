@@ -1694,14 +1694,22 @@
       }
 
       @include md {
+        gap: 2px;
+
         .action-btn {
+          flex: 1;
           font-size: 0.75rem;
-          padding: 5px 6px;
+          padding: 5px 4px;
 
           mat-icon {
             font-size: 14px;
             width: 14px;
             height: 14px;
+          }
+
+          &.read-toggle,
+          &.delete {
+            flex: 1;
           }
         }
       }
