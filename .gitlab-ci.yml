@@ -1,7 +1,7 @@
 stages:
   - build
-  - deploy
   - release
+  - deploy
 
 variables:
   DOCKER_HOST: "unix:///var/run/docker.sock"
@@ -72,10 +72,11 @@ build-rest:
       NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
       echo "Version bump: $CURRENT_VERSION -> $NEW_VERSION"
 
-      # Update package.json in CI workspace (not committed)
+      # Update package.json and application.yml in CI workspace
       cd "$SERVICE_DIR"
       jq --arg v "$NEW_VERSION" '.version = $v' package.json > package.json.tmp
       mv package.json.tmp package.json
+      sed -i "s/^  version: .*/  version: $NEW_VERSION/" src/main/resources/application.yml
 
       # Build Docker image
       npm run docker:build
@@ -319,7 +320,7 @@ create-tag:
   stage: release
   image: alpine:latest
   before_script:
-    - apk add --no-cache git
+    - apk add --no-cache git jq
     - git config user.email "ci@gitlab.com"
     - git config user.name "GitLab CI"
     - git remote set-url origin "https://oauth2:${PROJECT_ACCESS_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
@@ -327,6 +328,8 @@ create-tag:
     - |
       set -euo pipefail
       git fetch --tags origin 2>/dev/null || true
+      git checkout "$CI_COMMIT_BRANCH"
+      git pull origin "$CI_COMMIT_BRANCH"
       LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1)
 
       # Get current app version
@@ -348,8 +351,14 @@ create-tag:
       NEW_APP_VERSION="${MAJOR}.${MINOR}.${PATCH}"
 
       # For each service: use new version from build if built, otherwise carry forward from previous tag
+      FILES_CHANGED=""
+
       if [ -n "${VERSION_REST:-}" ] && [ -n "${BUILT_REST:-}" ]; then
         SVC_REST="$VERSION_REST"
+        jq --arg v "$SVC_REST" '.version = $v' inferno-comics-rest/package.json > inferno-comics-rest/package.json.tmp
+        mv inferno-comics-rest/package.json.tmp inferno-comics-rest/package.json
+        sed -i "s/^  version: .*/  version: $SVC_REST/" inferno-comics-rest/src/main/resources/application.yml
+        FILES_CHANGED="$FILES_CHANGED inferno-comics-rest/package.json inferno-comics-rest/src/main/resources/application.yml"
       elif [ -n "$TAG_MSG" ]; then
         SVC_REST=$(echo "$TAG_MSG" | grep "inferno-comics-rest:" | sed 's/.*: v//' | tr -d '[:space:]')
       fi
@@ -357,6 +366,9 @@ create-tag:
 
       if [ -n "${VERSION_RECOG:-}" ] && [ -n "${BUILT_RECOG:-}" ]; then
         SVC_RECOG="$VERSION_RECOG"
+        jq --arg v "$SVC_RECOG" '.version = $v' inferno-comics-recog/package.json > inferno-comics-recog/package.json.tmp
+        mv inferno-comics-recog/package.json.tmp inferno-comics-recog/package.json
+        FILES_CHANGED="$FILES_CHANGED inferno-comics-recog/package.json"
       elif [ -n "$TAG_MSG" ]; then
         SVC_RECOG=$(echo "$TAG_MSG" | grep "inferno-comics-recog:" | sed 's/.*: v//' | tr -d '[:space:]')
       fi
@@ -364,12 +376,22 @@ create-tag:
 
       if [ -n "${VERSION_WEB:-}" ] && [ -n "${BUILT_WEB:-}" ]; then
         SVC_WEB="$VERSION_WEB"
+        jq --arg v "$SVC_WEB" '.version = $v' inferno-comics-web/package.json > inferno-comics-web/package.json.tmp
+        mv inferno-comics-web/package.json.tmp inferno-comics-web/package.json
+        FILES_CHANGED="$FILES_CHANGED inferno-comics-web/package.json"
       elif [ -n "$TAG_MSG" ]; then
         SVC_WEB=$(echo "$TAG_MSG" | grep "inferno-comics-web:" | sed 's/.*: v//' | tr -d '[:space:]')
       fi
       SVC_WEB="${SVC_WEB:-0.0.0}"
 
-      # Create tag with composite message
+      # Commit version bumps back to repo
+      if [ -n "$FILES_CHANGED" ]; then
+        git add $FILES_CHANGED
+        git commit -m "bump versions [skip ci]"
+        git push origin "$CI_COMMIT_BRANCH"
+      fi
+
+      # Create tag with composite message on the version bump commit
       NEW_TAG="v${NEW_APP_VERSION}"
       TAG_MESSAGE="InfernoComics v${NEW_APP_VERSION}
 
@@ -382,7 +404,7 @@ create-tag:
       else
         echo "Creating tag: $NEW_TAG"
         echo "$TAG_MESSAGE"
-        git tag -a "$NEW_TAG" -m "$TAG_MESSAGE" "$CI_COMMIT_SHA"
+        git tag -a "$NEW_TAG" -m "$TAG_MESSAGE"
         git push origin "$NEW_TAG"
       fi
   tags:
