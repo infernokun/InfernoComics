@@ -111,7 +111,7 @@ deploy:
       
       if [ -n "$SERVICES_TO_RESTART" ]; then
         echo "Restarting services: $SERVICES_TO_RESTART"
-        ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "cd \"$DEPLOY_PATH\" && docker compose pull $SERVICES_TO_RESTART && docker compose up -d $SERVICES_TO_RESTART"
+        ssh -i ~/.ssh/id_rsa "$STAGE_SERVER_USER@$STAGE_SERVER_HOST" "echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u $DOCKER_HUB_USERNAME --password-stdin && cd \"$DEPLOY_PATH\" && docker compose pull $SERVICES_TO_RESTART && docker compose up -d $SERVICES_TO_RESTART"
       else
         echo "No services need to be restarted"
       fi
