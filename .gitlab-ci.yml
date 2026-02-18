@@ -340,6 +340,12 @@ create-tag:
     - |
       set -euo pipefail
 
+      # Skip version bumps and tagging on force runs
+      if [ "${FORCE_RUN:-}" = "true" ]; then
+        echo "Force run detected, skipping version bump and tag creation"
+        exit 0
+      fi
+
       # Only create a tag if at least one service was built
       if [ -z "${BUILT_REST:-}" ] && [ -z "${BUILT_RECOG:-}" ] && [ -z "${BUILT_WEB:-}" ]; then
         echo "No services were built, skipping version bump and tag"
@@ -371,6 +377,7 @@ create-tag:
 
       # For each service: use new version from build if built, otherwise carry forward from previous tag
       FILES_CHANGED=""
+      UPDATED_SERVICES=""
 
       if [ -n "${VERSION_REST:-}" ] && [ -n "${BUILT_REST:-}" ]; then
         SVC_REST="$VERSION_REST"
@@ -378,6 +385,7 @@ create-tag:
         mv inferno-comics-rest/package.json.tmp inferno-comics-rest/package.json
         sed -i "s/^  version: .*/  version: $SVC_REST/" inferno-comics-rest/src/main/resources/application.yml
         FILES_CHANGED="$FILES_CHANGED inferno-comics-rest/package.json inferno-comics-rest/src/main/resources/application.yml"
+        UPDATED_SERVICES="${UPDATED_SERVICES}, inferno-comics-rest v${SVC_REST}"
       elif [ -n "$TAG_MSG" ]; then
         SVC_REST=$(echo "$TAG_MSG" | grep "inferno-comics-rest:" | sed 's/.*: v//' | tr -d '[:space:]')
       fi
@@ -388,6 +396,7 @@ create-tag:
         jq --arg v "$SVC_RECOG" '.version = $v' inferno-comics-recog/package.json > inferno-comics-recog/package.json.tmp
         mv inferno-comics-recog/package.json.tmp inferno-comics-recog/package.json
         FILES_CHANGED="$FILES_CHANGED inferno-comics-recog/package.json"
+        UPDATED_SERVICES="${UPDATED_SERVICES}, inferno-comics-recog v${SVC_RECOG}"
       elif [ -n "$TAG_MSG" ]; then
         SVC_RECOG=$(echo "$TAG_MSG" | grep "inferno-comics-recog:" | sed 's/.*: v//' | tr -d '[:space:]')
       fi
@@ -398,15 +407,19 @@ create-tag:
         jq --arg v "$SVC_WEB" '.version = $v' inferno-comics-web/package.json > inferno-comics-web/package.json.tmp
         mv inferno-comics-web/package.json.tmp inferno-comics-web/package.json
         FILES_CHANGED="$FILES_CHANGED inferno-comics-web/package.json"
+        UPDATED_SERVICES="${UPDATED_SERVICES}, inferno-comics-web v${SVC_WEB}"
       elif [ -n "$TAG_MSG" ]; then
         SVC_WEB=$(echo "$TAG_MSG" | grep "inferno-comics-web:" | sed 's/.*: v//' | tr -d '[:space:]')
       fi
       SVC_WEB="${SVC_WEB:-0.0.0}"
 
+      # Strip leading ", " from service list
+      UPDATED_SERVICES=$(echo "$UPDATED_SERVICES" | sed 's/^, //')
+
       # Commit version bumps back to repo
       if [ -n "$FILES_CHANGED" ]; then
         git add $FILES_CHANGED
-        git commit -m "bump versions [skip ci]"
+        git commit -m "v${NEW_APP_VERSION}: bump ${UPDATED_SERVICES} [skip ci]"
         git push origin "$CI_COMMIT_BRANCH"
       fi
 
