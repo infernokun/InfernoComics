@@ -28,6 +28,10 @@
         <mat-icon>check_box_outline_blank</mat-icon>
         Missing
       </button>
+      <button mat-button routerLink="/releases" routerLinkActive="active-link">
+        <mat-icon>new_releases</mat-icon>
+        Releases
+      </button>
       <button mat-button routerLink="/stats" routerLinkActive="active-link">
         <mat-icon>insights</mat-icon>
         Stats
@@ -68,6 +72,10 @@
       <a mat-menu-item routerLink="/missing" routerLinkActive="active-menu-item">
         <mat-icon>check_box_outline_blank</mat-icon>
         <span>Missing</span>
+      </a>
+      <a mat-menu-item routerLink="/releases" routerLinkActive="active-menu-item">
+        <mat-icon>new_releases</mat-icon>
+        <span>Releases</span>
       </a>
       <a mat-menu-item routerLink="/stats" routerLinkActive="active-menu-item">
         <mat-icon>insights</mat-icon>
@@ -114,5 +122,9 @@
   <a routerLink="/missing" routerLinkActive="active" class="nav-item">
     <mat-icon>check_box_outline_blank</mat-icon>
     <span>Missing</span>
+  </a>
+  <a routerLink="/releases" routerLinkActive="active" class="nav-item">
+    <mat-icon>new_releases</mat-icon>
+    <span>Releases</span>
   </a>
 </nav>

@@ -165,6 +165,12 @@ public class SeriesController extends BaseController {
         return createSuccessResponse(seriesService.getMissingIssues());
     }
 
+    @GetMapping("/new-releases")
+    public ResponseEntity<ApiResponse<List<MissingIssue>>> getNewReleases(
+            @RequestParam(defaultValue = "3") int months) {
+        return createSuccessResponse(seriesService.getNewReleases(months));
+    }
+
     @CrossOrigin(origins = "*", allowCredentials = "false")
     @GetMapping(value = "{seriesId}/add-comics-by-images/progress", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter getMultipleImagesProcessingProgress(
