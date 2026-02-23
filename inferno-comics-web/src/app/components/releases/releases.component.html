@@ -139,7 +139,7 @@
     <!-- Month Groups -->
     @if (filteredIssues().length > 0) {
       <div class="month-groups">
-        @for (group of getMonthGroups(); track group.key; trackBy: trackByKey) {
+        @for (group of getMonthGroups(); track group.key) {
           <div class="month-group" [class.current-month]="isCurrentMonth(group)">
             <div class="month-header" (click)="toggleMonth(group.key)">
               <div class="month-label-area">
@@ -156,7 +156,7 @@
 
             @if (!isMonthCollapsed(group.key)) {
               <div class="issues-grid" [@expandCollapse]>
-                @for (issue of group.issues; track issue.id; trackBy: trackById) {
+                @for (issue of group.issues; track issue.id) {
                   <div class="issue-card" (click)="navigateToSeries(issue.series)">
                     <div class="issue-cover">
                       @if (issue.imageUrl) {
