@@ -331,7 +331,12 @@
     transform: translateY(-2px);
   }
 
+  &.in-collection .issue-cover {
+    border-color: #10b981;
+  }
+
   .issue-cover {
+    position: relative;
     width: 100%;
     aspect-ratio: 2 / 3;
     border-radius: var(--border-radius-sm);
@@ -358,6 +363,27 @@
         font-size: 32px;
         width: 32px;
         height: 32px;
+      }
+    }
+
+    .owned-badge {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #10b981;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
       }
     }
   }

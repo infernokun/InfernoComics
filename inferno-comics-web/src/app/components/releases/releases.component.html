@@ -157,13 +157,18 @@
             @if (!isMonthCollapsed(group.key)) {
               <div class="issues-grid" [@expandCollapse]>
                 @for (issue of group.issues; track issue.id) {
-                  <div class="issue-card" (click)="navigateToSeries(issue.series)">
+                  <div class="issue-card" [class.in-collection]="isIssueOwned(issue)" (click)="navigateToSeries(issue.series)">
                     <div class="issue-cover">
                       @if (issue.imageUrl) {
                         <img [src]="issue.imageUrl" [alt]="issue.expectedIssueName || ('Issue #' + issue.issueNumber)" />
                       } @else {
                         <div class="no-cover">
                           <mat-icon>image_not_supported</mat-icon>
+                        </div>
+                      }
+                      @if (isIssueOwned(issue)) {
+                        <div class="owned-badge" matTooltip="Already in your collection">
+                          <mat-icon>check_circle</mat-icon>
                         </div>
                       }
                     </div>

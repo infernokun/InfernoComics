@@ -3,6 +3,7 @@ import { Series } from "./series.model";
 
 export class MissingIssue {
   id?: number;
+  comicVineId?: string;
   series?: Series;
   seriesId?: number;
   issueNumber?: string;
@@ -15,6 +16,7 @@ export class MissingIssue {
     constructor(data?: any) {
         if (data) {
             this.id = data.id;
+            this.comicVineId = data.comicVineId;
             this.series = new Series(data.series);
             this.issueNumber = data.issueNumber;
             this.imageUrl = data.imageUrl;

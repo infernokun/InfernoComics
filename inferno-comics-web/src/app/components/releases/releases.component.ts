@@ -7,7 +7,7 @@ import { ApiResponse } from '../../models/api-response.model';
 import { CommonModule } from '@angular/common';
 import { MaterialModule } from '../../material.module';
 import { FormsModule } from '@angular/forms';
-import { Series } from '../../models/series.model';
+import { Series, SeriesWithIssues } from '../../models/series.model';
 import { MissingIssue } from '../../models/missing-issue.model';
 import { NgxSkeletonLoaderModule } from 'ngx-skeleton-loader';
 import { DateUtils } from '../../utils/date-utils';
@@ -45,6 +45,7 @@ export class ReleasesComponent implements OnInit {
 
   readonly series = signal<Series[]>([]);
   readonly issues = signal<MissingIssue[]>([]);
+  readonly ownedComicVineIds = signal<Set<string>>(new Set());
   readonly loading = signal(true);
   readonly filter = signal('');
   readonly selectedMonths = signal(3);
@@ -79,14 +80,23 @@ export class ReleasesComponent implements OnInit {
   }
 
   loadSeries(): void {
-    this.seriesService.getAllSeries().subscribe({
-      next: (res: ApiResponse<Series[]>) => {
+    this.seriesService.getSeriesWithIssues().subscribe({
+      next: (res: ApiResponse<SeriesWithIssues[]>) => {
         if (!res.data) return;
-        this.series.set(res.data);
+        this.series.set(res.data.map(swi => new Series(swi.series)));
+        const owned = new Set<string>();
+        res.data.forEach(swi => swi.issues?.forEach(issue => {
+          if (issue.comicVineId) owned.add(issue.comicVineId);
+        }));
+        this.ownedComicVineIds.set(owned);
         this.loadNewReleases();
       },
       error: (err: Error) => console.error('Error loading series:', err)
     });
+  }
+
+  isIssueOwned(issue: MissingIssue): boolean {
+    return !!issue.comicVineId && this.ownedComicVineIds().has(issue.comicVineId);
   }
 
   loadNewReleases(): void {
