@@ -1124,6 +1124,11 @@ public class SeriesService {
         return missingIssueRepository.findUnresolvedMissingIssues();
     }
 
+    public List<MissingIssue> getNewReleases(int months) {
+        LocalDate since = LocalDate.now().minusMonths(months);
+        return missingIssueRepository.findNewReleases(since);
+    }
+
     @Getter
     public static class VariantsResponse {
         private final Map<String, List<String>> issues = new HashMap<>();

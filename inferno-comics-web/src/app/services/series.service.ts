@@ -140,6 +140,10 @@ export class SeriesService extends BaseService {
     return this.get<ApiResponse<MissingIssue[]>>(`${this.apiUrl}/missing-issues`);
   }
 
+  getNewReleases(months: number = 3): Observable<ApiResponse<MissingIssue[]>> {
+    return this.get<ApiResponse<MissingIssue[]>>(`${this.apiUrl}/new-releases?months=${months}`);
+  }
+
   removeMissingIssue(issueId: number): Observable<ApiResponse<void>> {
     return this.delete<ApiResponse<void>>(`${this.apiUrl}/missing-issues/${issueId}`);
   }
