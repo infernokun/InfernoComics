@@ -15,7 +15,7 @@
 
     <mat-card-content>
       <!-- Current Comic Vine Series (Management Mode) -->
-      @if (isComicVineManagementMode && existingComicVineData.length > 0) {
+      @if (isEditMode && existingComicVineData.length > 0) {
         <div class="current-comic-vine-series">
           <h4>Current Comic Vine Series ({{ existingComicVineData.length }})</h4>
           <div class="existing-series-grid">
