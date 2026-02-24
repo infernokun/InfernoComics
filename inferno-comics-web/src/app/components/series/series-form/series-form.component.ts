@@ -10,6 +10,8 @@ import { ComicVineSeries, ComicVineSeriesDto } from '../../../models/comic-vine.
 import { generateSlug, Series } from '../../../models/series.model';
 import { ComicVineService } from '../../../services/comic-vine.service';
 import { SeriesService } from '../../../services/series.service';
+import { IssueService } from '../../../services/issue.service';
+import { Issue } from '../../../models/issue.model';
 import { MessageService } from '../../../services/message.service';
 
 @Component({
@@ -39,6 +41,10 @@ export class SeriesFormComponent implements OnInit, OnDestroy {
   existingComicVineData: ComicVineSeries[] = [];
   allAvailableSeries: ComicVineSeries[] = [];
 
+  pendingRemovalId: string | null = null;
+  deleteIssuesOnRemove = false;
+  removingIssues = false;
+
   private destroy$ = new Subject<void>();
 
   get selectedPrimarySeries(): ComicVineSeries | null {
@@ -61,6 +67,7 @@ export class SeriesFormComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private seriesService: SeriesService,
     private comicVineService: ComicVineService,
+    private issueService: IssueService,
     private router: Router,
     private route: ActivatedRoute,
     private messageService: MessageService
@@ -281,6 +288,65 @@ export class SeriesFormComponent implements OnInit, OnDestroy {
       this.seriesForm.markAsDirty();
 
       this.messageService.info(`Removed "${removedSeries.name}" from series`);
+    }
+  }
+
+  initiateRemoveComicVineSeries(comicVineId: string): void {
+    this.pendingRemovalId = comicVineId;
+    this.deleteIssuesOnRemove = false;
+  }
+
+  cancelRemoveComicVineSeries(): void {
+    this.pendingRemovalId = null;
+    this.deleteIssuesOnRemove = false;
+  }
+
+  confirmRemoveComicVineSeries(): void {
+    if (!this.pendingRemovalId) return;
+    const idToRemove = this.pendingRemovalId;
+
+    if (this.deleteIssuesOnRemove && this.seriesId) {
+      this.removingIssues = true;
+      this.issueService.getIssuesBySeries(this.seriesId).subscribe({
+        next: (res: ApiResponse<Issue[]>) => {
+          const issueIds = (res.data || [])
+            .map(i => i.id)
+            .filter((id): id is number => id !== undefined);
+
+          if (issueIds.length === 0) {
+            this.removingIssues = false;
+            this.removeExistingComicVineSeries(idToRemove);
+            this.pendingRemovalId = null;
+            this.deleteIssuesOnRemove = false;
+            return;
+          }
+
+          this.issueService.deleteIssuesBulk(issueIds).subscribe({
+            next: (deleteRes) => {
+              const deleted = deleteRes.data?.successful ?? issueIds.length;
+              this.messageService.success(`Deleted ${deleted} owned issue${deleted !== 1 ? 's' : ''}`);
+              this.removingIssues = false;
+              this.removeExistingComicVineSeries(idToRemove);
+              this.pendingRemovalId = null;
+              this.deleteIssuesOnRemove = false;
+            },
+            error: () => {
+              this.messageService.error('Failed to delete owned issues');
+              this.removingIssues = false;
+              this.pendingRemovalId = null;
+            }
+          });
+        },
+        error: () => {
+          this.messageService.error('Failed to fetch owned issues');
+          this.removingIssues = false;
+          this.pendingRemovalId = null;
+        }
+      });
+    } else {
+      this.removeExistingComicVineSeries(idToRemove);
+      this.pendingRemovalId = null;
+      this.deleteIssuesOnRemove = false;
     }
   }
 

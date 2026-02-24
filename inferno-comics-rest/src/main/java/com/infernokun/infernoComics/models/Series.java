@@ -108,6 +108,7 @@ public class Series {
     }
 
     public FolderMapping getFolderMapping() {
+        if (comicVineIds == null || comicVineIds.isEmpty()) return null;
         return InfernoComicsUtils.createFolderMapping(this.id, this.comicVineIds.getFirst(), this.name);
     }
 

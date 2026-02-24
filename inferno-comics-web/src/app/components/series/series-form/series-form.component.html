@@ -20,7 +20,7 @@
           <h4>Current Comic Vine Series ({{ existingComicVineData.length }})</h4>
           <div class="existing-series-grid">
             @for (series of existingComicVineData; track series) {
-              <mat-card class="existing-series-card">
+              <mat-card class="existing-series-card" [class.pending-removal]="pendingRemovalId === series.id">
                 <div class="series-header">
                   @if (series.imageUrl) {
                     <img [src]="series.imageUrl" [alt]="series.name" class="series-thumbnail">
@@ -35,12 +35,48 @@
                       <span class="issue-count">({{ series.issueCount }} issues)</span>
                     }
                   </div>
-                  <button mat-icon-button color="warn"
-                    (click)="removeExistingComicVineSeries(series.id)"
-                    matTooltip="Remove this series">
-                    <mat-icon>remove_circle</mat-icon>
-                  </button>
+                  @if (pendingRemovalId !== series.id) {
+                    <button mat-icon-button color="warn"
+                      (click)="initiateRemoveComicVineSeries(series.id)"
+                      matTooltip="Remove this series">
+                      <mat-icon>remove_circle</mat-icon>
+                    </button>
+                  }
                 </div>
+                @if (pendingRemovalId === series.id) {
+                  <div class="remove-confirm">
+                    <p class="confirm-text">Remove <strong>"{{ series.name }}"</strong>?</p>
+                    @if (getCurrentOwnedCount() > 0) {
+                      <mat-checkbox
+                        [(ngModel)]="deleteIssuesOnRemove"
+                        [ngModelOptions]="{standalone: true}"
+                        color="warn">
+                        Also delete {{ getCurrentOwnedCount() }} owned issue{{ getCurrentOwnedCount() !== 1 ? 's' : '' }} in this series
+                      </mat-checkbox>
+                      @if (deleteIssuesOnRemove) {
+                        <p class="delete-warning">
+                          <mat-icon>warning</mat-icon>
+                          All owned issues in this series will be permanently deleted.
+                        </p>
+                      }
+                    }
+                    <div class="confirm-actions">
+                      <button mat-stroked-button color="warn"
+                        [disabled]="removingIssues"
+                        (click)="confirmRemoveComicVineSeries()">
+                        @if (removingIssues) {
+                          <mat-spinner diameter="16"></mat-spinner>
+                        } @else {
+                          <mat-icon>delete</mat-icon>
+                        }
+                        Confirm Remove
+                      </button>
+                      <button mat-button [disabled]="removingIssues" (click)="cancelRemoveComicVineSeries()">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                }
               </mat-card>
             }
           </div>
