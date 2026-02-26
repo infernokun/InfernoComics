@@ -23,6 +23,7 @@ export interface ProcessedImageResult {
   status: 'pending' | 'auto_accepted' | 'manually_accepted' | 'rejected' | 'no_match' | 'skipped';
   confidence: 'high' | 'medium' | 'low';
   selectedMatch?: ComicMatch;
+  isVariant?: boolean;
 }
 
 export interface BulkSelectionDialogData {
@@ -196,6 +197,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
         status,
         confidence,
         selectedMatch: bestMatch || undefined,
+        isVariant: !!(bestMatch?.parent_comic_vine_id),
       });
     }
 
@@ -307,6 +309,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
 
   resetUserAction(result: ProcessedImageResult): void {
     result.selectedMatch = result.bestMatch ?? undefined;
+    result.isVariant = !!(result.bestMatch?.parent_comic_vine_id);
 
     if (result.bestMatch) {
       result.status = 'pending';
@@ -354,10 +357,12 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       if (dialogResult && dialogResult.action === 'select') {
         result.status = 'manually_accepted';
         result.selectedMatch = dialogResult.match;
+        result.isVariant = !!(dialogResult.match?.parent_comic_vine_id);
         console.log('User manually selected match for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'rejected') {
         result.status = 'rejected';
         result.selectedMatch = undefined;
+        result.isVariant = false;
         console.log('User rejected all matches for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'cancel') {
         console.log('User cancelled match selection for:', result.imageName);
@@ -878,10 +883,12 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       if (dialogResult && dialogResult.action === 'select') {
         result.status = 'manually_accepted';
         result.selectedMatch = dialogResult.match;
+        result.isVariant = !!(dialogResult.match?.parent_comic_vine_id);
         console.log('User manually selected match for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'rejected') {
         result.status = 'rejected';
         result.selectedMatch = undefined;
+        result.isVariant = false;
         console.log('User rejected all matches for:', result.imageName);
       } else if (dialogResult && dialogResult.action === 'cancel') {
         console.log('User cancelled match selection for:', result.imageName);

@@ -266,6 +266,12 @@
                   <mat-icon>{{ getStatusIcon(result.status) }}</mat-icon>
                   <span>{{ getStatusText(result.status) }}</span>
                 </div>
+                @if (result.isVariant) {
+                  <div class="variant-badge">
+                    <mat-icon>style</mat-icon>
+                    <span>Variant</span>
+                  </div>
+                }
               </div>
             </div>
             <!-- Actions Column -->

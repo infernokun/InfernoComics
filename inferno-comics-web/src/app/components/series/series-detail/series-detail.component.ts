@@ -779,10 +779,21 @@ export class SeriesDetailComponent implements OnInit {
       }
 
       const issue = new Issue(response.data);
+      const cvRaw = response.data as any;
 
       if (match.parent_comic_vine_id) {
+        // Matched against a known variant cover
         issue.imageUrl = match.url;
         issue.variant = true;
+      } else if (match.url && cvRaw?.imageUrl && match.url !== cvRaw.imageUrl) {
+        // Fallback: matched URL differs from main cover — check if it's one of the variant cover URLs
+        const variantUrls: string[] = (cvRaw.variants ?? [])
+          .map((v: any) => v.originalUrl as string)
+          .filter(Boolean);
+        if (variantUrls.some(vUrl => match.url === vUrl)) {
+          issue.imageUrl = match.url;
+          issue.variant = true;
+        }
       }
 
       console.log('✅ Prepared issue data for:', result.imageName, 'with comic vine ID:', issue.id);

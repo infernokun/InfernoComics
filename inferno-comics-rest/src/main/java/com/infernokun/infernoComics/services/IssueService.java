@@ -929,10 +929,23 @@ public class IssueService {
                         wasUpdated = true;
                     }
 
-                    // Ensure isVariant flag is set when the issue has variant covers
-                    if (!Boolean.TRUE.equals(issue.getVariant())) {
-                        issue.setVariant(true);
-                        wasUpdated = true;
+                    // Detect if this issue IS a variant: its image doesn't match the main CV image
+                    // but does match one of the variant cover URLs
+                    String issueImage = issue.getImageUrl();
+                    String mainImage = comicVineData.getImageUrl();
+                    if (!Boolean.TRUE.equals(issue.getVariant())
+                            && issueImage != null && mainImage != null
+                            && !issueImage.equals(mainImage)) {
+                        boolean matchesVariantUrl = comicVineData.getVariants().stream()
+                                .map(ComicVineService.ComicVineIssueDto.VariantCover::getOriginalUrl)
+                                .filter(java.util.Objects::nonNull)
+                                .anyMatch(issueImage::equals);
+                        if (matchesVariantUrl) {
+                            issue.setVariant(true);
+                            wasUpdated = true;
+                            log.info("Detected variant cover for issue {} #{} via image URL match",
+                                    issue.getSeries().getName(), issue.getIssueNumber());
+                        }
                     }
                 }
 
