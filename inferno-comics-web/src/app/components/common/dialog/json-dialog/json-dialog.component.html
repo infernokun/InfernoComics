@@ -1,0 +1,105 @@
+<div class="json-dialog">
+  <div class="dialog-header">
+    <h2 mat-dialog-title>Series Folder Structure</h2>
+    <button mat-icon-button (click)="close()" class="close-btn">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content class="dialog-content">
+    <div class="metadata-section">
+      <div class="metadata-chip">
+        <mat-icon>check_circle</mat-icon>
+        <span>{{ data.code }} — {{ data.message }}</span>
+      </div>
+      <div class="metadata-chip">
+        <mat-icon>schedule</mat-icon>
+        <span>{{ data.timeMs }}ms</span>
+      </div>
+      <div class="metadata-chip">
+        <mat-icon>folder</mat-icon>
+        <span>{{ data.totalCount }} series</span>
+      </div>
+      <div class="metadata-chip">
+        <mat-icon>auto_stories</mat-icon>
+        <span>Page {{ data.currentPage + 1 }} / {{ totalPages }}</span>
+      </div>
+    </div>
+
+    <div class="search-section">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Search series</mat-label>
+        <input matInput [(ngModel)]="searchTerm" placeholder="Name, raw ID…" autocomplete="off">
+        <mat-icon matPrefix>search</mat-icon>
+        @if (searchTerm) {
+          <button mat-icon-button matSuffix (click)="searchTerm = ''" matTooltip="Clear">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+      @if (searchTerm) {
+        <span class="result-count">{{ filteredSeries.length }} result{{ filteredSeries.length !== 1 ? 's' : '' }}</span>
+      }
+    </div>
+
+    <div class="series-grid">
+      @for (series of filteredSeries; track series.id) {
+        <div class="series-card" (click)="copyFolderId(series.name)" matTooltip="Click to copy folder name">
+          <div class="card-top">
+            <span class="series-id">ID {{ series.id }}</span>
+            <mat-icon class="copy-icon">content_copy</mat-icon>
+          </div>
+          <div class="series-name">{{ formatSeriesName(series.name) }}</div>
+          <div class="series-raw">{{ series.name }}</div>
+        </div>
+      }
+
+      @if (filteredSeries.length === 0) {
+        <div class="no-results">
+          <mat-icon>search_off</mat-icon>
+          <p>No series match <strong>"{{ searchTerm }}"</strong></p>
+        </div>
+      }
+    </div>
+
+    @if (totalPages > 1) {
+      <div class="pagination-controls">
+        <button mat-icon-button (click)="goToFirstPage()" [disabled]="data.currentPage === 0" matTooltip="First page">
+          <mat-icon>first_page</mat-icon>
+        </button>
+        <button mat-icon-button (click)="previousPage()" [disabled]="data.currentPage === 0" matTooltip="Previous">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+
+        <span class="page-info">{{ data.currentPage + 1 }} / {{ totalPages }}</span>
+
+        <button mat-icon-button (click)="nextPage()" [disabled]="data.currentPage >= totalPages - 1" matTooltip="Next">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+        <button mat-icon-button (click)="goToLastPage()" [disabled]="data.currentPage >= totalPages - 1" matTooltip="Last page">
+          <mat-icon>last_page</mat-icon>
+        </button>
+      </div>
+    }
+
+    <div class="raw-json-section">
+      <div class="section-header" (click)="toggleRawJson()">
+        <mat-icon>{{ showRawJson ? 'expand_less' : 'expand_more' }}</mat-icon>
+        <span>Raw JSON Response</span>
+      </div>
+      @if (showRawJson) {
+        <div class="json-container">
+          <pre class="json-display">{{ formatJson(data) }}</pre>
+        </div>
+      }
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-stroked-button (click)="copyToClipboard()" color="primary">
+      <mat-icon>content_copy</mat-icon>
+      Copy JSON
+    </button>
+    <button mat-raised-button (click)="close()" color="primary">Close</button>
+  </mat-dialog-actions>
+</div>

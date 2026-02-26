@@ -130,7 +130,13 @@ export class SeriesDetailComponent implements OnInit {
       next: (res: ApiResponse<Issue[]>) => {
         if (!res.data) throw new Error(`Failed to load issues for series ID ${seriesId}: no data returned`);
 
-        this.issues = res.data.map((issue) => new Issue(issue));
+        this.issues = res.data
+          .map((issue) => new Issue(issue))
+          .sort((a, b) => {
+            const dateA = a.coverDate ? new Date(a.coverDate).getTime() : 0;
+            const dateB = b.coverDate ? new Date(b.coverDate).getTime() : 0;
+            return dateA - dateB;
+          });
         // Re-filter Comic Vine issues after loading collection issues
         this.filterComicVineIssues();
       },
@@ -1359,7 +1365,11 @@ export class SeriesDetailComponent implements OnInit {
   getNextToRead(): Issue | null {
     if (!this.issues || this.issues.length === 0) return null;
 
-    const sorted = [...this.issues].sort((a, b) => this.parseIssueNumber(a.issueNumber || '') - this.parseIssueNumber(b.issueNumber || ''));
+    const sorted = [...this.issues].sort((a, b) => {
+      const dateA = a.coverDate ? new Date(a.coverDate).getTime() : 0;
+      const dateB = b.coverDate ? new Date(b.coverDate).getTime() : 0;
+      return dateA - dateB;
+    });
     return sorted.find(issue => !issue.read) || null;
   }
 
