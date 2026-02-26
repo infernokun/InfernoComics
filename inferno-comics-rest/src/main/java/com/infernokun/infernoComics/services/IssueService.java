@@ -529,7 +529,9 @@ public class IssueService {
         // Link to the recognition session that produced this issue
         if (request.getSessionId() != null && !request.getSessionId().isBlank()) {
             progressDataRepository.findBySessionId(request.getSessionId()).ifPresentOrElse(
-                issue::setProgressData,
+                pd -> {
+                    issue.setProgressDataSessionId(pd.getSessionId());
+                },
                 () -> log.warn("No ProgressData found for sessionId: {}", request.getSessionId())
             );
         }

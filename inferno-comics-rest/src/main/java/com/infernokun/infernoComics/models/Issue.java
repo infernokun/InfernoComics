@@ -100,14 +100,8 @@ public class Issue {
 
     private String uploadedImageUrl;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "progress_data_id")
-    private ProgressData progressData;
-
-    public Long getProgressDataId() {
-        return progressData != null ? progressData.getId() : null;
-    }
+    @Column(name = "session_id")
+    private String progressDataSessionId;
 
     public Issue(String issueNumber, String title, Series series) {
         this.issueNumber = issueNumber;

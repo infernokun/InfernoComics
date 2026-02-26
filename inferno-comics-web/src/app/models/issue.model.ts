@@ -61,7 +61,7 @@ export class Issue {
   uploadedImageUrl?: string;
   gcdIds?: string[];
   variantCovers?: VariantCover[];
-  progressDataId?: number;
+  progressDataSessionId?: string;
 
   constructor(data?: any) {
     if (data) {
@@ -87,7 +87,7 @@ export class Issue {
       this.uploadedImageUrl = data.uploadedImageUrl;
       this.gcdIds = data.gcdIds || [];
       this.variantCovers = data.variantCovers || [];
-      this.progressDataId = data.progressDataId;
+      this.progressDataSessionId = data.progressDataSessionId;
     }
   }
 }

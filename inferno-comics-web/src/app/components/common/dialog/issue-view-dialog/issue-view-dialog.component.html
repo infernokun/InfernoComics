@@ -19,7 +19,7 @@
         @if (data.issue.generatedDescription) {
           <span class="badge ai"><mat-icon>smart_toy</mat-icon>AI Description</span>
         }
-        @if (data.issue.progressDataId) {
+        @if (data.issue.progressDataSessionId) {
           <span class="badge scan"><mat-icon>image_search</mat-icon>Added via Scan</span>
         }
       </div>
@@ -171,10 +171,10 @@
                 <span>Updated {{ DateUtils.formatDateTime(data.issue.updatedAt) }}</span>
               </div>
             }
-            @if (data.issue.progressDataId) {
+            @if (data.issue.progressDataSessionId) {
               <div class="meta-row scan-row">
                 <mat-icon>image_search</mat-icon>
-                <span>Added via image scan &middot; Session #{{ data.issue.progressDataId }}</span>
+                <span>Added via image scan &middot; <code>{{ data.issue.progressDataSessionId }}</code></span>
               </div>
             }
           </div>

@@ -417,7 +417,19 @@
 
   &.scan-row {
     color: #14b8a6;
+    flex-wrap: wrap;
     mat-icon { color: #14b8a6; }
+
+    code {
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      background: rgba(20, 184, 166, 0.08);
+      padding: 1px 6px;
+      border-radius: var(--radius-xs);
+      border: 1px solid rgba(20, 184, 166, 0.25);
+      color: #14b8a6;
+      word-break: break-all;
+    }
   }
 }
 
