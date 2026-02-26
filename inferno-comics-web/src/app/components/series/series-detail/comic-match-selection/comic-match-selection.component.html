@@ -140,6 +140,12 @@
                 <div class="match-info">
                   <h3 class="comic-title">{{ match.comic_name }}</h3>
                   <p class="issue-number">Issue #{{ match.issue_number }}</p>
+                  @if (match.parent_comic_vine_id) {
+                    <div class="variant-badge">
+                      <mat-icon>style</mat-icon>
+                      <span>Variant Cover</span>
+                    </div>
+                  }
                   <!-- Compact Feature Bars -->
                   <div class="features-compact">
                     @if (match.match_details.orb) {

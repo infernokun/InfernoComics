@@ -15,7 +15,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     List<Issue> findBySeriesIdOrderByIssueNumberAsc(Long seriesId);
 
-    @Query("SELECT c FROM Issue c WHERE c.isKeyIssue = true")
+    @Query("SELECT c FROM Issue c WHERE c.keyIssue = true")
     List<Issue> findKeyIssues();
 
     @Query("SELECT COUNT(i) FROM Issue i WHERE i.series.id = :seriesId")

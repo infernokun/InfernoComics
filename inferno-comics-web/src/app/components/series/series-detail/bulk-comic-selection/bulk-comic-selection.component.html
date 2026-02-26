@@ -197,6 +197,12 @@
                     <div class="comic-title" [title]="result.selectedMatch.comic_name">{{ result.selectedMatch.comic_name }}</div>
                     <div class="issue-number">Issue #{{ result.selectedMatch.issue_number }}</div>
                     <div class="similarity">{{ (result.selectedMatch.similarity * 100).toFixed(1) }}% match</div>
+                    @if (result.selectedMatch.parent_comic_vine_id) {
+                      <div class="variant-badge">
+                        <mat-icon>style</mat-icon>
+                        <span>Variant Cover</span>
+                      </div>
+                    }
                     <div class="best-match-note">
                       <mat-icon>info_outline</mat-icon>
                       Best was: {{ result.bestMatch?.comic_name }} #{{ result.bestMatch?.issue_number }}
@@ -221,6 +227,12 @@
                     <div class="comic-title" [title]="result.bestMatch.comic_name">{{ result.bestMatch.comic_name }}</div>
                     <div class="issue-number">Issue #{{ result.bestMatch.issue_number }}</div>
                     <div class="similarity">{{ (result.bestMatch.similarity * 100).toFixed(1) }}% match</div>
+                    @if (result.bestMatch.parent_comic_vine_id) {
+                      <div class="variant-badge">
+                        <mat-icon>style</mat-icon>
+                        <span>Variant Cover</span>
+                      </div>
+                    }
                     @if (result.allMatches.length > 1) {
                       <div class="match-count">
                         +{{ result.allMatches.length - 1 }} more matches

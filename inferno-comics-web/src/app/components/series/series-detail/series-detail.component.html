@@ -248,6 +248,14 @@
                         </div>
                       }
 
+                      <!-- Variant Badge -->
+                      @if (comic.variant) {
+                        <div class="variant-cover-badge">
+                          <mat-icon>style</mat-icon>
+                          <span>Variant</span>
+                        </div>
+                      }
+
                       <!-- Condition Badge -->
                       @if (comic.condition) {
                         <div class="condition-overlay" [class]="'condition-' + comic.condition.toLowerCase()">
@@ -305,6 +313,11 @@
                             <mat-icon>star</mat-icon>
                           </div>
                         }
+                        @if (issue.variant) {
+                          <div class="badge variant-badge-icon">
+                            <mat-icon>style</mat-icon>
+                          </div>
+                        }
                       </div>
 
                       <!-- Comic Information -->
@@ -315,6 +328,12 @@
                             @if (issue.condition) {
                               <span class="condition-badge" [class]="'condition-' + issue.condition.toLowerCase()">
                                 {{ issue.condition }}
+                              </span>
+                            }
+                            @if (issue.variant) {
+                              <span class="variant-chip">
+                                <mat-icon>style</mat-icon>
+                                Variant
                               </span>
                             }
                           </div>

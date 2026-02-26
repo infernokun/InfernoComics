@@ -101,7 +101,7 @@ public class IssueService {
     public List<Issue> getVariantIssues() {
         log.info("Fetching issues with variant covers");
         return issueRepository.findAll().stream()
-                .filter(Issue::getIsVariant)
+                .filter(Issue::getVariant)
                 .collect(Collectors.toList());
     }
 
@@ -135,8 +135,8 @@ public class IssueService {
 
         List<Issue> allIssues = issueRepository.findAll();
         long totalIssues = allIssues.size();
-        long keyIssues = allIssues.stream().mapToLong(issue -> issue.getIsKeyIssue() ? 1 : 0).sum();
-        long variantIssues = allIssues.stream().mapToLong(issue -> issue.getIsVariant() ? 1 : 0).sum();
+        long keyIssues = allIssues.stream().mapToLong(issue -> issue.getKeyIssue() ? 1 : 0).sum();
+        long variantIssues = allIssues.stream().mapToLong(issue -> issue.getVariant() ? 1 : 0).sum();
 
         Map<String, Long> conditionCounts = allIssues.stream()
                 .filter(issue -> issue.getCondition() != null)
@@ -444,7 +444,7 @@ public class IssueService {
 
         if (issue.getVariantCovers() != null) {
             issue.getVariantCovers().removeIf(variant -> variant.getId().equals(variantId));
-            issue.setIsVariant(!issue.getVariantCovers().isEmpty());
+            issue.setVariant(!issue.getVariantCovers().isEmpty());
         }
 
         Issue updatedIssue = issueRepository.save(issue);
@@ -621,7 +621,7 @@ public class IssueService {
         issue.setImageUrl(issueDto.getImageUrl());
         issue.setComicVineId(issueDto.getId());
         issue.setSeries(series);
-        issue.setIsVariant(issueDto.isVariant());
+        issue.setVariant(issueDto.isVariant());
 
         // Handle variant covers from Comic Vine
         if (issueDto.getVariants() != null && !issueDto.getVariants().isEmpty()) {
@@ -662,7 +662,8 @@ public class IssueService {
         issue.setPurchaseDate(request.getPurchaseDate());
         issue.setNotes(request.getNotes());
         issue.setComicVineId(request.getComicVineId());
-        issue.setIsKeyIssue(request.getIsKeyIssue());
+        issue.setKeyIssue(request.getKeyIssue());
+        issue.setVariant(request.getVariant() != null ? request.getVariant() : false);
 
         if (request.getUploadedImageUrl() != null) {
             String url = request.getUploadedImageUrl();
@@ -925,6 +926,12 @@ public class IssueService {
 
                     if (issue.getVariantCovers() == null || issue.getVariantCovers().size() != variants.size()) {
                         issue.setVariantCovers(variants);
+                        wasUpdated = true;
+                    }
+
+                    // Ensure isVariant flag is set when the issue has variant covers
+                    if (!Boolean.TRUE.equals(issue.getVariant())) {
+                        issue.setVariant(true);
                         wasUpdated = true;
                     }
                 }

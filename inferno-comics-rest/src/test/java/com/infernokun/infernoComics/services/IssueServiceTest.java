@@ -107,8 +107,8 @@ public class IssueServiceTest {
         issue.setTitle("Test Issue " + issueNumber);
         issue.setSeries(series);
         issue.setCreatedAt(LocalDateTime.now());
-        issue.setIsKeyIssue(false);
-        issue.setIsVariant(false);
+        issue.setKeyIssue(false);
+        issue.setVariant(false);
         issue.setCondition(Condition.FAIR);
         issue.setCurrentValue(BigDecimal.valueOf(10.00));
         issue.setVariantCovers(new ArrayList<>());
@@ -275,14 +275,14 @@ public class IssueServiceTest {
         void shouldReturnKeyIssues() {
             Series series = createTestSeries();
             Issue keyIssue = createTestIssue(1L, "1", series);
-            keyIssue.setIsKeyIssue(true);
+            keyIssue.setKeyIssue(true);
 
             when(issueRepository.findKeyIssues()).thenReturn(List.of(keyIssue));
 
             List<Issue> result = issueService.getKeyIssues();
 
             assertThat(result).hasSize(1);
-            assertThat(result.getFirst().getIsKeyIssue()).isTrue();
+            assertThat(result.getFirst().getKeyIssue()).isTrue();
         }
     }
 
@@ -296,14 +296,14 @@ public class IssueServiceTest {
             Series series = createTestSeries();
             Issue regularIssue = createTestIssue(1L, "1", series);
             Issue variantIssue = createTestIssue(2L, "1", series);
-            variantIssue.setIsVariant(true);
+            variantIssue.setVariant(true);
 
             when(issueRepository.findAll()).thenReturn(List.of(regularIssue, variantIssue));
 
             List<Issue> result = issueService.getVariantIssues();
 
             assertThat(result).hasSize(1);
-            assertThat(result.getFirst().getIsVariant()).isTrue();
+            assertThat(result.getFirst().getVariant()).isTrue();
         }
     }
 
@@ -405,11 +405,11 @@ public class IssueServiceTest {
             Series series = createTestSeries();
 
             Issue keyIssue = createTestIssue(1L, "1", series);
-            keyIssue.setIsKeyIssue(true);
+            keyIssue.setKeyIssue(true);
             keyIssue.setCurrentValue(BigDecimal.valueOf(100.00));
 
             Issue variantIssue = createTestIssue(2L, "2", series);
-            variantIssue.setIsVariant(true);
+            variantIssue.setVariant(true);
             variantIssue.setCurrentValue(BigDecimal.valueOf(50.00));
 
             Issue regularIssue = createTestIssue(3L, "3", series);
@@ -758,7 +758,7 @@ public class IssueServiceTest {
                     new Issue.VariantCover("variant-1", "url1", "caption1", List.of().toString()),
                     new Issue.VariantCover("variant-2", "url2", "caption2", List.of().toString())
             )));
-            issue.setIsVariant(true);
+            issue.setVariant(true);
 
             when(issueRepository.findById(1L)).thenReturn(Optional.of(issue));
             when(issueRepository.save(any(Issue.class))).thenReturn(issue);

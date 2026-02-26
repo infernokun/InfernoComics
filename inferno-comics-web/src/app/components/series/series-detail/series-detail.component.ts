@@ -300,6 +300,7 @@ export class SeriesDetailComponent implements OnInit {
         purchasePrice: 0,
         currentValue: 0,
         keyIssue: false,
+        variant: issue.variant || false,
         generatedDescription: issue.generatedDescription || false,
       };
 
@@ -973,6 +974,7 @@ export class SeriesDetailComponent implements OnInit {
       imageUrl: match.url,
       thumbUrl: match.url,
       originalUrl: match.url,
+      variant: !!match.parent_comic_vine_id,
     };
     // Fallback method when Comic Vine API fails - use just the match data
     const dialogRef = this.dialog.open(IssueFormComponent, {

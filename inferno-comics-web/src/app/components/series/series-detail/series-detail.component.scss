@@ -2046,3 +2046,69 @@
     background: var(--background-color);
   }
 }
+// Variant badge on grid collection cards (bottom-right of cover)
+.variant-cover-badge {
+  position: absolute;
+  bottom: var(--spacing-sm);
+  right: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  background: rgba(255, 140, 0, 0.9);
+  color: white;
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--spacing-lg);
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-bold);
+  box-shadow: 0 2px 8px rgba(255, 140, 0, 0.4);
+  z-index: 10;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+
+  @include md {
+    padding: 3px var(--spacing-sm);
+    font-size: 0.7rem;
+
+    mat-icon {
+      font-size: 12px;
+      width: 12px;
+      height: 12px;
+    }
+  }
+}
+
+// Variant icon badge in compact-image (bottom-left circle)
+.variant-badge-icon {
+  bottom: 3px !important;
+  top: auto !important;
+  right: auto !important;
+  left: 3px !important;
+  background: rgba(255, 140, 0, 0.9) !important;
+  box-shadow: 0 2px 6px rgba(255, 140, 0, 0.4) !important;
+}
+
+// Variant chip in compact header-top
+.variant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: rgba(255, 140, 0, 0.15);
+  border: 1px solid rgba(255, 140, 0, 0.5);
+  border-radius: 12px;
+  color: orange;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  mat-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+  }
+}

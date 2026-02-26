@@ -26,8 +26,8 @@ public class IssueRequest {
     private LocalDate purchaseDate;
     private String notes;
     private String comicVineId;
-    private Boolean isKeyIssue;
+    private Boolean keyIssue;
     private List<Issue.VariantCover> variantCovers;
-    private Boolean hasVariants;
+    private Boolean variant;
     private String uploadedImageUrl;
 }

@@ -74,11 +74,11 @@ public class Issue {
 
     @Builder.Default
     @Column(name = "is_variants")
-    private Boolean isVariant = false;
+    private Boolean variant = false;
 
     @Builder.Default
     @Column(name = "is_key_issue")
-    private Boolean isKeyIssue = false;
+    private Boolean keyIssue = false;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

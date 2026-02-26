@@ -76,8 +76,8 @@ export class Issue {
       this.purchaseDate = data.purchaseDate ? DateUtils.parseDateArray(data.purchaseDate) : undefined;
       this.notes = data.notes;
       this.comicVineId = data.comicVineId;
-      this.keyIssue = data.keyIssue || false;
-      this.variant = data.variant || false;
+      this.keyIssue = data.keyIssue || data.isKeyIssue || false;
+      this.variant = data.variant || data.isVariant || false;
       this.createdAt = data.createdAt ? DateUtils.parseDateTimeArray(data.createdAt) : undefined;
       this.updatedAt = data.updatedAt ? DateUtils.parseDateTimeArray(data.updatedAt) : undefined;
       this.series = data.series ? new Series(data.series) : undefined;

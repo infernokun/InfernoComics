@@ -99,8 +99,8 @@ public class StatsService {
     private Map<String, Object> buildOverview(List<Series> allSeries, List<Issue> allIssues, List<MissingIssue> missingIssues) {
         long totalSeries = allSeries.size();
         long totalIssues = allIssues.size();
-        long keyIssues = allIssues.stream().filter(i -> Boolean.TRUE.equals(i.getIsKeyIssue())).count();
-        long variantIssues = allIssues.stream().filter(i -> Boolean.TRUE.equals(i.getIsVariant())).count();
+        long keyIssues = allIssues.stream().filter(i -> Boolean.TRUE.equals(i.getKeyIssue())).count();
+        long variantIssues = allIssues.stream().filter(i -> Boolean.TRUE.equals(i.getVariant())).count();
         long uniquePublishers = allSeries.stream()
                 .map(Series::getPublisher)
                 .filter(Objects::nonNull)
