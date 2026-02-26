@@ -663,7 +663,7 @@ export class SeriesDetailComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result && result.action === 'bulk_add') {
         console.log('✅ Bulk add selected:', result.results.length, 'comics');
-        this.handleBulkAddResults(result.results, seriesId);
+        this.handleBulkAddResults(result.results, seriesId, result.sessionId);
       } else if (result && result.action === 'save') {
         console.log('Save selections:', result.results);
       } else {
@@ -701,9 +701,9 @@ export class SeriesDetailComponent implements OnInit {
     });
   }
 
-  private async handleBulkAddResults(results: ProcessedImageResult[], seriesId: number): Promise<void> {
+  private async handleBulkAddResults(results: ProcessedImageResult[], seriesId: number, sessionId?: string): Promise<void> {
     // Filter accepted results upfront
-    const acceptedResults = results.filter(result => 
+    const acceptedResults = results.filter(result =>
       (result.status === 'auto_accepted' || result.status === 'manually_accepted') &&
       result.selectedMatch
     );
@@ -721,7 +721,7 @@ export class SeriesDetailComponent implements OnInit {
     try {
       // Fetch Comic Vine details for all accepted results in parallel
       const issueDataResults = await Promise.all(
-        acceptedResults.map(result => this.fetchIssueData(result, seriesId))
+        acceptedResults.map(result => this.fetchIssueData(result, seriesId, sessionId))
       );
 
       // Filter out null results
@@ -771,7 +771,8 @@ export class SeriesDetailComponent implements OnInit {
 
   private async fetchIssueData(
     result: ProcessedImageResult,
-    seriesId: number
+    seriesId: number,
+    sessionId?: string
   ): Promise<Record<string, unknown> | null> {
     const match = result.selectedMatch!;
 
@@ -821,6 +822,7 @@ export class SeriesDetailComponent implements OnInit {
         uploadedImageUrl: result.imagePreview.includes('blob')
           ? result.liveStoredImage
           : result.imagePreview,
+        sessionId,
       };
 
     } catch (error) {
@@ -1204,7 +1206,7 @@ export class SeriesDetailComponent implements OnInit {
     dialogRef.afterClosed().subscribe((result) => {
       if (result && result.action === 'bulk_add') {
         console.log('✅ Bulk add selected:', result.results.length, 'comics');
-        this.handleBulkAddResults(result.results, this.series?.id!);
+        this.handleBulkAddResults(result.results, this.series?.id!, result.sessionId);
       } else if (result && result.action === 'save') {
         console.log('💾 Save selections:', result.results);
       } else {

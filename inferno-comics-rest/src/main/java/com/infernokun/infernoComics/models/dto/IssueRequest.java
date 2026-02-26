@@ -30,4 +30,5 @@ public class IssueRequest {
     private List<Issue.VariantCover> variantCovers;
     private Boolean variant;
     private String uploadedImageUrl;
+    private String sessionId;
 }

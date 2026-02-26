@@ -1,140 +1,196 @@
-<div class="comic-view-container">
-  <div class="comic-view-header">
-    <h2 mat-dialog-title>
-      {{ data.issue.title || 'Issue #' + data.issue.issueNumber }}
-    </h2>
-    <button mat-icon-button mat-dialog-close class="close-button">
+<div class="issue-view">
+
+  <!-- Header -->
+  <div class="issue-header">
+    <div class="header-info">
+      <h2 mat-dialog-title>
+        {{ data.issue.title || ('Issue #' + data.issue.issueNumber) }}
+      </h2>
+      <div class="header-badges">
+        @if (data.issue.keyIssue) {
+          <span class="badge key-issue"><mat-icon>star</mat-icon>Key Issue</span>
+        }
+        @if (data.issue.variant) {
+          <span class="badge variant"><mat-icon>style</mat-icon>Variant</span>
+        }
+        @if (isRead) {
+          <span class="badge read"><mat-icon>check_circle</mat-icon>Read</span>
+        }
+        @if (data.issue.generatedDescription) {
+          <span class="badge ai"><mat-icon>smart_toy</mat-icon>AI Description</span>
+        }
+        @if (data.issue.progressDataId) {
+          <span class="badge scan"><mat-icon>image_search</mat-icon>Added via Scan</span>
+        }
+      </div>
+    </div>
+    <button mat-icon-button mat-dialog-close class="close-btn">
       <mat-icon>close</mat-icon>
     </button>
   </div>
 
-  <mat-dialog-content class="comic-view-content">
-    <div class="comic-view-layout">
-      <div class="comic-image-section">
-        <div class="comic-image-container">
-          <!-- Image Toggle Controls -->
+  <mat-dialog-content class="issue-content">
+    <div class="issue-layout">
+
+      <!-- Left: Cover + Variants -->
+      <div class="cover-section">
+        <div class="cover-wrap">
           @if (hasUploadedImage()) {
-            <div class="image-controls">
-              <button mat-button
-                class="image-toggle-btn"
-                (click)="toggleImageView()"
-                [class.active]="!showUploadedImage">
-                <mat-icon>image</mat-icon>
-                Cover
+            <div class="image-tabs">
+              <button [class.active]="!showUploadedImage" (click)="showUploadedImage = false">
+                <mat-icon>image</mat-icon>Cover
               </button>
-              <button mat-button
-                class="image-toggle-btn"
-                (click)="toggleImageView()"
-                [class.active]="showUploadedImage">
-                <mat-icon>photo_library</mat-icon>
-                Uploaded
+              <button [class.active]="showUploadedImage" (click)="showUploadedImage = true">
+                <mat-icon>photo_library</mat-icon>Uploaded
               </button>
             </div>
           }
 
-          <img [src]="getCurrentImageUrl()"
-            [alt]="'Issue #' + data.issue.issueNumber"
-            onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}" />
+          <div class="cover-img-wrap">
+            <img
+              [src]="activeImageUrl"
+              [alt]="'Issue #' + data.issue.issueNumber"
+              class="cover-img"
+              onerror="if(this.src!=='assets/placeholder-comic.jpg'){this.src='assets/placeholder-comic.jpg'}" />
 
-          @if (data.issue.keyIssue) {
-            <div class="key-issue-badge">
-              <mat-icon>star</mat-icon>
-              <span>Key Issue</span>
-            </div>
-          }
-
-          <!-- Current Image Type Indicator -->
-          @if (hasUploadedImage()) {
-            <div class="image-type-indicator">
-              <mat-icon>{{ showUploadedImage ? 'photo_library' : 'image' }}</mat-icon>
-              <span>{{ showUploadedImage ? 'Uploaded Image' : 'Cover Image' }}</span>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="comic-details-section">
-        <div class="detail-group">
-          <h3>Basic Information</h3>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <span class="label">Issue Number:</span>
-              <span class="value">#{{ data.issue.issueNumber }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Cover Date:</span>
-              <span class="value">{{
-                DateUtils.formatDate(data.issue.coverDate) || 'Not specified'
-              }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Condition:</span>
-              <span class="value condition-badge" [class]="getConditionClass(data.issue.condition)">
-                {{ formatCondition(data.issue.condition) }}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        @if (data.issue.description) {
-          <div class="detail-group">
-            <h3>Description</h3>
-            <p class="description-text">{{ data.issue.description }}</p>
-          </div>
-        }
-
-        <div class="detail-group">
-          <h3>Financial Information</h3>
-          <div class="financial-grid">
-            <div class="financial-card purchase">
-              <div class="financial-label">Purchase Price</div>
-              <div class="financial-value">
-                \${{ data.issue.purchasePrice || 0 }}
-              </div>
-            </div>
-            <div class="financial-card current">
-              <div class="financial-label">Current Value</div>
-              <div class="financial-value">
-                \${{ data.issue.currentValue || 0 }}
-              </div>
-            </div>
-            @if (getProfitLoss() !== 0) {
-              <div class="financial-card profit">
-                <div class="financial-label">
-                  {{ getProfitLoss() >= 0 ? 'Profit' : 'Loss' }}
-                </div>
-                <div class="financial-value" [class.profit]="getProfitLoss() >= 0"
-                  [class.loss]="getProfitLoss() < 0">
-                  {{ getProfitLoss() >= 0 ? '+' : '' }}\${{
-                  Math.abs(getProfitLoss())
-                  }}
-                </div>
+            @if (data.issue.keyIssue) {
+              <div class="cover-key-badge">
+                <mat-icon>star</mat-icon>Key Issue
               </div>
             }
           </div>
         </div>
 
-        @if (data.issue.comicVineId) {
-          <div class="detail-group">
-            <h3>Comic Vine Integration</h3>
-            <div class="comic-vine-info">
-              <mat-icon>link</mat-icon>
-              <span>Linked to Comic Vine ID: {{ data.issue.comicVineId }}</span>
+        <!-- Variant cover thumbnails -->
+        @if (data.issue.variantCovers?.length) {
+          <div class="variant-covers">
+            <span class="variant-label">
+              <mat-icon>style</mat-icon>
+              {{ data.issue.variantCovers!.length }} Variant Cover{{ data.issue.variantCovers!.length > 1 ? 's' : '' }}
+            </span>
+            <div class="variant-thumbs">
+              @for (v of data.issue.variantCovers; track v.id) {
+                <img
+                  class="variant-thumb"
+                  [class.selected]="previewVariantUrl === v.originalUrl"
+                  [src]="v.originalUrl"
+                  [alt]="v.caption || 'Variant'"
+                  [matTooltip]="v.caption || 'Variant Cover'"
+                  (click)="previewVariant(v)" />
+              }
             </div>
           </div>
         }
       </div>
+
+      <!-- Right: Details -->
+      <div class="details-section">
+
+        <!-- Core info grid -->
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Issue</span>
+            <span class="info-value">#{{ data.issue.issueNumber }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Cover Date</span>
+            <span class="info-value">{{ DateUtils.formatDate(data.issue.coverDate) || '—' }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Condition</span>
+            <span class="info-value condition-badge" [class]="getConditionClass(data.issue.condition)">
+              {{ formatCondition(data.issue.condition) }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Read Status</span>
+            <button class="read-toggle" [class.read]="isRead" (click)="toggleRead()" [disabled]="togglingRead">
+              <mat-icon>{{ isRead ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+              {{ isRead ? 'Read' : 'Unread' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Description -->
+        @if (data.issue.description) {
+          <div class="detail-section">
+            <div class="section-header">
+              <span class="section-title">Description</span>
+              @if (data.issue.generatedDescription) {
+                <span class="ai-tag"><mat-icon>smart_toy</mat-icon>AI Generated</span>
+              }
+            </div>
+            <p class="description-text">{{ data.issue.description }}</p>
+          </div>
+        }
+
+        <!-- Notes -->
+        @if (data.issue.notes) {
+          <div class="detail-section">
+            <div class="section-title">Notes</div>
+            <p class="notes-text">{{ data.issue.notes }}</p>
+          </div>
+        }
+
+        <!-- Identifiers -->
+        @if (data.issue.comicVineId || data.issue.gcdIds?.length) {
+          <div class="detail-section">
+            <div class="section-title">Identifiers</div>
+            <div class="identifiers">
+              @if (data.issue.comicVineId) {
+                <div class="id-row">
+                  <mat-icon>link</mat-icon>
+                  <span class="id-label">Comic Vine</span>
+                  <code>{{ data.issue.comicVineId }}</code>
+                </div>
+              }
+              @if (data.issue.gcdIds?.length) {
+                <div class="id-row">
+                  <mat-icon>menu_book</mat-icon>
+                  <span class="id-label">GCD</span>
+                  <code>{{ data.issue.gcdIds!.join(', ') }}</code>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Collection meta -->
+        <div class="detail-section meta-section">
+          <div class="section-title">Collection Info</div>
+          <div class="meta-list">
+            @if (data.issue.createdAt) {
+              <div class="meta-row">
+                <mat-icon>add_circle_outline</mat-icon>
+                <span>Added {{ DateUtils.formatDateTime(data.issue.createdAt) }}</span>
+              </div>
+            }
+            @if (data.issue.updatedAt) {
+              <div class="meta-row">
+                <mat-icon>update</mat-icon>
+                <span>Updated {{ DateUtils.formatDateTime(data.issue.updatedAt) }}</span>
+              </div>
+            }
+            @if (data.issue.progressDataId) {
+              <div class="meta-row scan-row">
+                <mat-icon>image_search</mat-icon>
+                <span>Added via image scan &middot; Session #{{ data.issue.progressDataId }}</span>
+              </div>
+            }
+          </div>
+        </div>
+
+      </div>
     </div>
   </mat-dialog-content>
 
-  <mat-dialog-actions class="comic-view-actions">
+  <mat-dialog-actions class="issue-actions">
     <button mat-button mat-dialog-close>
-      <mat-icon>close</mat-icon>
-      Close
+      <mat-icon>close</mat-icon>Close
     </button>
     <button mat-raised-button color="primary" (click)="editComic()">
-      <mat-icon>edit</mat-icon>
-      Edit
+      <mat-icon>edit</mat-icon>Edit
     </button>
   </mat-dialog-actions>
+
 </div>

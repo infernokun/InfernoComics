@@ -1,33 +1,75 @@
+import { CommonModule } from "@angular/common";
 import { Component, Inject } from "@angular/core";
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialog } from "@angular/material/dialog";
 import { MaterialModule } from "../../../../material.module";
 import { RecognitionService } from "../../../../services/recognition.service";
+import { IssueService } from "../../../../services/issue.service";
 import { DateUtils } from "../../../../utils/date-utils";
 import { IssueFormComponent } from "../../../issues/issue-form/issue-form.component";
+import { VariantCover } from "../../../../models/issue.model";
 
 @Component({
   selector: 'issue-view-dialog',
   templateUrl: './issue-view-dialog.component.html',
   styleUrls: ['./issue-view-dialog.component.scss'],
-  imports: [MaterialModule],
+  imports: [MaterialModule, CommonModule],
 })
 export class IssueViewDialog {
-  Math = Math;
   DateUtils = DateUtils;
+
   showUploadedImage = false;
+  isRead: boolean;
+  togglingRead = false;
+  previewVariantUrl: string | null = null;
 
   constructor(
     public dialogRef: MatDialogRef<IssueViewDialog>,
     @Inject(MAT_DIALOG_DATA) public data: any,
     private dialog: MatDialog,
-    private recognitionService: RecognitionService
+    private recognitionService: RecognitionService,
+    private issueService: IssueService,
   ) {
-    console.log('IssueViewDialog initialized with data:', data);
+    this.isRead = !!data.issue.read;
+  }
+
+  get activeImageUrl(): string {
+    if (this.previewVariantUrl) return this.previewVariantUrl;
+    if (this.showUploadedImage) return this.recognitionService.getCurrentImageUrl(this.data);
+    return this.data.issue.imageUrl || 'assets/placeholder-comic.jpg';
+  }
+
+  hasUploadedImage(): boolean {
+    return !!(this.data.issue.uploadedImageUrl?.trim());
+  }
+
+  previewVariant(v: VariantCover): void {
+    if (this.previewVariantUrl === v.originalUrl) {
+      // clicking the active thumb clears the preview
+      this.previewVariantUrl = null;
+      this.showUploadedImage = false;
+    } else {
+      this.previewVariantUrl = v.originalUrl ?? null;
+    }
+  }
+
+  toggleRead(): void {
+    if (!this.data.issue.id || this.togglingRead) return;
+    this.togglingRead = true;
+    this.issueService.toggleReadStatus(this.data.issue.id).subscribe({
+      next: (res) => {
+        if (res.data) {
+          this.isRead = res.data.read ?? !this.isRead;
+          this.data.issue.read = this.isRead;
+        }
+        this.togglingRead = false;
+      },
+      error: () => { this.togglingRead = false; },
+    });
   }
 
   editComic(): void {
     this.dialogRef.close();
-    const editDialogRef = this.dialog.open(IssueFormComponent, {
+    this.dialog.open(IssueFormComponent, {
       width: '600px',
       data: {
         issue: this.data.issue,
@@ -49,30 +91,5 @@ export class IssueViewDialog {
   getConditionClass(condition: string): string {
     if (!condition) return '';
     return condition.toLowerCase().replace(/_/g, '-');
-  }
-
-  getProfitLoss(): number {
-    const purchase = this.data.issue.purchasePrice || 0;
-    const current = this.data.issue.currentValue || 0;
-    return current - purchase;
-  }
-
-  toggleImageView(): void {
-    this.showUploadedImage = !this.showUploadedImage;
-  }
-
-  getCurrentImageUrl(): string {
-    if (this.showUploadedImage) {
-      return this.recognitionService.getCurrentImageUrl(this.data);
-    }
-    return this.data.issue.imageUrl || 'assets/placeholder-comic.jpg';
-  }
-
-  hasUploadedImage(): boolean {
-    return !!(this.data.issue.uploadedImageUrl && this.data.issue.uploadedImageUrl.trim());
-  }
-
-  getCurrentImageType(): string {
-    return this.showUploadedImage ? 'Cover Image' : 'Uploaded Image';
   }
 }

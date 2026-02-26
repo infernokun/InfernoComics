@@ -8,11 +8,13 @@ import com.infernokun.infernoComics.controllers.SeriesController;
 import com.infernokun.infernoComics.models.DescriptionGenerated;
 import com.infernokun.infernoComics.models.Issue;
 import com.infernokun.infernoComics.models.MissingIssue;
+import com.infernokun.infernoComics.models.ProgressData;
 import com.infernokun.infernoComics.models.Series;
 import com.infernokun.infernoComics.models.dto.IssueRequest;
 import com.infernokun.infernoComics.models.gcd.GCDIssue;
 import com.infernokun.infernoComics.repositories.IssueRepository;
 import com.infernokun.infernoComics.repositories.MissingIssueRepository;
+import com.infernokun.infernoComics.repositories.ProgressDataRepository;
 import com.infernokun.infernoComics.repositories.SeriesRepository;
 import com.infernokun.infernoComics.services.gcd.GCDatabaseService;
 import com.infernokun.infernoComics.utils.CacheConstants;
@@ -49,6 +51,7 @@ public class IssueService {
     private final IssueRepository issueRepository;
     private final SeriesRepository seriesRepository;
     private final MissingIssueRepository missingIssueRepository;
+    private final ProgressDataRepository progressDataRepository;
 
     private final ComicVineService comicVineService;
     private final GCDatabaseService gcDatabaseService;
@@ -521,6 +524,14 @@ public class IssueService {
                 issue.setDescription("");
                 issue.setGeneratedDescription(false);
             }
+        }
+
+        // Link to the recognition session that produced this issue
+        if (request.getSessionId() != null && !request.getSessionId().isBlank()) {
+            progressDataRepository.findBySessionId(request.getSessionId()).ifPresentOrElse(
+                issue::setProgressData,
+                () -> log.warn("No ProgressData found for sessionId: {}", request.getSessionId())
+            );
         }
 
         // Process Comic Vine ID to find GCD mapping

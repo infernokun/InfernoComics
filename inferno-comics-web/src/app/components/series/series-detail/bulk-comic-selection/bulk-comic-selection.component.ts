@@ -417,6 +417,7 @@ export class BulkComicSelectionComponent implements OnInit, OnDestroy {
       action: 'bulk_add',
       results: acceptedResults,
       seriesId: this.data.seriesId,
+      sessionId: this.data.sessionId,
     });
   }
 

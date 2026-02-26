@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -98,6 +99,15 @@ public class Issue {
     private boolean read = false;
 
     private String uploadedImageUrl;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "progress_data_id")
+    private ProgressData progressData;
+
+    public Long getProgressDataId() {
+        return progressData != null ? progressData.getId() : null;
+    }
 
     public Issue(String issueNumber, String title, Series series) {
         this.issueNumber = issueNumber;
