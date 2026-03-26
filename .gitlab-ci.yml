@@ -8,14 +8,11 @@ spec:
 
 stages:
   - build
-  - release
   - deploy
 
 variables:
   DOCKER_HOST: "unix:///var/run/docker.sock"
-  GIT_DEPTH: 0
   GIT_STRATEGY: clone
-  BUMP_TYPE: ""
   FORCE_RUN: "$[[ inputs.force_run ]]"
 
 build-rest:
@@ -23,77 +20,18 @@ build-rest:
   image: docker:26.1.4
   before_script:
     - echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
-    - apk add --no-cache nodejs npm bash jq git curl
+    - apk add --no-cache nodejs npm bash jq
   script:
     - |
       set -euo pipefail
       SERVICE_DIR="inferno-comics-rest"
-      FALLBACK_VERSION=$(jq -r .version ${SERVICE_DIR}/package.json)
-
-      # Get current service version from latest app tag message
-      git fetch --tags origin 2>/dev/null || true
-      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1 || true)
-
-      if [ -n "$LATEST_TAG" ]; then
-        TAG_MSG=$(git tag -l --format='%(contents)' "$LATEST_TAG")
-        CURRENT_VERSION=$(echo "$TAG_MSG" | grep "inferno-comics-rest:" | sed 's/.*: v//' | tr -d '[:space:]')
-      fi
-
-      if [ -z "${CURRENT_VERSION:-}" ]; then
-        CURRENT_VERSION="$FALLBACK_VERSION"
-        echo "No version found in tags, using package.json fallback: $CURRENT_VERSION"
-      else
-        echo "Found version in tag $LATEST_TAG: $CURRENT_VERSION"
-      fi
-
-      # Determine bump type: CI variable > MR labels > default (patch)
-      RESOLVED_BUMP="${BUMP_TYPE:-}"
-
-      if [ -z "$RESOLVED_BUMP" ]; then
-        MR_RESPONSE=$(curl -sf --header "PRIVATE-TOKEN: ${PROJECT_ACCESS_TOKEN}" \
-          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/repository/commits/${CI_COMMIT_SHA}/merge_requests" \
-          2>/dev/null || echo "[]")
-
-        MR_LABELS=$(echo "$MR_RESPONSE" | jq -r '.[0].labels // [] | .[]' 2>/dev/null || echo "")
-
-        if echo "$MR_LABELS" | grep -qx "bump:major"; then
-          RESOLVED_BUMP="major"
-          echo "MR label detected: bump:major"
-        elif echo "$MR_LABELS" | grep -qx "bump:minor"; then
-          RESOLVED_BUMP="minor"
-          echo "MR label detected: bump:minor"
-        fi
-      fi
-
-      RESOLVED_BUMP="${RESOLVED_BUMP:-patch}"
-      echo "Bump type resolved to: $RESOLVED_BUMP"
-
-      # Calculate new version
-      MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
-      MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
-      PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
-      case "$RESOLVED_BUMP" in
-        major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-        minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-        patch) PATCH=$((PATCH + 1)) ;;
-        *)     PATCH=$((PATCH + 1)) ;;
-      esac
-      NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-      echo "Version bump: $CURRENT_VERSION -> $NEW_VERSION"
-
-      # Update package.json and application.yml in CI workspace
+      VERSION=$(jq -r .version ${SERVICE_DIR}/package.json)
+      echo "Building inferno-comics-rest v$VERSION"
       cd "$SERVICE_DIR"
-      jq --arg v "$NEW_VERSION" '.version = $v' package.json > package.json.tmp
-      mv package.json.tmp package.json
-      sed -i "s/^  version: .*/  version: $NEW_VERSION/" src/main/resources/application.yml
-
-      # Build Docker image
       npm run docker:build
-
-      # Export version and built flag
       cd ..
       echo "BUILT_REST=true" >> build.env
-      echo "VERSION_REST=$NEW_VERSION" >> build.env
+      echo "VERSION_REST=$VERSION" >> build.env
   artifacts:
     reports:
       dotenv: build.env
@@ -105,76 +43,25 @@ build-rest:
       changes:
         - inferno-comics-rest/**/*
         - docker-compose.yml
+        - .gitlab-ci.yml
 
 build-recog:
   stage: build
   image: docker:26.1.4
   before_script:
     - echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
-    - apk add --no-cache nodejs npm bash jq git curl
+    - apk add --no-cache nodejs npm bash jq
   script:
     - |
       set -euo pipefail
       SERVICE_DIR="inferno-comics-recog"
-      FALLBACK_VERSION=$(jq -r .version ${SERVICE_DIR}/package.json)
-
-      git fetch --tags origin 2>/dev/null || true
-      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1 || true)
-
-      if [ -n "$LATEST_TAG" ]; then
-        TAG_MSG=$(git tag -l --format='%(contents)' "$LATEST_TAG")
-        CURRENT_VERSION=$(echo "$TAG_MSG" | grep "inferno-comics-recog:" | sed 's/.*: v//' | tr -d '[:space:]')
-      fi
-
-      if [ -z "${CURRENT_VERSION:-}" ]; then
-        CURRENT_VERSION="$FALLBACK_VERSION"
-        echo "No version found in tags, using package.json fallback: $CURRENT_VERSION"
-      else
-        echo "Found version in tag $LATEST_TAG: $CURRENT_VERSION"
-      fi
-
-      RESOLVED_BUMP="${BUMP_TYPE:-}"
-
-      if [ -z "$RESOLVED_BUMP" ]; then
-        MR_RESPONSE=$(curl -sf --header "PRIVATE-TOKEN: ${PROJECT_ACCESS_TOKEN}" \
-          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/repository/commits/${CI_COMMIT_SHA}/merge_requests" \
-          2>/dev/null || echo "[]")
-
-        MR_LABELS=$(echo "$MR_RESPONSE" | jq -r '.[0].labels // [] | .[]' 2>/dev/null || echo "")
-
-        if echo "$MR_LABELS" | grep -qx "bump:major"; then
-          RESOLVED_BUMP="major"
-          echo "MR label detected: bump:major"
-        elif echo "$MR_LABELS" | grep -qx "bump:minor"; then
-          RESOLVED_BUMP="minor"
-          echo "MR label detected: bump:minor"
-        fi
-      fi
-
-      RESOLVED_BUMP="${RESOLVED_BUMP:-patch}"
-      echo "Bump type resolved to: $RESOLVED_BUMP"
-
-      MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
-      MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
-      PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
-      case "$RESOLVED_BUMP" in
-        major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-        minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-        patch) PATCH=$((PATCH + 1)) ;;
-        *)     PATCH=$((PATCH + 1)) ;;
-      esac
-      NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-      echo "Version bump: $CURRENT_VERSION -> $NEW_VERSION"
-
+      VERSION=$(jq -r .version ${SERVICE_DIR}/package.json)
+      echo "Building inferno-comics-recog v$VERSION"
       cd "$SERVICE_DIR"
-      jq --arg v "$NEW_VERSION" '.version = $v' package.json > package.json.tmp
-      mv package.json.tmp package.json
-
       npm run docker:build
-
       cd ..
       echo "BUILT_RECOG=true" >> build.env
-      echo "VERSION_RECOG=$NEW_VERSION" >> build.env
+      echo "VERSION_RECOG=$VERSION" >> build.env
   artifacts:
     reports:
       dotenv: build.env
@@ -186,6 +73,7 @@ build-recog:
       changes:
         - inferno-comics-recog/**/*
         - docker-compose.yml
+        - .gitlab-ci.yml
 
 build-web:
   stage: build
@@ -195,70 +83,18 @@ build-web:
       command: ["--host=tcp://0.0.0.0:2375", "--mtu=1500"]
   before_script:
     - echo $DOCKER_HUB_ACCESS_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin
-    - apk add --no-cache nodejs npm bash jq git curl
+    - apk add --no-cache nodejs npm bash jq
   script:
     - |
       set -euo pipefail
       SERVICE_DIR="inferno-comics-web"
-      FALLBACK_VERSION=$(jq -r .version ${SERVICE_DIR}/package.json)
-
-      git fetch --tags origin 2>/dev/null || true
-      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1 || true)
-
-      if [ -n "$LATEST_TAG" ]; then
-        TAG_MSG=$(git tag -l --format='%(contents)' "$LATEST_TAG")
-        CURRENT_VERSION=$(echo "$TAG_MSG" | grep "inferno-comics-web:" | sed 's/.*: v//' | tr -d '[:space:]')
-      fi
-
-      if [ -z "${CURRENT_VERSION:-}" ]; then
-        CURRENT_VERSION="$FALLBACK_VERSION"
-        echo "No version found in tags, using package.json fallback: $CURRENT_VERSION"
-      else
-        echo "Found version in tag $LATEST_TAG: $CURRENT_VERSION"
-      fi
-
-      RESOLVED_BUMP="${BUMP_TYPE:-}"
-
-      if [ -z "$RESOLVED_BUMP" ]; then
-        MR_RESPONSE=$(curl -sf --header "PRIVATE-TOKEN: ${PROJECT_ACCESS_TOKEN}" \
-          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/repository/commits/${CI_COMMIT_SHA}/merge_requests" \
-          2>/dev/null || echo "[]")
-
-        MR_LABELS=$(echo "$MR_RESPONSE" | jq -r '.[0].labels // [] | .[]' 2>/dev/null || echo "")
-
-        if echo "$MR_LABELS" | grep -qx "bump:major"; then
-          RESOLVED_BUMP="major"
-          echo "MR label detected: bump:major"
-        elif echo "$MR_LABELS" | grep -qx "bump:minor"; then
-          RESOLVED_BUMP="minor"
-          echo "MR label detected: bump:minor"
-        fi
-      fi
-
-      RESOLVED_BUMP="${RESOLVED_BUMP:-patch}"
-      echo "Bump type resolved to: $RESOLVED_BUMP"
-
-      MAJOR=$(echo "$CURRENT_VERSION" | cut -d. -f1)
-      MINOR=$(echo "$CURRENT_VERSION" | cut -d. -f2)
-      PATCH=$(echo "$CURRENT_VERSION" | cut -d. -f3)
-      case "$RESOLVED_BUMP" in
-        major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-        minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-        patch) PATCH=$((PATCH + 1)) ;;
-        *)     PATCH=$((PATCH + 1)) ;;
-      esac
-      NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-      echo "Version bump: $CURRENT_VERSION -> $NEW_VERSION"
-
+      VERSION=$(jq -r .version ${SERVICE_DIR}/package.json)
+      echo "Building inferno-comics-web v$VERSION"
       cd "$SERVICE_DIR"
-      jq --arg v "$NEW_VERSION" '.version = $v' package.json > package.json.tmp
-      mv package.json.tmp package.json
-
       npm run docker:build
-
       cd ..
       echo "BUILT_WEB=true" >> build.env
-      echo "VERSION_WEB=$NEW_VERSION" >> build.env
+      echo "VERSION_WEB=$VERSION" >> build.env
   artifacts:
     reports:
       dotenv: build.env
@@ -270,6 +106,7 @@ build-web:
       changes:
         - inferno-comics-web/**/*
         - docker-compose.yml
+        - .gitlab-ci.yml
 
 deploy:
   stage: deploy
@@ -295,16 +132,15 @@ deploy:
         echo "docker-compose.yml not found on server, copying...";
         scp -i ~/.ssh/id_rsa -r docker-compose.yml "$STAGE_SERVER_USER@$STAGE_SERVER_HOST:$DEPLOY_PATH/.";
       fi
-    # Only restart services that were actually built
     - |
       SERVICES_TO_RESTART=""
-      if [ -n "$BUILT_REST" ]; then
+      if [ -n "${BUILT_REST:-}" ]; then
         SERVICES_TO_RESTART="$SERVICES_TO_RESTART inferno-comics-rest"
       fi
-      if [ -n "$BUILT_RECOG" ]; then
+      if [ -n "${BUILT_RECOG:-}" ]; then
         SERVICES_TO_RESTART="$SERVICES_TO_RESTART inferno-comics-recog"
       fi
-      if [ -n "$BUILT_WEB" ]; then
+      if [ -n "${BUILT_WEB:-}" ]; then
         SERVICES_TO_RESTART="$SERVICES_TO_RESTART inferno-comics-web"
       fi
 
@@ -327,152 +163,3 @@ deploy:
       optional: true
     - job: build-web
       optional: true
-
-create-tag:
-  stage: release
-  image: alpine:latest
-  before_script:
-    - apk add --no-cache git jq
-    - git config user.email "ci@gitlab.com"
-    - git config user.name "GitLab CI"
-    - git remote set-url origin "https://oauth2:${PROJECT_ACCESS_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
-  script:
-    - |
-      set -euo pipefail
-
-      # Skip version bumps and tagging on force runs
-      if [ "${FORCE_RUN:-}" = "true" ]; then
-        echo "Force run detected, skipping version bump and tag creation"
-        exit 0
-      fi
-
-      # Only create a tag if at least one service was built
-      if [ -z "${BUILT_REST:-}" ] && [ -z "${BUILT_RECOG:-}" ] && [ -z "${BUILT_WEB:-}" ]; then
-        echo "No services were built, skipping version bump and tag"
-        exit 0
-      fi
-
-      git fetch --tags origin 2>/dev/null || true
-      git checkout "$CI_COMMIT_BRANCH"
-      git pull origin "$CI_COMMIT_BRANCH"
-      LATEST_TAG=$(git tag -l "v*" --sort=-version:refname | head -n1 || true)
-
-      # Get current app version
-      if [ -n "$LATEST_TAG" ]; then
-        APP_VERSION=$(echo "$LATEST_TAG" | sed 's/^v//')
-        TAG_MSG=$(git tag -l --format='%(contents)' "$LATEST_TAG")
-        echo "Latest tag: $LATEST_TAG"
-      else
-        APP_VERSION="0.1.0"
-        TAG_MSG=""
-        echo "No existing tags, starting at v0.1.0"
-      fi
-
-      # Bump app version (always patch)
-      MAJOR=$(echo "$APP_VERSION" | cut -d. -f1)
-      MINOR=$(echo "$APP_VERSION" | cut -d. -f2)
-      PATCH=$(echo "$APP_VERSION" | cut -d. -f3)
-      PATCH=$((PATCH + 1))
-      NEW_APP_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-
-      # For each service: use new version from build if built, otherwise carry forward from previous tag
-      FILES_CHANGED=""
-      UPDATED_SERVICES=""
-
-      if [ -n "${VERSION_REST:-}" ] && [ -n "${BUILT_REST:-}" ]; then
-        SVC_REST="$VERSION_REST"
-        jq --arg v "$SVC_REST" '.version = $v' inferno-comics-rest/package.json > inferno-comics-rest/package.json.tmp
-        mv inferno-comics-rest/package.json.tmp inferno-comics-rest/package.json
-        sed -i "s/^  version: .*/  version: $SVC_REST/" inferno-comics-rest/src/main/resources/application.yml
-        FILES_CHANGED="$FILES_CHANGED inferno-comics-rest/package.json inferno-comics-rest/src/main/resources/application.yml"
-        UPDATED_SERVICES="${UPDATED_SERVICES}, inferno-comics-rest v${SVC_REST}"
-      elif [ -n "$TAG_MSG" ]; then
-        SVC_REST=$(echo "$TAG_MSG" | grep "inferno-comics-rest:" | sed 's/.*: v//' | tr -d '[:space:]')
-      fi
-      SVC_REST="${SVC_REST:-0.0.0}"
-
-      if [ -n "${VERSION_RECOG:-}" ] && [ -n "${BUILT_RECOG:-}" ]; then
-        SVC_RECOG="$VERSION_RECOG"
-        jq --arg v "$SVC_RECOG" '.version = $v' inferno-comics-recog/package.json > inferno-comics-recog/package.json.tmp
-        mv inferno-comics-recog/package.json.tmp inferno-comics-recog/package.json
-        FILES_CHANGED="$FILES_CHANGED inferno-comics-recog/package.json"
-        UPDATED_SERVICES="${UPDATED_SERVICES}, inferno-comics-recog v${SVC_RECOG}"
-      elif [ -n "$TAG_MSG" ]; then
-        SVC_RECOG=$(echo "$TAG_MSG" | grep "inferno-comics-recog:" | sed 's/.*: v//' | tr -d '[:space:]')
-      fi
-      SVC_RECOG="${SVC_RECOG:-0.0.0}"
-
-      if [ -n "${VERSION_WEB:-}" ] && [ -n "${BUILT_WEB:-}" ]; then
-        SVC_WEB="$VERSION_WEB"
-        jq --arg v "$SVC_WEB" '.version = $v' inferno-comics-web/package.json > inferno-comics-web/package.json.tmp
-        mv inferno-comics-web/package.json.tmp inferno-comics-web/package.json
-        FILES_CHANGED="$FILES_CHANGED inferno-comics-web/package.json"
-        UPDATED_SERVICES="${UPDATED_SERVICES}, inferno-comics-web v${SVC_WEB}"
-      elif [ -n "$TAG_MSG" ]; then
-        SVC_WEB=$(echo "$TAG_MSG" | grep "inferno-comics-web:" | sed 's/.*: v//' | tr -d '[:space:]')
-      fi
-      SVC_WEB="${SVC_WEB:-0.0.0}"
-
-      # Strip leading ", " from service list
-      UPDATED_SERVICES=$(echo "$UPDATED_SERVICES" | sed 's/^, //')
-
-      # Commit version bumps back to repo
-      if [ -n "$FILES_CHANGED" ]; then
-        git add $FILES_CHANGED
-        git commit -m "v${NEW_APP_VERSION}: bump ${UPDATED_SERVICES} [skip ci]"
-        git push origin "$CI_COMMIT_BRANCH"
-      fi
-
-      # Create tag with composite message on the version bump commit
-      NEW_TAG="v${NEW_APP_VERSION}"
-      TAG_MESSAGE="InfernoComics v${NEW_APP_VERSION}
-
-      inferno-comics-rest: v${SVC_REST}
-      inferno-comics-web: v${SVC_WEB}
-      inferno-comics-recog: v${SVC_RECOG}"
-
-      if git ls-remote --tags origin "refs/tags/$NEW_TAG" | grep -q "$NEW_TAG"; then
-        echo "Tag $NEW_TAG already exists on remote, skipping"
-      else
-        echo "Creating tag: $NEW_TAG"
-        echo "$TAG_MESSAGE"
-        git tag -a "$NEW_TAG" -m "$TAG_MESSAGE"
-        git push origin "$NEW_TAG"
-      fi
-  tags:
-    - docker
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  needs:
-    - job: build-rest
-      optional: true
-    - job: build-recog
-      optional: true
-    - job: build-web
-      optional: true
-
-release:
-  stage: release
-  image: alpine:latest
-  before_script:
-    - apk add --no-cache curl jq git
-  script:
-    - |
-      set -euo pipefail
-      echo "Creating release for $CI_COMMIT_TAG"
-      git fetch --tags origin 2>/dev/null || true
-      TAG_MSG=$(git tag -l --format='%(contents)' "$CI_COMMIT_TAG")
-      RESPONSE=$(curl -sf --request POST \
-        --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
-        --header "Content-Type: application/json" \
-        --data "$(jq -n \
-          --arg tag "$CI_COMMIT_TAG" \
-          --arg name "Release $CI_COMMIT_TAG" \
-          --arg desc "$TAG_MSG" \
-          '{tag_name: $tag, name: $name, description: $desc}')" \
-        "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/releases")
-      echo "Release created: $(echo "$RESPONSE" | jq -r '.name')"
-  tags:
-    - docker
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
