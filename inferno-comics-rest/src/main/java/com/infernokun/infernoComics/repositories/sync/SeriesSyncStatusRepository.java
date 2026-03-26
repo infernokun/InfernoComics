@@ -23,4 +23,5 @@ public interface SeriesSyncStatusRepository extends JpaRepository<SeriesSyncStat
     Optional<SeriesSyncStatus> findTopBySeriesIdAndFolderPathOrderByUpdatedAtDesc(Long seriesId, String folderPath);
     List<SeriesSyncStatus> findBySyncStatus(SeriesSyncStatus.SyncStatus status);
     List<SeriesSyncStatus> findByLastSyncTimestampBefore(LocalDateTime timestamp);
+    void deleteBySeriesId(Long seriesId);
 }

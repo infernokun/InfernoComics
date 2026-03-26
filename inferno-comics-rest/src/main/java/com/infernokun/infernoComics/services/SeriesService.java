@@ -570,6 +570,13 @@ public class SeriesService {
         Optional<Series> series = seriesRepository.findById(id);
         series.ifPresent(descriptionGeneratorService::evictSeriesCache);
 
+        // Delete related records that have FK constraints not covered by cascade
+        progressDataRepository.deleteBySeriesId(id);
+        missingIssueRepository.deleteBySeriesId(id);
+        processedFileRepository.deleteBySeriesId(id);
+        seriesSyncStatusRepository.deleteBySeriesId(id);
+
+        // Issues are cascade-deleted via Series.issues (CascadeType.ALL)
         seriesRepository.deleteById(id);
         evictListCaches();
 

@@ -33,6 +33,10 @@ public interface ProgressDataRepository extends JpaRepository<ProgressData, Long
     void deleteBySessionId(@Param("sessionId") String sessionId);
 
     @Modifying
+    @Query("DELETE FROM ProgressData p WHERE p.series.id = :seriesId")
+    void deleteBySeriesId(@Param("seriesId") Long seriesId);
+
+    @Modifying
     @Query("UPDATE ProgressData p SET p.state = 'ERROR', p.errorMessage = :errorMessage, " +
            "p.timeFinished = :timeFinished, p.lastUpdated = :timeFinished " +
            "WHERE p.sessionId = :sessionId")

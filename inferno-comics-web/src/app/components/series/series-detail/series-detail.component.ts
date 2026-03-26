@@ -133,6 +133,12 @@ export class SeriesDetailComponent implements OnInit {
         this.issues = res.data
           .map((issue) => new Issue(issue))
           .sort((a, b) => {
+            if (this.series?.comicVineIds?.length === 1) {
+              // Sort by issue number when there's exactly 1 comicVineId
+              return this.parseIssueNumber(a.issueNumber || '') - this.parseIssueNumber(b.issueNumber || '');
+            }
+
+            // Otherwise sort by cover date
             const dateA = a.coverDate ? new Date(a.coverDate).getTime() : 0;
             const dateB = b.coverDate ? new Date(b.coverDate).getTime() : 0;
             return dateA - dateB;
@@ -370,7 +376,7 @@ export class SeriesDetailComponent implements OnInit {
     const issue = this.issues.find((comic) => comic.id === issueId);
     if (issue) {
       const dialogRef = this.dialog.open(IssueViewDialog, {
-        width: '700px',
+        width: '800px',
         maxWidth: '90vw',
         data: { issue },
       });
@@ -1366,6 +1372,10 @@ export class SeriesDetailComponent implements OnInit {
 
   getNextToRead(): Issue | null {
     if (!this.issues || this.issues.length === 0) return null;
+    if (this.series?.comicVineIds?.length! == 1) {
+      const sorted1 = [...this.issues].sort((a, b) => this.parseIssueNumber(a.issueNumber || '') - this.parseIssueNumber(b.issueNumber || ''));
+      return sorted1.find(issue => !issue.read) || null;
+    }
 
     const sorted = [...this.issues].sort((a, b) => {
       const dateA = a.coverDate ? new Date(a.coverDate).getTime() : 0;

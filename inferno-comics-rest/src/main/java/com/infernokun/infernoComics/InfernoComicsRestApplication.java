@@ -19,6 +19,5 @@ public class InfernoComicsRestApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) {
-		// ci pipeline test
 	}
 }
