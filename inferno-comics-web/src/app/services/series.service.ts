@@ -148,8 +148,8 @@ export class SeriesService extends BaseService {
     return this.delete<ApiResponse<void>>(`${this.apiUrl}/missing-issues/${issueId}`);
   }
 
-  refreshMissingIssues(): Observable<ApiResponse<MissingIssue[]>> {
-    return this.post<ApiResponse<MissingIssue[]>>(`${this.apiUrl}/missing-issues/refresh`, {});
+  refreshMissingIssues(): Observable<ApiResponse<void>> {
+    return this.post<ApiResponse<void>>(`${this.apiUrl}/missing-issues/check`, {});
   }
 
   backfillRecognitionMetadata(): Observable<ApiResponse<{updated: number, skipped: number, failed: number}>> {

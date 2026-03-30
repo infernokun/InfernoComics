@@ -1078,7 +1078,10 @@ public class SeriesService {
                 missingIssue.setExpectedIssueName(
                         !Objects.equals(missingComicVineIssueDto.getName(), "") ? missingComicVineIssueDto.getName()
                                 : series.getName() + " #" + missingComicVineIssueDto.getIssueNumber());
-                missingIssue.setExpectedCoverDate(LocalDate.parse(missingComicVineIssueDto.getCoverDate()));
+                String coverDate = missingComicVineIssueDto.getCoverDate();
+                if (coverDate != null && !coverDate.isBlank() && !coverDate.equalsIgnoreCase("null")) {
+                    missingIssue.setExpectedCoverDate(LocalDate.parse(coverDate));
+                }
                 missingIssue.setLastChecked(LocalDateTime.now());
                 missingIssue.setComicVineId(missingComicVineIssueDto.getId());
                 missingIssue.setImageUrl(missingComicVineIssueDto.getImageUrl());

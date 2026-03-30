@@ -13,13 +13,49 @@ A modern web application built with **Angular** to discover, track, and explore 
 
 ## Features
 
-- Browse and search comic book series
-- Track progress through ongoing series
-- Publisher breakdown and filtering
-- Responsive UI using Angular Material
-- Integrated with AG Grid for data tables
-- Docker-ready deployment
-- Real-time updates via WebSocket integration
+### Collection Management
+- Add, edit, and delete comic series and individual issues
+- Track owned vs. available issues per series with progress indicators
+- Record issue condition (Mint → Poor), purchase price, current value, and purchase date
+- Mark issues as key issues or variants
+- Track reading progress (read/unread) per issue
+- Mark favorite series with local storage persistence
+
+### Metadata & Comic Vine Integration
+- Search and link series/issues to [Comic Vine](https://comicvine.gamespot.com/) for automated metadata
+- Support multiple Comic Vine IDs per series
+- Track GCD (Grand Comics Database) IDs
+- Reverify or regenerate metadata from Comic Vine at any time
+- AI-generated series/issue descriptions
+
+### Image Recognition & Bulk Import
+- Drag-and-drop image upload to bulk-add comics via AI-powered recognition
+- Real-time processing progress via Server-Sent Events (SSE)
+- View, replay, and manage processing sessions and history
+
+### Missing Issues & Releases
+- Identify gaps in your collection (issues you don't yet own)
+- Browse upcoming and recent releases with configurable lookback (1–12 months)
+- See which releases you already own
+- Ignore series you're not collecting
+
+### Analytics & Stats
+- Dashboard overview: total series, issues, publishers, completion rate
+- Publisher breakdown with donut charts
+- Collection growth timeline (area chart)
+- Value analysis: total purchase vs. current value, profit/loss
+- Series completion metrics and gauge charts
+- Condition distribution and read/unread breakdowns
+- File processing and sync health statistics
+
+### UI & Experience
+- Grid and list view modes with persistence
+- Sorting, filtering, and pagination across series and issues lists
+- Dark/light theme toggle
+- Advanced data tables powered by AG Grid
+- Skeleton loading placeholders and animated transitions
+- Toast notifications and confirmation dialogs
+- Responsive design with Angular Material components
 
 ---
 
@@ -27,10 +63,12 @@ A modern web application built with **Angular** to discover, track, and explore 
 
 The application consists of:
 - **Frontend**: Angular 21 with TypeScript and SCSS
-- **UI Components**: Built with Angular Material
-- **Data Management**: Through REST API endpoints
-- **State Management**: Using RxJS Observables and services
-- **Deployment**: Containerized with Docker support
+- **UI Components**: Angular Material + AG Grid for data tables
+- **Charts**: ApexCharts (via ng-apexcharts)
+- **State Management**: NgRx Store with RxJS Observables and Angular Signals
+- **Data Management**: REST API with Comic Vine integration
+- **Real-time Updates**: Server-Sent Events (SSE) for image processing progress
+- **Deployment**: Containerized with Docker and Nginx
 
 ---
 

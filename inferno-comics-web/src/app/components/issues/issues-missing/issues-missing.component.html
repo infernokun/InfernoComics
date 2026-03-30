@@ -9,7 +9,10 @@
       </div>
     </div>
     <div class="header-actions">
-      <button mat-icon-button (click)="onReload()" [disabled]="loading()" matTooltip="Refresh">
+      <button mat-icon-button (click)="onRecalculate()" [disabled]="loading() || recalculating()" matTooltip="Recalculate missing issues">
+        <mat-icon [class.spinning]="recalculating()">sync</mat-icon>
+      </button>
+      <button mat-icon-button (click)="onReload()" [disabled]="loading() || recalculating()" matTooltip="Refresh">
         <mat-icon [class.spinning]="loading()">refresh</mat-icon>
       </button>
     </div>
@@ -68,28 +71,6 @@
               [theme]="{ width: '50px', height: '40px', borderRadius: '4px' }">
             </ngx-skeleton-loader>
           </div>
-          <div class="issues-list">
-            @for (j of [1, 2, 3]; track j) {
-              <div class="issue-row">
-                <ngx-skeleton-loader
-                  [theme]="{ width: '40px', height: '56px', borderRadius: '4px' }">
-                </ngx-skeleton-loader>
-                <div class="issue-details" style="flex: 1;">
-                  <ngx-skeleton-loader
-                    [theme]="{ width: '40px', height: '14px', marginBottom: '4px' }">
-                  </ngx-skeleton-loader>
-                  <ngx-skeleton-loader
-                    [theme]="{ width: '100px', height: '12px' }">
-                  </ngx-skeleton-loader>
-                </div>
-              </div>
-            }
-          </div>
-          <div class="series-actions">
-            <ngx-skeleton-loader
-              [theme]="{ width: '100%', height: '36px', borderRadius: '4px' }">
-            </ngx-skeleton-loader>
-          </div>
         </div>
       }
     </div>
@@ -113,7 +94,7 @@
         </div>
         <div class="stat-content">
           <span class="stat-value">{{ getSeriesCount() }}</span>
-          <span class="stat-label">Series Affected</span>
+          <span class="stat-label">Series Tracked</span>
         </div>
       </div>
       <div class="stat-card oldest">
@@ -141,7 +122,7 @@
       <div class="search-section">
         <mat-form-field appearance="outline" class="search-field">
           <mat-icon matPrefix>search</mat-icon>
-          <input matInput [(ngModel)]="filter" placeholder="Search series or issues..." />
+          <input matInput [ngModel]="filter()" (ngModelChange)="filter.set($event)" placeholder="Search series or issues..." />
           @if (filter()) {
             <button mat-icon-button matSuffix (click)="clearFilter()">
               <mat-icon>close</mat-icon>
@@ -151,15 +132,22 @@
       </div>
 
       <div class="view-controls">
+        <!-- Ignored series toggle -->
+        @if (ignoredGroupCount() > 0 || showIgnored()) {
+          <button class="ignored-toggle" [class.active]="showIgnored()" (click)="toggleShowIgnored()"
+            [matTooltip]="showIgnored() ? 'Show active series' : 'Show ignored series'">
+            <mat-icon>{{ showIgnored() ? 'visibility' : 'visibility_off' }}</mat-icon>
+            <span>{{ ignoredGroupCount() }} Ignored</span>
+          </button>
+        }
+
         @if (viewMode() === 'grid') {
           <div class="expand-collapse-controls">
-            <button mat-stroked-button (click)="expandAllSeries()" class="control-button">
+            <button mat-icon-button (click)="expandAllCards()" matTooltip="Expand All">
               <mat-icon>unfold_more</mat-icon>
-              Expand All
             </button>
-            <button mat-stroked-button (click)="collapseAllSeries()" class="control-button">
+            <button mat-icon-button (click)="collapseAllCards()" matTooltip="Collapse All">
               <mat-icon>unfold_less</mat-icon>
-              Collapse All
             </button>
           </div>
         }
@@ -190,7 +178,7 @@
     </div>
 
     <!-- Empty State -->
-    @if (filteredIssues().length === 0) {
+    @if (getSortedGroups().length === 0) {
       <div class="empty-state">
         @if (filter()) {
           <mat-icon>search_off</mat-icon>
@@ -200,23 +188,39 @@
             <mat-icon>clear</mat-icon>
             Clear Search
           </button>
-        } @else {
+        } @else if (showIgnored()) {
+          <mat-icon>visibility_off</mat-icon>
+          <h2>No Ignored Series</h2>
+          <p>You haven't ignored any series yet</p>
+          <button mat-stroked-button (click)="toggleShowIgnored()">
+            <mat-icon>arrow_back</mat-icon>
+            Back to Active
+          </button>
+        } @else if (issues().length === 0) {
           <mat-icon class="success">check_circle</mat-icon>
           <h2>Collection Complete!</h2>
           <p>You have no missing issues tracked</p>
+        } @else {
+          <mat-icon>visibility_off</mat-icon>
+          <h2>All Series Ignored</h2>
+          <p>You've ignored all {{ ignoredGroupCount() }} series</p>
+          <button mat-stroked-button (click)="toggleShowIgnored()">
+            <mat-icon>visibility</mat-icon>
+            Manage Ignored
+          </button>
         }
       </div>
     }
 
     <!-- Grid View -->
-    @if (filteredIssues().length > 0 && viewMode() === 'grid') {
+    @if (getSortedGroups().length > 0 && viewMode() === 'grid') {
       <div class="series-grid">
         @for (group of getSortedGroups(); track group.key) {
-          <div class="series-card" [class.collapsed]="isSeriesCollapsed(group.key)">
-            <div class="series-header" (click)="toggleSeriesCollapsed(group.key)">
-              <mat-icon class="collapse-icon">
-                {{ isSeriesCollapsed(group.key) ? 'chevron_right' : 'expand_more' }}
-              </mat-icon>
+          <div class="series-card" [class.expanded]="isCardExpanded(group.key)">
+            <div class="series-header" (click)="toggleCard(group.key)">
+              <button mat-icon-button class="expand-icon" (click)="$event.stopPropagation(); toggleCard(group.key)">
+                <mat-icon>{{ isCardExpanded(group.key) ? 'expand_more' : 'chevron_right' }}</mat-icon>
+              </button>
               <div class="series-info">
                 <h3 class="series-name">{{ group.series?.name || group.key }}</h3>
                 <span class="series-meta">
@@ -228,59 +232,64 @@
                   }
                 </span>
               </div>
+              <button mat-icon-button class="ignore-btn"
+                (click)="toggleIgnoreSeries(group.series?.id, $event)"
+                [matTooltip]="isIgnored(group.series?.id) ? 'Unignore series' : 'Ignore series'">
+                <mat-icon>{{ isIgnored(group.series?.id) ? 'visibility' : 'visibility_off' }}</mat-icon>
+              </button>
               <div class="missing-badge">
                 <span class="count">{{ group.issues.length }}</span>
                 <span class="label">missing</span>
               </div>
             </div>
 
-            @if (!isSeriesCollapsed(group.key)) {
+            @if (isCardExpanded(group.key)) {
               <div class="card-content" [@expandCollapse]>
-              <div class="issues-list">
-                @for (issue of group.issues; track issue.id; let i = $index) {
-                  @if (i < 5 || expandedSeries().has(group.key)) {
-                    <div class="issue-row">
-                      <div class="issue-cover">
-                        @if (issue.imageUrl) {
-                          <img [src]="issue.imageUrl" [alt]="'Issue #' + issue.issueNumber" />
-                        } @else {
-                          <div class="no-cover">
-                            <mat-icon>image</mat-icon>
-                          </div>
-                        }
+                <div class="issues-list">
+                  @for (issue of group.issues; track issue.id; let i = $index) {
+                    @if (i < 5 || isShowingMore(group.key)) {
+                      <div class="issue-row">
+                        <div class="issue-cover">
+                          @if (issue.imageUrl) {
+                            <img [src]="issue.imageUrl" [alt]="'Issue #' + issue.issueNumber" />
+                          } @else {
+                            <div class="no-cover">
+                              <mat-icon>image</mat-icon>
+                            </div>
+                          }
+                        </div>
+                        <div class="issue-details">
+                          <span class="issue-number">#{{ issue.issueNumber }}</span>
+                          @if (issue.expectedIssueName) {
+                            <span class="issue-name">{{ issue.expectedIssueName }}</span>
+                          }
+                          @if (issue.expectedCoverDate) {
+                            <span class="issue-date">{{ DateUtils.formatDate(issue.expectedCoverDate) }}</span>
+                          }
+                        </div>
                       </div>
-                      <div class="issue-details">
-                        <span class="issue-number">#{{ issue.issueNumber }}</span>
-                        @if (issue.expectedIssueName) {
-                          <span class="issue-name">{{ issue.expectedIssueName }}</span>
-                        }
-                        @if (issue.expectedCoverDate) {
-                          <span class="issue-date">{{ DateUtils.formatDate(issue.expectedCoverDate) }}</span>
-                        }
-                      </div>
-                    </div>
-                  }
-                }
-
-                @if (group.issues.length > 5) {
-                  <button class="show-more-btn" (click)="toggleSeriesExpanded(group.key); $event.stopPropagation()">
-                    @if (expandedSeries().has(group.key)) {
-                      <mat-icon>expand_less</mat-icon>
-                      Show Less
-                    } @else {
-                      <mat-icon>expand_more</mat-icon>
-                      Show {{ group.issues.length - 5 }} More
                     }
-                  </button>
-                }
-              </div>
+                  }
 
-              <div class="series-actions">
-                <button mat-button class="view-series-btn" (click)="navigateToSeries(group.series); $event.stopPropagation()">
-                  <mat-icon>visibility</mat-icon>
-                  View Series
-                </button>
-              </div>
+                  @if (group.issues.length > 5) {
+                    <button class="show-more-btn" (click)="toggleShowMore(group.key); $event.stopPropagation()">
+                      @if (isShowingMore(group.key)) {
+                        <mat-icon>expand_less</mat-icon>
+                        Show Less
+                      } @else {
+                        <mat-icon>expand_more</mat-icon>
+                        Show {{ group.issues.length - 5 }} More
+                      }
+                    </button>
+                  }
+                </div>
+
+                <div class="series-actions">
+                  <button mat-button class="view-series-btn" (click)="navigateToSeries(group.series); $event.stopPropagation()">
+                    <mat-icon>visibility</mat-icon>
+                    View Series
+                  </button>
+                </div>
               </div>
             }
           </div>
@@ -289,7 +298,7 @@
     }
 
     <!-- List View -->
-    @if (filteredIssues().length > 0 && viewMode() === 'list') {
+    @if (getSortedGroups().length > 0 && viewMode() === 'list') {
       <div class="issues-table">
         <div class="table-header">
           <div class="col-cover">Cover</div>
@@ -301,44 +310,49 @@
 
         <div class="table-body">
           @for (issue of filteredIssues(); track issue.id) {
-            <div class="table-row">
-              <div class="col-cover">
-                @if (issue.imageUrl) {
-                  <img [src]="issue.imageUrl" [alt]="'Issue #' + issue.issueNumber" />
-                } @else {
-                  <div class="no-cover">
-                    <mat-icon>image</mat-icon>
-                  </div>
-                }
+            @if (!isIgnored(issue.series?.id)) {
+              <div class="table-row">
+                <div class="col-cover">
+                  @if (issue.imageUrl) {
+                    <img [src]="issue.imageUrl" [alt]="'Issue #' + issue.issueNumber" />
+                  } @else {
+                    <div class="no-cover">
+                      <mat-icon>image</mat-icon>
+                    </div>
+                  }
+                </div>
+                <div class="col-series">
+                  <span class="series-name">{{ issue.series?.name || 'Unknown Series' }}</span>
+                  @if (issue.series?.publisher) {
+                    <span class="publisher">{{ issue.series?.publisher }}</span>
+                  }
+                </div>
+                <div class="col-issue">
+                  <span class="issue-number">#{{ issue.issueNumber }}</span>
+                  @if (issue.expectedIssueName) {
+                    <span class="issue-name">{{ issue.expectedIssueName }}</span>
+                  }
+                </div>
+                <div class="col-date">
+                  @if (issue.expectedCoverDate) {
+                    {{ DateUtils.formatDate(issue.expectedCoverDate) }}
+                  } @else {
+                    <span class="no-date">—</span>
+                  }
+                </div>
+                <div class="col-actions">
+                  <button mat-icon-button (click)="navigateToSeries(issue.series)" matTooltip="View Series">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="toggleIgnoreSeries(issue.series?.id, $event)" [matTooltip]="'Ignore series'">
+                    <mat-icon>visibility_off</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" (click)="removeMissingIssue(issue.id!)" matTooltip="Remove">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
               </div>
-              <div class="col-series">
-                <span class="series-name">{{ issue.series?.name || 'Unknown Series' }}</span>
-                @if (issue.series?.publisher) {
-                  <span class="publisher">{{ issue.series?.publisher }}</span>
-                }
-              </div>
-              <div class="col-issue">
-                <span class="issue-number">#{{ issue.issueNumber }}</span>
-                @if (issue.expectedIssueName) {
-                  <span class="issue-name">{{ issue.expectedIssueName }}</span>
-                }
-              </div>
-              <div class="col-date">
-                @if (issue.expectedCoverDate) {
-                  {{ DateUtils.formatDate(issue.expectedCoverDate) }}
-                } @else {
-                  <span class="no-date">—</span>
-                }
-              </div>
-              <div class="col-actions">
-                <button mat-icon-button (click)="navigateToSeries(issue.series)" matTooltip="View Series">
-                  <mat-icon>visibility</mat-icon>
-                </button>
-                <button mat-icon-button color="warn" (click)="removeMissingIssue(issue.id!)" matTooltip="Remove">
-                  <mat-icon>delete_outline</mat-icon>
-                </button>
-              </div>
-            </div>
+            }
           }
         </div>
       </div>

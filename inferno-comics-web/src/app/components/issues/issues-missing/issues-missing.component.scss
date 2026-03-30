@@ -228,35 +228,67 @@
   .view-controls {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
 
     @include md {
       justify-content: space-between;
       flex-wrap: wrap;
     }
 
-    .expand-collapse-controls {
+    .ignored-toggle {
       display: flex;
-      gap: var(--spacing-sm);
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: 6px var(--spacing-md);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background: var(--surface-color);
+      color: var(--text-secondary);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
 
-      .control-button {
-        display: flex;
-        align-items: center;
-        gap: var(--spacing-xs);
-        font-size: 0.8125rem;
-        font-weight: 500;
-
-        mat-icon {
-          font-size: 18px;
-          width: 18px;
-          height: 18px;
-        }
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
       }
 
-      @include md {
-        width: 100%;
-        justify-content: center;
-        order: 3;
+      &:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+      }
+
+      &.active {
+        background: rgba(var(--primary-color-rgb, 99, 102, 241), 0.1);
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+      }
+    }
+
+    .expand-collapse-controls {
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+
+      button {
+        border-radius: 0;
+
+        mat-icon {
+          color: var(--text-secondary);
+        }
+
+        &:first-child {
+          border-right: 1px solid var(--border-color);
+        }
+
+        &:hover mat-icon {
+          color: var(--primary-color);
+        }
       }
     }
 
@@ -391,48 +423,37 @@
       box-shadow: var(--shadow-md);
     }
 
-    // Collapsed state
-    &.collapsed {
-      .series-header {
-        border-bottom: none;
-      }
-    }
-
     .series-header {
       display: flex;
       align-items: center;
       gap: var(--spacing-sm);
-      padding: var(--spacing-lg);
+      padding: var(--spacing-md) var(--spacing-lg);
       background: var(--background-color);
-      border-bottom: 1px solid var(--border-color);
       cursor: pointer;
       user-select: none;
       transition: background var(--transition-fast);
+      border-bottom: 1px solid transparent;
 
       &:hover {
         background: var(--background-secondary);
 
-        .collapse-icon {
+        .expand-icon {
           color: var(--primary-color);
+          mat-icon { color: var(--primary-color); }
         }
       }
 
       @include md {
-        padding: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-md);
       }
 
-      .collapse-icon {
-        font-size: 24px;
-        width: 24px;
-        height: 24px;
-        color: var(--text-secondary);
+      .expand-icon {
         flex-shrink: 0;
-        transition: color var(--transition-normal), transform var(--transition-normal);
+        color: var(--text-secondary);
+        transition: color var(--transition-normal);
 
-        @include md {
-          font-size: 20px;
-          width: 20px;
-          height: 20px;
+        mat-icon {
+          transition: transform var(--transition-normal);
         }
       }
 
@@ -441,8 +462,8 @@
         min-width: 0;
 
         .series-name {
-          margin: 0 0 4px 0;
-          font-size: 1rem;
+          margin: 0 0 2px 0;
+          font-size: 0.9375rem;
           font-weight: 600;
           color: var(--text-primary);
           white-space: nowrap;
@@ -470,23 +491,36 @@
         }
       }
 
+      .ignore-btn {
+        flex-shrink: 0;
+
+        mat-icon {
+          color: var(--text-secondary);
+        }
+
+        &:hover mat-icon {
+          color: var(--primary-color);
+        }
+      }
+
       .missing-badge {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: var(--spacing-sm) var(--spacing-md);
+        padding: 4px var(--spacing-sm);
         background: rgba(244, 67, 54, 0.1);
         border-radius: var(--radius-sm);
+        flex-shrink: 0;
 
         .count {
-          font-size: 1.25rem;
+          font-size: 1.125rem;
           font-weight: 700;
           color: #f44336;
           line-height: 1;
         }
 
         .label {
-          font-size: 0.625rem;
+          font-size: 0.5625rem;
           color: #f44336;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -494,9 +528,9 @@
       }
     }
 
-    // When collapsed, rotate the icon
-    &.collapsed .collapse-icon {
-      transform: rotate(-90deg);
+    // Show border when expanded
+    &.expanded .series-header {
+      border-bottom-color: var(--border-color);
     }
 
     .issues-list {

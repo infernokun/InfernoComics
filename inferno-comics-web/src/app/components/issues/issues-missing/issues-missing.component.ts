@@ -18,6 +18,8 @@ interface SeriesGroup {
   issues: MissingIssue[];
 }
 
+const IGNORED_STORAGE_KEY = 'inferno-missing-ignored-series';
+
 @Component({
   selector: 'app-issues-missing',
   templateUrl: './issues-missing.component.html',
@@ -44,12 +46,14 @@ export class IssuesMissingComponent implements OnInit {
   readonly series = signal<Series[]>([]);
   readonly issues = signal<MissingIssue[]>([]);
   readonly loading = signal(true);
+  readonly recalculating = signal(false);
   readonly filter = signal('');
   readonly viewMode = signal<'grid' | 'list'>('grid');
-  readonly expandedSeries = signal<Set<string>>(new Set()); // Show more/less within a card
-  readonly collapsedSeries = signal<Set<string>>(new Set()); // Collapsed to header only
+  readonly expandedCards = signal<Set<string>>(new Set()); // Cards open in grid (default: collapsed)
+  readonly showMoreCards = signal<Set<string>>(new Set()); // Cards showing >5 issues
+  readonly ignoredSeriesIds = signal<Set<number>>(this.loadIgnoredFromStorage());
+  readonly showIgnored = signal(false);
 
-  // Sort option
   sortBy: 'series' | 'date' | 'count' = 'series';
 
   // Computed signals
@@ -79,6 +83,18 @@ export class IssuesMissingComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadSeries();
+  }
+
+  private loadIgnoredFromStorage(): Set<number> {
+    try {
+      const stored = localStorage.getItem(IGNORED_STORAGE_KEY);
+      if (stored) return new Set(JSON.parse(stored) as number[]);
+    } catch {}
+    return new Set();
+  }
+
+  private saveIgnoredToStorage(ids: Set<number>): void {
+    localStorage.setItem(IGNORED_STORAGE_KEY, JSON.stringify([...ids]));
   }
 
   loadSeries(): void {
@@ -134,9 +150,10 @@ export class IssuesMissingComponent implements OnInit {
   }
 
   getSeriesCount(): number {
+    const ignoredIds = this.ignoredSeriesIds();
     const seriesIds = new Set<number>();
     this.issues().forEach(issue => {
-      if (issue.seriesId) {
+      if (issue.seriesId && !ignoredIds.has(issue.seriesId)) {
         seriesIds.add(issue.seriesId);
       }
     });
@@ -200,16 +217,17 @@ export class IssuesMissingComponent implements OnInit {
   getSortedGroups(): SeriesGroup[] {
     const grouped = this.getGroupedIssues();
     const groups: SeriesGroup[] = [];
+    const showIgnored = this.showIgnored();
+    const ignoredIds = this.ignoredSeriesIds();
 
     grouped.forEach((issues, key) => {
-      groups.push({
-        key,
-        series: issues[0]?.series,
-        issues
-      });
+      const seriesId = issues[0]?.series?.id;
+      const isIgnored = seriesId ? ignoredIds.has(seriesId) : false;
+      if (showIgnored ? isIgnored : !isIgnored) {
+        groups.push({ key, series: issues[0]?.series, issues });
+      }
     });
 
-    // Sort groups based on sortBy
     switch (this.sortBy) {
       case 'series':
         groups.sort((a, b) => a.key.localeCompare(b.key));
@@ -229,42 +247,78 @@ export class IssuesMissingComponent implements OnInit {
     return groups;
   }
 
-  toggleSeriesExpanded(key: string): void {
-    const current = new Set(this.expandedSeries());
-    if (current.has(key)) {
-      current.delete(key);
-    } else {
-      current.add(key);
-    }
-    this.expandedSeries.set(current);
+  ignoredGroupCount(): number {
+    const grouped = this.getGroupedIssues();
+    const ignoredIds = this.ignoredSeriesIds();
+    let count = 0;
+    grouped.forEach(issues => {
+      const seriesId = issues[0]?.series?.id;
+      if (seriesId && ignoredIds.has(seriesId)) count++;
+    });
+    return count;
   }
 
-  // Collapse/Expand - controls whether card content is visible (header only vs full card)
-  isSeriesCollapsed(key: string): boolean {
-    return this.collapsedSeries().has(key);
+  // Card expand/collapse — default collapsed, open on click
+  isCardExpanded(key: string): boolean {
+    return this.expandedCards().has(key);
   }
 
-  toggleSeriesCollapsed(key: string): void {
-    const current = new Set(this.collapsedSeries());
-    if (current.has(key)) {
-      current.delete(key);
-    } else {
-      current.add(key);
-    }
-    this.collapsedSeries.set(current);
+  toggleCard(key: string): void {
+    const current = new Set(this.expandedCards());
+    current.has(key) ? current.delete(key) : current.add(key);
+    this.expandedCards.set(current);
   }
 
-  expandAllSeries(): void {
-    this.collapsedSeries.set(new Set());
-  }
-
-  collapseAllSeries(): void {
+  expandAllCards(): void {
     const allKeys = this.getSortedGroups().map(g => g.key);
-    this.collapsedSeries.set(new Set(allKeys));
+    this.expandedCards.set(new Set(allKeys));
+  }
+
+  collapseAllCards(): void {
+    this.expandedCards.set(new Set());
+  }
+
+  // Show more than 5 issues within a card
+  isShowingMore(key: string): boolean {
+    return this.showMoreCards().has(key);
+  }
+
+  toggleShowMore(key: string): void {
+    const current = new Set(this.showMoreCards());
+    current.has(key) ? current.delete(key) : current.add(key);
+    this.showMoreCards.set(current);
+  }
+
+  // Ignore / unignore a series
+  isIgnored(seriesId: number | undefined): boolean {
+    return seriesId ? this.ignoredSeriesIds().has(seriesId) : false;
+  }
+
+  toggleIgnoreSeries(seriesId: number | undefined, event: Event): void {
+    event.stopPropagation();
+    if (!seriesId) return;
+    const current = new Set(this.ignoredSeriesIds());
+    current.has(seriesId) ? current.delete(seriesId) : current.add(seriesId);
+    this.ignoredSeriesIds.set(current);
+    this.saveIgnoredToStorage(current);
+  }
+
+  toggleShowIgnored(): void {
+    this.showIgnored.update(v => !v);
   }
 
   onReload(): void {
     this.loadMissingIssues();
+  }
+
+  onRecalculate(): void {
+    this.recalculating.set(true);
+    this.seriesService.refreshMissingIssues()
+      .pipe(finalize(() => this.recalculating.set(false)))
+      .subscribe({
+        next: () => this.loadMissingIssues(),
+        error: (err) => console.error('Error recalculating missing issues:', err)
+      });
   }
 
   removeMissingIssue(issueId: number): void {
