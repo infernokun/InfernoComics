@@ -451,6 +451,33 @@
           </div>
         }
 
+        <!-- Series image picker (edit mode with existing comic vine data) -->
+        @if (isEditMode && existingComicVineData.length > 0) {
+          <mat-card class="cover-selector-card">
+            <mat-card-header>
+              <mat-card-title>Change Series Image</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="cover-options">
+                @for (series of existingComicVineData; track series.id) {
+                  @if (series.imageUrl) {
+                    <div class="cover-option"
+                      [class.selected]="seriesForm.get('imageUrl')?.value === series.imageUrl"
+                      (click)="selectSeriesImage(series.imageUrl!)">
+                      <img [src]="series.imageUrl" [alt]="series.name" class="cover-thumbnail"
+                        onerror="this.style.display='none'">
+                      <span>{{ series.name }}</span>
+                      @if (series.startYear) {
+                        <span class="series-year">{{ series.startYear }}</span>
+                      }
+                    </div>
+                  }
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
         <!-- Image preview -->
         @if (seriesForm.get('imageUrl')?.value) {
           <div class="image-preview">

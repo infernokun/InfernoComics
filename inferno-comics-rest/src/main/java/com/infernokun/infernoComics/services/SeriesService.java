@@ -925,7 +925,9 @@ public class SeriesService {
                         results.size(), candidateCovers.size(), mainCovers, variantCovers, sessionId);
 
                 if (candidateCovers.isEmpty()) {
-                    progressDataService.sendError(sessionId, "No valid candidate cover urls found!");
+                    log.warn("No candidate covers found for session {}, skipping image matching", sessionId);
+                    progressDataService.sendComplete(sessionId, null);
+                    return CompletableFuture.completedFuture(null);
                 }
 
                 // Cache the covers and update cache

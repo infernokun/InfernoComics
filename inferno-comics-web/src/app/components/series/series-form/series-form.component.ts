@@ -446,6 +446,11 @@ export class SeriesFormComponent implements OnInit, OnDestroy {
     this.selectedCover = imageUrl;
   }
 
+  selectSeriesImage(imageUrl: string): void {
+    this.seriesForm.patchValue({ imageUrl });
+    this.seriesForm.markAsDirty();
+  }
+
   applyCombinedConfiguration(): void {
     if (!this.selectedPrimarySeries || !this.selectedCover) {
       this.messageService.warning('Please select primary series and cover image');
