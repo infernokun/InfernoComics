@@ -59,6 +59,33 @@ public class NextcloudSyncService {
                 //updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.EMPTY, 0, null);
                 return ProcessingResult.noNewFiles();
             }
+            
+            if (series.getIssuesOwnedCount() == series.getIssuesAvailableCount()) {
+                List<ProcessedFile> filesToRecord = new ArrayList<>();
+                log.info("Skipping series {} - issues owned and logging to db", series.getId());
+                for (NextcloudFile file : filteredImageFiles) {
+
+                    ProcessedFile processedFile = processedFileRepository
+                            .findBySeriesIdAndFilePath(series.getId(), file.getPath())
+                            .orElse(ProcessedFile.builder()
+                                    .seriesId(series.getId())
+                                    .filePath(file.getPath())
+                                    .fileName(file.getName())
+                                    .sessionId(null)
+                                    .build());
+
+                    processedFile.setFileEtag(file.getEtag());
+                    processedFile.setFileSize(file.getSize());
+                    processedFile.setFileLastModified(file.getLastModified());
+                    processedFile.setState(State.COMPLETED);
+                    processedFile.setErrorMessage("Image was processed while there were no available candidates");
+
+                    filesToRecord.add(processedFile);
+                }
+
+                weirdService.saveProcessedFiles(filesToRecord);
+                return ProcessingResult.noNewFiles();
+            }
 
             log.info("Processing {} new/changed images for series {} (out of {} total)",
                     filteredImageFiles.size(), series.getId(), imageFiles.size());
