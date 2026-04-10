@@ -59,8 +59,9 @@ public class NextcloudSyncService {
                 //updateSyncStatus(syncStatus, SeriesSyncStatus.SyncStatus.EMPTY, 0, null);
                 return ProcessingResult.noNewFiles();
             }
-            
-            if (series.getIssuesOwnedCount() == series.getIssuesAvailableCount()) {
+
+            // special case for when where are no candidates
+            if (series.getIssuesOwnedCount() >= series.getIssuesAvailableCount()) {
                 List<ProcessedFile> filesToRecord = new ArrayList<>();
                 log.info("Skipping series {} - issues owned and logging to db", series.getId());
                 for (NextcloudFile file : filteredImageFiles) {
