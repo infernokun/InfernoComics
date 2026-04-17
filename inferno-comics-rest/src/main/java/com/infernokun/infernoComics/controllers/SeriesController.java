@@ -1,5 +1,6 @@
 package com.infernokun.infernoComics.controllers;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.infernokun.infernoComics.models.*;
 import com.infernokun.infernoComics.models.dto.SeriesRequest;
 import com.infernokun.infernoComics.models.enums.StartedBy;
@@ -375,6 +376,16 @@ public class SeriesController extends BaseController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<Series>> updateSeries(@PathVariable Long id, @Valid @RequestBody SeriesRequest request) {
         return createSuccessResponse(seriesService.updateSeries(id, request));
+    }
+
+    @PatchMapping("/{id}/barcode")
+    public ResponseEntity<ApiResponse<Series>> updateBarcode(@PathVariable Long id, @RequestParam String barcode) {
+        return createSuccessResponse(seriesService.updateBarcode(id, barcode));
+    }
+
+    @PostMapping("/barcode/process")
+    public ResponseEntity<ApiResponse<JsonNode>> processBarcodes() {
+        return createSuccessResponse(seriesService.processBarcodesViaRecog());
     }
 
     @DeleteMapping("/{id}")

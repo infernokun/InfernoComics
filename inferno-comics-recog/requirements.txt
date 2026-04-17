@@ -10,3 +10,5 @@ psutil==7.0.0
 PyYAML==6.0.2
 loguru==0.7.3
 curl_cffi==0.13.0
+pyzbar==0.1.9
+Pillow==12.2.0

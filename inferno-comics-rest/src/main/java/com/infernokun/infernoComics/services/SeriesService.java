@@ -454,6 +454,25 @@ public class SeriesService {
         }
     }
 
+    @CacheEvict(value = "series", key = "#id")
+    public Series updateBarcode(Long id, String barcode) {
+        Series series = seriesRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Series with ID " + id + " not found"));
+        series.setBarcode(barcode);
+        Series updated = seriesRepository.save(series);
+        evictListCaches();
+        log.info("Series '{}' barcode set to {}", series.getName(), barcode);
+        return updated;
+    }
+
+    public JsonNode processBarcodesViaRecog() {
+        return webClient.recognitionClient().post()
+                .uri("/barcode/process")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .block();
+    }
+
     private void updateGcdMappings(Series series, List<String> comicVineIds) {
         try {
             List<String> newGcdIds = new ArrayList<>();

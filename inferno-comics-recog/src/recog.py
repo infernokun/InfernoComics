@@ -72,6 +72,7 @@ def create_app():
     from routes.evaluation.Evaluation import evaluation_bp
     from routes.image_matcher.ImageMatcher import image_matcher_bp
     from routes.config.Config import config_bp
+    from routes.barcode.Barcode import barcode_bp
     
     # Pass the matcher getter function to blueprints
     app.config['GET_MATCHER'] = get_matcher
@@ -90,6 +91,9 @@ def create_app():
 
     app.register_blueprint(config_bp, url_prefix=url_prefix)
     logger.debug(f"Config blueprint registered at {url_prefix}")
+
+    app.register_blueprint(barcode_bp, url_prefix=url_prefix)
+    logger.debug(f"Barcode blueprint registered at {url_prefix}")
     
     return app
 

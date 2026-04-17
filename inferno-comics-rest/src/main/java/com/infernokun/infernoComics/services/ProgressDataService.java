@@ -20,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import javax.annotation.PreDestroy;
 import java.io.IOException;
 import java.time.Duration;
@@ -40,8 +42,11 @@ public class ProgressDataService {
     private final WeirdService weirdService;
     private final SocketClient websocket;
     private final ProgressDataRepository progressDataRepository;
+    @PersistenceContext
+    private EntityManager entityManager;
     private final Map<String, SseEmitter> activeEmitters = new ConcurrentHashMap<>();
     private final Map<String, SSEProgressData> sessionStatus = new ConcurrentHashMap<>();
+    private final Map<String, Long> sessionSeriesIdCache = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
     private final RedisTemplate<String, Object> redisTemplate;
@@ -135,6 +140,9 @@ public class ProgressDataService {
                 .build();
 
         sessionStatus.put(sessionId, initialStatus);
+        if (series != null && series.getId() != null) {
+            sessionSeriesIdCache.put(sessionId, series.getId());
+        }
         log.info("Session {} initialized and stored in sessionStatus", sessionId);
 
         ProgressData progressData = new ProgressData();
@@ -248,6 +256,7 @@ public class ProgressDataService {
                 }
 
                 weirdService.saveProgressData(progressData);
+                entityManager.detach(progressData);
                 sendToWebSocket();
                 log.info("Database updated with completion data for session: {}", sessionId);
             }
@@ -415,8 +424,12 @@ public class ProgressDataService {
     }
 
     public Long getSeriesIdBySessionId(String sessionId) {
-        Optional<ProgressData> dataOptional =  progressDataRepository.findBySessionId(sessionId);
-        return dataOptional.isPresent() ? dataOptional.get().getSeries().getId() : -1;
+        Long cached = sessionSeriesIdCache.get(sessionId);
+        if (cached != null) {
+            return cached;
+        }
+        Optional<ProgressData> dataOptional = progressDataRepository.findBySessionId(sessionId);
+        return dataOptional.isPresent() ? dataOptional.get().getSeries().getId() : -1L;
     }
 
     public SSEProgressData getLatestProgressFromRedis(String sessionId) {
@@ -702,6 +715,7 @@ public class ProgressDataService {
     private void cleanupSession(String sessionId) {
         log.debug("Cleaning up session: {}", sessionId);
 
+        sessionSeriesIdCache.remove(sessionId);
         SseEmitter emitter = activeEmitters.remove(sessionId);
         if (emitter != null) {
             try {

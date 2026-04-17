@@ -23,9 +23,9 @@
         Folder Structure
       </button>
 
-      <button mat-stroked-button color="warn" (click)="syncAllSeries()">
+      <button mat-stroked-button color="warn" (click)="syncAllSeries()" [disabled]="syncing">
         <mat-icon>key</mat-icon>
-        Sync Series
+        {{ syncing ? 'Syncing...' : 'Sync Series' }}
       </button>
     </div>
   </div>

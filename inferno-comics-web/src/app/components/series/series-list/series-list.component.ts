@@ -369,7 +369,11 @@ export class SeriesListComponent implements OnInit, OnDestroy {
     });
   }
 
+  syncing: boolean = false;
+
   syncAllSeries() {
+    if (this.syncing) return;
+    this.syncing = true;
     this.messageService.loading('Syncing series...');
     this.seriesService.syncAllSeries().subscribe({
       next: () => {
@@ -378,6 +382,9 @@ export class SeriesListComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.messageService.error('Error syncing series');
+      },
+      complete: () => {
+        this.syncing = false;
       }
     });
   }

@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -28,6 +29,8 @@ import static com.infernokun.infernoComics.utils.InfernoComicsUtils.createEtag;
 @Transactional
 @RequiredArgsConstructor
 public class NextcloudSyncService {
+    private final Set<Long> inProgressSeriesIds = ConcurrentHashMap.newKeySet();
+
     private final SeriesService seriesService;
     private final NextcloudService nextcloudService;
     private final SeriesSyncStatusRepository syncStatusRepository;
@@ -39,6 +42,11 @@ public class NextcloudSyncService {
         String folderPath = series.getFolderMapping().getName();
         if (folderPath == null || folderPath.trim().isEmpty()) {
             log.info("Skipping series {} - no folder mapping", series.getId());
+            return ProcessingResult.noNewFiles();
+        }
+
+        if (!inProgressSeriesIds.add(series.getId())) {
+            log.info("Skipping series {} - sync already in progress", series.getId());
             return ProcessingResult.noNewFiles();
         }
 
@@ -101,6 +109,8 @@ public class NextcloudSyncService {
             log.error("Error processing series {}: {}", series.getId(), e.getMessage());
             updateSyncStatusOnError(series.getId(), folderPath, e.getMessage());
             return ProcessingResult.error(e.getMessage());
+        } finally {
+            inProgressSeriesIds.remove(series.getId());
         }
     }
 
@@ -159,16 +169,19 @@ public class NextcloudSyncService {
         return processedFileRepository
                 .findBySeriesIdAndFilePath(seriesId, file.getPath())
                 .map(existingRecord -> {
-                    boolean shouldReprocess = existingRecord.getState() != State.COMPLETED;
-
-                    if (shouldReprocess) {
-                        log.info("File {} will be reprocessed due to previous failure, deleting old record", file.getPath());
-                        weirdService.deleteProcessedFile(existingRecord);
-                    } else {
+                    if (existingRecord.getState() == State.COMPLETED) {
                         log.info("File {} already processed successfully, skipping", file.getPath());
+                        return false;
                     }
-
-                    return shouldReprocess;
+                    if (existingRecord.getState() == State.PROCESSING) {
+                        log.info("File {} is currently being processed, skipping", file.getPath());
+                        return false;
+                    }
+                    // Only reprocess ERROR or other non-terminal states
+                    log.info("File {} will be reprocessed due to previous failure (state={}), deleting old record",
+                            file.getPath(), existingRecord.getState());
+                    weirdService.deleteProcessedFile(existingRecord);
+                    return true;
                 })
                 .orElseGet(() -> {
                     log.info("File {} not found in processed records, will process", file.getPath());

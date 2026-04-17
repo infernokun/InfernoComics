@@ -43,6 +43,8 @@ spring:
     timeout: 6000
     database: 0
     connect-timeout: 10000
+    repositories:
+      enabled: false
     lettuce:
       pool:
         max-active: 8

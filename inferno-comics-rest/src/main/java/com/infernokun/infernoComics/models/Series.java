@@ -85,6 +85,9 @@ public class Series {
     @Column(name = "last_reverification")
     private LocalDateTime lastReverification = null;
 
+    @Column(name = "barcode")
+    private String barcode;
+
     public Series(String name, String description, String publisher) {
         this.name = name;
         this.description = description;
