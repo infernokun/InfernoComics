@@ -18,6 +18,13 @@
     "docker:push": "export PROJECT=$(jq -r .name package.json) && export VERSION=$(jq -r .version package.json) && docker push infernokun/$PROJECT:$VERSION && docker push infernokun/$PROJECT:latest"
   },
   "private": true,
+  "pnpm": {
+    "overrides": {
+      "node-fetch": "^3.3.2",
+      "less": "^4.2.0"
+    },
+    "onlyBuiltDependencies": ["esbuild", "nx"]
+  },
   "dependencies": {
     "@angular/animations": "^21.2.8",
     "@angular/cdk": "21.2.6",
@@ -45,7 +52,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "rxjs": "~7.8.2",
-    "slide": "link:@angular/material/slide",
     "tslib": "^2.8.1",
     "zone.js": "~0.15.1"
   },
@@ -55,9 +61,9 @@
     "@angular/build": "^21.2.7",
     "@angular/cli": "~21.2.7",
     "@angular/compiler-cli": "^21.2.8",
-    "@module-federation/enhanced": "^0.9.1",
-    "@nx/angular": "21.1.2",
-    "@nx/workspace": "21.1.2",
+    "@module-federation/enhanced": "^0.18.0",
+    "@nx/angular": "21.5.2",
+    "@nx/workspace": "21.5.2",
     "@schematics/angular": "^21.2.7",
     "@types/jasmine": "~5.1.15",
     "@types/js-yaml": "^4.0.9",
@@ -69,8 +75,8 @@
     "karma-coverage": "~2.2.1",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
-    "nx": "21.1.2",
-    "sass": "1.58.3",
+    "nx": "21.5.2",
+    "sass": "^1.87.0",
     "typescript": "~5.9.3"
   }
 }
